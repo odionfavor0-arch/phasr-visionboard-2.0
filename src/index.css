@@ -1,111 +1,138 @@
+/* ─────────────────────────────────────────────
+   src/styles/themes.css
+   3 themes: neutral (dark), rose (warm feminine), slate (cool masculine)
+   Import this in src/main.jsx or src/index.css
+───────────────────────────────────────────── */
+
+/* ── DEFAULT / NEUTRAL (dark) ── */
+:root,
+[data-theme="neutral"] {
+  --bg: #05050a;
+  --bg2: #0d0d16;
+  --bg3: #12121f;
+  --accent: #e8407a;
+  --accent2: #f472a8;
+  --accent3: #fbb6ce;
+  --text: #f0eeff;
+  --muted: #8b85aa;
+  --border: rgba(232, 64, 122, 0.18);
+  --glow: 0 0 40px rgba(232, 64, 122, 0.25);
+
+  /* App (board) tokens */
+  --app-bg: #fffbfc;
+  --app-bg2: #fff5f7;
+  --app-surface: #ffffff;
+  --app-text: #3d1f2b;
+  --app-muted: #7a5a66;
+  --app-border: #f2c4d0;
+  --app-accent: #e83d66;
+  --app-accent2: #f95f85;
+  --app-glow: 0 4px 24px rgba(233, 100, 136, 0.12);
+
+  --coach-bg: linear-gradient(160deg, #fff5f7, #fff);
+  --coach-header: linear-gradient(135deg, #f95f85, #e83d66);
+  --coach-bubble-bg: linear-gradient(135deg, #f95f85, #c0244d);
+  --coach-user-msg: linear-gradient(135deg, #f95f85, #e83d66);
+
+  --streak-color: #f4c542;
+  --streak-glow: rgba(244, 197, 66, 0.3);
+}
+
+/* ── ROSE (warm feminine) ── */
+[data-theme="rose"] {
+  --bg: #1a0a10;
+  --bg2: #240d16;
+  --bg3: #2e101c;
+  --accent: #f06090;
+  --accent2: #f78fb0;
+  --accent3: #fcc0d4;
+  --text: #fff0f4;
+  --muted: #b08090;
+  --border: rgba(240, 96, 144, 0.2);
+  --glow: 0 0 40px rgba(240, 96, 144, 0.3);
+
+  --app-bg: #fff8fa;
+  --app-bg2: #fff0f4;
+  --app-surface: #ffffff;
+  --app-text: #3d1020;
+  --app-muted: #8a5060;
+  --app-border: #f5c0cc;
+  --app-accent: #f06090;
+  --app-accent2: #f78fb0;
+  --app-glow: 0 4px 24px rgba(240, 96, 144, 0.15);
+
+  --coach-bg: linear-gradient(160deg, #fff8fa, #fff);
+  --coach-header: linear-gradient(135deg, #f78fb0, #f06090);
+  --coach-bubble-bg: linear-gradient(135deg, #f78fb0, #d04070);
+  --coach-user-msg: linear-gradient(135deg, #f78fb0, #f06090);
+
+  --streak-color: #ffd6e0;
+  --streak-glow: rgba(255, 150, 180, 0.35);
+}
+
+/* ── SLATE (cool masculine / neutral dark) ── */
+[data-theme="slate"] {
+  --bg: #07090f;
+  --bg2: #0f1220;
+  --bg3: #161a2c;
+  --accent: #4a6cf7;
+  --accent2: #7b94f8;
+  --accent3: #b0c0fc;
+  --text: #e8ecff;
+  --muted: #7880aa;
+  --border: rgba(74, 108, 247, 0.18);
+  --glow: 0 0 40px rgba(74, 108, 247, 0.25);
+
+  --app-bg: #f5f7ff;
+  --app-bg2: #eef0ff;
+  --app-surface: #ffffff;
+  --app-text: #1a1e3d;
+  --app-muted: #5a6080;
+  --app-border: #c5ccf0;
+  --app-accent: #4a6cf7;
+  --app-accent2: #7b94f8;
+  --app-glow: 0 4px 24px rgba(74, 108, 247, 0.12);
+
+  --coach-bg: linear-gradient(160deg, #f5f7ff, #fff);
+  --coach-header: linear-gradient(135deg, #7b94f8, #4a6cf7);
+  --coach-bubble-bg: linear-gradient(135deg, #7b94f8, #2a4ad7);
+  --coach-user-msg: linear-gradient(135deg, #7b94f8, #4a6cf7);
+
+  --streak-color: #60d0ff;
+  --streak-glow: rgba(96, 208, 255, 0.3);
+}
+
+/* ── SHARED LAYOUT TOKENS ── */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --r: 16px;
+  --rs: 12px;
+  --t: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --sh: 0 4px 24px rgba(0, 0, 0, 0.06);
+  --sh2: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+/* ── THEME SWITCHER BUTTON STYLES ── */
+.theme-switcher {
   display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  gap: 0.4rem;
+  align-items: center;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+.theme-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--t);
 }
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+.theme-dot:hover {
+  transform: scale(1.2);
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+.theme-dot.active {
+  border-color: var(--text);
+  transform: scale(1.15);
 }
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-}
+.theme-dot[data-t="neutral"] { background: linear-gradient(135deg, #e8407a, #0d0d16); }
+.theme-dot[data-t="rose"]    { background: linear-gradient(135deg, #f06090, #1a0a10); }
+.theme-dot[data-t="slate"]   { background: linear-gradient(135deg, #4a6cf7, #07090f); }
