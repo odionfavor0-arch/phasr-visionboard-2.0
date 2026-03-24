@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js'
 import AppShell     from './AppShell'
 import LandingPage  from './LandingPage'
 import AuthPage     from './AuthPage'
-import SageCoach    from './components/SageCoach'
+import SageCoach    from './mycomponents/SageCoach'
 
 // ── Supabase client ──
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL  || 'https://fhqsvsswmzhjkszdpnet.supabase.co'
