@@ -9,9 +9,9 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import AppShell     from './src/AppShell'
-import LandingPage  from './src/LandingPage'
-import AuthPage     from './src/AuthPage'
+import AppShell     from './AppShell'
+import LandingPage  from './LandingPage'
+import AuthPage     from './AuthPage'
 import SageCoach    from './mycomponents/SageCoach'
 
 // ── Supabase client ──
