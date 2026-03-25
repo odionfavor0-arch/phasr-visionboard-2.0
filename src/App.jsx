@@ -1,78 +1,43 @@
-// src/App.jsx
-// ─────────────────────────────────────────────
-// Root component. Handles:
-// - Which screen to show: landing | auth | app
-// - Supabase session detection
-// - Theme switching (neutral / rose / slate)
-// - Streak calculation passed down to AppShell
-// ─────────────────────────────────────────────
-
-import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import AppShell     from './AppShell'
-import LandingPage  from './LandingPage'
-import AuthPage     from './AuthPage'
-import SageCoach    from './mycomponents/SageCoach'
-
-// ── Supabase client ──
-const SUPA_URL = import.meta.env.VITE_SUPABASE_URL  || 'https://fhqsvsswmzhjkszdpnet.supabase.co'
-const SUPA_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_zbRozO2r8M0g1VR4ybtV3g_AXaC0vtY'
-export const supabase = createClient(SUPA_URL, SUPA_KEY)
-
-// ── Streak helper ──
-function calcStreak() {
-  try {
-    const entries = JSON.parse(localStorage.getItem('phasr_journal') || '[]')
-    if (entries.length === 0) return 0
-    const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date))
-    let streak = 0
-    let current = new Date()
-    current.setHours(0, 0, 0, 0)
-    for (const e of sorted) {
-      const d = new Date(e.date + 'T12:00:00')
-      d.setHours(0, 0, 0, 0)
-      const diff = (current - d) / 86400000
-      if (diff <= 1) { streak++; current = d } else break
-    }
-    return streak
-  } catch { return 0 }
-}
+import { useEffect, useState } from 'react'
+import LandingPage from './pages/LandingPage'
+import AuthPage from './pages/AuthPage'
+import AppShell from './pages/AppShell'
+import { supabase } from './lib/supabase'
+import './styles/themes.css'
 
 export default function App() {
-  const [screen, setScreen] = useState('landing') // 'landing' | 'auth' | 'app'
-  const [user,   setUser]   = useState(null)
-  const [theme,  setTheme]  = useState(() => localStorage.getItem('phasr_theme') || 'neutral')
-  const [streak, setStreak] = useState(0)
+  const [theme, setTheme] = useState(() => localStorage.getItem('phasr_theme') || 'neutral')
+  const [user, setUser] = useState(null)
+  const [screen, setScreen] = useState('landing')
+  const [loading, setLoading] = useState(true)
 
-  // Apply theme to <html> element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('phasr_theme', theme)
   }, [theme])
 
-  // Check for existing Supabase session on load
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user)
-        setScreen('app')
-        setStreak(calcStreak())
-      }
+    let mounted = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      const nextUser = data.session?.user || null
+      setUser(nextUser)
+      setScreen(nextUser ? 'app' : 'landing')
+      setLoading(false)
     })
 
-    // Listen for auth changes (login / logout / token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user)
-        setScreen('app')
-        setStreak(calcStreak())
-      } else {
-        setUser(null)
-        setScreen('landing')
-      }
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user || null
+      setUser(nextUser)
+      setScreen(nextUser ? 'app' : 'landing')
+      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
   async function handleSignOut() {
@@ -81,52 +46,46 @@ export default function App() {
     setScreen('landing')
   }
 
-  // Board data for Sage context (read from localStorage)
-  const boardData = (() => {
-    try { return JSON.parse(localStorage.getItem('phasr_vb') || 'null') } catch { return null }
-  })()
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        background: 'var(--bg)',
+        color: 'var(--text)',
+        fontFamily: "'Outfit', sans-serif",
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.5rem' }}>Phasr</p>
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Loading your workspace...</p>
+        </div>
+      </div>
+    )
+  }
 
-  // Today's journal entry for Sage context
-  const todayJournal = (() => {
-    try {
-      const entries = JSON.parse(localStorage.getItem('phasr_journal') || '[]')
-      const today = new Date().toISOString().slice(0, 10)
-      return entries.find(e => e.date === today) || null
-    } catch { return null }
-  })()
+  if (user && screen === 'app') {
+    return (
+      <AppShell
+        user={user}
+        theme={theme}
+        onThemeChange={setTheme}
+        onSignOut={handleSignOut}
+      />
+    )
+  }
 
-  return (
-    <>
-      {screen === 'landing' && (
-        <LandingPage
-          onGetStarted={() => setScreen('auth')}
-        />
-      )}
+  if (screen === 'auth') {
+    return (
+      <AuthPage
+        onBack={() => setScreen('landing')}
+        onSuccess={nextUser => {
+          setUser(nextUser)
+          setScreen('app')
+        }}
+      />
+    )
+  }
 
-      {screen === 'auth' && (
-        <AuthPage
-          onBack={() => setScreen('landing')}
-          onSuccess={(user) => {
-            setUser(user)
-            setScreen('app')
-            setStreak(calcStreak())
-          }}
-        />
-      )}
-
-      {screen === 'app' && user && (
-        <>
-          <AppShell
-            user={user}
-            theme={theme}
-            onThemeChange={setTheme}
-            streak={streak}
-            onSignOut={handleSignOut}
-          />
-          {/* Sage floats over everything */}
-          <SageCoach boardData={boardData} todayJournal={todayJournal} />
-        </>
-      )}
-    </>
-  )
+  return <LandingPage onGetStarted={() => setScreen('auth')} />
 }
