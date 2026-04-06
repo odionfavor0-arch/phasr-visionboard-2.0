@@ -6,7 +6,7 @@ import AppShell from './pages/AppShell'
 import Onboarding from './components/Onboarding'
 import { supabase, supabaseConfigError } from './lib/supabase'
 import phasrLogo from './assets/phasr-mark.png'
-import './Styles/themes.css'
+import './styles/themes.css'
 
 const AUTH_RETURN_KEY = 'phasr_auth_return'
 const ONBOARDING_KEY_PREFIX = 'phasr_onboarded'
