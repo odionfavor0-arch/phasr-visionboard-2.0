@@ -333,10 +333,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         style={{
           flex: 1,
           minWidth: 0,
-          marginLeft: isMobile ? 0 : sidebarWidth,
-          width: '100%',
-          transform: isMobile && sidebarOpen ? 'translateX(14px)' : 'translateX(0)',
-          transition: 'transform 0.22s ease',
+          marginLeft: isMobile ? (sidebarOpen ? MOBILE_RAIL_WIDTH : 0) : sidebarWidth,
+          width: isMobile && sidebarOpen ? `calc(100% - ${MOBILE_RAIL_WIDTH}px)` : '100%',
+          transition: 'margin-left 0.22s ease, width 0.22s ease',
         }}
       >
         <header
