@@ -291,9 +291,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
-            alignContent: 'center',
+            alignContent: 'end',
             gap: 0,
             borderBottom: '1px solid var(--app-border)',
+            paddingBottom: isMobile ? 0 : 10,
           }}
         >
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
@@ -370,10 +371,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
             borderBottom: '1px solid var(--app-border)',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0.2rem 1.25rem 0 1.25rem',
+            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0 1.25rem 10px 1.25rem',
             display: 'grid',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : '1fr auto',
-            alignItems: 'center',
+            alignItems: 'end',
             gap: 12,
           }}
         >
@@ -382,7 +383,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: '100%' }}>
               <span
                 style={{
                   fontSize: '0.82rem',
@@ -392,7 +393,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
-                  transform: 'translateY(8px)',
+                  transform: 'none',
                 }}
               >
                 {currentTitle}
