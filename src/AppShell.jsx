@@ -19,7 +19,7 @@ import { getLockInSummary, loadLockInState } from './lib/lockIn'
 
 const MOBILE_QUERY = '(max-width: 768px)'
 const DESKTOP_RAIL_WIDTH = 88
-const MOBILE_RAIL_WIDTH = 84
+const MOBILE_RAIL_WIDTH = 112
 const MOBILE_HEADER_HEIGHT = 52
 
 function getDisplayName(user) {
@@ -255,9 +255,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             right: 0,
             bottom: 0,
             border: 'none',
-            background: 'rgba(255, 248, 251, 0.52)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 30,
+            background: 'rgba(255, 248, 251, 0.58)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 45,
             padding: 0,
             cursor: 'pointer',
           }}
@@ -278,7 +278,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           color: 'var(--app-text)',
           borderRight: '1px solid #f2c4d0',
           borderTop: isMobile ? '1px solid var(--app-border)' : 'none',
-          zIndex: 35,
+          zIndex: isMobile ? 55 : 35,
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
@@ -338,7 +338,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           style={{
             position: isMobile ? 'sticky' : 'relative',
             top: isMobile ? 0 : 'auto',
-            zIndex: isMobile ? 50 : 'auto',
+            zIndex: isMobile ? 40 : 'auto',
             height: isMobile ? 52 : 56,
             minHeight: isMobile ? 52 : 56,
             maxHeight: isMobile ? 52 : 56,
@@ -356,7 +356,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         >
           {isMobile ? (
             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
+              {!sidebarOpen && <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />}
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: '100%', alignSelf: 'center', flex: 1 }}>
