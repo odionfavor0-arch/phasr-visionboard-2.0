@@ -4,7 +4,6 @@ import {
   BookText,
   Flame,
   Image as ImageIcon,
-  LogOut,
   Settings,
   Sparkles,
   Users,
@@ -322,46 +321,6 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               onClick={handleSelectView}
             />
           ))}
-        </div>
-
-        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid var(--app-border)' }}>
-          <button
-            type="button"
-            onClick={onSignOut}
-            aria-label="Sign out"
-            style={{
-              width: '100%',
-              minHeight: sidebarOpen ? 72 : 48,
-              borderRadius: 18,
-              border: '1px solid var(--app-border)',
-              background: '#fff',
-              color: 'var(--app-text)',
-              display: 'grid',
-              justifyItems: 'center',
-              alignContent: 'center',
-              gap: sidebarOpen ? 7 : 0,
-              cursor: 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '0.76rem',
-              fontWeight: 700,
-              padding: sidebarOpen ? '0.7rem 0.35rem' : '0.5rem 0.2rem',
-            }}
-          >
-            <span
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 14,
-                background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
-                display: 'grid',
-                placeItems: 'center',
-                color: '#fff',
-              }}
-            >
-              <LogOut size={18} />
-            </span>
-            {sidebarOpen && <span>Sign out</span>}
-          </button>
         </div>
       </aside>
 
