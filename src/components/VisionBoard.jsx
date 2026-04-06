@@ -1787,8 +1787,8 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                   if (timelineEditorPhaseId && timelineEditorPhaseId !== p.id) setTimelineEditorPhaseId(null)
                 }}
                 style={{
-                  padding: '0.72rem 1.1rem',
-                  borderRadius: 24,
+                  padding: isMobile ? '0.58rem 0.82rem' : '0.72rem 1.1rem',
+                  borderRadius: isMobile ? 20 : 24,
                   border: `1.5px solid ${activePhase ? 'transparent' : 'var(--app-border)'}`,
                   background: activePhase ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff',
                   color: activePhase ? '#fff' : 'var(--app-muted)',
@@ -1799,9 +1799,9 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.38rem',
-                  minWidth: 152,
-                  minHeight: 82,
+                  gap: isMobile ? '0.28rem' : '0.38rem',
+                  minWidth: isMobile ? 126 : 152,
+                  minHeight: isMobile ? 64 : 82,
                   cursor: 'pointer',
                 }}
               >
@@ -1815,7 +1815,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                     margin: 0,
                     cursor: 'pointer',
                     fontFamily: "'DM Sans',sans-serif",
-                    fontSize: '0.88rem',
+                    fontSize: isMobile ? '0.8rem' : '0.88rem',
                     fontWeight: 700,
                     lineHeight: 1,
                     color: activePhase ? '#fff' : 'var(--app-text)',
@@ -1836,11 +1836,11 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                     border: `1px solid ${activePhase ? 'rgba(255,255,255,0.22)' : '#f2c8d6'}`,
                     borderRadius: 999,
                     color: activePhase ? '#fff' : '#b85a82',
-                    fontSize: '0.62rem',
+                    fontSize: isMobile ? '0.58rem' : '0.62rem',
                     fontWeight: 800,
-                    minWidth: 96,
+                    minWidth: isMobile ? 78 : 96,
                     textAlign: 'center',
-                    padding: '0.26rem 0.62rem',
+                    padding: isMobile ? '0.2rem 0.5rem' : '0.26rem 0.62rem',
                     cursor: editing ? 'pointer' : 'default',
                     fontFamily: "'DM Sans',sans-serif",
                     outline: 'none',
@@ -1856,21 +1856,22 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                   style={{
                     position: 'absolute',
                     top: 'calc(100% + 8px)',
-                    left: alignRight ? 'auto' : 0,
-                    right: alignRight ? 0 : 'auto',
+                    left: isMobile ? '50%' : (alignRight ? 'auto' : 0),
+                    right: isMobile ? 'auto' : (alignRight ? 0 : 'auto'),
                     transform: 'none',
-                    width: 'min(260px, calc(100vw - 2rem))',
-                    maxWidth: 'calc(100vw - 2rem)',
+                    width: isMobile ? 'min(220px, calc(100vw - 2.2rem))' : 'min(260px, calc(100vw - 2rem))',
+                    maxWidth: isMobile ? 'calc(100vw - 2.2rem)' : 'calc(100vw - 2rem)',
                     background: '#fff',
                     border: '1px solid var(--app-border)',
                     borderRadius: 18,
-                    padding: '0.85rem',
+                    padding: isMobile ? '0.72rem' : '0.85rem',
                     boxShadow: '0 16px 32px rgba(240,96,144,0.18)',
                     zIndex: 30,
+                    marginLeft: isMobile ? '-110px' : 0,
                   }}
                 >
                   <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Set timeframe</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '0.45rem', marginTop: '0.65rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: '0.45rem', marginTop: '0.65rem' }}>
                     <label style={{ display: 'grid', gap: '0.22rem' }}>
                       <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--app-muted)' }}>Start date</span>
                       <input
@@ -1879,7 +1880,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                         onChange={e => updateTimelineDraft(p.id, 'startDate', e.target.value)}
                         onClick={e => e.currentTarget.showPicker?.()}
                         onFocus={e => e.currentTarget.showPicker?.()}
-                        style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+                        style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
                       />
                     </label>
                     <label style={{ display: 'grid', gap: '0.22rem' }}>
@@ -1890,18 +1891,18 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                         onChange={e => updateTimelineDraft(p.id, 'endDate', e.target.value)}
                         onClick={e => e.currentTarget.showPicker?.()}
                         onFocus={e => e.currentTarget.showPicker?.()}
-                        style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+                        style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
                       />
                     </label>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginTop: '0.7rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--app-muted)', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: '0.5rem', marginTop: '0.7rem' }}>
+                    <span style={{ fontSize: isMobile ? '0.66rem' : '0.7rem', color: 'var(--app-muted)', fontWeight: 700, textAlign: isMobile ? 'center' : 'left' }}>
                       {formatMonthRange(draft.startDate, draft.endDate)}
                     </span>
                     <button
                       type="button"
                       onClick={() => saveTimelineDraft(p.id)}
-                      style={{ border: '1px solid var(--app-border)', background: '#fff1f6', color: '#b85a82', borderRadius: 999, padding: '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                      style={{ border: '1px solid var(--app-border)', background: '#fff1f6', color: '#b85a82', borderRadius: 999, padding: isMobile ? '0.45rem 0.7rem' : '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", width: isMobile ? '100%' : 'auto' }}
                     >
                       Save
                     </button>
@@ -1968,11 +1969,11 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
 
         {/* â”€â”€ Affirmation â”€â”€ */}
-        <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 12, padding: '0.85rem 1.4rem', marginBottom: '1.2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-          <span style={{ position: 'absolute', top: -10, left: 10, fontFamily: "'Playfair Display',serif", fontSize: '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
+        <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
           {editing
             ? <input value={phase?.affirmation || ''} onChange={e => updatePhase('affirmation', e.target.value)} placeholder="Your phase mantra..." style={inp({ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--app-border)', textAlign: 'center', marginBottom: 0, position: 'relative', zIndex: 1 })} onFocus={focus} onBlur={blur} />
-            : <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: 1.6 }}>{phase?.affirmation}</p>
+            : <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
           }
         </div>
 
