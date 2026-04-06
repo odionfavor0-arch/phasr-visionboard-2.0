@@ -479,7 +479,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                     margin: 0,
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: slide.id === 'phasr'
-                      ? (isPhone ? '2.05rem' : 'clamp(2.25rem, 5.2vw, 3.7rem)')
+                      ? (isPhone ? '2.7rem' : 'clamp(2.9rem, 7vw, 5.35rem)')
                       : (isPhone ? '2.7rem' : 'clamp(2.9rem, 7vw, 5.35rem)'),
                     lineHeight: 0.98,
                     fontWeight: 300,
