@@ -1103,6 +1103,8 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const visiblePillars = !isPro && !editing
     ? (phase?.pillars || []).slice(0, FREE_PILLAR_LIMIT)
     : (phase?.pillars || [])
+  const currentPhaseNumber = Math.max(1, data.phases.findIndex(p => p.id === phase?.id) + 1)
+  const phaseDisplayName = `Phase ${currentPhaseNumber}`
   const exportPillars = phase?.pillars || []
   const selectedExportPillar = exportPillars.find(item => item.id === selectedExportPillarId) || null
   const exportPhaseLabel = `${phaseDisplayName} · W1`
@@ -1653,8 +1655,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
 
   const todayTask = currentTodo?.task || 'Complete 1 action from your current phase'
-  const currentPhaseNumber = Math.max(1, data.phases.findIndex(p => p.id === phase?.id) + 1)
-  const phaseDisplayName = `Phase ${currentPhaseNumber}`
   const weeklyPlan = phase?.pillars?.flatMap(p => {
     const tasks = (p.weeklyActions || []).filter(Boolean)
     const fallbackTasks = tasks.length ? tasks : (p.activities || []).filter(Boolean).slice(0, 3)
