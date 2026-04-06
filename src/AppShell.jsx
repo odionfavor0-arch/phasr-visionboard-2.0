@@ -5,11 +5,9 @@ import {
   Flame,
   Image as ImageIcon,
   LogOut,
-  Menu,
   Settings,
   Sparkles,
   Users,
-  X,
 } from 'lucide-react'
 import VisionBoard from './components/VisionBoard'
 import Journal from './components/Journal'
@@ -21,9 +19,9 @@ import SettingsPanel from './components/SettingsPanel'
 import { getLockInSummary, loadLockInState } from './lib/lockIn'
 
 const MOBILE_QUERY = '(max-width: 768px)'
-const DESKTOP_OPEN_WIDTH = 260
-const DESKTOP_COLLAPSED_WIDTH = 80
-const MOBILE_DRAWER_WIDTH = 240
+const DESKTOP_OPEN_WIDTH = 108
+const DESKTOP_COLLAPSED_WIDTH = 74
+const MOBILE_OPEN_WIDTH = 98
 
 function getDisplayName(user) {
   const raw =
@@ -58,18 +56,18 @@ function NavItem({ item, active, expanded, onClick, mobile }) {
         background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
         color: '#fff',
         borderRadius: 18,
-        padding: expanded ? '0.78rem 0.9rem' : '0.72rem 0.3rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: expanded ? 'flex-start' : 'center',
-        gap: expanded ? '0.8rem' : 0,
+        padding: expanded ? '0.78rem 0.45rem 0.72rem' : '0.72rem 0.3rem',
+        display: 'grid',
+        justifyItems: 'center',
+        alignContent: 'center',
+        gap: expanded ? 7 : 0,
         cursor: 'pointer',
         fontFamily: "'DM Sans', sans-serif",
         fontWeight: active ? 800 : 700,
-        fontSize: expanded ? '0.92rem' : '0.72rem',
-        minHeight: mobile ? 50 : 54,
+        fontSize: expanded ? '0.76rem' : '0.72rem',
+        minHeight: expanded ? (mobile ? 72 : 76) : (mobile ? 50 : 54),
         transition: 'background 0.2s ease, transform 0.2s ease',
-        textAlign: 'left',
+        textAlign: 'center',
       }}
     >
       <span
@@ -85,7 +83,18 @@ function NavItem({ item, active, expanded, onClick, mobile }) {
       >
         <Icon size={18} strokeWidth={2.2} />
       </span>
-      {expanded && <span style={{ minWidth: 0 }}>{item.label}</span>}
+      {expanded && (
+        <span
+          style={{
+            minWidth: 0,
+            maxWidth: '100%',
+            lineHeight: 1.15,
+            whiteSpace: 'normal',
+          }}
+        >
+          {item.label}
+        </span>
+      )}
     </button>
   )
 }
@@ -152,7 +161,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   const currentTitle = navItems.find(item => item.id === view)?.title || 'Vision Board'
   const desktopExpanded = !isMobile && sidebarOpen
-  const sidebarWidth = isMobile ? MOBILE_DRAWER_WIDTH : sidebarOpen ? DESKTOP_OPEN_WIDTH : DESKTOP_COLLAPSED_WIDTH
+  const mobileExpanded = isMobile && sidebarOpen
+  const sidebarWidth = isMobile
+    ? (mobileExpanded ? MOBILE_OPEN_WIDTH : 0)
+    : (sidebarOpen ? DESKTOP_OPEN_WIDTH : DESKTOP_COLLAPSED_WIDTH)
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -185,24 +197,12 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!isMobile || !sidebarOpen) return undefined
-
-    const handleEscape = event => {
-      if (event.key === 'Escape') setSidebarOpen(false)
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [isMobile, sidebarOpen])
-
   function handleToggleSidebar() {
     setSidebarOpen(current => !current)
   }
 
   function handleSelectView(nextView) {
     setView(nextView)
-    if (isMobile) setSidebarOpen(false)
   }
 
   let content = (
@@ -243,36 +243,19 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         width: '100%',
       }}
     >
-      {isMobile && sidebarOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Close sidebar overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            border: 'none',
-            background: 'rgba(8, 6, 12, 0.56)',
-            zIndex: 140,
-            padding: 0,
-            cursor: 'pointer',
-          }}
-        />
-      )}
-
       <aside
         style={{
-          position: isMobile ? 'fixed' : 'sticky',
+          position: 'fixed',
           top: 0,
           left: 0,
-          height: '100vh',
+          bottom: 0,
           width: sidebarWidth,
-          transform: isMobile ? (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)') : 'none',
           transition: 'width 0.22s ease, transform 0.22s ease',
           background: '#0c0913',
           color: '#fff',
           borderRight: '1px solid rgba(255,255,255,0.06)',
-          zIndex: isMobile ? 160 : 40,
+          borderTop: 'none',
+          zIndex: 40,
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
@@ -281,114 +264,81 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       >
         <div
           style={{
-            minHeight: 72,
-            padding: desktopExpanded || isMobile ? '1rem 1rem 0.85rem' : '1rem 0.8rem 0.85rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: desktopExpanded || isMobile ? 'space-between' : 'center',
-            gap: 10,
+            minHeight: 88,
+            padding: sidebarOpen ? '0.9rem 0.5rem 0.8rem' : '0.9rem 0.45rem 0.8rem',
+            display: 'grid',
+            justifyItems: 'center',
+            alignContent: 'start',
+            gap: 8,
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          {isMobile ? (
-            <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />
-          ) : (
-            <>
-              {sidebarOpen && (
-                <span
-                  style={{
-                    fontFamily: "'Syne', sans-serif",
-                    fontWeight: 800,
-                    fontSize: '1.18rem',
-                    color: '#ffd9e7',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Phasr
-                </span>
-              )}
-              <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />
-            </>
+          <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />
+          {sidebarOpen && !isMobile && (
+            <span
+              style={{
+                fontFamily: "'Syne', sans-serif",
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                color: '#ffd9e7',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Phasr
+            </span>
           )}
         </div>
 
-        <div style={{ padding: desktopExpanded || isMobile ? '0 0.85rem' : '0 0.45rem', display: 'grid', gap: 8 }}>
+        <div style={{ padding: sidebarOpen ? '0.7rem 0.35rem' : '0.7rem 0.22rem', display: 'grid', gap: 8 }}>
           {navItems.map(item => (
             <NavItem
               key={item.id}
               item={item}
               active={view === item.id}
-              expanded={isMobile || desktopExpanded}
+              expanded={sidebarOpen}
               mobile={isMobile}
               onClick={handleSelectView}
             />
           ))}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: desktopExpanded || isMobile ? '0.85rem' : '0.45rem', display: 'grid', gap: 8 }}>
-          {(isMobile || desktopExpanded) && (
-            <div
+        <div style={{ marginTop: 'auto', padding: sidebarOpen ? '0.7rem 0.35rem 0.9rem' : '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button
+            type="button"
+            onClick={onSignOut}
+            aria-label="Sign out"
+            style={{
+              width: '100%',
+              minHeight: sidebarOpen ? 72 : 48,
+              borderRadius: 18,
+              border: 'none',
+              background: 'rgba(255,255,255,0.06)',
+              color: '#fff',
+              display: 'grid',
+              justifyItems: 'center',
+              alignContent: 'center',
+              gap: sidebarOpen ? 7 : 0,
+              cursor: 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              padding: sidebarOpen ? '0.7rem 0.35rem' : '0.5rem 0.2rem',
+            }}
+          >
+            <span
               style={{
-                borderRadius: 18,
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                padding: '0.9rem',
-                display: 'grid',
-                gap: 10,
-              }}
-            >
-              <div>
-                <p style={{ margin: 0, fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)' }}>{user?.email || 'Signed in'}</p>
-                <p style={{ margin: '0.25rem 0 0', fontWeight: 800, color: '#fff' }}>{displayName}</p>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f472b6' }} />
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#7c3aed' }} />
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#38bdf8' }} />
-              </div>
-              <button
-                type="button"
-                onClick={onSignOut}
-                style={{
-                  minHeight: 42,
-                  borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'transparent',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontFamily: "'DM Sans', sans-serif",
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}
-              >
-                <LogOut size={16} />
-                <span>Sign out</span>
-              </button>
-            </div>
-          )}
-
-          {!isMobile && !desktopExpanded && (
-            <button
-              type="button"
-              onClick={onSignOut}
-              aria-label="Sign out"
-              style={{
-                width: '100%',
-                minHeight: 48,
-                borderRadius: 16,
-                border: 'none',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#fff',
+                width: 38,
+                height: 38,
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.08)',
                 display: 'grid',
                 placeItems: 'center',
-                cursor: 'pointer',
               }}
             >
               <LogOut size={18} />
-            </button>
-          )}
+            </span>
+            {sidebarOpen && <span>Sign out</span>}
+          </button>
         </div>
       </aside>
 
@@ -396,7 +346,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         style={{
           flex: 1,
           minWidth: 0,
-          marginLeft: isMobile ? 0 : 0,
+          marginLeft: isMobile ? 0 : sidebarWidth,
           width: '100%',
         }}
       >
@@ -409,7 +359,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
             borderBottom: '1px solid var(--app-border)',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 0.75rem' : '0.95rem 1.25rem',
+            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0.95rem 1.25rem',
             display: 'grid',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : '1fr auto',
             alignItems: 'center',
@@ -444,7 +394,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               minWidth: 0,
             }}
           >
-            {isMobile && (
+          {isMobile && (
               <span
                 style={{
                   fontSize: '0.82rem',
@@ -453,6 +403,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   textTransform: 'uppercase',
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  display: 'block',
                 }}
               >
                 {currentTitle}
