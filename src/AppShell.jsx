@@ -383,7 +383,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: '100%', paddingTop: 16 }}>
               <span
                 style={{
                   fontSize: '0.82rem',
@@ -393,7 +393,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
-                  transform: 'translateY(12px)',
+                  transform: 'none',
                 }}
               >
                 {currentTitle}
