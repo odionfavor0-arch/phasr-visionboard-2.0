@@ -409,7 +409,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
-                  transform: 'translateY(0)',
+                  transform: 'translateY(9px)',
                   margin: 0,
                   padding: 0,
                 }}
