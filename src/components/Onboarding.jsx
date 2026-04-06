@@ -3,8 +3,8 @@ import { useMemo, useState } from 'react'
 const slides = [
   {
     id: 'phasr',
-    kicker: 'Your system starts here',
-    headline: 'Your system is ready.',
+    kicker: '',
+    headline: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let’s set up your first phase.',
     body: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let’s set up your first phase.',
     detail: 'A personal system built for follow-through.',
     theme: 'dark',
@@ -456,7 +456,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
               <div className="ob-fade-up ob-delay-2" style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', textAlign: isMobile ? 'center' : 'left' }}>
                 <div
                   style={{
-                    display: 'inline-flex',
+                    display: slide.id === 'phasr' ? 'none' : 'inline-flex',
                     alignItems: 'center',
                     minHeight: 34,
                     padding: '0.38rem 0.85rem',
@@ -479,7 +479,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                     margin: 0,
                     fontFamily: "'Cormorant Garamond', serif",
                     fontSize: slide.id === 'phasr'
-                      ? (isPhone ? '2.3rem' : 'clamp(2.5rem, 6vw, 4.6rem)')
+                      ? (isPhone ? '2.05rem' : 'clamp(2.25rem, 5.2vw, 3.7rem)')
                       : (isPhone ? '2.7rem' : 'clamp(2.9rem, 7vw, 5.35rem)'),
                     lineHeight: 0.98,
                     fontWeight: 300,
@@ -492,8 +492,8 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                   {slide.headline}
                 </h1>
 
-                <p style={{ margin: '16px 0 18px', maxWidth: slide.id === 'phasr' ? 420 : 500, fontSize: isPhone ? '0.94rem' : '1rem', lineHeight: 1.7, color: theme.muted }}>
-                  {slide.body}
+                <p style={{ margin: '16px 0 18px', maxWidth: slide.id === 'phasr' ? 420 : 500, fontSize: slide.id === 'phasr' ? (isPhone ? '0.98rem' : '1.02rem') : (isPhone ? '0.94rem' : '1rem'), lineHeight: 1.7, color: theme.muted, fontWeight: slide.id === 'phasr' ? 700 : 400 }}>
+                  {slide.id === 'phasr' ? 'Your system is ready.' : slide.body}
                 </p>
 
                 {slide.id === 'phasr' ? (
