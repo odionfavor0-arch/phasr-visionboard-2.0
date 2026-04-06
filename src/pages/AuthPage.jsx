@@ -171,9 +171,11 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
     <div
       style={{
         minHeight: '100vh',
+        width: '100vw',
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         background: 'linear-gradient(180deg, #140913 0%, #1b0d1c 100%)',
+        overflow: 'hidden',
       }}
     >
       <div
@@ -346,11 +348,20 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
           padding: '2.5rem 1.75rem',
           position: 'relative',
           background: 'linear-gradient(180deg, rgba(24,10,22,0.98) 0%, rgba(20,8,18,1) 100%)',
+          overflow: 'hidden',
         }}
       >
         <div style={{ width: '100%', maxWidth: 420 }}>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.4rem' }}>
-            {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+          <h1
+            style={{
+              fontFamily: "'Syne', sans-serif",
+              fontSize: '1.8rem',
+              fontWeight: 800,
+              marginBottom: '0.4rem',
+              color: '#fff6fb',
+            }}
+          >
+            {mode === 'signin' ? 'Welcome' : 'Create your account'}
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>
             {mode === 'signin' ? 'Sign in to access your vision boards.' : 'Free forever. No credit card required.'}
