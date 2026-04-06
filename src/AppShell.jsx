@@ -15,6 +15,7 @@ import DailyCheckin from './components/DailyCheckin'
 import Analytics from './components/Analytics'
 import ShowUp from './components/ShowUp'
 import SettingsPanel from './components/SettingsPanel'
+import { QuickSageBubble } from './components/SageCoach'
 import { getLockInSummary, loadLockInState } from './lib/lockIn'
 
 const MOBILE_QUERY = '(max-width: 768px)'
@@ -514,6 +515,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           {content}
         </main>
       </div>
+
+      <QuickSageBubble />
 
       <style>{`
         @media (max-width: 768px) {
