@@ -2039,7 +2039,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
             </div>
           </div>
         )}
-        <div id="pillar-section" className="phase-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem', alignItems: 'start' }}>
+        <div id="pillar-section" className="phase-container" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem', alignItems: 'start' }}>
           {visiblePillars.map(pl => (
             <PillarCard
               key={pl.id} pl={pl} editing={editing} checked={checked} phaseId={phaseId}
