@@ -148,6 +148,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   const displayName = getDisplayName(user)
   const avatarInitial = getInitial(displayName)
+  const firstName = displayName.split(' ')[0] || displayName
 
   const navItems = useMemo(() => ([
     { id: 'board', label: 'Vision Board', title: 'Vision Board', icon: ImageIcon },
@@ -161,6 +162,11 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const settingsNavItem = navItems.find(item => item.id === 'settings')
 
   const currentTitle = navItems.find(item => item.id === view)?.title || 'Vision Board'
+  const mobileTitle = view === 'board'
+    ? 'My Vision Board'
+    : view === 'journal'
+      ? `${firstName}'s Journal`
+      : currentTitle
   const sidebarWidth = isMobile ? MOBILE_RAIL_WIDTH : DESKTOP_RAIL_WIDTH
 
   useEffect(() => {
@@ -431,7 +437,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   display: 'block',
                 }}
               >
-                {currentTitle}
+                {mobileTitle}
               </span>
             )}
           </div>

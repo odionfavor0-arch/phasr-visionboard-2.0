@@ -1100,9 +1100,11 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const phase    = data.phases.find(p => p.id === phaseId) || data.phases[0]
   const timelineEditorPhase = data.phases.find(p => p.id === timelineEditorPhaseId) || null
   const presetPillar = phase?.pillars?.find(pl => pl.id === presetOpen) || null
-  const visiblePillars = !isPro && !editing
-    ? (phase?.pillars || []).slice(0, FREE_PILLAR_LIMIT)
-    : (phase?.pillars || [])
+  const visiblePillars = isMobile && !editing
+    ? (phase?.pillars || []).slice(0, 1)
+    : !isPro && !editing
+      ? (phase?.pillars || []).slice(0, FREE_PILLAR_LIMIT)
+      : (phase?.pillars || [])
   const currentPhaseNumber = Math.max(1, data.phases.findIndex(p => p.id === phase?.id) + 1)
   const phaseDisplayName = `Phase ${currentPhaseNumber}`
   const exportPillars = phase?.pillars || []
@@ -1679,7 +1681,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }, [calendarPromptArmed, editing, weeklyPlan.length])
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 4rem' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
         {uploadMessage && (
           <div style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
@@ -1690,22 +1692,24 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         {/* Today's Task */}
         <div style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
-          borderRadius: 12, padding: '0.85rem 1.4rem',
+          borderRadius: 12, padding: isMobile ? '0.68rem 0.9rem' : '0.85rem 1.4rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem',
+          marginBottom: isMobile ? '1rem' : '1.5rem', flexWrap: 'wrap', gap: isMobile ? '0.35rem' : '0.5rem',
           boxShadow: '0 4px 16px rgba(233,100,136,0.25)',
           position: 'relative',
         }}>
           <div>
-            <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: '0.18rem' }}>
+            <p style={{ fontSize: isMobile ? '0.54rem' : '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: '0.14rem' }}>
               Today's Task - {phaseDisplayName}
             </p>
-            <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>{todayTask}</p>
+            <p style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 600, color: '#fff', lineHeight: isMobile ? 1.3 : 1.45, maxWidth: isMobile ? 190 : 'none' }}>
+              {isMobile ? 'Complete 1 action from your phase' : todayTask}
+            </p>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => onOpenDailyStreak?.()} style={{ minHeight: 38, display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-              <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', opacity: lockInSummary?.mode === 'broken' ? 0.45 : 0.95, boxShadow: lockInSummary?.mode === 'broken' ? 'none' : '0 0 0 4px rgba(255,255,255,0.16)' }} />
-              Daily Streak {lockInSummary?.mode === 'broken' ? 'Paused' : 'Active'}
+            <button type="button" onClick={() => onOpenDailyStreak?.()} style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.7rem' : '0.86rem' }}>
+              <span style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14, borderRadius: '50%', background: '#fff', opacity: lockInSummary?.mode === 'broken' ? 0.45 : 0.95, boxShadow: lockInSummary?.mode === 'broken' ? 'none' : '0 0 0 4px rgba(255,255,255,0.16)' }} />
+              {lockInSummary?.mode === 'broken' ? 'Streak Paused' : 'Streak Active'}
             </button>
           </div>
 
@@ -1744,21 +1748,21 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         </div>
 
         {/* â”€â”€ Header â”€â”€ */}
-        <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '0.9rem' : '1.4rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
-            : <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>
+            : (!isMobile && <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
           }
-          <p style={{ color: 'var(--app-muted)', fontSize: '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: '0.3rem' }}>
-            {phase?.pillars?.map(p => p.name).join(' · ')}
+          <p style={{ color: 'var(--app-muted)', fontSize: isMobile ? '0.74rem' : '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: isMobile ? '0' : '0.3rem' }}>
+            {(isMobile ? visiblePillars : phase?.pillars || []).map(p => p.name).join(' · ')}
           </p>
           <button onClick={handleEditingToggle} style={{
-            marginTop: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+            marginTop: isMobile ? '0.55rem' : '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
             padding: '0.33rem 1rem', borderRadius: 99,
             border: `1.5px solid ${editing ? 'transparent' : 'var(--app-border)'}`,
             background: editing ? 'linear-gradient(135deg,#65c47c,#3da85a)' : 'var(--app-bg2)',
             color: editing ? '#fff' : 'var(--app-accent)',
-            fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer',
+            fontSize: isMobile ? '0.68rem' : '0.72rem', fontWeight: 600, cursor: 'pointer',
             fontFamily: "'DM Sans',sans-serif", transition: 'all 0.2s',
           }}>{editing ? 'Save' : 'Personalize'}</button>
         </div>
