@@ -3,10 +3,10 @@ import { useMemo, useState } from 'react'
 const slides = [
   {
     id: 'phasr',
-    kicker: 'Welcome to Phasr',
+    kicker: 'Your system starts here',
     headline: 'Structure that turns intention into movement.',
-    body: 'Phasr helps you stay consistent and move your goals forward.',
-    detail: 'Your personal goal operating system.',
+    body: 'A focused system for turning your goals into clear action and real momentum.',
+    detail: 'A personal system built for follow-through.',
     theme: 'dark',
   },
   {
@@ -102,12 +102,12 @@ function PreviewCard({ slide, theme, isPhone }) {
 
   if (slide.id === 'phasr') {
     return (
-      <div style={commonCard}>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem, 8vw, 5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>
+        <div style={commonCard}>
+          <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem, 8vw, 5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>
           Phasr
         </div>
         <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: '0.92rem', lineHeight: 1.6 }}>
-          Structure that turns intention into movement.
+          Clear structure for consistent action.
         </p>
       </div>
     )
@@ -333,7 +333,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   const slide = slides[step] || slides[0]
   const theme = themes[slide.theme] || themes.dark
   const firstName = userName !== 'there' ? String(userName).split(' ')[0] : 'there'
-  const welcomeKicker = useMemo(() => `Welcome ${firstName} to Phasr`, [firstName])
+  const welcomeKicker = useMemo(() => `${firstName}, this is where your plan begins`, [firstName])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 900 : false
   const isPhone = typeof window !== 'undefined' ? window.innerWidth <= 540 : false
 
