@@ -239,6 +239,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         minHeight: '100vh',
         background: 'var(--app-bg)',
         display: 'flex',
+        height: '100vh',
+        overflow: 'hidden',
         width: '100%',
       }}
     >
@@ -265,16 +267,17 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
       <aside
         style={{
-          position: 'fixed',
+          position: isMobile ? 'fixed' : 'relative',
           top: isMobile ? MOBILE_HEADER_HEIGHT : 0,
           left: 0,
-          bottom: 0,
+          bottom: isMobile ? 0 : 'auto',
           width: sidebarWidth,
+          height: isMobile ? `calc(100vh - ${MOBILE_HEADER_HEIGHT}px)` : '100vh',
           transform: isMobile ? (sidebarOpen ? 'translateX(0)' : `translateX(-${MOBILE_RAIL_WIDTH + 12}px)`) : 'none',
           transition: 'transform 0.22s ease',
           background: 'rgba(255, 248, 251, 0.98)',
           color: 'var(--app-text)',
-          borderRight: '1px solid var(--app-border)',
+          borderRight: '1px solid #f2c4d0',
           borderTop: isMobile ? '1px solid var(--app-border)' : 'none',
           zIndex: 35,
           display: 'flex',
@@ -291,16 +294,25 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
-            alignContent: 'end',
+            alignContent: 'start',
             gap: 0,
             borderBottom: '1px solid var(--app-border)',
-            paddingBottom: isMobile ? 0 : 14,
+            paddingTop: isMobile ? 0 : 10,
           }}
         >
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
         </div>
 
-        <div style={{ padding: '0.7rem 0.22rem', display: 'grid', gap: 8 }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem',
+            padding: '0.5rem',
+          }}
+        >
           {navItems.map(item => (
             <NavItem
               key={item.id}
@@ -358,23 +370,27 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         style={{
           flex: 1,
           minWidth: 0,
-          marginLeft: isMobile ? 0 : sidebarWidth,
           width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
         <header
           style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 50,
-            minHeight: isMobile ? 52 : 72,
+            position: isMobile ? 'sticky' : 'relative',
+            top: isMobile ? 0 : 'auto',
+            zIndex: isMobile ? 50 : 'auto',
+            height: isMobile ? 52 : 56,
+            minHeight: isMobile ? 52 : 56,
+            maxHeight: isMobile ? 52 : 56,
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
-            borderBottom: '1px solid var(--app-border)',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0 1.25rem 4px 1.25rem',
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '36px 1fr auto' : '1fr auto',
-            alignItems: 'end',
+            borderBottom: isMobile ? '1px solid var(--app-border)' : '1px solid #f2c4d0',
+            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0 1.25rem',
+            display: isMobile ? 'grid' : 'flex',
+            gridTemplateColumns: isMobile ? '36px 1fr auto' : 'none',
+            alignItems: 'center',
             gap: 12,
           }}
         >
@@ -383,7 +399,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: '100%', paddingTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: '100%', alignSelf: 'center' }}>
               <span
                 style={{
                   fontSize: '0.82rem',
@@ -393,7 +409,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
-                  transform: 'none',
+                  transform: 'translateY(0)',
+                  margin: 0,
+                  padding: 0,
                 }}
               >
                 {currentTitle}
@@ -406,6 +424,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               textAlign: isMobile ? 'center' : 'left',
               justifySelf: isMobile ? 'center' : 'start',
               minWidth: 0,
+              alignSelf: 'center',
             }}
           >
           {isMobile && (
@@ -441,6 +460,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               minWidth: 0,
               maxWidth: isMobile ? 44 : 'min(100%, 280px)',
               overflow: 'hidden',
+              alignSelf: 'center',
             }}
           >
             {!isMobile && (
@@ -494,7 +514,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           </div>
         </header>
 
-        <main style={{ minWidth: 0, width: '100%' }}>
+        <main style={{ minWidth: 0, width: '100%', flex: 1, overflowY: 'auto' }}>
           {content}
         </main>
       </div>
