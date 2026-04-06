@@ -1105,7 +1105,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     : (phase?.pillars || [])
   const exportPillars = phase?.pillars || []
   const selectedExportPillar = exportPillars.find(item => item.id === selectedExportPillarId) || null
-  const exportPhaseLabel = `${phase?.name || 'Phase 1'} · W1`
+  const exportPhaseLabel = `${phaseDisplayName} · W1`
   const openCount = phase?.pillars?.filter(p => !p.collapsed).length || 0
 
   useEffect(() => {
@@ -1643,12 +1643,18 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     recognition.start()
   }
 
+  function appendReviewText(key, text) {
+    updatePhase(key, `${phase?.[key] ? `${phase[key]}\n` : ''}${text}`)
+  }
+
   const todayTodoState = loadTodoState()
   const todayTodoMap = todayTodoState[new Date().toISOString().slice(0, 10)] || {}
   const dailyPlan = getDailyTaskPlan({ ...data, activePhaseId: phaseId })
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
 
   const todayTask = currentTodo?.task || 'Complete 1 action from your current phase'
+  const currentPhaseNumber = Math.max(1, data.phases.findIndex(p => p.id === phase?.id) + 1)
+  const phaseDisplayName = `Phase ${currentPhaseNumber}`
   const weeklyPlan = phase?.pillars?.flatMap(p => {
     const tasks = (p.weeklyActions || []).filter(Boolean)
     const fallbackTasks = tasks.length ? tasks : (p.activities || []).filter(Boolean).slice(0, 3)
@@ -1692,7 +1698,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         }}>
           <div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: '0.18rem' }}>
-              Today's Task - {phase?.name}
+              Today's Task - {phaseDisplayName}
             </p>
             <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>{todayTask}</p>
           </div>
@@ -1811,7 +1817,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                     color: activePhase ? '#fff' : 'var(--app-text)',
                   }}
                 >
-                  {p.name}
+                  {`Phase ${index + 1}`}
                 </button>
                 <button
                   type="button"
@@ -2108,7 +2114,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
             <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', flexShrink: 0 }}>Q</div>
-              <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', fontWeight: 600, color: '#7a4a00' }}>Quarterly Review - {phase?.name}</h3>
+              <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', fontWeight: 600, color: '#7a4a00' }}>Quarterly Review - {phaseDisplayName}</h3>
               </div>
               <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
             </div>
@@ -2268,7 +2274,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
                   <div style={{ background: 'linear-gradient(135deg,#1a0a10,#2e101c)', padding: '10px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>This plan is valid for this week. Create your next phase inside Phasr.</span>
-                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Phasr · {phase?.name || 'Phase 1'}</span>
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Phasr · {phaseDisplayName}</span>
                   </div>
                 </div>
                 </div>
@@ -2318,7 +2324,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               fontSize: '1.1rem', fontWeight: 700, color: '#3d1f2b',
               margin: 0,
             }}>
-              Quarterly Review — {phase?.name}
+              Quarterly Review — {phaseDisplayName}
             </h2>
           </div>
 
@@ -2330,10 +2336,60 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               { key: 'reviewStrategy', label: 'Next phase strategy', hint: 'What will you start, stop, and do more of', color: '#7a58b0' },
             ].map(({ key, label, hint, color }) => (
               <div key={key}>
-                <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
                   {label}
                 </p>
                 <p style={{ fontSize: '0.8rem', color: '#7a5a66', marginBottom: '0.6rem' }}>{hint}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+                  {[
+                    { icon: '•', text: '• ' },
+                    { icon: '✓', text: '✓ ' },
+                    { icon: '💡', text: '💡 ' },
+                    { icon: '❤️', text: '❤️ ' },
+                  ].map(tool => (
+                    <button
+                      key={tool.icon}
+                      type="button"
+                      onClick={() => appendReviewText(key, tool.text)}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 12,
+                        border: '1px solid #f2c4d0',
+                        background: '#fff7fa',
+                        color: '#e8407a',
+                        cursor: 'pointer',
+                        fontSize: '0.92rem',
+                        fontWeight: 700,
+                        boxShadow: '0 6px 16px rgba(232,64,122,0.08)',
+                      }}
+                    >
+                      {tool.icon}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => startReviewVoice(key)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.38rem',
+                      height: 34,
+                      padding: '0 0.8rem',
+                      borderRadius: 12,
+                      border: '1px solid #f2c4d0',
+                      background: '#fff',
+                      color: '#7a5a66',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    <span style={{ fontSize: '0.95rem' }}>🎙️</span>
+                    Rec
+                  </button>
+                </div>
                 <textarea
                   value={phase?.[key] || ''}
                   onChange={e => updatePhase(key, e.target.value)}

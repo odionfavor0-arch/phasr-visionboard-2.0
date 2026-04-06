@@ -113,8 +113,8 @@ function HamburgerButton({ open, onClick, mobile }) {
       onClick={onClick}
       aria-label={open ? 'Close sidebar' : 'Open sidebar'}
       style={{
-        width: mobile ? 32 : 42,
-        height: mobile ? 32 : 24,
+        width: mobile ? 28 : 42,
+        height: mobile ? 28 : 24,
         borderRadius: mobile ? 0 : 14,
         border: 'none',
         background: 'transparent',
@@ -345,12 +345,13 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
             borderBottom: isMobile ? '1px solid var(--app-border)' : '1px solid #f2c4d0',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0 1.25rem',
+            padding: isMobile ? '0 1rem' : '0 1.25rem',
             display: isMobile ? 'grid' : 'flex',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : 'none',
             alignItems: 'center',
             justifyContent: isMobile ? 'normal' : 'space-between',
             gap: 12,
+            overflow: 'hidden',
           }}
         >
           {isMobile ? (
