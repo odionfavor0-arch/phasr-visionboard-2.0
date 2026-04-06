@@ -170,12 +170,13 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
   return (
     <div
       style={{
-        minHeight: '100vh',
-        width: '100vw',
+        minHeight: '100dvh',
+        width: '100%',
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         background: 'linear-gradient(180deg, #140913 0%, #1b0d1c 100%)',
         overflow: 'hidden',
+        margin: 0,
       }}
     >
       <div
@@ -586,6 +587,11 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
       </div>
 
       <style>{`
+        html, body, #root {
+          margin: 0;
+          min-height: 100dvh;
+          background: #140913;
+        }
         @media (max-width: 768px) {
           .auth-left-panel { display: none !important; }
           [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
