@@ -53,8 +53,8 @@ function NavItem({ item, active, expanded, onClick, mobile }) {
       style={{
         width: '100%',
         border: 'none',
-        background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-        color: '#fff',
+        background: active ? 'rgba(240, 96, 144, 0.12)' : 'transparent',
+        color: 'var(--app-text)',
         borderRadius: 18,
         padding: expanded ? '0.78rem 0.45rem 0.72rem' : '0.72rem 0.3rem',
         display: 'grid',
@@ -70,15 +70,16 @@ function NavItem({ item, active, expanded, onClick, mobile }) {
         textAlign: 'center',
       }}
     >
-      <span
+        <span
         style={{
           width: 38,
           height: 38,
           borderRadius: 14,
-          background: active ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+          background: active ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-bg2)',
           display: 'grid',
           placeItems: 'center',
           flexShrink: 0,
+          color: active ? '#fff' : 'var(--app-accent)',
         }}
       >
         <Icon size={18} strokeWidth={2.2} />
@@ -104,8 +105,7 @@ function HamburgerButton({ open, onClick, mobile }) {
     width: mobile ? 18 : 20,
     height: 2,
     borderRadius: 999,
-    background: mobile ? '#211320' : '#fff',
-    transition: 'transform 0.2s ease, opacity 0.2s ease',
+    background: mobile ? 'var(--app-text)' : '#fff',
   }
 
   return (
@@ -127,9 +127,9 @@ function HamburgerButton({ open, onClick, mobile }) {
       }}
     >
       <span style={{ display: 'grid', gap: 4 }}>
-        <span style={{ ...lineStyle, transform: open ? 'translateY(6px) rotate(45deg)' : 'none' }} />
-        <span style={{ ...lineStyle, opacity: open ? 0 : 1 }} />
-        <span style={{ ...lineStyle, transform: open ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+        <span style={lineStyle} />
+        <span style={lineStyle} />
+        <span style={lineStyle} />
       </span>
     </button>
   )
@@ -248,17 +248,17 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           width: sidebarWidth,
           transform: isMobile ? (sidebarOpen ? 'translateX(0)' : `translateX(-${MOBILE_RAIL_WIDTH + 12}px)`) : 'none',
           transition: 'transform 0.22s ease',
-          background: '#0c0913',
-          color: '#fff',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-          borderTop: isMobile ? '1px solid rgba(255,255,255,0.04)' : 'none',
+          background: 'rgba(255, 248, 251, 0.98)',
+          color: 'var(--app-text)',
+          borderRight: '1px solid var(--app-border)',
+          borderTop: isMobile ? '1px solid var(--app-border)' : 'none',
           zIndex: 35,
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
           overflow: 'hidden',
           pointerEvents: isMobile && !sidebarOpen ? 'none' : 'auto',
-          boxShadow: isMobile && sidebarOpen ? '0 14px 36px rgba(0,0,0,0.18)' : 'none',
+          boxShadow: isMobile && sidebarOpen ? '0 10px 24px rgba(237, 113, 155, 0.14)' : 'none',
         }}
       >
         <div
@@ -269,7 +269,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             justifyItems: 'center',
             alignContent: 'start',
             gap: 8,
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid var(--app-border)',
           }}
         >
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
@@ -288,7 +288,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           ))}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid var(--app-border)' }}>
           <button
             type="button"
             onClick={onSignOut}
@@ -297,9 +297,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               width: '100%',
               minHeight: sidebarOpen ? 72 : 48,
               borderRadius: 18,
-              border: 'none',
-              background: 'rgba(255,255,255,0.06)',
-              color: '#fff',
+              border: '1px solid var(--app-border)',
+              background: '#fff',
+              color: 'var(--app-text)',
               display: 'grid',
               justifyItems: 'center',
               alignContent: 'center',
@@ -316,9 +316,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                 width: 38,
                 height: 38,
                 borderRadius: 14,
-                background: 'rgba(255,255,255,0.08)',
+                background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
                 display: 'grid',
                 placeItems: 'center',
+                color: '#fff',
               }}
             >
               <LogOut size={18} />
