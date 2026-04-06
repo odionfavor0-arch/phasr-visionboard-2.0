@@ -1678,21 +1678,21 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         {/* Today's Task */}
         <div style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
-          borderRadius: 12, padding: '0.85rem 1.4rem',
+          borderRadius: isMobile ? 10 : 12, padding: isMobile ? '0.7rem 0.85rem' : '0.85rem 1.4rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem',
+          marginBottom: isMobile ? '1rem' : '1.5rem', flexWrap: 'wrap', gap: isMobile ? '0.4rem' : '0.5rem',
           boxShadow: '0 4px 16px rgba(233,100,136,0.25)',
           position: 'relative',
         }}>
           <div>
-            <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: '0.18rem' }}>
+            <p style={{ fontSize: isMobile ? '0.54rem' : '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: '0.18rem' }}>
               Today's Task - {phase?.name}
             </p>
-            <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>{todayTask}</p>
+            <p style={{ fontSize: isMobile ? '0.8rem' : '0.95rem', fontWeight: 600, color: '#fff', lineHeight: 1.35 }}>{todayTask}</p>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => onOpenDailyStreak?.()} style={{ minHeight: 38, display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-              <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', opacity: lockInSummary?.mode === 'broken' ? 0.45 : 0.95, boxShadow: lockInSummary?.mode === 'broken' ? 'none' : '0 0 0 4px rgba(255,255,255,0.16)' }} />
+            <button type="button" onClick={() => onOpenDailyStreak?.()} style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.38rem', padding: isMobile ? '0.42rem 0.65rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.7rem' : '0.88rem' }}>
+              <span style={{ width: isMobile ? 10 : 14, height: isMobile ? 10 : 14, borderRadius: '50%', background: '#fff', opacity: lockInSummary?.mode === 'broken' ? 0.45 : 0.95, boxShadow: lockInSummary?.mode === 'broken' ? 'none' : `0 0 0 ${isMobile ? 3 : 4}px rgba(255,255,255,0.16)` }} />
               Daily Streak {lockInSummary?.mode === 'broken' ? 'Paused' : 'Active'}
             </button>
           </div>
@@ -1732,7 +1732,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         </div>
 
         {/* â”€â”€ Header â”€â”€ */}
-        <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1rem' : '1.4rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
             : <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>
@@ -1742,11 +1742,11 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
           </p>
           <button onClick={handleEditingToggle} style={{
             marginTop: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-            padding: '0.33rem 1rem', borderRadius: 99,
+            padding: isMobile ? '0.28rem 0.82rem' : '0.33rem 1rem', borderRadius: 99,
             border: `1.5px solid ${editing ? 'transparent' : 'var(--app-border)'}`,
             background: editing ? 'linear-gradient(135deg,#65c47c,#3da85a)' : 'var(--app-bg2)',
             color: editing ? '#fff' : 'var(--app-accent)',
-            fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer',
+            fontSize: isMobile ? '0.66rem' : '0.72rem', fontWeight: 600, cursor: 'pointer',
             fontFamily: "'DM Sans',sans-serif", transition: 'all 0.2s',
           }}>{editing ? 'Save' : 'Personalize'}</button>
         </div>
@@ -1784,8 +1784,8 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.38rem',
-                  minWidth: 152,
-                  minHeight: 82,
+                  minWidth: isMobile ? 112 : 152,
+                  minHeight: isMobile ? 64 : 82,
                   cursor: 'pointer',
                 }}
               >
@@ -1799,7 +1799,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                     margin: 0,
                     cursor: 'pointer',
                     fontFamily: "'DM Sans',sans-serif",
-                    fontSize: '0.88rem',
+                    fontSize: isMobile ? '0.8rem' : '0.88rem',
                     fontWeight: 700,
                     lineHeight: 1,
                     color: activePhase ? '#fff' : 'var(--app-text)',
@@ -1822,9 +1822,9 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                     color: activePhase ? '#fff' : '#b85a82',
                     fontSize: '0.62rem',
                     fontWeight: 800,
-                    minWidth: 96,
+                    minWidth: isMobile ? 74 : 96,
                     textAlign: 'center',
-                    padding: '0.26rem 0.62rem',
+                    padding: isMobile ? '0.22rem 0.48rem' : '0.26rem 0.62rem',
                     cursor: editing ? 'pointer' : 'default',
                     fontFamily: "'DM Sans',sans-serif",
                     outline: 'none',
@@ -2073,20 +2073,20 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
         {/* â”€â”€ Quarterly Review â”€â”€ */}
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: 'var(--sh)', overflow: 'hidden', marginBottom: '1.5rem' }}>
-          <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
+          <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: isMobile ? '0.8rem 0.85rem' : '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', flexShrink: 0 }}>Q</div>
-            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', fontWeight: 600, color: '#7a4a00' }}>Quarterly Review - {phase?.name}</h3>
+            <div style={{ width: isMobile ? 28 : 34, height: isMobile ? 28 : 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: isMobile ? '0.86rem' : '1rem', flexShrink: 0 }}>Q</div>
+            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '0.86rem' : '1rem', fontWeight: 600, color: '#7a4a00', lineHeight: 1.25 }}>Quarterly Review - {phase?.name}</h3>
             </div>
             <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
           </div>
-          {!phase?.reviewCollapsed && <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.85rem' }}>
+          {!phase?.reviewCollapsed && <div style={{ padding: isMobile ? '0.8rem' : '1rem', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: '0.85rem' }}>
             {[
               { k: 'reviewWorked',  bg: '#f4fbf5', bc: '#b9dfc0', c: '#3a7d4d', l: 'What Worked?',     h: 'What brought results?' },
               { k: 'reviewDrained', bg: '#fff8f8', bc: '#f9cdd3', c: '#c0445a', l: 'What Drained Me?', h: 'What to drop?' },
               { k: 'reviewPaid',    bg: '#f2f6ff', bc: '#c5d5f7', c: '#3355a0', l: 'What Paid Off?',   h: 'What to double down on?' },
             ].map(({ k, bg, bc, c, l, h }) => (
-              <div key={k} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.8rem' }}>
+              <div key={k} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: isMobile ? '0.72rem' : '0.8rem' }}>
                 <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c, marginBottom: '0.28rem' }}>{l}</p>
                 <p style={{ fontSize: '0.7rem', color: '#8a7080', marginBottom: '0.4rem' }}>{h}</p>
                 <textarea rows={4} value={phase?.[k] || ''} onChange={e => updatePhase(k, e.target.value)} placeholder="" style={ta({ minHeight: 70 })} onFocus={focus} onBlur={blur} />
@@ -2094,7 +2094,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               </div>
             ))}
           </div>}
-          {!phase?.reviewCollapsed && <div style={{ margin: '0 1rem 1rem', borderRadius: 12, padding: '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0' }}>
+          {!phase?.reviewCollapsed && <div style={{ margin: isMobile ? '0 0.8rem 0.8rem' : '0 1rem 1rem', borderRadius: 12, padding: isMobile ? '0.72rem' : '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0' }}>
             <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.4rem' }}>Next Phase Strategy</p>
             <textarea rows={3} value={phase?.reviewStrategy || ''} onChange={e => updatePhase('reviewStrategy', e.target.value)} placeholder="" style={ta()} onFocus={focus} onBlur={blur} />
             <button onClick={() => startReviewVoice('reviewStrategy')} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: '#7a58b0', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>

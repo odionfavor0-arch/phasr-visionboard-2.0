@@ -370,6 +370,7 @@ function SummaryCard({ label, value }) {
 }
 
 export default function Journal({ user, onOpenEntries }) {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 640 : false)
   const [entries, setEntries] = useState(() => loadEntries().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))))
   const [reflectionsOpen, setReflectionsOpen] = useState(false)
   const [promptUsed, setPromptUsed] = useState('')
@@ -394,6 +395,12 @@ export default function Journal({ user, onOpenEntries }) {
   const wordCount = transcript.trim() ? transcript.trim().split(/\s+/).filter(Boolean).length : 0
   const activePrompt = promptUsed || PROMPTS[0]
   const showPrompts = !transcript.trim() && !isRecording
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 640)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   async function callGroq(messages, system, model = GROQ_MODEL) {
     const groqKey = import.meta.env.VITE_GROQ_KEY || import.meta.env.VITE_GROQ_API_KEY
@@ -737,9 +744,10 @@ export default function Journal({ user, onOpenEntries }) {
               }
               setReflectionsOpen(open => !open)
             }}
-            style={{ minHeight: 44, minWidth: 220, borderRadius: 14, border: '1px solid var(--app-border)', background: 'var(--app-bg2)', color: 'var(--app-text)', padding: '0.8rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}
+            aria-label="Open journal entries"
+            style={{ minHeight: 44, minWidth: isMobile ? 44 : 220, width: isMobile ? 44 : 'auto', borderRadius: 14, border: '1px solid var(--app-border)', background: 'var(--app-bg2)', color: 'var(--app-text)', padding: isMobile ? '0.7rem' : '0.8rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}
           >
-            <span>Entries</span>
+            {!isMobile && <span>Entries</span>}
             <Menu size={16} />
           </button>
         </div>
