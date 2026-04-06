@@ -335,7 +335,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           minWidth: 0,
           marginLeft: isMobile ? 0 : sidebarWidth,
           width: '100%',
-          transform: isMobile && sidebarOpen ? 'translateX(56px)' : 'translateX(0)',
+          transform: isMobile && sidebarOpen ? 'translateX(14px)' : 'translateX(0)',
           transition: 'transform 0.22s ease',
         }}
       >
