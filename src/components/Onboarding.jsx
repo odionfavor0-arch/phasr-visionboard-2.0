@@ -4,8 +4,8 @@ const slides = [
   {
     id: 'phasr',
     kicker: 'Your system starts here',
-    headline: 'Structure that turns intention into movement.',
-    body: 'A focused system for turning your goals into clear action and real momentum.',
+    headline: 'Your system is ready.',
+    body: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let’s set up your first phase.',
     detail: 'A personal system built for follow-through.',
     theme: 'dark',
   },
@@ -333,7 +333,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   const slide = slides[step] || slides[0]
   const theme = themes[slide.theme] || themes.dark
   const firstName = userName !== 'there' ? String(userName).split(' ')[0] : 'there'
-  const welcomeKicker = useMemo(() => `${firstName}, this is where your plan begins`, [firstName])
+  const welcomeKicker = useMemo(() => `Welcome, ${firstName}`, [firstName])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 900 : false
   const isPhone = typeof window !== 'undefined' ? window.innerWidth <= 540 : false
 
@@ -498,7 +498,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
 
                 {slide.id === 'phasr' ? (
                   <div style={{ width: '100%', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start' }}>
-                    <button type="button" onClick={next} style={primaryButton}>Continue</button>
+                    <button type="button" onClick={next} style={primaryButton}>Let&apos;s go -&gt;</button>
                   </div>
                 ) : (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '0.68rem 0.98rem', borderRadius: 18, border: `1px solid ${theme.border}`, background: theme.panel }}>
