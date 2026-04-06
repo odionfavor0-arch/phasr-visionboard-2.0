@@ -137,7 +137,6 @@ function isConfiguredPillar(pillar) {
 }
 
 export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 640 : false)
   const [boardData] = useState(() => loadBoardData())
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const phases = useMemo(() => (boardData?.phases || []).slice(0, 2), [boardData])
@@ -201,12 +200,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 640)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
   function handleToggleGoal(goal) {
     toggleWeeklyGoalCompletion(goal, phaseBoard)
     setLockInState(loadLockInState())
@@ -216,7 +209,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%' }}>
-      <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: isMobile ? '14px 14px 88px' : '18px 20px 96px' }}>
+      <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: '18px 20px 96px' }}>
         {showRiskWarning && (
           <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
@@ -233,14 +226,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                   type="button"
                   onClick={() => setActivePhaseId(phase.id)}
                   style={{
-                    padding: isMobile ? '8px 12px' : '10px 18px',
+                    padding: '10px 18px',
                     borderRadius: 999,
                     border: active ? '1px solid transparent' : `1px solid ${shellBorder}`,
                     background: active ? `linear-gradient(135deg,${accent2},${accent})` : shellSurface,
                     color: active ? '#fff' : shellText,
                     boxShadow: active ? 'var(--app-glow)' : 'none',
                     fontFamily: "'Syne', sans-serif",
-                    fontSize: isMobile ? 11 : 13,
+                    fontSize: 13,
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -286,12 +279,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                   type="button"
                   onClick={() => setActiveWeek(week.index)}
                   style={{
-                    padding: isMobile ? '7px 12px' : '8px 14px',
+                    padding: '8px 14px',
                     borderRadius: 999,
                     border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
                     background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
                     color: active ? accent : shellMuted,
-                    fontSize: isMobile ? 11 : 12,
+                    fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -440,7 +433,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
         <div style={{ height: 18 }} />
 
         <div style={{ background: isDarkTheme ? shellSurfaceAlt : '#fff1f6', border: `1px solid ${shellBorder}`, borderRadius: 22, padding: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
             <div style={{ background: '#fff', border: `1px solid ${shellBorder}`, borderRadius: 16, padding: '16px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8d7bb0', marginBottom: 10 }}>Current Streak</div>
               <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 800, color: '#24131f', marginBottom: 5 }}>{summary.currentStreak} day</div>

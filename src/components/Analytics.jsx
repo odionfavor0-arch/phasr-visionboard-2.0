@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { buildWeeklyGoals, getLockInSummary, loadLockInState } from '../lib/lockIn'
 
 export const STATS_TABS = [
@@ -456,7 +456,6 @@ function ProCard() {
 }
 
 export default function Analytics() {
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 640 : false)
   const [activeTab, setActiveTab] = useState('overview')
 
   const entries = useMemo(() => loadJournalEntries().sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date))), [])
@@ -487,22 +486,16 @@ export default function Analytics() {
         ? 'Your current phase structure and progress live here.'
         : 'Your overview brings your journal and phase progress together.'
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 640)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.4rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto 1fr', alignItems: 'center', gap: '1rem', marginBottom: '1.3rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '1rem', marginBottom: '1.3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
             <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
               Overview
             </TabButton>
           </div>
-          <div style={{ display: 'grid', justifyItems: 'center', order: isMobile ? -1 : 0 }}>
+          <div style={{ display: 'grid', justifyItems: 'center' }}>
             <p style={{ color: 'var(--app-muted)', fontSize: '0.82rem', marginTop: '0.1rem', textAlign: 'center', fontWeight: 600 }}>Activity Summary</p>
           </div>
           <div style={{ display: 'flex', gap: '0.55rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -517,7 +510,7 @@ export default function Analytics() {
 
         {activeTab === 'overview' && (
           <div style={{ display: 'grid', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '0.9rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.9rem' }}>
               <SectionCard title="Journal entries">
                 <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{totalEntries}</p>
               </SectionCard>
@@ -530,8 +523,7 @@ export default function Analytics() {
             </div>
 
             <SectionCard title="Streak and task completion - last 30 days">
-              <div style={{ overflowX: isMobile ? 'auto' : 'visible' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(30, minmax(0, 1fr))', gap: isMobile ? '0.32rem' : '0.25rem', alignItems: 'end', minHeight: 220, minWidth: isMobile ? 520 : 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(30, minmax(0, 1fr))', gap: '0.25rem', alignItems: 'end', minHeight: 220 }}>
                 {lastThirtyDays.map(day => (
                   <div key={day.key} style={{ display: 'grid', justifyItems: 'center', gap: '0.3rem' }}>
                     <div style={{ width: '100%', maxWidth: 18, height: 150, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 3 }}>
@@ -543,10 +535,9 @@ export default function Analytics() {
                   </div>
                 ))}
               </div>
-              </div>
             </SectionCard>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '0.72fr 1.28fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '0.72fr 1.28fr', gap: '1rem' }}>
               <div style={{ background: '#fff', borderRadius: 24, padding: '1rem', border: '1px solid var(--app-border)', boxShadow: '0 14px 32px rgba(86,53,66,0.06)', display: 'grid', gap: '0.9rem', alignContent: 'start' }}>
                 <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: '0 0 0.2rem' }}>This Week</p>
                 <div>
@@ -609,8 +600,7 @@ export default function Analytics() {
                 <p style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2e1e28' }}>{weeklyBuckets[11]?.count || 0}</p>
               </div>
 
-              <div style={{ overflowX: isMobile ? 'auto' : 'visible' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: '0.65rem', alignItems: 'end', minHeight: 220, minWidth: isMobile ? 520 : 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: '0.65rem', alignItems: 'end', minHeight: 220 }}>
                 {weeklyBuckets.map(week => (
                   <div key={week.label} style={{ display: 'grid', gap: '0.45rem', justifyItems: 'center' }}>
                     <div style={{ width: '100%', maxWidth: 36, height: 160, borderRadius: 999, background: 'linear-gradient(180deg, rgba(255,242,247,0.9), rgba(245,233,239,0.92))', display: 'flex', alignItems: 'flex-end', padding: 4 }}>
@@ -619,7 +609,6 @@ export default function Analytics() {
                     <span style={{ fontSize: '0.8rem', color: '#856d7a', fontWeight: 700 }}>{week.label}</span>
                   </div>
                 ))}
-              </div>
               </div>
             </SectionCard>
 
@@ -644,7 +633,7 @@ export default function Analytics() {
 
         {activeTab === 'phases' && (
           <div style={{ display: 'grid', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '0.85fr 1.15fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: '1rem' }}>
               <SectionCard title="Current phase">
                 <p style={{ fontSize: '1.15rem', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>
                   {phase?.title || 'Phase 1'}

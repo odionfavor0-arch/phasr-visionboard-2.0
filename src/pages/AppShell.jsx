@@ -10,16 +10,14 @@ import SettingsPanel from '../components/SettingsPanel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { getDueCalendarNotifications, markNotificationSent } from '../lib/calendarNotifications'
 
-function RailIcon({ type, active, compact = false }) {
+function RailIcon({ type, active }) {
   const color = active ? '#ffffff' : 'rgba(255,255,255,0.78)'
   const stroke = active ? '#ffffff' : 'rgba(255,255,255,0.78)'
   const bg = active ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.06)'
-  const boxSize = compact ? 30 : 34
-  const iconSize = compact ? 16 : 18
 
   return (
-    <span style={{ width: boxSize, height: boxSize, borderRadius: compact ? 9 : 10, display: 'grid', placeItems: 'center', background: bg, flexShrink: 0 }}>
-      <svg width={iconSize} height={iconSize} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+    <span style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', background: bg, flexShrink: 0 }}>
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
         {type === 'board' && (
           <>
             <rect x="2.5" y="3" width="15" height="12.5" rx="2.5" stroke={stroke} strokeWidth="1.6" />
@@ -93,8 +91,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   const displayName = useMemo(() => getDisplayName(user), [user])
   const initial = displayName.charAt(0).toUpperCase()
-  const closedRailWidth = isMobileView ? 64 : 110
-  const sidebarWidth = isMobileView ? 200 : 260
+  const closedRailWidth = isMobileView ? 84 : 110
+  const sidebarWidth = isMobileView ? 220 : 260
 
   function refreshLockIn() {
     setLockInSummary(getLockInSummary(loadLockInState()))
@@ -227,7 +225,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             width: '100%',
             background: 'rgba(5,5,10,0.98)',
             borderRight: '1px solid var(--border)',
-            padding: isMobileView ? '14px 8px' : '20px 10px',
+            padding: '20px 10px',
             display: 'flex',
             flexDirection: 'column',
             gap: '0.9rem',
@@ -239,16 +237,16 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             boxShadow: sidebarOpen ? '12px 0 28px rgba(7,7,14,0.12)' : 'none',
           }}
         >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', gap: '0.6rem', minHeight: isMobileView ? 38 : 44 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'space-between' : 'center', gap: '0.6rem', minHeight: 44 }}>
           <button
             onClick={() => setSidebarOpen(open => !open)}
             aria-label={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
-            style={{ width: isMobileView ? 38 : 44, height: isMobileView ? 38 : 44, borderRadius: isMobileView ? 10 : 12, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
+            style={{ width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center', flexShrink: 0 }}
           >
             <span style={{ display: 'grid', gap: 4 }}>
-              <span style={{ display: 'block', width: isMobileView ? 16 : 18, height: 2, borderRadius: 999, background: '#ffffff' }} />
-              <span style={{ display: 'block', width: isMobileView ? 16 : 18, height: 2, borderRadius: 999, background: '#ffffff' }} />
-              <span style={{ display: 'block', width: isMobileView ? 16 : 18, height: 2, borderRadius: 999, background: '#ffffff' }} />
+              <span style={{ display: 'block', width: 18, height: 2, borderRadius: 999, background: '#ffffff' }} />
+              <span style={{ display: 'block', width: 18, height: 2, borderRadius: 999, background: '#ffffff' }} />
+              <span style={{ display: 'block', width: 18, height: 2, borderRadius: 999, background: '#ffffff' }} />
             </span>
           </button>
           {sidebarOpen && <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.15rem', color: '#ffffff' }}>Phasr</span>}
@@ -261,9 +259,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               className="menu-item"
               onClick={() => setView(tab.id)}
               style={{
-                minHeight: sidebarOpen ? (isMobileView ? 42 : 46) : (isMobileView ? 48 : 64),
+                minHeight: sidebarOpen ? 46 : 64,
                 width: '100%',
-                padding: sidebarOpen ? (isMobileView ? '9px 12px' : '10px 16px') : (isMobileView ? '8px 2px' : '8px 4px'),
+                padding: sidebarOpen ? '10px 16px' : '8px 4px',
                 borderRadius: 14,
                 border: 'none',
                 display: 'flex',
@@ -280,13 +278,13 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                 overflow: 'hidden',
               }}
             >
-              <RailIcon type={tab.icon} active={view === tab.id} compact={!sidebarOpen && isMobileView} />
-              {(sidebarOpen || !isMobileView) && <span style={sidebarOpen
+              <RailIcon type={tab.icon} active={view === tab.id} />
+              <span style={sidebarOpen
                 ? { whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'left', fontSize: '0.82rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }
                 : { fontSize: isMobileView ? '0.58rem' : '0.68rem', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: '2px', paddingRight: '2px', lineHeight: 1.1 }
               }>
                 {sidebarOpen ? tab.label : (tab.shortLabel || tab.label)}
-              </span>}
+              </span>
             </button>
           ))}
         </div>
@@ -295,9 +293,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             className="menu-item"
             onClick={() => setView('settings')}
             style={{
-              minHeight: sidebarOpen ? (isMobileView ? 42 : 46) : (isMobileView ? 48 : 64),
+              minHeight: sidebarOpen ? 46 : 64,
               width: '100%',
-              padding: sidebarOpen ? (isMobileView ? '9px 12px' : '10px 16px') : (isMobileView ? '8px 2px' : '8px 4px'),
+              padding: sidebarOpen ? '10px 16px' : '8px 4px',
               borderRadius: 14,
               border: 'none',
               display: 'flex',
@@ -314,29 +312,29 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               overflow: 'hidden',
             }}
           >
-            <RailIcon type="settings" active={view === 'settings'} compact={!sidebarOpen && isMobileView} />
-            {(sidebarOpen || !isMobileView) && <span style={sidebarOpen
+            <RailIcon type="settings" active={view === 'settings'} />
+            <span style={sidebarOpen
               ? { whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'left', fontSize: '0.82rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }
               : { fontSize: isMobileView ? '0.58rem' : '0.68rem', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: '2px', paddingRight: '2px', lineHeight: 1.1 }
             }>
               Settings
-            </span>}
+            </span>
           </button>
         </div>
         </div>
       </aside>
 
       <div ref={contentRef} style={{ position: 'relative', zIndex: 1, width: '100%', height: '100vh', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
-        <header style={{ position: 'sticky', top: 0, zIndex: 80, background: 'color-mix(in srgb, var(--app-bg) 88%, white)', backdropFilter: 'blur(18px)', borderBottom: '1px solid var(--app-border)', padding: isMobileView ? '0.8rem 0.7rem' : '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.7rem' }}>
+        <header style={{ position: 'sticky', top: 0, zIndex: 80, background: 'color-mix(in srgb, var(--app-bg) 88%, white)', backdropFilter: 'blur(18px)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: isMobileView ? '0.72rem' : '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
+            <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
               {(tabs.find(tab => tab.id === view)?.label) || (view === 'settings' ? 'Settings' : 'Phasr')}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: isMobileView ? 0 : '0.55rem', padding: isMobileView ? '0.18rem' : '0.38rem 0.8rem', borderRadius: 999, border: '1px solid var(--app-border)', background: '#fff', minWidth: isMobileView ? 38 : 'auto', justifyContent: 'center' }}>
-              <div style={{ width: isMobileView ? 32 : 30, height: isMobileView ? 32 : 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: isMobileView ? '0.82rem' : '0.78rem' }}>{initial}</div>
-              {!isMobileView && <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--app-text)' }}>{displayName}</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.38rem 0.8rem', borderRadius: 999, border: '1px solid var(--app-border)', background: '#fff' }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.78rem' }}>{initial}</div>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--app-text)' }}>{displayName}</span>
             </div>
           </div>
         </header>
@@ -370,14 +368,14 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         <style>{`
           @media (max-width: 768px) {
             aside.hamburger-menu-shell {
-              width: ${sidebarOpen ? '200px' : '64px'} !important;
-              min-width: ${sidebarOpen ? '200px' : '64px'} !important;
+              width: ${sidebarOpen ? '220px' : '84px'} !important;
+              min-width: ${sidebarOpen ? '220px' : '84px'} !important;
             }
             div.hamburger-menu {
               width: 100% !important;
             }
             button.menu-item {
-              min-height: 42px !important;
+              min-height: 44px !important;
             }
           }
         `}</style>

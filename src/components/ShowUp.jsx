@@ -402,7 +402,6 @@ function IconActionButton({ label, onClick, children }) {
 }
 
 export default function ShowUp({ user, onLockInChange }) {
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 640 : false)
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [showUpState, setShowUpState] = useState(() => loadShowUpState())
   const [pickerFor, setPickerFor] = useState(null)
@@ -447,12 +446,6 @@ export default function ShowUp({ user, onLockInChange }) {
   const roomCount = (ROOM_MEMBERS[activeRoom?.id] || []).length + (activeRoomState?.joined ? 1 : 0)
   const checkedInLabel = activeRoomState?.checkedInAt ? `Checked in at ${formatTime(activeRoomState.checkedInAt)}` : null
   const completedLabel = activeRoomState?.completedAt ? 'Task completed' : null
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 640)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   function updateReactionMap(current = {}, actorId, emoji) {
     const next = { ...current }
@@ -790,7 +783,7 @@ export default function ShowUp({ user, onLockInChange }) {
             <p style={{ margin: '0.22rem 0 0', fontSize: '0.98rem', fontWeight: 800, color: 'var(--app-text)' }}>Pick your room. Show up daily.</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '0.8rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.8rem' }}>
             {ROOM_DEFINITIONS.map(room => {
               const roomState = showUpState.rooms?.[room.id] || buildDefaultRoomState(room.id)
               const roomMembers = ROOM_MEMBERS[room.id] || []
@@ -929,10 +922,10 @@ export default function ShowUp({ user, onLockInChange }) {
           </div>
         </div>
 
-        <div className="showup-room-shell" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(300px, 40%) minmax(0, 60%)' }}>
-          <div style={{ padding: '0.85rem 0.9rem 0.75rem', borderRight: isMobile ? 'none' : '1px solid var(--app-border)', borderBottom: isMobile ? '1px solid var(--app-border)' : 'none', overflowY: 'auto', display: 'grid', alignContent: 'start', gap: '0.9rem' }}>
+        <div className="showup-room-shell" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(300px, 40%) minmax(0, 60%)' }}>
+          <div style={{ padding: '0.85rem 0.9rem 0.75rem', borderRight: '1px solid var(--app-border)', overflowY: 'auto', display: 'grid', alignContent: 'start', gap: '0.9rem' }}>
             {liveMembers.length ? (
-              <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gridTemplateRows: isMobile ? 'none' : 'repeat(2, minmax(0, 1fr))', gap: '0.7rem 0.55rem' }}>
+              <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, minmax(0, 1fr))', gap: '0.7rem 0.55rem' }}>
                 {liveMembers.map(member => (
                   <AvatarTile
                     key={member.id}
