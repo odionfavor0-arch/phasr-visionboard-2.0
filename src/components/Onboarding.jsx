@@ -4,7 +4,7 @@ const slides = [
   {
     id: 'phasr',
     kicker: '',
-    headline: 'Phasr turns your vision into phases, daily tasks, and real accountability.',
+    headline: 'Break your vision into phases, daily tasks, and real accountability.',
     body: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let’s set up your first phase.',
     detail: 'A personal system built for follow-through.',
     theme: 'dark',
@@ -12,17 +12,17 @@ const slides = [
   {
     id: 'sage',
     kicker: 'Sage',
-    headline: 'Ask Sage what matters most next.',
-    body: 'Sage helps you think clearly, break through indecision, and turn reflection into the next useful move.',
-    detail: 'Clarity when you need direction.',
+    headline: 'Find what matters next',
+    body: 'Sage helps you think clearly, remove doubt, and turn reflection into focused action.',
+    detail: 'Clarity turns into direction.',
     theme: 'deep',
   },
   {
     id: 'weekly',
     kicker: 'Weekly Flow',
-    headline: 'Every week has a job.',
-    body: 'Phasr breaks your phase into weekly actions so you always know what this week is asking of you.',
-    detail: 'No guessing. Just the next ask.',
+    headline: 'Every week has a clear focus.',
+    body: 'Phases are broken into simple weekly actions so you always know what to do.',
+    detail: 'No guessing. Just the next step.',
     theme: 'rose',
   },
   {
@@ -492,9 +492,11 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                   {slide.headline}
                 </h1>
 
-                <p style={{ margin: '16px 0 18px', maxWidth: slide.id === 'phasr' ? 420 : 500, fontSize: slide.id === 'phasr' ? (isPhone ? '0.98rem' : '1.02rem') : (isPhone ? '0.94rem' : '1rem'), lineHeight: 1.7, color: theme.muted, fontWeight: slide.id === 'phasr' ? 700 : 400 }}>
-                  {slide.id === 'phasr' ? 'Your system is ready.' : slide.body}
-                </p>
+                {!(slide.id === 'phasr') && (
+                  <p style={{ margin: '16px 0 18px', maxWidth: slide.id === 'phasr' ? 420 : 500, fontSize: slide.id === 'phasr' ? (isPhone ? '0.98rem' : '1.02rem') : (isPhone ? '0.94rem' : '1rem'), lineHeight: 1.7, color: theme.muted, fontWeight: slide.id === 'phasr' ? 700 : 400 }}>
+                    {slide.body}
+                  </p>
+                )}
 
                 {slide.id === 'phasr' ? (
                   <div style={{ width: '100%', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start' }}>
