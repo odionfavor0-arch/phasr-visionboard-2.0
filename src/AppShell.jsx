@@ -159,7 +159,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   ]), [])
 
   const currentTitle = navItems.find(item => item.id === view)?.title || 'Vision Board'
-  const sidebarWidth = isMobile ? MOBILE_RAIL_WIDTH : DESKTOP_RAIL_WIDTH
+  const sidebarWidth = isMobile ? (sidebarOpen ? MOBILE_RAIL_WIDTH : 0) : DESKTOP_RAIL_WIDTH
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -248,7 +248,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           transition: 'width 0.22s ease, transform 0.22s ease',
           background: '#0c0913',
           color: '#fff',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
+          borderRight: sidebarWidth > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
           borderTop: 'none',
           zIndex: 40,
           display: 'flex',
@@ -268,10 +268,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />
+          {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
         </div>
 
-        <div style={{ padding: '0.7rem 0.22rem', display: 'grid', gap: 8 }}>
+        <div style={{ padding: '0.7rem 0.22rem', display: sidebarWidth > 0 ? 'grid' : 'none', gap: 8 }}>
           {navItems.map(item => (
             <NavItem
               key={item.id}
@@ -284,7 +284,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           ))}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: sidebarWidth > 0 ? 'grid' : 'none', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             type="button"
             onClick={onSignOut}
@@ -328,7 +328,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         style={{
           flex: 1,
           minWidth: 0,
-          marginLeft: sidebarWidth,
+          marginLeft: isMobile ? 0 : sidebarWidth,
           width: '100%',
         }}
       >
