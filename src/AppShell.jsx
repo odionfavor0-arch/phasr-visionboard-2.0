@@ -290,14 +290,13 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       >
         <div
           style={{
-            minHeight: isMobile ? 88 : 72,
+            minHeight: isMobile ? 88 : 56,
             padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
-            alignContent: 'start',
+            alignContent: 'center',
             gap: 0,
-            borderBottom: '1px solid var(--app-border)',
-            paddingTop: isMobile ? 0 : 10,
+            borderBottom: isMobile ? '1px solid var(--app-border)' : '1px solid #f2c4d0',
           }}
         >
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
@@ -391,6 +390,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             display: isMobile ? 'grid' : 'flex',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : 'none',
             alignItems: 'center',
+            justifyContent: isMobile ? 'normal' : 'space-between',
             gap: 12,
           }}
         >
@@ -399,7 +399,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: '100%', alignSelf: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: '100%', alignSelf: 'center', flex: 1 }}>
               <span
                 style={{
                   fontSize: '0.82rem',
@@ -409,7 +409,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
-                  transform: 'translateY(9px)',
+                  alignSelf: 'center',
                   margin: 0,
                   padding: 0,
                 }}
