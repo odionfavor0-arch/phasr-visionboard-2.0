@@ -2074,6 +2074,31 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               ? <textarea rows={3} value={phase?.impact || ''} onChange={e => updatePhase('impact', e.target.value)} style={ta({ textAlign: 'center', fontStyle: 'italic' })} onFocus={focus} onBlur={blur} />
               : <p style={{ fontSize: '0.95rem', color: '#7a3a55', lineHeight: 1.7, fontWeight: 500 }}>{phase?.impact}</p>
             }
+            {isMobile && (
+              <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                <button
+                  className="quarterly-review-btn"
+                  type="button"
+                  onClick={() => setShowReview(true)}
+                  style={{
+                    width: '100%',
+                    maxWidth: 280,
+                    padding: '0.95rem 1rem',
+                    borderRadius: '14px',
+                    border: '1.5px solid #f2c4d0',
+                    background: '#fff',
+                    color: '#e8407a',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: "'DM Sans', sans-serif",
+                    boxShadow: '0 8px 24px rgba(232,64,122,0.08)',
+                  }}
+                >
+                  Review this phase →
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -2108,31 +2133,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
             </div>}
           </div>
         )}
-        {isMobile && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-            <button
-              className="quarterly-review-btn"
-              type="button"
-              onClick={() => setShowReview(true)}
-              style={{
-                width: '100%',
-                padding: '0.95rem 1rem',
-                borderRadius: '14px',
-                border: '1.5px solid #f2c4d0',
-                background: '#fff',
-                color: '#e8407a',
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif",
-                boxShadow: '0 8px 24px rgba(232,64,122,0.08)',
-              }}
-            >
-              Review this phase →
-            </button>
-          </div>
-        )}
-
         {/* â”€â”€ Footer â”€â”€ */}
         <div style={{ textAlign: 'center' }}>
           <button onClick={openExportModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.3rem', borderRadius: 99, border: '1.5px solid var(--app-border)', background: '#fff', color: 'var(--app-accent)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.7rem' }}>Save as image</button>

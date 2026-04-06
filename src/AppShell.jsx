@@ -250,7 +250,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           onClick={() => setSidebarOpen(false)}
           style={{
             position: 'fixed',
-            top: MOBILE_HEADER_HEIGHT,
+            top: 0,
             left: 0,
             right: 0,
             bottom: 0,
@@ -267,11 +267,11 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       <aside
         style={{
           position: isMobile ? 'fixed' : 'relative',
-          top: isMobile ? MOBILE_HEADER_HEIGHT : 0,
+          top: 0,
           left: 0,
-          bottom: isMobile ? 0 : 'auto',
+          bottom: 0,
           width: sidebarWidth,
-          height: isMobile ? `calc(100vh - ${MOBILE_HEADER_HEIGHT}px)` : '100vh',
+          height: '100vh',
           transform: isMobile ? (sidebarOpen ? 'translateX(0)' : `translateX(-${MOBILE_RAIL_WIDTH + 12}px)`) : 'none',
           transition: 'transform 0.22s ease',
           background: 'rgba(255, 248, 251, 0.98)',
@@ -289,8 +289,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       >
         <div
           style={{
-            minHeight: isMobile ? 88 : 56,
-            padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0',
+            minHeight: isMobile ? MOBILE_HEADER_HEIGHT + 12 : 56,
+            padding: isMobile ? `${MOBILE_HEADER_HEIGHT + 10}px 0.35rem 0.55rem` : '0',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
             alignContent: 'center',
@@ -308,7 +308,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             display: 'flex',
             flexDirection: 'column',
             gap: '0.25rem',
-            padding: '0.5rem',
+            padding: isMobile ? `${MOBILE_HEADER_HEIGHT + 12}px 0.5rem 0.75rem` : '0.5rem',
           }}
         >
           {navItems.map(item => (
