@@ -287,12 +287,12 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       >
         <div
           style={{
-            minHeight: 88,
-            padding: '0.9rem 0.35rem 0.8rem',
+            minHeight: isMobile ? 88 : 72,
+            padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0.55rem 0.35rem',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
-            alignContent: 'start',
-            gap: 8,
+            alignContent: 'center',
+            gap: 0,
             borderBottom: '1px solid var(--app-border)',
           }}
         >
@@ -370,7 +370,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
             borderBottom: '1px solid var(--app-border)',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0.95rem 1.25rem',
+            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0.7rem 1.25rem',
             display: 'grid',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : '1fr auto',
             alignItems: 'center',
@@ -391,6 +391,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   textTransform: 'uppercase',
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
+                  lineHeight: 1,
                 }}
               >
                 {currentTitle}
