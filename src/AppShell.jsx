@@ -199,6 +199,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   function handleSelectView(nextView) {
     setView(nextView)
+    if (isMobile) {
+      setSidebarOpen(false)
+    }
   }
 
   let content = (
@@ -239,6 +242,27 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         width: '100%',
       }}
     >
+      {isMobile && sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close mobile menu"
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            top: MOBILE_HEADER_HEIGHT,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            border: 'none',
+            background: 'rgba(255, 248, 251, 0.52)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 30,
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        />
+      )}
+
       <aside
         style={{
           position: 'fixed',
@@ -333,9 +357,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         style={{
           flex: 1,
           minWidth: 0,
-          marginLeft: isMobile ? (sidebarOpen ? MOBILE_RAIL_WIDTH : 0) : sidebarWidth,
-          width: isMobile && sidebarOpen ? `calc(100% - ${MOBILE_RAIL_WIDTH}px)` : '100%',
-          transition: 'margin-left 0.22s ease, width 0.22s ease',
+          marginLeft: isMobile ? 0 : sidebarWidth,
+          width: '100%',
         }}
       >
         <header
