@@ -1,327 +1,518 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   broadcastLockInUpdate,
+  buildWeeklyGoals,
   getLockInSummary,
-  getTodayTask,
   loadBoardData,
   loadLockInState,
-  saveLockInState,
+  toggleWeeklyGoalCompletion,
   UNLOCK_TIERS,
-  upsertTodayLog,
 } from '../lib/lockIn'
+import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
 
-function MetricCard({ label, value, helper, accent }) {
-  return (
-    <div style={{
-      background: '#fff',
-      border: '1px solid var(--app-border)',
-      borderRadius: 16,
-      padding: '1rem',
-      boxShadow: '0 4px 24px rgba(233,100,136,0.08)',
-    }}>
-      <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent, marginBottom: '0.35rem' }}>
-        {label}
-      </p>
-      <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--app-text)', marginBottom: '0.25rem' }}>{value}</p>
-      <p style={{ fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>{helper}</p>
-    </div>
-  )
+const WEEK_PROGRESS_KEY = 'phasr_week_progress'
+
+function makeBoardForPhase(boardData, phaseId) {
+  return {
+    ...boardData,
+    activePhaseId: phaseId,
+  }
 }
 
-export default function DailyCheckin({ onLockInChange }) {
-  const [boardData] = useState(() => loadBoardData())
-  const [lockInState, setLockInState] = useState(() => loadLockInState())
-  const [note, setNote] = useState('')
-  const [saved, setSaved] = useState(false)
-
-  const todayTask = useMemo(() => getTodayTask(boardData), [boardData])
-  const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
-
-
-  function persist(next) {
-    setLockInState(next)
-    saveLockInState(next)
-    broadcastLockInUpdate()
-    onLockInChange?.()
+function safeRead(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
   }
+}
 
-  function handleLockIn() {
-    const next = upsertTodayLog(lockInState, {
-      task: todayTask.task,
-      note,
-    })
-    persist(next)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2400)
-  }
+function safeWrite(key, value) {
+  localStorage.setItem(key, JSON.stringify(value))
+}
 
-  function toggleCommitmentMode() {
-    if (!summary.unlockedCommitmentMode) return
-    persist({
-      ...lockInState,
-      commitmentMode: !lockInState.commitmentMode,
-    })
-  }
+function getUnlockState(summary, tier) {
+  if (summary.currentStreak >= tier.minStreak) return 'done'
+  if (summary.nextTier?.id === tier.id) return 'next'
+  return 'locked'
+}
 
-  function updateCustomTarget(value) {
-    persist({
-      ...lockInState,
-      customTarget: value,
-    })
-  }
+function SageBriefingCard({ plan, message, onDismiss }) {
+  if (!plan || !message) return null
 
-  const hiddenVisibility = lockInState.commitmentMode && summary.mode === 'broken'
+  const difficultyTone =
+    plan.difficulty === 'up' ? { label: 'Difficulty Up', bg: 'rgba(74,222,128,0.12)', color: '#2f9e57' } :
+    plan.difficulty === 'down' ? { label: 'Difficulty Down', bg: '#f5eef2', color: '#8f7683' } :
+    { label: 'Difficulty Same', bg: 'rgba(244,197,66,0.16)', color: '#b28700' }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
-      <div style={{ maxWidth: 1080, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.8rem,4vw,2.5rem)', fontWeight: 700, color: 'var(--app-text)', marginBottom: '0.35rem' }}>
-            Lock In
-          </h1>
-          <p style={{ color: 'var(--app-muted)', fontSize: '0.84rem', lineHeight: 1.7, maxWidth: 700, margin: '0 auto' }}>
-            Daily check-ins were passive. Lock In is not. Protect the streak, unlock sharper tools, and feel the cost when you disappear.
-          </p>
+    <div style={{ borderRadius: 18, padding: '1rem', background: '#fff', border: '1px solid var(--app-border)', boxShadow: '0 12px 28px rgba(240,96,144,0.12)', position: 'relative', marginBottom: 16 }}>
+      <div style={{ position: 'absolute', inset: 0, borderRadius: 18, padding: 1, background: 'linear-gradient(135deg,var(--app-accent2),rgba(255,255,255,0.4),var(--app-accent))', WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', pointerEvents: 'none' }} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, position: 'relative' }}>
+        <div>
+          <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Sage</p>
+          <p style={{ margin: '0.45rem 0 0', fontSize: '0.94rem', lineHeight: 1.65, color: '#5a3d47' }}>{message}</p>
         </div>
-
-        <div style={{
-          background: summary.mode === 'broken'
-            ? 'linear-gradient(135deg,#2a1013,#4a151a)'
-            : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
-          borderRadius: 20,
-          padding: '1.2rem 1.4rem',
-          color: '#fff',
-          boxShadow: summary.mode === 'broken'
-            ? '0 18px 44px rgba(80,18,26,0.32)'
-            : '0 18px 44px rgba(233,100,136,0.24)',
-          marginBottom: '1.25rem',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ maxWidth: 620 }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.72, marginBottom: '0.35rem' }}>
-                Today's Task · {todayTask.phaseName}
-              </p>
-              <p style={{ fontSize: '1.05rem', fontWeight: 700, lineHeight: 1.5, marginBottom: '0.45rem' }}>
-                {lockInState.customTarget || todayTask.task}
-              </p>
-              <p style={{ fontSize: '0.8rem', opacity: 0.8, lineHeight: 1.6 }}>
-                Locked In Mode: {summary.mode === 'broken' ? 'Broken' : 'Active'}.
-                {summary.warning ? ' You missed one day. Miss one more and the streak drops.' : ' Log today to keep pressure on.'}
-              </p>
-            </div>
-            <div style={{ minWidth: 220 }}>
-              <div style={{
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(255,255,255,0.08)',
-                borderRadius: 16,
-                padding: '0.9rem 1rem',
-              }}>
-                <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.75, marginBottom: '0.2rem' }}>
-                  Streak Rule
-                </p>
-                <p style={{ fontSize: '0.86rem', lineHeight: 1.65 }}>
-                  1 day missed = warning
-                  <br />
-                  2 days missed = streak drops hard
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="What exactly did you complete?"
-              rows={2}
-              style={{
-                flex: 1,
-                minWidth: 260,
-                borderRadius: 14,
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(255,255,255,0.1)',
-                color: '#fff',
-                padding: '0.8rem 0.95rem',
-                outline: 'none',
-                resize: 'vertical',
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            />
-            <button
-              onClick={handleLockIn}
-              style={{
-                minWidth: 180,
-                border: 'none',
-                borderRadius: 14,
-                padding: '0.95rem 1.1rem',
-                background: '#fff',
-                color: summary.mode === 'broken' ? '#571d26' : 'var(--app-accent)',
-                fontWeight: 800,
-                cursor: 'pointer',
-                boxShadow: '0 14px 28px rgba(0,0,0,0.12)',
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
-              {saved ? 'Locked In' : summary.hasLoggedToday ? 'Update today' : 'Lock In today'}
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.9rem', marginBottom: '1.25rem' }}>
-          <MetricCard label="Current streak" value={`${summary.currentStreak} day${summary.currentStreak !== 1 ? 's' : ''}`} helper="Consistency keeps rewards alive." accent="var(--app-accent)" />
-          <MetricCard label="Rank" value={summary.rank} helper="Identity grows as your streak survives." accent="#7a58b0" />
-          <MetricCard label="Points" value={summary.points} helper={lockInState.commitmentMode ? 'Commitment mode can take points back.' : 'Points stay safer before commitment mode unlocks.'} accent="#3d9158" />
-          <MetricCard label="Sage level" value={summary.sageLevel} helper={summary.sageLevel === 'Sage' ? 'Short, direct, action-first.' : summary.sageLevel === 'Sage Boost' ? 'More specific, lower friction guidance.' : 'Pattern-aware, sharper pressure.'} accent="#d4773a" />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-          <div style={{ background: '#fff', borderRadius: 18, border: '1px solid var(--app-border)', padding: '1rem', boxShadow: '0 4px 24px rgba(233,100,136,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
-              <div>
-                <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.2rem' }}>
-                  Commitment Mode
-                </p>
-                <p style={{ fontSize: '0.84rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                  Set stricter rules once you earn control. Miss the streak and the system takes something back.
-                </p>
-              </div>
-              <button
-                onClick={toggleCommitmentMode}
-                disabled={!summary.unlockedCommitmentMode}
-                style={{
-                  border: 'none',
-                  borderRadius: 999,
-                  padding: '0.72rem 1rem',
-                  background: summary.unlockedCommitmentMode
-                    ? (lockInState.commitmentMode ? 'linear-gradient(135deg,#111827,#1f2937)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))')
-                    : '#ead8df',
-                  color: '#fff',
-                  fontWeight: 700,
-                  cursor: summary.unlockedCommitmentMode ? 'pointer' : 'not-allowed',
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                {summary.unlockedCommitmentMode ? (lockInState.commitmentMode ? 'Commitment mode on' : 'Enable commitment mode') : 'Unlock at 3-day streak'}
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
-              <div style={{ borderRadius: 14, padding: '0.85rem', background: 'var(--app-bg2)', border: '1px solid var(--app-border)' }}>
-                <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--app-accent)', marginBottom: '0.35rem' }}>
-                  Custom daily target
-                </p>
-                <input
-                  value={lockInState.customTarget}
-                  onChange={e => updateCustomTarget(e.target.value)}
-                  placeholder="Set a stricter personal requirement"
-                  disabled={!summary.unlockedCommitmentMode}
-                  style={{
-                    width: '100%',
-                    borderRadius: 10,
-                    border: '1px solid var(--app-border)',
-                    padding: '0.7rem 0.8rem',
-                    outline: 'none',
-                    fontFamily: "'DM Sans', sans-serif",
-                    background: summary.unlockedCommitmentMode ? '#fff' : '#f4ebef',
-                    color: 'var(--app-text)',
-                  }}
-                />
-              </div>
-
-              <div style={{ borderRadius: 14, padding: '0.85rem', background: hiddenVisibility ? '#2a1519' : '#f4fbf5', border: `1px solid ${hiddenVisibility ? '#5a2b34' : '#b9dfc0'}` }}>
-                <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: hiddenVisibility ? '#ff9fae' : '#3a7d4d', marginBottom: '0.35rem' }}>
-                  Consequence
-                </p>
-                <p style={{ fontSize: '0.82rem', lineHeight: 1.65, color: hiddenVisibility ? '#ffe1e6' : '#466253' }}>
-                  {hiddenVisibility
-                    ? 'Visibility penalty active. Your deeper analytics stay dim until you rebuild the streak.'
-                    : 'Miss after two days and you lose 15 points, risk a rank drop, and hide deeper visibility until recovery.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ background: '#fff', borderRadius: 18, border: '1px solid var(--app-border)', padding: '1rem', boxShadow: '0 4px 24px rgba(233,100,136,0.08)' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.2rem' }}>
-              Pressure & reward
-            </p>
-            <p style={{ fontSize: '0.84rem', color: 'var(--app-muted)', lineHeight: 1.7, marginBottom: '0.9rem' }}>
-              Consistency should unlock power, not random gifts. Each tier opens sharper control, insight, visibility, or identity.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <div style={{ borderRadius: 12, padding: '0.8rem', background: 'var(--app-bg2)', border: '1px solid var(--app-border)' }}>
-                <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--app-text)', marginBottom: '0.2rem' }}>Status glow</p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                  {summary.mode === 'broken' ? 'Glow cut. System looks colder until you recover.' : 'Glow active. The app should feel sharper when your streak is alive.'}
-                </p>
-              </div>
-              <div style={{ borderRadius: 12, padding: '0.8rem', background: 'var(--app-bg2)', border: '1px solid var(--app-border)' }}>
-                <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--app-text)', marginBottom: '0.2rem' }}>Last log</p>
-                <p style={{ fontSize: '0.78rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                  {summary.latestLogDate ? `${summary.latestLogDate}${summary.lastLog?.note ? ` · ${summary.lastLog.note}` : ''}` : 'No lock in logged yet.'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ background: '#fff', borderRadius: 18, border: '1px solid var(--app-border)', padding: '1rem', boxShadow: '0 4px 24px rgba(233,100,136,0.08)' }}>
-          <div style={{ marginBottom: '1rem' }}>
-            <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.2rem' }}>
-              4-tier unlock system
-            </p>
-            <p style={{ fontSize: '0.84rem', color: 'var(--app-muted)', lineHeight: 1.7 }}>
-              Control first, then intelligence, then visibility, then status. Clean, predictable, and tied directly to effort.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.8rem' }}>
-            {UNLOCK_TIERS.map((tier, index) => {
-              const unlocked = summary.currentStreak >= tier.minStreak
-              const lockedByPenalty = hiddenVisibility && index >= 2
-
-              return (
-                <div
-                  key={tier.id}
-                  style={{
-                    borderRadius: 16,
-                    padding: '0.95rem',
-                    border: `1px solid ${unlocked ? 'rgba(95,205,140,0.35)' : 'var(--app-border)'}`,
-                    background: unlocked ? 'linear-gradient(135deg,#f4fbf5,#fff)' : 'linear-gradient(135deg,#fff,#fff8fa)',
-                    opacity: lockedByPenalty ? 0.38 : 1,
-                    filter: lockedByPenalty ? 'blur(2px)' : 'none',
-                  }}
-                >
-                  <p style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: unlocked ? '#3a7d4d' : 'var(--app-muted)', marginBottom: '0.25rem' }}>
-                    Tier {tier.id}
-                  </p>
-                  <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--app-text)', marginBottom: '0.3rem' }}>
-                    {tier.name}
-                  </p>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--app-muted)', lineHeight: 1.65, marginBottom: '0.55rem' }}>
-                    {tier.reward}
-                  </p>
-                  <p style={{ fontSize: '0.74rem', fontWeight: 700, color: unlocked ? '#3a7d4d' : 'var(--app-accent)' }}>
-                    {unlocked ? 'Unlocked' : `Unlock at ${tier.minStreak} days`}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <style>{`
-          @media (max-width: 960px) {
-            [style*="repeat(4, minmax(0, 1fr))"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-            [style*="grid-template-columns: 1.2fr 1fr"] { grid-template-columns: 1fr !important; }
-          }
-          @media (max-width: 640px) {
-            [style*="repeat(4, minmax(0, 1fr))"] { grid-template-columns: 1fr !important; }
-          }
-        `}</style>
+        <button type="button" onClick={onDismiss} aria-label="Dismiss weekly Sage briefing" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--app-border)', background: '#fff', color: '#b85a82', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>
+          ×
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+        <span style={{ padding: '0.38rem 0.7rem', borderRadius: 999, background: '#fff1f6', border: '1px solid #f2c8d6', color: '#b85a82', fontSize: '0.72rem', fontWeight: 700 }}>
+          {plan.completionRate}% done
+        </span>
+        <span style={{ padding: '0.38rem 0.7rem', borderRadius: 999, background: '#fff1f6', border: '1px solid #f2c8d6', color: '#b85a82', fontSize: '0.72rem', fontWeight: 700 }}>
+          {plan.streakDays}/7 streak days
+        </span>
+        <span style={{ padding: '0.38rem 0.7rem', borderRadius: 999, background: difficultyTone.bg, border: '1px solid transparent', color: difficultyTone.color, fontSize: '0.72rem', fontWeight: 700 }}>
+          {difficultyTone.label}
+        </span>
       </div>
     </div>
   )
 }
 
+function getCompletedGoalCount(week) {
+  return (week?.goals || []).filter(goal => goal.completed >= goal.target).length
+}
 
+function getFormattedGoalText(activity, target) {
+  const text = String(activity || '').trim()
+  const lower = text.toLowerCase()
+
+  if (lower.includes('gym')) return `Go to the gym ${target} times this week`
+  if (lower.includes('strength')) return `Complete ${target} strength sessions this week`
+  if (lower.includes('walk')) return `Walk ${Math.min(20 + ((target - 1) * 10), 60)} minutes daily`
+  if (lower.includes('meal prep')) return `Meal prep ${target} time${target === 1 ? '' : 's'} this week`
+  if (lower.includes('track')) return `${text} ${target} time${target === 1 ? '' : 's'} this week`
+  if (lower.includes('review')) return `${text} ${target} time${target === 1 ? '' : 's'} this week`
+  if (lower.includes('journal')) return `Journal ${target} time${target === 1 ? '' : 's'} this week`
+
+  return `${text} ${target} time${target === 1 ? '' : 's'} this week`
+}
+
+function buildWeekProgressMap(phaseId, weeks) {
+  const stored = safeRead(WEEK_PROGRESS_KEY, {})
+  const phaseStore = stored[phaseId] || {}
+  const nextPhaseStore = {}
+
+  weeks.forEach((week, index) => {
+    const totalGoals = week.goals?.length || 0
+    const completedGoals = getCompletedGoalCount(week)
+    const halfThreshold = Math.floor(totalGoals / 2) + (totalGoals % 2 === 0 ? 1 : 0)
+    const previousWeek = weeks[index - 1]
+    const previousCompletedGoals = getCompletedGoalCount(previousWeek)
+    const previousTotalGoals = previousWeek?.goals?.length || 0
+    const previousUnlockThreshold = Math.floor(previousTotalGoals / 2) + (previousTotalGoals % 2 === 0 ? 1 : 0)
+
+    const unlocked = index === 0
+      ? true
+      : previousCompletedGoals === previousTotalGoals || previousCompletedGoals >= previousUnlockThreshold
+
+    nextPhaseStore[week.index] = {
+      unlocked,
+      completed: totalGoals > 0 && completedGoals === totalGoals,
+      completedGoals,
+      totalGoals,
+      neededToUnlock: Math.max(0, previousUnlockThreshold - previousCompletedGoals),
+      previousWeek: previousWeek?.index || null,
+      lastViewed: phaseStore[week.index]?.lastViewed || false,
+    }
+  })
+
+  const next = {
+    ...stored,
+    [phaseId]: nextPhaseStore,
+  }
+  safeWrite(WEEK_PROGRESS_KEY, next)
+  return nextPhaseStore
+}
+
+function isConfiguredPillar(pillar) {
+  if (!pillar) return false
+  const hasImage = !!(pillar.beforeImage || pillar.afterImage)
+  const hasStates = !!(pillar.beforeState || pillar.afterState || pillar.beforeDesc || pillar.afterDesc)
+  return hasImage || hasStates
+}
+
+export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
+  const [boardData] = useState(() => loadBoardData())
+  const [lockInState, setLockInState] = useState(() => loadLockInState())
+  const phases = useMemo(() => (boardData?.phases || []).slice(0, 2), [boardData])
+  const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
+  const [activeWeek, setActiveWeek] = useState(1)
+
+  useEffect(() => {
+    if (!phases.some(phase => phase.id === activePhaseId)) {
+      setActivePhaseId(phases[0]?.id || null)
+    }
+  }, [phases, activePhaseId])
+
+  useEffect(() => {
+    setActiveWeek(1)
+  }, [activePhaseId])
+
+  const phaseBoard = useMemo(() => makeBoardForPhase(boardData, activePhaseId), [boardData, activePhaseId])
+  const weeklyData = useMemo(() => buildWeeklyGoals(phaseBoard, lockInState), [phaseBoard, lockInState])
+  const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
+  const selectedPhase = phases.find(phase => phase.id === activePhaseId) || phases[0] || null
+  const weekProgressMap = useMemo(
+    () => (selectedPhase ? buildWeekProgressMap(selectedPhase.id, weeklyData.weeks) : {}),
+    [selectedPhase, weeklyData.weeks, lockInState],
+  )
+  const selectedWeek = weeklyData.weeks.find(week => week.index === activeWeek) || weeklyData.weeks[0] || null
+  const selectedWeekProgress = selectedWeek?.totalTarget
+    ? Math.min(100, Math.round((selectedWeek.totalProgress / selectedWeek.totalTarget) * 100))
+    : 0
+  const activePillarNames = useMemo(() => {
+    const pillars = selectedPhase?.pillars || []
+    return pillars.filter(isConfiguredPillar).map(pillar => pillar.name).filter(Boolean)
+  }, [selectedPhase])
+  const filteredGoals = useMemo(() => {
+    const goals = selectedWeek?.goals || []
+    if (!activePillarNames.length) return []
+    return goals.filter(goal => activePillarNames.includes(goal.pillar))
+  }, [selectedWeek, activePillarNames])
+  const filteredWeekTarget = filteredGoals.reduce((total, goal) => total + (goal.target || 0), 0)
+  const filteredWeekProgress = filteredWeekTarget
+    ? Math.min(100, Math.round((filteredGoals.reduce((total, goal) => total + (goal.completed || 0), 0) / filteredWeekTarget) * 100))
+    : 0
+  const selectedWeekStatus = selectedWeek ? weekProgressMap[selectedWeek.index] : null
+  const showRiskWarning = useMemo(() => {
+    const now = new Date()
+    return now.getHours() >= 18 && !summary.hasLoggedToday
+  }, [summary.hasLoggedToday])
+  const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
+  const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
+  const briefingDismissed = useMemo(() => {
+    const phaseKey = selectedPhase?.id
+    const weekKey = weeklyLoadPlan?.week
+    return phaseKey && weekKey ? isBriefingDismissed(phaseKey, weekKey) : false
+  }, [selectedPhase, weeklyLoadPlan])
+  const isDarkTheme = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'neutral'
+  const shellBg = 'var(--app-bg)'
+  const shellSurface = isDarkTheme ? '#13131a' : '#ffffff'
+  const shellSurfaceAlt = isDarkTheme ? '#1c1c26' : '#fff6f9'
+  const shellBorder = isDarkTheme ? 'rgba(255,255,255,0.08)' : '#f2c8d6'
+  const shellText = 'var(--app-text)'
+  const shellMuted = isDarkTheme ? 'rgba(255,255,255,0.55)' : '#7e5d68'
+  const accent = 'var(--app-accent)'
+  const accent2 = 'var(--app-accent2)'
+
+  function handleToggleGoal(goal) {
+    toggleWeeklyGoalCompletion(goal, phaseBoard)
+    setLockInState(loadLockInState())
+    broadcastLockInUpdate()
+    onLockInChange?.()
+  }
+
+  return (
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%' }}>
+      <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: '18px 20px 96px' }}>
+        {showRiskWarning && (
+          <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <span>Your streak is at risk. Complete today&apos;s task before midnight.</span>
+          </div>
+        )}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: 10, width: 'max-content' }}>
+            {phases.map(phase => {
+              const active = phase.id === activePhaseId
+              return (
+                <button
+                  key={phase.id}
+                  type="button"
+                  onClick={() => setActivePhaseId(phase.id)}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 999,
+                    border: active ? '1px solid transparent' : `1px solid ${shellBorder}`,
+                    background: active ? `linear-gradient(135deg,${accent2},${accent})` : shellSurface,
+                    color: active ? '#fff' : shellText,
+                    boxShadow: active ? 'var(--app-glow)' : 'none',
+                    fontFamily: "'Syne', sans-serif",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {phase.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, color: shellText, marginBottom: 10 }}>
+          Turn your goal into daily action
+        </div>
+
+        {!briefingDismissed && weeklyLoadPlan && weeklyLoadPlan.week === activeWeek && (
+          <SageBriefingCard
+            plan={weeklyLoadPlan}
+            message={sageWeeklyMessage}
+            onDismiss={() => {
+              if (selectedPhase?.id && weeklyLoadPlan?.week) {
+                dismissBriefing(selectedPhase.id, weeklyLoadPlan.week)
+                setLockInState(loadLockInState())
+              }
+            }}
+          />
+        )}
+
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: shellMuted, marginBottom: 10 }}>
+          All Weeks
+        </div>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          <div style={{ display: 'flex', gap: 8, width: 'max-content', paddingBottom: 2 }}>
+            {weeklyData.weeks.map(week => {
+              const active = week.index === activeWeek
+              const status = weekProgressMap[week.index]
+              return (
+                <button
+                  key={week.id}
+                  type="button"
+                  onClick={() => setActiveWeek(week.index)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                    border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
+                    background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
+                    color: active ? accent : shellMuted,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Week {week.index}{status?.completed ? ' ✓' : ''}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div style={{ height: 14 }} />
+
+        <div style={{ background: shellSurface, border: `1px solid ${shellBorder}`, borderRadius: 22, padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, color: shellText }}>
+              {selectedWeek?.weekLabel || 'Week 1'} To-Do List
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
+              {filteredGoals.reduce((total, goal) => total + (goal.completed || 0), 0)}/{filteredWeekTarget}
+            </div>
+          </div>
+
+          <div style={{ height: 8, borderRadius: 999, background: shellSurfaceAlt, overflow: 'hidden', marginBottom: 10 }}>
+            <div
+              style={{
+                width: `${filteredWeekProgress}%`,
+                height: '100%',
+                borderRadius: 999,
+                background: `linear-gradient(90deg,${accent},${accent2})`,
+              }}
+            />
+          </div>
+
+          <div style={{ fontSize: 11, color: shellMuted, marginBottom: 14 }}>
+            This week&apos;s checklist is pulled from your active pillars. Tap once to complete. Tap again to undo.
+          </div>
+
+          {selectedWeekStatus?.unlocked ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {filteredGoals.length === 0 && (
+                <div style={{ padding: '18px 16px', borderRadius: 14, border: `1px solid ${shellBorder}`, background: shellSurfaceAlt, color: shellMuted, fontSize: 12, display: 'grid', gap: 10 }}>
+                  <span>Set up your vision board first to activate your daily tasks.</span>
+                  <button
+                    type="button"
+                    onClick={onOpenBoard}
+                    style={{
+                      width: 'fit-content',
+                      borderRadius: 999,
+                      border: `1px solid ${accent}`,
+                      background: 'transparent',
+                      color: accent,
+                      padding: '0.45rem 0.9rem',
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Go to Vision Board
+                  </button>
+                </div>
+              )}
+              {filteredGoals.map(goal => {
+                const done = goal.completed >= goal.target
+                return (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => handleToggleGoal(goal)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                      padding: '14px 16px',
+                      background: shellSurfaceAlt,
+                      border: `1px solid ${done ? 'rgba(74,222,128,0.25)' : shellBorder}`,
+                      borderRadius: 14,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      opacity: done ? 0.72 : 1,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        border: `2px solid ${done ? '#22c55e' : shellBorder}`,
+                        background: done ? '#22c55e' : 'transparent',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginTop: 2,
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {done ? '\u2713' : ''}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.45, color: done ? shellMuted : shellText, textDecoration: done ? 'line-through' : 'none' }}>
+                        {getFormattedGoalText(goal.activity, goal.target)}
+                      </div>
+                      <div style={{ fontSize: 12, color: shellMuted, marginTop: 4 }}>
+                        {goal.pillar}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                justifyItems: 'center',
+                gap: 10,
+                padding: '28px 18px',
+                borderRadius: 18,
+                background: shellSurfaceAlt,
+                border: `1px solid ${shellBorder}`,
+                opacity: 0.58,
+                pointerEvents: 'none',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ width: 46, height: 46, borderRadius: 14, background: isDarkTheme ? '#242433' : '#fff1f6', border: `1px solid ${shellBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                🔒
+              </div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: shellText }}>
+                Week {selectedWeek?.index || 1}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: shellMuted }}>
+                {selectedWeekStatus?.neededToUnlock > 0
+                  ? `Finish this week first. You need ${selectedWeekStatus.neededToUnlock} more tasks to move forward.`
+                  : `Complete Week ${selectedWeekStatus?.previousWeek || 1} to unlock.`}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ height: 18 }} />
+
+        <div style={{ background: isDarkTheme ? shellSurfaceAlt : '#fff1f6', border: `1px solid ${shellBorder}`, borderRadius: 22, padding: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+            <div style={{ background: '#fff', border: `1px solid ${shellBorder}`, borderRadius: 16, padding: '16px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8d7bb0', marginBottom: 10 }}>Current Streak</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 32, fontWeight: 800, color: '#24131f', marginBottom: 5 }}>{summary.currentStreak} day</div>
+              <div style={{ fontSize: 11, letterSpacing: '0.04em', color: '#7e5d68' }}>Keep the habit visible.</div>
+            </div>
+            <div style={{ background: '#fff', border: `1px solid ${shellBorder}`, borderRadius: 16, padding: '16px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8d7bb0', marginBottom: 10 }}>Rank</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: '#24131f', marginBottom: 5 }}>{summary.rank}</div>
+              <div style={{ fontSize: 11, letterSpacing: '0.04em', color: '#7e5d68' }}>Your consistency level.</div>
+            </div>
+            <div style={{ background: '#fff', border: `1px solid ${shellBorder}`, borderRadius: 16, padding: '16px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8d7bb0', marginBottom: 10 }}>Sage Level</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: '#24131f', marginBottom: 5 }}>{summary.sageLevel.replace('Sage ', '') || 'Sage'}</div>
+              <div style={{ fontSize: 11, letterSpacing: '0.04em', color: '#7e5d68' }}>Guidance gets sharper as your streak grows.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ height: 18 }} />
+
+        <div style={{ background: '#fff', border: `1px solid ${shellBorder}`, borderRadius: 22, padding: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>
+            Unlock Path
+          </div>
+          <div style={{ fontSize: 12, color: '#7e5d68', marginBottom: 14 }}>
+            Day 3 is encouragement. Day 14 unlocks real control.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {UNLOCK_TIERS.map(tier => {
+              const state = getUnlockState(summary, tier)
+              const isUnlocked = summary.currentStreak >= tier.minStreak
+              const progress = tier.minStreak
+                ? Math.min(100, Math.round((summary.currentStreak / tier.minStreak) * 100))
+                : 0
+              return (
+                <div
+                  key={tier.id}
+                  style={{
+                    background: '#fff',
+                    border: `1px solid ${shellBorder}`,
+                    borderRadius: 16,
+                    padding: '16px 16px',
+                    opacity: isUnlocked ? 1 : 0.7,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8d7bb0', marginBottom: 10 }}>
+                        Tier {tier.id}
+                      </div>
+                      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#24131f', marginBottom: 10, lineHeight: 1.3 }}>
+                        {tier.name}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#7e5d68', lineHeight: 1.7, marginBottom: 12 }}>
+                        {tier.reward}
+                      </div>
+                      {isUnlocked ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
+                          <span style={{ fontSize: 14 }}>✓</span>
+                          <span>Unlocked</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
+                            Unlock at {tier.minStreak} days
+                          </div>
+                          <div style={{ height: 6, borderRadius: 999, background: shellSurfaceAlt, overflow: 'hidden', marginTop: 8 }}>
+                            <div style={{ width: `${progress}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg,${accent},${accent2})` }} />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

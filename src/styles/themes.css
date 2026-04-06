@@ -1,44 +1,5 @@
-/* ─────────────────────────────────────────────
-   src/styles/themes.css
-   3 themes: neutral (dark), rose (warm feminine), slate (cool masculine)
-   Import this in src/main.jsx or src/index.css
-───────────────────────────────────────────── */
-
-/* ── DEFAULT / NEUTRAL (dark) ── */
 :root,
-[data-theme="neutral"] {
-  --bg: #05050a;
-  --bg2: #0d0d16;
-  --bg3: #12121f;
-  --accent: #e8407a;
-  --accent2: #f472a8;
-  --accent3: #fbb6ce;
-  --text: #f0eeff;
-  --muted: #8b85aa;
-  --border: rgba(232, 64, 122, 0.18);
-  --glow: 0 0 40px rgba(232, 64, 122, 0.25);
-
-  /* App (board) tokens */
-  --app-bg: #fffbfc;
-  --app-bg2: #fff5f7;
-  --app-surface: #ffffff;
-  --app-text: #3d1f2b;
-  --app-muted: #7a5a66;
-  --app-border: #f2c4d0;
-  --app-accent: #e83d66;
-  --app-accent2: #f95f85;
-  --app-glow: 0 4px 24px rgba(233, 100, 136, 0.12);
-
-  --coach-bg: linear-gradient(160deg, #fff5f7, #fff);
-  --coach-header: linear-gradient(135deg, #f95f85, #e83d66);
-  --coach-bubble-bg: linear-gradient(135deg, #f95f85, #c0244d);
-  --coach-user-msg: linear-gradient(135deg, #f95f85, #e83d66);
-
-  --streak-color: #f4c542;
-  --streak-glow: rgba(244, 197, 66, 0.3);
-}
-
-/* ── ROSE (warm feminine) ── */
+[data-theme="neutral"],
 [data-theme="rose"] {
   --bg: #1a0a10;
   --bg2: #240d16;
@@ -70,18 +31,17 @@
   --streak-glow: rgba(255, 150, 180, 0.35);
 }
 
-/* ── SLATE (cool masculine / neutral dark) ── */
 [data-theme="slate"] {
-  --bg: #07090f;
-  --bg2: #0f1220;
-  --bg3: #161a2c;
+  --bg: #f5f7ff;
+  --bg2: #eef0ff;
+  --bg3: #dfe5ff;
   --accent: #4a6cf7;
   --accent2: #7b94f8;
   --accent3: #b0c0fc;
-  --text: #e8ecff;
+  --text: #1a1e3d;
   --muted: #7880aa;
   --border: rgba(74, 108, 247, 0.18);
-  --glow: 0 0 40px rgba(74, 108, 247, 0.25);
+  --glow: 0 0 40px rgba(74, 108, 247, 0.18);
 
   --app-bg: #f5f7ff;
   --app-bg2: #eef0ff;
@@ -102,7 +62,6 @@
   --streak-glow: rgba(96, 208, 255, 0.3);
 }
 
-/* ── SHARED LAYOUT TOKENS ── */
 :root {
   --r: 16px;
   --rs: 12px;
@@ -111,7 +70,6 @@
   --sh2: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
-/* ── THEME SWITCHER BUTTON STYLES ── */
 .theme-switcher {
   display: flex;
   gap: 0.4rem;
@@ -126,13 +84,16 @@
   cursor: pointer;
   transition: all var(--t);
 }
+
 .theme-dot:hover {
   transform: scale(1.2);
 }
+
 .theme-dot.active {
   border-color: var(--text);
   transform: scale(1.15);
 }
-.theme-dot[data-t="neutral"] { background: linear-gradient(135deg, #e8407a, #0d0d16); }
-.theme-dot[data-t="rose"]    { background: linear-gradient(135deg, #f06090, #1a0a10); }
-.theme-dot[data-t="slate"]   { background: linear-gradient(135deg, #4a6cf7, #07090f); }
+
+.theme-dot[data-t="neutral"] { background: linear-gradient(135deg, #f78fb0, #f06090); }
+.theme-dot[data-t="rose"] { background: linear-gradient(135deg, #f78fb0, #f06090); }
+.theme-dot[data-t="slate"] { background: linear-gradient(135deg, #4a6cf7, #f5f7ff); }
