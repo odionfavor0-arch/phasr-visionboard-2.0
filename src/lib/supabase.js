@@ -6,9 +6,9 @@ const supabaseKey =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
 export const supabaseConfigError = !supabaseUrl
-  ? 'Missing `VITE_SUPABASE_URL` in your project `.env` file.'
+  ? 'Missing `VITE_SUPABASE_URL`. Add it to your Vercel Environment Variables and redeploy, or to your local `.env` when running locally.'
   : !supabaseKey
-    ? 'Missing `VITE_SUPABASE_ANON_KEY` in your project `.env` file.'
+    ? 'Missing `VITE_SUPABASE_ANON_KEY`. Add it to your Vercel Environment Variables and redeploy, or to your local `.env` when running locally.'
     : null
 
 export const supabase = supabaseConfigError
