@@ -10,11 +10,11 @@ const slides = [
     theme: 'dark',
   },
   {
-    id: 'phases',
-    kicker: 'Phases',
-    headline: 'Your goal, broken into phases.',
-    body: 'Not one overwhelming mountain. Just the next clear chapter, structured, timed, and ready to move.',
-    detail: 'One clear chapter at a time.',
+    id: 'sage',
+    kicker: 'Sage',
+    headline: 'Ask Sage what matters most next.',
+    body: 'Sage helps you think clearly, break through indecision, and turn reflection into the next useful move.',
+    detail: 'Clarity when you need direction.',
     theme: 'deep',
   },
   {
