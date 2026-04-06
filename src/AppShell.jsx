@@ -370,7 +370,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
             borderBottom: '1px solid var(--app-border)',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0 1.25rem',
+            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0.2rem 1.25rem 0 1.25rem',
             display: 'grid',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : '1fr auto',
             alignItems: 'center',
@@ -382,7 +382,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: '100%' }}>
               <span
                 style={{
                   fontSize: '0.82rem',
@@ -392,7 +392,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
-                  transform: 'translateY(1px)',
+                  transform: 'translateY(8px)',
                 }}
               >
                 {currentTitle}
