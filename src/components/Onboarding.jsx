@@ -499,7 +499,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                 )}
 
                 {slide.id === 'phasr' ? (
-                  <div style={{ width: '100%', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start' }}>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end', marginTop: isMobile ? 0 : '0.75rem' }}>
                     <button type="button" onClick={next} style={primaryButton}>Let&apos;s go -&gt;</button>
                   </div>
                 ) : (
