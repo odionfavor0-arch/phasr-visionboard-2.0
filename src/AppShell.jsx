@@ -157,6 +157,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     { id: 'analytics', label: 'Statistics', title: 'Statistics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', title: 'Settings', icon: Settings },
   ]), [])
+  const primaryNavItems = navItems.filter(item => item.id !== 'settings')
+  const settingsNavItem = navItems.find(item => item.id === 'settings')
 
   const currentTitle = navItems.find(item => item.id === view)?.title || 'Vision Board'
   const sidebarWidth = isMobile ? MOBILE_RAIL_WIDTH : DESKTOP_RAIL_WIDTH
@@ -329,7 +331,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             padding: isMobile ? '0.75rem 0.5rem 1rem' : '0.5rem',
           }}
         >
-          {navItems.map(item => (
+          {primaryNavItems.map(item => (
             <NavItem
               key={item.id}
               item={item}
@@ -339,6 +341,16 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               onClick={handleSelectView}
             />
           ))}
+          <div style={{ flex: 1 }} />
+          {settingsNavItem && (
+            <NavItem
+              item={settingsNavItem}
+              active={view === settingsNavItem.id}
+              expanded={sidebarOpen}
+              mobile={isMobile}
+              onClick={handleSelectView}
+            />
+          )}
         </div>
       </aside>
 
