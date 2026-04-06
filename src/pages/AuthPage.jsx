@@ -151,7 +151,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
     padding: '0.8rem 1rem',
     borderRadius: 12,
     border: '1.5px solid var(--border)',
-    background: 'rgba(255,255,255,0.03)',
+    background: '#ffffff',
     color: 'var(--text)',
     fontSize: '0.92rem',
     outline: 'none',
@@ -173,12 +173,12 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
         minHeight: '100vh',
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        background: 'linear-gradient(180deg, #140913 0%, #1b0d1c 100%)',
+        background: 'linear-gradient(180deg, #fffafc 0%, #fff2f6 100%)',
       }}
     >
       <div
         style={{
-          background: 'linear-gradient(180deg, rgba(33,12,26,0.96) 0%, rgba(27,9,21,0.98) 100%)',
+          background: 'linear-gradient(180deg, #fffdfd 0%, #fff5f8 100%)',
           borderRight: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
@@ -228,7 +228,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
               fontSize: '2.4rem',
               fontWeight: 800,
               lineHeight: 1.15,
-              color: '#f8f1f5',
+              color: '#2c1420',
               marginBottom: '2.5rem',
             }}
           >
@@ -263,7 +263,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
                   color: 'var(--muted)',
                   fontSize: '0.9rem',
                   paddingBottom: '0.85rem',
-                  borderBottom: '1px solid rgba(232,64,122,0.12)',
+                  borderBottom: '1px solid rgba(232,64,122,0.1)',
                 }}
               >
                 <div
@@ -292,7 +292,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
 
         <div
           style={{
-            background: 'rgba(232,64,122,0.06)',
+            background: '#ffffff',
             border: '1px solid var(--border)',
             borderRadius: 20,
             padding: '1.25rem 1.4rem',
