@@ -4,7 +4,7 @@ const slides = [
   {
     id: 'phasr',
     kicker: '',
-    headline: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let’s set up your first phase.',
+    headline: 'Phasr turns your vision into phases, daily tasks, and real accountability.',
     body: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let’s set up your first phase.',
     detail: 'A personal system built for follow-through.',
     theme: 'dark',
