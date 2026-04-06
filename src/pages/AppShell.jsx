@@ -92,7 +92,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const displayName = useMemo(() => getDisplayName(user), [user])
   const initial = displayName.charAt(0).toUpperCase()
   const closedRailWidth = isMobileView ? 58 : 110
-  const sidebarWidth = isMobileView ? 94 : 260
+  const sidebarWidth = isMobileView ? 156 : 260
 
   function refreshLockIn() {
     setLockInSummary(getLockInSummary(loadLockInState()))
@@ -237,7 +237,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             boxShadow: sidebarOpen ? '12px 0 28px rgba(7,7,14,0.12)' : 'none',
           }}
         >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', minHeight: isMobileView ? 38 : 44 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: (sidebarOpen && isMobileView) ? 'flex-start' : 'center', gap: '0.6rem', minHeight: isMobileView ? 38 : 44, paddingLeft: (sidebarOpen && isMobileView) ? 4 : 0 }}>
           <button
             onClick={() => setSidebarOpen(open => !open)}
             aria-label={sidebarOpen ? 'Collapse menu' : 'Expand menu'}
@@ -259,16 +259,18 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               className="menu-item"
               onClick={() => setView(tab.id)}
               style={{
-                minHeight: isMobileView ? 54 : (sidebarOpen ? 46 : 64),
+                minHeight: isMobileView ? (sidebarOpen ? 46 : 54) : (sidebarOpen ? 46 : 64),
                 width: '100%',
-                padding: isMobileView ? '7px 2px' : (sidebarOpen ? '10px 16px' : '8px 4px'),
+                padding: isMobileView
+                  ? (sidebarOpen ? '9px 10px' : '7px 2px')
+                  : (sidebarOpen ? '10px 16px' : '8px 4px'),
                 borderRadius: 14,
                 border: 'none',
                 display: 'flex',
-                flexDirection: isMobileView ? 'column' : (sidebarOpen ? 'row' : 'column'),
+                flexDirection: (isMobileView && !sidebarOpen) ? 'column' : 'row',
                 alignItems: 'center',
                 justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                gap: isMobileView ? '0.28rem' : '0.55rem',
+                gap: (isMobileView && !sidebarOpen) ? '0.28rem' : '0.55rem',
                 background: view === tab.id ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'transparent',
                 color: '#ffffff',
                 cursor: 'pointer',
@@ -281,7 +283,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <RailIcon type={tab.icon} active={view === tab.id} />
               {(!isMobileView || sidebarOpen) && (
                 <span style={isMobileView
-                  ? { fontSize: '0.54rem', textAlign: 'center', width: '100%', whiteSpace: 'normal', overflow: 'hidden', lineHeight: 1.05 }
+                  ? { whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'left', fontSize: '0.78rem', maxWidth: 82, overflow: 'hidden', textOverflow: 'ellipsis' }
                   : sidebarOpen
                     ? { whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'left', fontSize: '0.82rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }
                     : { fontSize: '0.68rem', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: '2px', paddingRight: '2px', lineHeight: 1.1 }
@@ -297,16 +299,18 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             className="menu-item"
             onClick={() => setView('settings')}
             style={{
-              minHeight: isMobileView ? 54 : (sidebarOpen ? 46 : 64),
+              minHeight: isMobileView ? (sidebarOpen ? 46 : 54) : (sidebarOpen ? 46 : 64),
               width: '100%',
-              padding: isMobileView ? '7px 2px' : (sidebarOpen ? '10px 16px' : '8px 4px'),
+              padding: isMobileView
+                ? (sidebarOpen ? '9px 10px' : '7px 2px')
+                : (sidebarOpen ? '10px 16px' : '8px 4px'),
               borderRadius: 14,
               border: 'none',
               display: 'flex',
-              flexDirection: isMobileView ? 'column' : (sidebarOpen ? 'row' : 'column'),
+              flexDirection: (isMobileView && !sidebarOpen) ? 'column' : 'row',
               alignItems: 'center',
               justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                gap: isMobileView ? '0.28rem' : '0.55rem',
+                gap: (isMobileView && !sidebarOpen) ? '0.28rem' : '0.55rem',
                 background: view === 'settings' ? 'color-mix(in srgb, var(--accent) 16%, transparent)' : 'transparent',
                 color: '#ffffff',
                 cursor: 'pointer',
@@ -319,7 +323,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             <RailIcon type="settings" active={view === 'settings'} />
             {(!isMobileView || sidebarOpen) && (
               <span style={isMobileView
-                ? { fontSize: '0.54rem', textAlign: 'center', width: '100%', whiteSpace: 'normal', overflow: 'hidden', lineHeight: 1.05 }
+                ? { whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'left', fontSize: '0.78rem', maxWidth: 82, overflow: 'hidden', textOverflow: 'ellipsis' }
                 : sidebarOpen
                   ? { whiteSpace: 'nowrap', lineHeight: 1.15, textAlign: 'left', fontSize: '0.82rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }
                   : { fontSize: '0.68rem', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingLeft: '2px', paddingRight: '2px', lineHeight: 1.1 }
@@ -376,8 +380,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         <style>{`
           @media (max-width: 768px) {
             aside.hamburger-menu-shell {
-              width: ${sidebarOpen ? '94px' : '58px'} !important;
-              min-width: ${sidebarOpen ? '94px' : '58px'} !important;
+              width: ${sidebarOpen ? '156px' : '58px'} !important;
+              min-width: ${sidebarOpen ? '156px' : '58px'} !important;
             }
             div.hamburger-menu {
               width: 100% !important;
