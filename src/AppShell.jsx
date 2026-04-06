@@ -291,10 +291,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
-            alignContent: 'start',
+            alignContent: 'end',
             gap: 0,
             borderBottom: '1px solid var(--app-border)',
-            paddingTop: isMobile ? 0 : 10,
+            paddingBottom: isMobile ? 0 : 14,
           }}
         >
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
@@ -383,7 +383,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: '100%', paddingTop: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: '100%', paddingTop: 16 }}>
               <span
                 style={{
                   fontSize: '0.82rem',
