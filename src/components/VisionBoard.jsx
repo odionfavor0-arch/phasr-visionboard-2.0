@@ -950,6 +950,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [calendarPromptState, setCalendarPromptState] = useState('hidden')
   const [calendarPromptArmed, setCalendarPromptArmed] = useState(false)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+  const [showReview, setShowReview] = useState(false)
   const [sagePlanRefresh, setSagePlanRefresh] = useState(0)
   const [revealedDeleteTarget, setRevealedDeleteTarget] = useState(null)
   const [uploadMessage, setUploadMessage] = useState('')
@@ -1014,6 +1015,10 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  useEffect(() => {
+    if (!isMobile) setShowReview(false)
+  }, [isMobile])
 
   useEffect(() => {
     let cancelled = false
@@ -1642,6 +1647,79 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const todayTodoMap = todayTodoState[new Date().toISOString().slice(0, 10)] || {}
   const dailyPlan = getDailyTaskPlan({ ...data, activePhaseId: phaseId })
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
+
+  if (showReview && isMobile) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: '#fff',
+        zIndex: 500, overflowY: 'auto', padding: '0',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          padding: '1rem 1.25rem',
+          borderBottom: '1px solid #f2c4d0',
+          position: 'sticky', top: 0, background: '#fff', zIndex: 10,
+        }}>
+          <button onClick={() => setShowReview(false)} style={{
+            background: 'none', border: 'none', fontSize: '1.2rem',
+            cursor: 'pointer', color: '#e8407a', padding: '0.25rem',
+          }}>←</button>
+          <h2 style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: '1.1rem', fontWeight: 700, color: '#3d1f2b',
+            margin: 0,
+          }}>
+            Quarterly Review — {phase?.name}
+          </h2>
+        </div>
+
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {[
+            { key: 'reviewWorked', label: 'What worked this phase?', hint: 'Habits, routines, and behaviours that felt right', color: '#3a7d4d' },
+            { key: 'reviewDrained', label: 'What drained you?', hint: 'What to drop or do less of next phase', color: '#c0445a' },
+            { key: 'reviewPaid', label: 'What actually paid off?', hint: 'What produced real results and moved the needle', color: '#3355a0' },
+            { key: 'reviewStrategy', label: 'Next phase strategy', hint: 'What will you start, stop, and do more of', color: '#7a58b0' },
+          ].map(({ key, label, hint, color }) => (
+            <div key={key}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
+                {label}
+              </p>
+              <p style={{ fontSize: '0.8rem', color: '#7a5a66', marginBottom: '0.6rem' }}>{hint}</p>
+              <textarea
+                value={phase?.[key] || ''}
+                onChange={e => updatePhase(key, e.target.value)}
+                placeholder="Write here..."
+                style={{
+                  width: '100%', minHeight: '100px', padding: '0.85rem',
+                  border: '1.5px solid #f2c4d0', borderRadius: '12px',
+                  fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem',
+                  color: '#3d1f2b', background: '#fff', outline: 'none',
+                  resize: 'vertical', lineHeight: 1.6,
+                }}
+                onFocus={e => { e.target.style.borderColor = '#e8407a' }}
+                onBlur={e => { e.target.style.borderColor = '#f2c4d0' }}
+              />
+            </div>
+          ))}
+
+          <button
+            onClick={() => setShowReview(false)}
+            style={{
+              width: '100%', padding: '0.95rem', borderRadius: '12px',
+              border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+              color: '#fff', fontSize: '0.95rem', fontWeight: 700,
+              cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              boxShadow: '0 4px 16px rgba(232,64,122,0.3)',
+              marginBottom: '2rem',
+            }}
+          >
+            Save Review
+          </button>
+        </div>
+      </div>
+    )
+  }
   const todayTask = currentTodo?.task || 'Complete 1 action from your current phase'
   const weeklyPlan = phase?.pillars?.flatMap(p => {
     const tasks = (p.weeklyActions || []).filter(Boolean)
@@ -2072,34 +2150,60 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         </div>
 
         {/* â”€â”€ Quarterly Review â”€â”€ */}
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: 'var(--sh)', overflow: 'hidden', marginBottom: '1.5rem' }}>
-          <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', flexShrink: 0 }}>Q</div>
-            <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', fontWeight: 600, color: '#7a4a00' }}>Quarterly Review - {phase?.name}</h3>
-            </div>
-            <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
-          </div>
-          {!phase?.reviewCollapsed && <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.85rem' }}>
-            {[
-              { k: 'reviewWorked',  bg: '#f4fbf5', bc: '#b9dfc0', c: '#3a7d4d', l: 'What Worked?',     h: 'What brought results?' },
-              { k: 'reviewDrained', bg: '#fff8f8', bc: '#f9cdd3', c: '#c0445a', l: 'What Drained Me?', h: 'What to drop?' },
-              { k: 'reviewPaid',    bg: '#f2f6ff', bc: '#c5d5f7', c: '#3355a0', l: 'What Paid Off?',   h: 'What to double down on?' },
-            ].map(({ k, bg, bc, c, l, h }) => (
-              <div key={k} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.8rem' }}>
-                <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c, marginBottom: '0.28rem' }}>{l}</p>
-                <p style={{ fontSize: '0.7rem', color: '#8a7080', marginBottom: '0.4rem' }}>{h}</p>
-                <textarea rows={4} value={phase?.[k] || ''} onChange={e => updatePhase(k, e.target.value)} placeholder="" style={ta({ minHeight: 70 })} onFocus={focus} onBlur={blur} />
-                <button onClick={() => startReviewVoice(k)} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: c, fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>
+        {!isMobile && (
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: 'var(--sh)', overflow: 'hidden', marginBottom: '1.5rem' }}>
+            <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', flexShrink: 0 }}>Q</div>
+              <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', fontWeight: 600, color: '#7a4a00' }}>Quarterly Review - {phase?.name}</h3>
               </div>
-            ))}
-          </div>}
-          {!phase?.reviewCollapsed && <div style={{ margin: '0 1rem 1rem', borderRadius: 12, padding: '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0' }}>
-            <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.4rem' }}>Next Phase Strategy</p>
-            <textarea rows={3} value={phase?.reviewStrategy || ''} onChange={e => updatePhase('reviewStrategy', e.target.value)} placeholder="" style={ta()} onFocus={focus} onBlur={blur} />
-            <button onClick={() => startReviewVoice('reviewStrategy')} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: '#7a58b0', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>
-          </div>}
-        </div>
+              <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
+            </div>
+            {!phase?.reviewCollapsed && <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.85rem' }}>
+              {[
+                { k: 'reviewWorked',  bg: '#f4fbf5', bc: '#b9dfc0', c: '#3a7d4d', l: 'What Worked?',     h: 'What brought results?' },
+                { k: 'reviewDrained', bg: '#fff8f8', bc: '#f9cdd3', c: '#c0445a', l: 'What Drained Me?', h: 'What to drop?' },
+                { k: 'reviewPaid',    bg: '#f2f6ff', bc: '#c5d5f7', c: '#3355a0', l: 'What Paid Off?',   h: 'What to double down on?' },
+              ].map(({ k, bg, bc, c, l, h }) => (
+                <div key={k} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.8rem' }}>
+                  <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c, marginBottom: '0.28rem' }}>{l}</p>
+                  <p style={{ fontSize: '0.7rem', color: '#8a7080', marginBottom: '0.4rem' }}>{h}</p>
+                  <textarea rows={4} value={phase?.[k] || ''} onChange={e => updatePhase(k, e.target.value)} placeholder="" style={ta({ minHeight: 70 })} onFocus={focus} onBlur={blur} />
+                  <button onClick={() => startReviewVoice(k)} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: c, fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>
+                </div>
+              ))}
+            </div>}
+            {!phase?.reviewCollapsed && <div style={{ margin: '0 1rem 1rem', borderRadius: 12, padding: '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0' }}>
+              <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.4rem' }}>Next Phase Strategy</p>
+              <textarea rows={3} value={phase?.reviewStrategy || ''} onChange={e => updatePhase('reviewStrategy', e.target.value)} placeholder="" style={ta()} onFocus={focus} onBlur={blur} />
+              <button onClick={() => startReviewVoice('reviewStrategy')} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: '#7a58b0', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>
+            </div>}
+          </div>
+        )}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <button
+              className="quarterly-review-btn"
+              type="button"
+              onClick={() => setShowReview(true)}
+              style={{
+                width: '100%',
+                padding: '0.95rem 1rem',
+                borderRadius: '14px',
+                border: '1.5px solid #f2c4d0',
+                background: '#fff',
+                color: '#e8407a',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif",
+                boxShadow: '0 8px 24px rgba(232,64,122,0.08)',
+              }}
+            >
+              Review this phase →
+            </button>
+          </div>
+        )}
 
         {/* â”€â”€ Footer â”€â”€ */}
         <div style={{ textAlign: 'center' }}>
