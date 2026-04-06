@@ -21,6 +21,7 @@ import { getLockInSummary, loadLockInState } from './lib/lockIn'
 const MOBILE_QUERY = '(max-width: 768px)'
 const DESKTOP_RAIL_WIDTH = 88
 const MOBILE_RAIL_WIDTH = 84
+const MOBILE_HEADER_HEIGHT = 52
 
 function getDisplayName(user) {
   const raw =
@@ -159,7 +160,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   ]), [])
 
   const currentTitle = navItems.find(item => item.id === view)?.title || 'Vision Board'
-  const sidebarWidth = isMobile ? (sidebarOpen ? MOBILE_RAIL_WIDTH : 0) : DESKTOP_RAIL_WIDTH
+  const sidebarWidth = isMobile ? MOBILE_RAIL_WIDTH : DESKTOP_RAIL_WIDTH
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -241,27 +242,30 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       <aside
         style={{
           position: 'fixed',
-          top: 0,
+          top: isMobile ? MOBILE_HEADER_HEIGHT : 0,
           left: 0,
           bottom: 0,
           width: sidebarWidth,
-          transition: 'width 0.22s ease, transform 0.22s ease',
+          transform: isMobile ? (sidebarOpen ? 'translateX(0)' : `translateX(-${MOBILE_RAIL_WIDTH + 12}px)`) : 'none',
+          transition: 'transform 0.22s ease',
           background: '#0c0913',
           color: '#fff',
-          borderRight: sidebarWidth > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-          borderTop: 'none',
-          zIndex: 40,
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+          borderTop: isMobile ? '1px solid rgba(255,255,255,0.04)' : 'none',
+          zIndex: 35,
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0,
           overflow: 'hidden',
+          pointerEvents: isMobile && !sidebarOpen ? 'none' : 'auto',
+          boxShadow: isMobile && sidebarOpen ? '0 14px 36px rgba(0,0,0,0.18)' : 'none',
         }}
       >
         <div
           style={{
             minHeight: 88,
             padding: '0.9rem 0.35rem 0.8rem',
-            display: 'grid',
+            display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
             alignContent: 'start',
             gap: 8,
@@ -271,7 +275,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
         </div>
 
-        <div style={{ padding: '0.7rem 0.22rem', display: sidebarWidth > 0 ? 'grid' : 'none', gap: 8 }}>
+        <div style={{ padding: '0.7rem 0.22rem', display: 'grid', gap: 8 }}>
           {navItems.map(item => (
             <NavItem
               key={item.id}
@@ -284,7 +288,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           ))}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: sidebarWidth > 0 ? 'grid' : 'none', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             type="button"
             onClick={onSignOut}
@@ -336,7 +340,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           style={{
             position: 'sticky',
             top: 0,
-            zIndex: 30,
+            zIndex: 50,
             minHeight: isMobile ? 52 : 72,
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
