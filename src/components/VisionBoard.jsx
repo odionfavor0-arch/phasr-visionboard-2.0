@@ -1648,78 +1648,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const dailyPlan = getDailyTaskPlan({ ...data, activePhaseId: phaseId })
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
 
-  if (showReview && isMobile) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#fff',
-        zIndex: 500, overflowY: 'auto', padding: '0',
-        fontFamily: "'DM Sans', sans-serif",
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '1rem',
-          padding: '1rem 1.25rem',
-          borderBottom: '1px solid #f2c4d0',
-          position: 'sticky', top: 0, background: '#fff', zIndex: 10,
-        }}>
-          <button onClick={() => setShowReview(false)} style={{
-            background: 'none', border: 'none', fontSize: '1.2rem',
-            cursor: 'pointer', color: '#e8407a', padding: '0.25rem',
-          }}>←</button>
-          <h2 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: '1.1rem', fontWeight: 700, color: '#3d1f2b',
-            margin: 0,
-          }}>
-            Quarterly Review — {phase?.name}
-          </h2>
-        </div>
-
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {[
-            { key: 'reviewWorked', label: 'What worked this phase?', hint: 'Habits, routines, and behaviours that felt right', color: '#3a7d4d' },
-            { key: 'reviewDrained', label: 'What drained you?', hint: 'What to drop or do less of next phase', color: '#c0445a' },
-            { key: 'reviewPaid', label: 'What actually paid off?', hint: 'What produced real results and moved the needle', color: '#3355a0' },
-            { key: 'reviewStrategy', label: 'Next phase strategy', hint: 'What will you start, stop, and do more of', color: '#7a58b0' },
-          ].map(({ key, label, hint, color }) => (
-            <div key={key}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
-                {label}
-              </p>
-              <p style={{ fontSize: '0.8rem', color: '#7a5a66', marginBottom: '0.6rem' }}>{hint}</p>
-              <textarea
-                value={phase?.[key] || ''}
-                onChange={e => updatePhase(key, e.target.value)}
-                placeholder="Write here..."
-                style={{
-                  width: '100%', minHeight: '100px', padding: '0.85rem',
-                  border: '1.5px solid #f2c4d0', borderRadius: '12px',
-                  fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem',
-                  color: '#3d1f2b', background: '#fff', outline: 'none',
-                  resize: 'vertical', lineHeight: 1.6,
-                }}
-                onFocus={e => { e.target.style.borderColor = '#e8407a' }}
-                onBlur={e => { e.target.style.borderColor = '#f2c4d0' }}
-              />
-            </div>
-          ))}
-
-          <button
-            onClick={() => setShowReview(false)}
-            style={{
-              width: '100%', padding: '0.95rem', borderRadius: '12px',
-              border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)',
-              color: '#fff', fontSize: '0.95rem', fontWeight: 700,
-              cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-              boxShadow: '0 4px 16px rgba(232,64,122,0.3)',
-              marginBottom: '2rem',
-            }}
-          >
-            Save Review
-          </button>
-        </div>
-      </div>
-    )
-  }
   const todayTask = currentTodo?.task || 'Complete 1 action from your current phase'
   const weeklyPlan = phase?.pillars?.flatMap(p => {
     const tasks = (p.weeklyActions || []).filter(Boolean)
@@ -2368,6 +2296,77 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
           </div>
         )}
       </div>
+
+      {showReview && isMobile && (
+        <div style={{
+          position: 'fixed', inset: 0, background: '#fff',
+          zIndex: 500, overflowY: 'auto', padding: '0',
+          fontFamily: "'DM Sans', sans-serif",
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '1rem',
+            padding: '1rem 1.25rem',
+            borderBottom: '1px solid #f2c4d0',
+            position: 'sticky', top: 0, background: '#fff', zIndex: 10,
+          }}>
+            <button onClick={() => setShowReview(false)} style={{
+              background: 'none', border: 'none', fontSize: '1.2rem',
+              cursor: 'pointer', color: '#e8407a', padding: '0.25rem',
+            }}>←</button>
+            <h2 style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '1.1rem', fontWeight: 700, color: '#3d1f2b',
+              margin: 0,
+            }}>
+              Quarterly Review — {phase?.name}
+            </h2>
+          </div>
+
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {[
+              { key: 'reviewWorked', label: 'What worked this phase?', hint: 'Habits, routines, and behaviours that felt right', color: '#3a7d4d' },
+              { key: 'reviewDrained', label: 'What drained you?', hint: 'What to drop or do less of next phase', color: '#c0445a' },
+              { key: 'reviewPaid', label: 'What actually paid off?', hint: 'What produced real results and moved the needle', color: '#3355a0' },
+              { key: 'reviewStrategy', label: 'Next phase strategy', hint: 'What will you start, stop, and do more of', color: '#7a58b0' },
+            ].map(({ key, label, hint, color }) => (
+              <div key={key}>
+                <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
+                  {label}
+                </p>
+                <p style={{ fontSize: '0.8rem', color: '#7a5a66', marginBottom: '0.6rem' }}>{hint}</p>
+                <textarea
+                  value={phase?.[key] || ''}
+                  onChange={e => updatePhase(key, e.target.value)}
+                  placeholder="Write here..."
+                  style={{
+                    width: '100%', minHeight: '100px', padding: '0.85rem',
+                    border: '1.5px solid #f2c4d0', borderRadius: '12px',
+                    fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem',
+                    color: '#3d1f2b', background: '#fff', outline: 'none',
+                    resize: 'vertical', lineHeight: 1.6,
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#e8407a' }}
+                  onBlur={e => { e.target.style.borderColor = '#f2c4d0' }}
+                />
+              </div>
+            ))}
+
+            <button
+              onClick={() => setShowReview(false)}
+              style={{
+                width: '100%', padding: '0.95rem', borderRadius: '12px',
+                border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                color: '#fff', fontSize: '0.95rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                boxShadow: '0 4px 16px rgba(232,64,122,0.3)',
+                marginBottom: '2rem',
+              }}
+            >
+              Save Review
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes vbFoil{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
