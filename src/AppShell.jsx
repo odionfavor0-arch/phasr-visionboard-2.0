@@ -19,9 +19,8 @@ import SettingsPanel from './components/SettingsPanel'
 import { getLockInSummary, loadLockInState } from './lib/lockIn'
 
 const MOBILE_QUERY = '(max-width: 768px)'
-const DESKTOP_OPEN_WIDTH = 108
-const DESKTOP_COLLAPSED_WIDTH = 74
-const MOBILE_OPEN_WIDTH = 98
+const DESKTOP_RAIL_WIDTH = 88
+const MOBILE_RAIL_WIDTH = 84
 
 function getDisplayName(user) {
   const raw =
@@ -160,11 +159,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   ]), [])
 
   const currentTitle = navItems.find(item => item.id === view)?.title || 'Vision Board'
-  const desktopExpanded = !isMobile && sidebarOpen
-  const mobileExpanded = isMobile && sidebarOpen
-  const sidebarWidth = isMobile
-    ? (mobileExpanded ? MOBILE_OPEN_WIDTH : 0)
-    : (sidebarOpen ? DESKTOP_OPEN_WIDTH : DESKTOP_COLLAPSED_WIDTH)
+  const sidebarWidth = isMobile ? MOBILE_RAIL_WIDTH : DESKTOP_RAIL_WIDTH
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -265,7 +260,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         <div
           style={{
             minHeight: 88,
-            padding: sidebarOpen ? '0.9rem 0.5rem 0.8rem' : '0.9rem 0.45rem 0.8rem',
+            padding: '0.9rem 0.35rem 0.8rem',
             display: 'grid',
             justifyItems: 'center',
             alignContent: 'start',
@@ -274,22 +269,9 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           }}
         >
           <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />
-          {sidebarOpen && !isMobile && (
-            <span
-              style={{
-                fontFamily: "'Syne', sans-serif",
-                fontWeight: 800,
-                fontSize: '0.8rem',
-                color: '#ffd9e7',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Phasr
-            </span>
-          )}
         </div>
 
-        <div style={{ padding: sidebarOpen ? '0.7rem 0.35rem' : '0.7rem 0.22rem', display: 'grid', gap: 8 }}>
+        <div style={{ padding: '0.7rem 0.22rem', display: 'grid', gap: 8 }}>
           {navItems.map(item => (
             <NavItem
               key={item.id}
@@ -302,7 +284,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           ))}
         </div>
 
-        <div style={{ marginTop: 'auto', padding: sidebarOpen ? '0.7rem 0.35rem 0.9rem' : '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ marginTop: 'auto', padding: '0.45rem 0.22rem 0.9rem', display: 'grid', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <button
             type="button"
             onClick={onSignOut}
@@ -346,7 +328,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         style={{
           flex: 1,
           minWidth: 0,
-          marginLeft: isMobile ? 0 : sidebarWidth,
+          marginLeft: sidebarWidth,
           width: '100%',
         }}
       >
