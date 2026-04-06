@@ -105,7 +105,7 @@ function HamburgerButton({ open, onClick, mobile }) {
     width: mobile ? 18 : 20,
     height: 2,
     borderRadius: 999,
-    background: mobile ? 'var(--app-text)' : '#fff',
+    background: mobile ? 'var(--app-text)' : 'var(--app-accent)',
   }
 
   return (
@@ -288,7 +288,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         <div
           style={{
             minHeight: isMobile ? 88 : 72,
-            padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0.55rem 0.35rem',
+            padding: isMobile ? '0.9rem 0.35rem 0.8rem' : '0',
             display: isMobile ? 'none' : 'grid',
             justifyItems: 'center',
             alignContent: 'center',
@@ -370,7 +370,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             background: 'rgba(255, 248, 251, 0.94)',
             backdropFilter: 'blur(18px)',
             borderBottom: '1px solid var(--app-border)',
-            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0.7rem 1.25rem',
+            padding: isMobile ? '0.55rem 1rem 0.55rem 1rem' : '0 1.25rem',
             display: 'grid',
             gridTemplateColumns: isMobile ? '36px 1fr auto' : '1fr auto',
             alignItems: 'center',
@@ -392,6 +392,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                   whiteSpace: 'nowrap',
                   lineHeight: 1,
+                  transform: 'translateY(1px)',
                 }}
               >
                 {currentTitle}
