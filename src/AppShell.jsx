@@ -289,15 +289,33 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       >
         <div
           style={{
-            minHeight: isMobile ? MOBILE_HEADER_HEIGHT + 12 : 56,
-            padding: isMobile ? `${MOBILE_HEADER_HEIGHT + 10}px 0.35rem 0.55rem` : '0',
-            display: isMobile ? 'none' : 'grid',
+            minHeight: isMobile ? MOBILE_HEADER_HEIGHT : 56,
+            padding: isMobile ? '0 0.75rem' : '0',
+            display: isMobile ? 'flex' : 'grid',
+            alignItems: 'center',
+            justifyContent: isMobile ? 'space-between' : 'center',
             justifyItems: 'center',
             alignContent: 'center',
             gap: 0,
-            borderBottom: isMobile ? '1px solid var(--app-border)' : '1px solid #f2c4d0',
+            borderBottom: '1px solid #f2c4d0',
           }}
         >
+          {isMobile ? (
+            <>
+              <span
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontSize: '1.05rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  color: 'var(--app-accent)',
+                }}
+              >
+                Phasr
+              </span>
+              <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
+            </>
+          ) : null}
           {!isMobile && <HamburgerButton mobile={false} open={sidebarOpen} onClick={handleToggleSidebar} />}
         </div>
 
@@ -308,7 +326,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             display: 'flex',
             flexDirection: 'column',
             gap: '0.25rem',
-            padding: isMobile ? `${MOBILE_HEADER_HEIGHT + 12}px 0.5rem 0.75rem` : '0.5rem',
+            padding: isMobile ? '0.75rem 0.5rem 1rem' : '0.5rem',
           }}
         >
           {navItems.map(item => (
