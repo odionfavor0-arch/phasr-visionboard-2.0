@@ -382,7 +382,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
             </div>
           </div>
         </div>
-        <div style={{ display: 'none' }}>
+        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
             <p style={sectionLabelStyle}>Sage’s Response</p>
             <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>🔊</button>
@@ -951,8 +951,10 @@ export default function Journal() {
           <div style={{ display: 'grid', gap: '0.6rem' }}>
             {filteredEntries.map(entry => (
               <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.55rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.42rem' }}>
-                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.96rem' }}>{formatDate(entry.date)}</p>
-                <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.9rem' }}>
+                  <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35, flex: 1 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
+                  <p style={{ margin: 0, color: '#8f7180', fontSize: '0.9rem', flexShrink: 0, textAlign: 'right' }}>{formatDate(entry.date)}</p>
+                </div>
                 <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.content || getTemplateSummary(entry) || 'Start writing...'}</p>
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
@@ -1003,7 +1005,7 @@ export default function Journal() {
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%' }}>Skip for now →</button>
+        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.88rem', width: '100%' }}>Skip for now -&gt;</button>
       </BottomSheet>
 
     </>
