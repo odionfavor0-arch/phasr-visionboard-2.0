@@ -317,12 +317,13 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
   )
 }
 
-function EntryDetail({ entry, onBack }) {
+function EntryDetail({ entry, onBack, onEdit }) {
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.9rem 1rem', borderBottom: '1px solid var(--app-border)', position: 'sticky', top: 0, background: '#fff', zIndex: 5 }}>
         <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
         <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672' }}>{formatDate(entry.date)}</p>
+        <button type="button" onClick={onEdit} style={{ marginLeft: 'auto', ...ghostIconButtonStyle }}>✎</button>
       </div>
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
@@ -348,7 +349,7 @@ function EntryDetail({ entry, onBack }) {
   )
 }
 
-function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onImageTap, isSaving }) {
+function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSaving }) {
   const [showMenu, setShowMenu] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
   const [activeImageActionsId, setActiveImageActionsId] = useState(null)
@@ -356,6 +357,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onIma
   const dateInputRef = useRef(null)
   const recognitionRef = useRef(null)
   const longPressTimerRef = useRef(null)
+  const dragRef = useRef(null)
   const currentBackground = BACKGROUNDS.find(item => item.id === draft.backgroundId) || BACKGROUNDS[0]
   const currentFont = FONTS.find(item => item.id === draft.fontId) || FONTS[0]
   const writerBackgroundStyle = draft.templateAccent
@@ -412,6 +414,8 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onIma
             id: `${Date.now()}-${file.name}`,
             name: file.name,
             url: reader.result,
+            x: 0,
+            y: 0,
           },
         ],
       }))
@@ -429,6 +433,33 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onIma
 
   function clearImageHold() {
     clearTimeout(longPressTimerRef.current)
+  }
+
+  function beginDrag(event, image) {
+    dragRef.current = {
+      id: image.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: image.x || 0,
+      originY: image.y || 0,
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function moveDrag(event) {
+    if (!dragRef.current) return
+    const nextX = Math.max(0, dragRef.current.originX + (event.clientX - dragRef.current.startX))
+    const nextY = Math.max(0, dragRef.current.originY + (event.clientY - dragRef.current.startY))
+    setDraft(prev => ({
+      ...prev,
+      images: prev.images.map(image => (
+        image.id === dragRef.current.id ? { ...image, x: nextX, y: nextY } : image
+      )),
+    }))
+  }
+
+  function endDrag() {
+    dragRef.current = null
   }
 
   return (
@@ -468,19 +499,23 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onIma
             </div>
           )}
           {draft.images.length ? (
-            <div style={{ display: 'flex', gap: '0.7rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
+            <div style={{ position: 'relative', minHeight: 190, marginBottom: '0.2rem' }}>
               {draft.images.map(image => (
                 <button
                   key={image.id}
                   type="button"
-                  onPointerDown={() => {
+                  onPointerDown={event => {
                     startImageHold(image)
+                    beginDrag(event, image)
                   }}
+                  onPointerMove={moveDrag}
                   onPointerUp={() => {
                     clearImageHold()
+                    endDrag()
                   }}
                   onPointerLeave={() => {
                     clearImageHold()
+                    endDrag()
                   }}
                   onContextMenu={event => {
                     event.preventDefault()
@@ -491,9 +526,8 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onIma
                       setActiveImageActionsId(null)
                       return
                     }
-                    onImageTap(image)
                   }}
-                  style={{ flex: '0 0 auto', width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'relative', boxShadow: '0 12px 20px rgba(80,52,65,0.12)' }}
+                  style={{ width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'absolute', left: image.x || 0, top: image.y || 0, boxShadow: '0 12px 20px rgba(80,52,65,0.12)', touchAction: 'none' }}
                 >
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {activeImageActionsId === image.id ? (
@@ -531,7 +565,6 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onIma
       <BottomSheet open={showMenu} onClose={() => setShowMenu(false)} title="">
         <div style={{ display: 'grid', gap: '0.2rem' }}>
           <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>→</span></button>
-          <div style={menuStatStyle}><span>Preview</span><strong>{makePreview(draft.content) || 'Nothing yet'}</strong></div>
           <div style={menuStatStyle}><span>Words</span><strong>{wordCount}</strong></div>
         </div>
       </BottomSheet>
@@ -662,6 +695,16 @@ const emojiButtonStyle = {
   fontSize: '1.5rem',
 }
 
+const ghostMiniActionStyle = {
+  width: 34,
+  height: 34,
+  borderRadius: 12,
+  border: '1px solid var(--app-border)',
+  background: '#fff',
+  display: 'grid',
+  placeItems: 'center',
+}
+
 export default function Journal() {
   const [entries, setEntries] = useState(() => safeRead())
   const [screen, setScreen] = useState('list')
@@ -673,8 +716,8 @@ export default function Journal() {
   const [showSortSheet, setShowSortSheet] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [templateAnswers, setTemplateAnswers] = useState({})
-  const [imageSheet, setImageSheet] = useState(null)
-  const [expandedImage, setExpandedImage] = useState(null)
+  const [editingEntryId, setEditingEntryId] = useState(null)
+  const [entryActionId, setEntryActionId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -691,6 +734,7 @@ export default function Journal() {
   function pickMood(mood) {
     setDraft(prev => ({ ...prev, mood }))
     setShowMoodPicker(false)
+    setEditingEntryId(null)
     setScreen('write')
   }
 
@@ -707,7 +751,7 @@ export default function Journal() {
     try {
       const analysis = await generateSageAnalysis(draft)
       const entry = {
-        id: Date.now(),
+        id: editingEntryId || Date.now(),
         createdAt: new Date().toISOString(),
         date: draft.date,
         title: draft.title.trim() || analysis.generatedTitle || 'Journal entry',
@@ -721,13 +765,17 @@ export default function Journal() {
         fontId: draft.fontId,
         color: draft.color,
         images: draft.images,
+        templateAccent: draft.templateAccent,
+        templateFields: draft.templateFields,
+        templateAnswers: draft.templateAnswers,
       }
-      setEntries(current => [entry, ...current])
+      setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? entry : item) : [entry, ...current])
       setSelectedEntry(entry)
+      setEditingEntryId(null)
       setScreen('detail')
     } catch {
       const fallback = {
-        id: Date.now(),
+        id: editingEntryId || Date.now(),
         createdAt: new Date().toISOString(),
         date: draft.date,
         title: draft.title.trim() || 'Journal entry',
@@ -741,9 +789,13 @@ export default function Journal() {
         fontId: draft.fontId,
         color: draft.color,
         images: draft.images,
+        templateAccent: draft.templateAccent,
+        templateFields: draft.templateFields,
+        templateAnswers: draft.templateAnswers,
       }
-      setEntries(current => [fallback, ...current])
+      setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? fallback : item) : [fallback, ...current])
       setSelectedEntry(fallback)
+      setEditingEntryId(null)
       setScreen('detail')
     } finally {
       setIsSaving(false)
@@ -767,8 +819,26 @@ export default function Journal() {
 
   function removeImage(target) {
     setDraft(prev => ({ ...prev, images: prev.images.filter(image => image.id !== target.id) }))
-    setImageSheet(null)
-    setExpandedImage(null)
+  }
+
+  function editEntry(entry) {
+    setDraft({
+      date: entry.date || getToday(),
+      title: entry.title || '',
+      content: entry.content || '',
+      prompt: entry.prompt || PROMPTS[0],
+      mood: entry.mood || MOODS[0],
+      backgroundId: entry.backgroundId || 'original',
+      templateAccent: entry.templateAccent || '',
+      templateFields: entry.templateFields || null,
+      templateAnswers: entry.templateAnswers || {},
+      color: entry.color || '#2f1e2a',
+      fontId: entry.fontId || 'dm',
+      images: Array.isArray(entry.images) ? entry.images : [],
+    })
+    setEditingEntryId(entry.id)
+    setEntryActionId(null)
+    setScreen('write')
   }
 
   if (screen === 'write') {
@@ -779,7 +849,6 @@ export default function Journal() {
           onBack={() => setScreen('list')}
           onSave={saveEntry}
           onOpenTemplates={() => setScreen('templates')}
-          onImageTap={image => setExpandedImage(image)}
           isSaving={isSaving}
         />
       )
@@ -816,7 +885,7 @@ export default function Journal() {
   }
 
   if (screen === 'detail' && selectedEntry) {
-    return <EntryDetail entry={selectedEntry} onBack={() => setScreen('list')} />
+    return <EntryDetail entry={selectedEntry} onBack={() => setScreen('list')} onEdit={() => editEntry(selectedEntry)} />
   }
 
   return (
@@ -844,7 +913,14 @@ export default function Journal() {
                     <span>{entry.clarityLabel || 'Reflective'}</span>
                     <span>· {entry.clarityScore || 7}/10</span>
                   </span>
+                  <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}>⋯</button>
                 </div>
+                {entryActionId === entry.id ? (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.55rem', marginTop: '0.4rem' }}>
+                    <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>✎</button>
+                    <button type="button" onClick={event => { event.stopPropagation(); setEntries(current => current.filter(item => item.id !== entry.id)); setEntryActionId(null) }} style={{ ...ghostMiniActionStyle, color: '#d24b78' }}>🗑</button>
+                  </div>
+                ) : null}
               </button>
             ))}
 
@@ -881,9 +957,6 @@ export default function Journal() {
         <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%' }}>Skip for now →</button>
       </BottomSheet>
 
-      <BottomSheet open={Boolean(expandedImage)} onClose={() => setExpandedImage(null)} title="Image preview">
-        {expandedImage ? <img src={expandedImage.url} alt={expandedImage.name} style={{ width: '100%', borderRadius: 18, display: 'block' }} /> : null}
-      </BottomSheet>
     </>
   )
 }
