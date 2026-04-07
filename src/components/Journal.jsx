@@ -170,6 +170,8 @@ function blankDraft() {
     mood: null,
     backgroundId: 'original',
     templateAccent: '',
+    templateFields: null,
+    templateAnswers: {},
     color: '#2f1e2a',
     fontId: 'dm',
     images: [],
@@ -346,7 +348,7 @@ function EntryDetail({ entry, onBack }) {
   )
 }
 
-function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpenImageOptions, isSaving }) {
+function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onImageTap, isSaving }) {
   const [showMenu, setShowMenu] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
   const [activeImageActionsId, setActiveImageActionsId] = useState(null)
@@ -354,7 +356,6 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
   const dateInputRef = useRef(null)
   const recognitionRef = useRef(null)
   const longPressTimerRef = useRef(null)
-  const dragRef = useRef(null)
   const currentBackground = BACKGROUNDS.find(item => item.id === draft.backgroundId) || BACKGROUNDS[0]
   const currentFont = FONTS.find(item => item.id === draft.fontId) || FONTS[0]
   const writerBackgroundStyle = draft.templateAccent
@@ -411,8 +412,6 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
             id: `${Date.now()}-${file.name}`,
             name: file.name,
             url: reader.result,
-            x: 16 + prev.images.length * 26,
-            y: 12 + prev.images.length * 18,
           },
         ],
       }))
@@ -424,39 +423,12 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
   function startImageHold(image) {
     clearTimeout(longPressTimerRef.current)
     longPressTimerRef.current = setTimeout(() => {
-      setActiveImageActionsId(image.id)
+      setActiveImageActionsId(current => (current === image.id ? null : image.id))
     }, 420)
   }
 
   function clearImageHold() {
     clearTimeout(longPressTimerRef.current)
-  }
-
-  function beginDrag(event, image) {
-    dragRef.current = {
-      id: image.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: image.x || 0,
-      originY: image.y || 0,
-    }
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-
-  function moveDrag(event) {
-    if (!dragRef.current) return
-    const nextX = Math.max(0, dragRef.current.originX + (event.clientX - dragRef.current.startX))
-    const nextY = Math.max(0, dragRef.current.originY + (event.clientY - dragRef.current.startY))
-    setDraft(prev => ({
-      ...prev,
-      images: prev.images.map(image =>
-        image.id === dragRef.current.id ? { ...image, x: nextX, y: nextY } : image,
-      ),
-    }))
-  }
-
-  function endDrag() {
-    dragRef.current = null
   }
 
   return (
@@ -477,44 +449,63 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
         </div>
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
-          <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.2rem 0 0.7rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500 }} />
+          {!draft.templateFields ? (
+            <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.2rem 0 0.7rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500 }} />
+          ) : (
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <p style={{ margin: 0, fontSize: '2rem', fontWeight: 500, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
+              {draft.templateFields.map((field, index) => (
+                <div key={field.label} style={{ display: 'grid', gap: '0.42rem' }}>
+                  <p style={{ margin: 0, color: '#4f9bff', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>
+                    {index + 1}. {field.label}
+                  </p>
+                  <p style={{ margin: 0, color: '#6f7d8b', lineHeight: 1.55 }}>{field.subtext}</p>
+                  <p style={{ margin: 0, color: draft.color, lineHeight: 1.9, fontSize: '1.02rem' }}>
+                    {draft.templateAnswers?.[field.label] || '-'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
           {draft.images.length ? (
-            <div style={{ position: 'relative', minHeight: 180, borderRadius: 20, border: '1px dashed var(--app-border)', background: 'rgba(255,255,255,0.55)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', gap: '0.7rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
               {draft.images.map(image => (
                 <button
                   key={image.id}
                   type="button"
-                  onPointerDown={event => {
+                  onPointerDown={() => {
                     startImageHold(image)
-                    beginDrag(event, image)
                   }}
-                  onPointerMove={moveDrag}
                   onPointerUp={() => {
                     clearImageHold()
-                    endDrag()
                   }}
                   onPointerLeave={() => {
                     clearImageHold()
-                    endDrag()
                   }}
                   onContextMenu={event => {
                     event.preventDefault()
                     setActiveImageActionsId(image.id)
                   }}
-                  style={{ width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'absolute', left: image.x || 0, top: image.y || 0, touchAction: 'none', boxShadow: '0 12px 20px rgba(80,52,65,0.12)' }}
+                  onClick={() => {
+                    if (activeImageActionsId === image.id) {
+                      setActiveImageActionsId(null)
+                      return
+                    }
+                    onImageTap(image)
+                  }}
+                  style={{ flex: '0 0 auto', width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'relative', boxShadow: '0 12px 20px rgba(80,52,65,0.12)' }}
                 >
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {activeImageActionsId === image.id ? (
-                    <>
-                      <button type="button" onClick={event => { event.stopPropagation(); onOpenImageOptions({ ...image, action: 'expand-inline' }) }} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: 'var(--app-accent)', fontWeight: 800 }}>+</button>
-                      <button type="button" onClick={event => { event.stopPropagation(); onOpenImageOptions({ ...image, action: 'delete-inline' }) }} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>×</button>
-                    </>
+                    <button type="button" onClick={event => { event.stopPropagation(); setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) })); setActiveImageActionsId(null) }} style={{ position: 'absolute', right: 8, top: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>×</button>
                   ) : null}
                 </button>
               ))}
             </div>
           ) : null}
-          <textarea value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+          {!draft.templateFields ? (
+            <textarea value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+          ) : null}
         </div>
       </div>
 
@@ -761,12 +752,15 @@ export default function Journal() {
 
   function applyTemplateAnswers() {
     if (!selectedTemplate) return
+    const nextContent = buildTemplateContent(selectedTemplate, templateAnswers)
     setDraft(prev => ({
       ...prev,
       prompt: selectedTemplate.name,
       title: prev.title,
-      content: buildTemplateContent(selectedTemplate, templateAnswers),
+      content: nextContent,
       templateAccent: selectedTemplate.accent,
+      templateFields: selectedTemplate.fields,
+      templateAnswers,
     }))
     setScreen('write')
   }
@@ -779,26 +773,16 @@ export default function Journal() {
 
   if (screen === 'write') {
     return (
-      <JournalWriter
-        draft={draft}
-        setDraft={setDraft}
-        onBack={() => setScreen('list')}
-        onSave={saveEntry}
-        onOpenTemplates={() => setScreen('templates')}
-        onOpenImageOptions={image => {
-          if (image.action === 'expand-inline') {
-            setExpandedImage(image)
-            return
-          }
-          if (image.action === 'delete-inline') {
-            removeImage(image)
-            return
-          }
-          setImageSheet(image)
-        }}
-        isSaving={isSaving}
-      />
-    )
+        <JournalWriter
+          draft={draft}
+          setDraft={setDraft}
+          onBack={() => setScreen('list')}
+          onSave={saveEntry}
+          onOpenTemplates={() => setScreen('templates')}
+          onImageTap={image => setExpandedImage(image)}
+          isSaving={isSaving}
+        />
+      )
   }
 
   if (screen === 'templates') {
@@ -895,13 +879,6 @@ export default function Journal() {
           ))}
         </div>
         <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%' }}>Skip for now →</button>
-      </BottomSheet>
-
-      <BottomSheet open={Boolean(imageSheet)} onClose={() => setImageSheet(null)} title="Image">
-        <div style={{ display: 'grid', gap: '0.65rem' }}>
-          <button type="button" onClick={() => { setExpandedImage(imageSheet); setImageSheet(null) }} style={menuRowStyle}><span>Expand image</span><span>→</span></button>
-          <button type="button" onClick={() => removeImage(imageSheet)} style={menuRowStyle}><span>Delete image</span><span>×</span></button>
-        </div>
       </BottomSheet>
 
       <BottomSheet open={Boolean(expandedImage)} onClose={() => setExpandedImage(null)} title="Image preview">
