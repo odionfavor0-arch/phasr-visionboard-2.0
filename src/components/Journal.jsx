@@ -562,3 +562,100 @@ export default function Journal() {
       setIsSaving(false)
     }
   }
+
+  if (screen === 'write') {
+    return (
+      <>
+        <JournalWriter
+          draft={draft}
+          setDraft={setDraft}
+          onBack={() => setScreen('list')}
+          onSave={saveEntry}
+          onOpenTemplates={() => setShowTemplates(true)}
+          isSaving={isSaving}
+        />
+        {showTemplates ? <TemplatesPage onBack={() => setShowTemplates(false)} onSelect={selectTemplate} /> : null}
+      </>
+    )
+  }
+
+  if (screen === 'processing') {
+    return (
+      <div style={{ minHeight: 'calc(100vh - 56px)', display: 'grid', placeItems: 'center', background: '#fff', padding: '2rem' }}>
+        <div style={{ textAlign: 'center', display: 'grid', gap: '1rem' }}>
+          <div style={{ width: 88, height: 88, margin: '0 auto', borderRadius: '50%', border: '6px solid #fde2ec', borderTopColor: 'var(--app-accent)', animation: 'phasr-spin 1s linear infinite' }} />
+          <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#3b2330' }}>Sage is reading your entry...</p>
+          <style>{`@keyframes phasr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    )
+  }
+
+  if (screen === 'detail' && selectedEntry) {
+    return <EntryDetail entry={selectedEntry} onBack={() => setScreen('list')} />
+  }
+
+  return (
+    <>
+      <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1rem 1rem 5.5rem' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 22, padding: '0.8rem 0.85rem', boxShadow: '0 12px 28px rgba(86,53,66,0.05)' }}>
+            <Search size={18} color="#8b6977" />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', minWidth: 0 }} />
+            <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}>↕</button>
+          </div>
+
+          <div style={{ display: 'grid', gap: '0.6rem' }}>
+            {filteredEntries.map(entry => (
+              <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.4rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.32rem' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.8rem' }}>
+                  <span style={{ color: '#8f7180', fontSize: '0.96rem' }}>{formatDate(entry.date)}</span>
+                  <span style={{ color: 'var(--app-accent)', fontSize: '0.86rem', fontWeight: 700 }}>{entry.title || 'Untitled'}</span>
+                </div>
+                <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.4 }}>{entry.title || 'Untitled reflection'}</p>
+                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55 }}>{makePreview(entry.content) || 'Start writing...'}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
+                    <span>{entry.mood?.emoji || '😊'}</span>
+                    <span>{entry.clarityLabel || 'Reflective'}</span>
+                    <span>· {entry.clarityScore || 7}/10</span>
+                  </span>
+                </div>
+              </button>
+            ))}
+
+            {!filteredEntries.length ? <div style={{ borderRadius: 24, border: '1px solid var(--app-border)', background: '#fff', padding: '1.2rem', color: '#8f7180', textAlign: 'center' }}>No entries yet. Tap the plus button to start.</div> : null}
+          </div>
+        </div>
+
+        <button type="button" onClick={startNewEntry} style={{ position: 'fixed', right: '50%', transform: 'translateX(50%)', bottom: '1.2rem', width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', boxShadow: '0 18px 28px rgba(232,64,122,0.28)', display: 'grid', placeItems: 'center', zIndex: 8 }}>
+          <Plus size={30} />
+        </button>
+      </div>
+
+      <BottomSheet open={showSortSheet} onClose={() => setShowSortSheet(false)} title="Sort entries">
+        <div style={{ display: 'grid', gap: '0.65rem' }}>
+          {[{ id: 'latest', label: 'Latest first' }, { id: 'oldest', label: 'Oldest first' }].map(option => (
+            <button key={option.id} type="button" onClick={() => { setSortOrder(option.id); setShowSortSheet(false) }} style={menuRowStyle}>
+              <span>{option.label}</span>
+              {option.id === sortOrder ? <span>✓</span> : null}
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={showMoodPicker} onClose={() => setShowMoodPicker(false)} title={null}>
+        <div style={{ textAlign: 'center', marginBottom: '1rem' }}><p style={{ margin: 0, color: '#af8396', fontSize: '1rem' }}>How are you feeling right now?</p></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.8rem' }}>
+          {MOODS.map(mood => (
+            <button key={mood.label} type="button" onClick={() => pickMood(mood)} style={{ border: 'none', background: 'transparent', display: 'grid', justifyItems: 'center', gap: '0.3rem' }}>
+              <span style={{ fontSize: '1.8rem' }}>{mood.emoji}</span>
+              <span style={{ fontSize: '0.72rem', color: '#8f7180' }}>{mood.label}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%' }}>Skip for now →</button>
+      </BottomSheet>
+    </>
+  )
+}
