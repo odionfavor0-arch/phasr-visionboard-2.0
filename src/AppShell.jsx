@@ -221,7 +221,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   )
 
   if (view === 'journal') {
-    content = <Journal user={user} onOpenEntries={() => setView('entries')} />
+    content = <Journal user={user} />
   } else if (view === 'entries') {
     content = <JournalEntries onBack={() => setView('journal')} />
   } else if (view === 'checkin') {
