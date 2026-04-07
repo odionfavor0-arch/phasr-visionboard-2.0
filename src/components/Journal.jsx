@@ -33,12 +33,82 @@ const MOODS = [
 ]
 
 const TEMPLATES = [
-  { id: 'daily-quick-start', tier: 'Basic', name: 'Daily quick start', useWhen: 'Use this when you open the app and need a grounded starting point.', starter: '• What matters most today?\n• What is one thing I must complete?\n• What might distract me?\n• How do I want to feel today?', accent: '#f6d7f7' },
-  { id: 'gratitude-diary', tier: 'Basic', name: 'Gratitude diary', useWhen: 'Use this when you want to slow down and notice what is good.', starter: '• What am I grateful for today?\n• Why does this matter to me?\n• What moment made me smile today?', accent: '#ffe8cc' },
-  { id: 'clarity-reset', tier: 'Basic', name: 'Clarity reset', useWhen: 'Use this when your mind feels crowded and you need clarity.', starter: '• What is bothering me right now?\n• Why is this affecting me?\n• What do I need instead?\n• What is the next step I can take?', accent: '#ffe3ef' },
-  { id: 'overthinking-dump', tier: 'Pro', name: 'Overthinking dump', useWhen: 'Use this when your head is loud and you need to clear mental noise.', starter: '• What is on my mind right now?\n• What am I overthinking?\n• What is in my control?\n• What can I ignore for now?', accent: '#dff1ff' },
-  { id: 'unsent-message', tier: 'Pro', name: 'Unsent message', useWhen: 'Use this when there is something you wish you could say.', starter: '• What do I wish I could say?\n• Why haven’t I said it?\n• How do I truly feel about this?', accent: '#fce1ea' },
-  { id: 'decision-helper', tier: 'Pro', name: 'Decision helper', useWhen: 'Use this when you feel stuck between options.', starter: '• What decision am I trying to make?\n• What are my options?\n• What feels right long term?\n• What is the next small step?', accent: '#e5f7ef' },
+  {
+    id: 'daily-quick-start',
+    tier: 'Basic',
+    name: 'Daily quick start',
+    useWhen: 'Use this when you open the app and need a grounded starting point.',
+    accent: '#f6d7f7',
+    fields: [
+      { label: 'What matters most today?', subtext: 'Name the one thing that deserves your strongest focus.' },
+      { label: 'What is one thing I must complete?', subtext: 'Be specific about the task that truly needs to get done.' },
+      { label: 'What might distract me?', subtext: 'Write down the pattern, person, or habit that could pull you off course.' },
+      { label: 'How do I want to feel today?', subtext: 'Choose the energy you want to carry into your day.' },
+    ],
+  },
+  {
+    id: 'gratitude-diary',
+    tier: 'Basic',
+    name: 'Gratitude diary',
+    useWhen: 'Use this when you want to slow down and notice what is good.',
+    accent: '#ffe8cc',
+    fields: [
+      { label: 'What am I grateful for today?', subtext: 'Name the people, moments, or things that mattered today.' },
+      { label: 'Why does this matter to me?', subtext: 'Go one layer deeper and write why it touched you.' },
+      { label: 'What moment made me smile today?', subtext: 'Capture the smallest bright moment you want to remember.' },
+    ],
+  },
+  {
+    id: 'clarity-reset',
+    tier: 'Basic',
+    name: 'Clarity reset',
+    useWhen: 'Use this when your mind feels crowded and you need clarity.',
+    accent: '#ffe3ef',
+    fields: [
+      { label: 'What is bothering me right now?', subtext: 'Be specific about the thought, pressure, or situation.' },
+      { label: 'Why is this affecting me?', subtext: 'Write what part of this feels heavy or hard to carry.' },
+      { label: 'What do I need instead?', subtext: 'Name the clarity, space, support, or action you need.' },
+      { label: 'What is one step I can take today?', subtext: 'Choose the smallest move that would change the energy.' },
+    ],
+  },
+  {
+    id: 'overthinking-dump',
+    tier: 'Pro',
+    name: 'Overthinking dump',
+    useWhen: 'Use this when your head is loud and you need to clear mental noise.',
+    accent: '#dff1ff',
+    fields: [
+      { label: 'What is on my mind right now?', subtext: 'Let the first thought out without cleaning it up.' },
+      { label: 'What am I overthinking?', subtext: 'Name the loop you keep replaying in your head.' },
+      { label: 'What is in my control?', subtext: 'Separate what you can act on from what you cannot.' },
+      { label: 'What can I ignore for now?', subtext: 'Give yourself permission to put something down.' },
+    ],
+  },
+  {
+    id: 'unsent-message',
+    tier: 'Pro',
+    name: 'Unsent message',
+    useWhen: 'Use this when there is something you wish you could say.',
+    accent: '#fce1ea',
+    fields: [
+      { label: 'What do I wish I could say?', subtext: 'Write the message exactly as it wants to come out.' },
+      { label: 'Why haven’t I said it?', subtext: 'Be honest about fear, timing, or what is holding you back.' },
+      { label: 'How do I truly feel about this?', subtext: 'Name the feeling under the words.' },
+    ],
+  },
+  {
+    id: 'decision-helper',
+    tier: 'Pro',
+    name: 'Decision helper',
+    useWhen: 'Use this when you feel stuck between options.',
+    accent: '#e5f7ef',
+    fields: [
+      { label: 'What decision am I trying to make?', subtext: 'State the decision clearly in one sentence.' },
+      { label: 'What are my options?', subtext: 'List the real choices in front of you.' },
+      { label: 'What feels right long term?', subtext: 'Think beyond pressure and focus on the life you are building.' },
+      { label: 'What is the next small step?', subtext: 'Pick one move that gives you more clarity.' },
+    ],
+  },
 ]
 
 const BACKGROUNDS = [
@@ -203,6 +273,47 @@ function TemplatesPage({ onBack, onSelect }) {
   )
 }
 
+function buildTemplateContent(template, answers) {
+  return template.fields
+    .map(field => `${field.label}\n${answers[field.label] || ''}`.trim())
+    .join('\n\n')
+}
+
+function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
+  return (
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'linear-gradient(180deg, #7b4a88 0%, #f8f0fb 100%)', padding: '0.9rem 0.9rem 1.5rem' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <button type="button" onClick={onBack} style={{ ...ghostIconButtonStyle, background: 'rgba(255,255,255,0.86)' }}>
+            <ArrowLeft size={20} />
+          </button>
+          <h2 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 600, color: '#fff' }}>{template.name}</h2>
+        </div>
+        <p style={{ margin: 0, color: '#fff6fb', fontSize: '1rem', lineHeight: 1.65 }}>{template.useWhen}</p>
+
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {template.fields.map(field => (
+            <div key={field.label} style={{ background: 'rgba(255,255,255,0.93)', borderRadius: 22, padding: '1rem', display: 'grid', gap: '0.55rem' }}>
+              <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#342138' }}>{field.label}</p>
+              <p style={{ margin: 0, color: '#6b5b6e', lineHeight: 1.6 }}>{field.subtext}</p>
+              <textarea
+                value={answers[field.label] || ''}
+                onChange={event => onChange(field.label, event.target.value)}
+                placeholder="Enter your thoughts..."
+                style={{ width: '100%', minHeight: 86, border: '1px solid #ead8e7', borderRadius: 16, padding: '0.9rem', outline: 'none', resize: 'vertical', fontSize: '0.98rem', lineHeight: 1.6, color: '#2f1e2a', background: '#fff' }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <button type="button" onClick={onApply} style={{ width: '100%', border: 'none', borderRadius: 16, padding: '1rem', background: 'linear-gradient(135deg, #d35ac0, #8d59da)', color: '#fff', fontWeight: 800, fontSize: '1.05rem', boxShadow: '0 14px 28px rgba(141,89,218,0.26)' }}>
+          Save entry
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function EntryDetail({ entry, onBack }) {
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff' }}>
@@ -234,7 +345,7 @@ function EntryDetail({ entry, onBack }) {
   )
 }
 
-function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSaving }) {
+function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpenImageOptions, isSaving }) {
   const [showMenu, setShowMenu] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
   const fileInputRef = useRef(null)
@@ -316,9 +427,9 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           {draft.images.length ? (
             <div style={{ display: 'flex', gap: '0.7rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
               {draft.images.map(image => (
-                <div key={image.id} style={{ flex: '0 0 auto', width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff' }}>
+                <button key={image.id} type="button" onClick={() => onOpenImageOptions(image)} onContextMenu={event => { event.preventDefault(); onOpenImageOptions(image) }} style={{ flex: '0 0 auto', width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'relative' }}>
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
+                </button>
               ))}
             </div>
           ) : null}
@@ -488,7 +599,11 @@ export default function Journal() {
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [showMoodPicker, setShowMoodPicker] = useState(false)
   const [showSortSheet, setShowSortSheet] = useState(false)
-  const [showTemplates, setShowTemplates] = useState(false)
+  const [templateScreen, setTemplateScreen] = useState('list')
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [templateAnswers, setTemplateAnswers] = useState({})
+  const [imageSheet, setImageSheet] = useState(null)
+  const [expandedImage, setExpandedImage] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -509,8 +624,9 @@ export default function Journal() {
   }
 
   function selectTemplate(template) {
-    setDraft(prev => ({ ...prev, prompt: template.name, title: '', content: template.starter }))
-    setShowTemplates(false)
+    setSelectedTemplate(template)
+    setTemplateAnswers(Object.fromEntries(template.fields.map(field => [field.label, ''])))
+    setTemplateScreen('detail')
   }
 
   async function saveEntry() {
@@ -563,6 +679,23 @@ export default function Journal() {
     }
   }
 
+  function applyTemplateAnswers() {
+    if (!selectedTemplate) return
+    setDraft(prev => ({
+      ...prev,
+      prompt: selectedTemplate.name,
+      title: prev.title,
+      content: buildTemplateContent(selectedTemplate, templateAnswers),
+    }))
+    setTemplateScreen('none')
+  }
+
+  function removeImage(target) {
+    setDraft(prev => ({ ...prev, images: prev.images.filter(image => image.id !== target.id) }))
+    setImageSheet(null)
+    setExpandedImage(null)
+  }
+
   if (screen === 'write') {
     return (
       <>
@@ -571,10 +704,20 @@ export default function Journal() {
           setDraft={setDraft}
           onBack={() => setScreen('list')}
           onSave={saveEntry}
-          onOpenTemplates={() => setShowTemplates(true)}
+          onOpenTemplates={() => setTemplateScreen('list')}
+          onOpenImageOptions={image => setImageSheet(image)}
           isSaving={isSaving}
         />
-        {showTemplates ? <TemplatesPage onBack={() => setShowTemplates(false)} onSelect={selectTemplate} /> : null}
+        {templateScreen === 'list' ? <TemplatesPage onBack={() => setTemplateScreen('none')} onSelect={selectTemplate} /> : null}
+        {templateScreen === 'detail' && selectedTemplate ? (
+          <TemplateDetail
+            template={selectedTemplate}
+            answers={templateAnswers}
+            onChange={(key, value) => setTemplateAnswers(current => ({ ...current, [key]: value }))}
+            onBack={() => setTemplateScreen('list')}
+            onApply={applyTemplateAnswers}
+          />
+        ) : null}
       </>
     )
   }
@@ -584,7 +727,9 @@ export default function Journal() {
       <div style={{ minHeight: 'calc(100vh - 56px)', display: 'grid', placeItems: 'center', background: '#fff', padding: '2rem' }}>
         <div style={{ textAlign: 'center', display: 'grid', gap: '1rem' }}>
           <div style={{ width: 88, height: 88, margin: '0 auto', borderRadius: '50%', border: '6px solid #fde2ec', borderTopColor: 'var(--app-accent)', animation: 'phasr-spin 1s linear infinite' }} />
-          <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#3b2330' }}>Sage is reading your entry...</p>
+          <div style={{ width: 82, height: 82, margin: '0 auto', borderRadius: '50%', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>SAGE</div>
+          <p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', lineHeight: 1.25, color: '#3b2330' }}>Sage is reading your entry...</p>
+          <p style={{ margin: 0, color: '#8f7180', lineHeight: 1.8 }}>Generating your clarity score and personal response.</p>
           <style>{`@keyframes phasr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
@@ -655,6 +800,17 @@ export default function Journal() {
           ))}
         </div>
         <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%' }}>Skip for now →</button>
+      </BottomSheet>
+
+      <BottomSheet open={Boolean(imageSheet)} onClose={() => setImageSheet(null)} title="Image">
+        <div style={{ display: 'grid', gap: '0.65rem' }}>
+          <button type="button" onClick={() => { setExpandedImage(imageSheet); setImageSheet(null) }} style={menuRowStyle}><span>Expand image</span><span>→</span></button>
+          <button type="button" onClick={() => removeImage(imageSheet)} style={menuRowStyle}><span>Delete image</span><span>×</span></button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={Boolean(expandedImage)} onClose={() => setExpandedImage(null)} title="Image preview">
+        {expandedImage ? <img src={expandedImage.url} alt={expandedImage.name} style={{ width: '100%', borderRadius: 18, display: 'block' }} /> : null}
       </BottomSheet>
     </>
   )
