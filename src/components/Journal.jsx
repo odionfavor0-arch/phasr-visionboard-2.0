@@ -166,10 +166,13 @@ function getTemplateSummary(entry) {
 }
 
 function generateFallbackTitle(draft) {
-  const summary = draft.templateFields
-    ? draft.templateFields.map(field => draft.templateAnswers?.[field.label]).filter(Boolean).join(' ')
-    : draft.content
-  return makePreview(summary).split(/[.!?]/)[0] || 'Journal entry'
+  if (draft.templateFields) {
+    const firstAnswer = draft.templateFields
+      .map(field => draft.templateAnswers?.[field.label])
+      .find(Boolean)
+    return makePreview(firstAnswer || '').split(/[.!?]/)[0] || draft.prompt || 'Journal entry'
+  }
+  return makePreview(draft.content).split(/[.!?]/)[0] || 'Journal entry'
 }
 
 function countWords(text) {
@@ -334,7 +337,7 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
 
 function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
-  const detailBody = getTemplateSummary(entry) || entry.content || ''
+  const detailBody = entry.content || getTemplateSummary(entry) || ''
 
   function speakResponse() {
     if (!window.speechSynthesis || !entry?.sageResponse) return
@@ -391,6 +394,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
   const [showMenu, setShowMenu] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
   const [activeImageActionsId, setActiveImageActionsId] = useState(null)
+  const [editorFocused, setEditorFocused] = useState(false)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
   const recognitionRef = useRef(null)
@@ -519,7 +523,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
           {!draft.templateFields ? (
-            <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 500 }} />
+            <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 500 }} />
           ) : (
             <div style={{ display: 'grid', gap: '1rem' }}>
               <p style={{ margin: 0, fontSize: '2rem', fontWeight: 500, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
@@ -576,12 +580,12 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
             </div>
           ) : null}
           {!draft.templateFields ? (
-            <textarea value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+            <textarea value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
           ) : null}
         </div>
       </div>
 
-      <div style={{ position: 'sticky', bottom: 0, borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.55rem 0.8rem max(0.75rem, env(safe-area-inset-bottom))', display: 'grid', gap: '0.55rem' }}>
+      <div style={{ position: editorFocused || activeTray ? 'fixed' : 'sticky', left: 0, right: 0, bottom: 0, zIndex: 22, borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.55rem 0.8rem max(0.75rem, env(safe-area-inset-bottom))', display: 'grid', gap: '0.55rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#8f7180', fontSize: '0.82rem' }}><span>{wordCount} words</span><span>{draft.images.length ? `${draft.images.length} image${draft.images.length === 1 ? '' : 's'}` : 'Ready to write'}</span></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '0.45rem' }}>
           {[{ id: 'background', icon: Paintbrush }, { id: 'image', icon: ImageIcon }, { id: 'emoji', icon: Smile }, { id: 'font', icon: Type }, { id: 'list', icon: List }, { id: 'tag', icon: Tag }, { id: 'mic', icon: Mic }].map(item => {
@@ -787,7 +791,11 @@ export default function Journal() {
     setIsSaving(true)
     setScreen('processing')
     try {
-      const analysis = await generateSageAnalysis(draft)
+      const analysisInput = {
+        ...draft,
+        content: draft.templateFields ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers }) : draft.content,
+      }
+      const analysis = await generateSageAnalysis(analysisInput)
       const entry = {
         id: editingEntryId || Date.now(),
         createdAt: new Date().toISOString(),
@@ -938,13 +946,11 @@ export default function Journal() {
 
           <div style={{ display: 'grid', gap: '0.6rem' }}>
             {filteredEntries.map(entry => (
-              <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.4rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.32rem' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.8rem' }}>
-                  <span style={{ color: '#8f7180', fontSize: '0.96rem' }}>{formatDate(entry.date)}</span>
-                  <span style={{ color: 'var(--app-accent)', fontSize: '0.86rem', fontWeight: 700 }}>{entry.title || 'Untitled'}</span>
-                </div>
-                <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.4 }}>{entry.title || 'Untitled reflection'}</p>
-                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55 }}>{makePreview(entry.content) || 'Start writing...'}</p>
+              <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.55rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.42rem' }}>
+                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.96rem' }}>{formatDate(entry.date)}</p>
+                <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35 }}>{entry.title || 'Untitled reflection'}</p>
+                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.content || 'Start writing...'}</p>
+                <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
                     <span>{entry.mood?.emoji || '😊'}</span>
