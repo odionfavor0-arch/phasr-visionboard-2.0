@@ -165,12 +165,16 @@ function getTemplateSummary(entry) {
     .join('\n\n')
 }
 
+function getEntryTitle(entryOrDraft, generatedTitle = '') {
+  if (entryOrDraft?.templateFields && entryOrDraft?.prompt) return entryOrDraft.prompt
+  const manualTitle = String(entryOrDraft?.title || '').trim()
+  if (manualTitle) return manualTitle
+  return String(generatedTitle || generateFallbackTitle(entryOrDraft)).trim() || 'Journal entry'
+}
+
 function generateFallbackTitle(draft) {
   if (draft.templateFields) {
-    const firstAnswer = draft.templateFields
-      .map(field => draft.templateAnswers?.[field.label])
-      .find(Boolean)
-    return makePreview(firstAnswer || '').split(/[.!?]/)[0] || draft.prompt || 'Journal entry'
+    return draft.prompt || 'Journal entry'
   }
   return makePreview(draft.content).split(/[.!?]/)[0] || 'Journal entry'
 }
@@ -200,7 +204,7 @@ async function generateSageAnalysis({ title, content, mood, prompt }) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_GROQ_KEY || ''
   if (!apiKey) {
     return {
-      generatedTitle: title || makePreview(content) || 'Journal entry',
+      generatedTitle: title || prompt || makePreview(content) || 'Journal entry',
       clarityScore: mood?.score || 7,
       clarityLabel: mood?.label || 'Reflective',
       sageResponse: 'You captured something honest here. Hold onto the clearest sentence and let that become your next step.',
@@ -219,7 +223,7 @@ async function generateSageAnalysis({ title, content, mood, prompt }) {
       messages: [
         {
           role: 'system',
-          content: 'You are Sage, a reflective journal coach. Return strict JSON with: generatedTitle, clarityScore, clarityLabel, sageResponse. Clarity score must be an integer 1 to 10. Clarity label must be one of Calm, Focused, Stressed, Reflective, Confident, Energised.',
+          content: 'You are Sage, a reflective journal coach. Return strict JSON with: generatedTitle, clarityScore, clarityLabel, sageResponse. If the user used a template, generatedTitle should match the template title exactly. If they did not use a template, generate a short human title from the writing. Clarity score must be an integer 1 to 10. Clarity label must be one concise emotional or mental-state label such as Calm, Focused, Stressed, Reflective, Confident, Energised, Productive, Angry, Avoidant, Clear, Confused, Happy, Heavy, or Decisive.',
         },
         {
           role: 'user',
@@ -337,7 +341,7 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
 
 function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
-  const detailBody = entry.content || getTemplateSummary(entry) || ''
+  const detailBody = getTemplateSummary(entry) || entry.content || ''
 
   function speakResponse() {
     if (!window.speechSynthesis || !entry?.sageResponse) return
@@ -357,7 +361,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
           <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{formatDate(entry.date)} {entry.mood?.emoji || ''}</p>
-          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500, color: '#2f1e2a' }}>{entry.title || 'Untitled reflection'}</h1>
+          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
         </div>
         <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
           <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
@@ -800,7 +804,7 @@ export default function Journal() {
         id: editingEntryId || Date.now(),
         createdAt: new Date().toISOString(),
         date: draft.date,
-        title: draft.title.trim() || analysis.generatedTitle || generateFallbackTitle(draft),
+        title: getEntryTitle(draft, analysis.generatedTitle),
         content: draft.content,
         prompt: draft.prompt,
         mood: draft.mood || MOODS[0],
@@ -824,7 +828,7 @@ export default function Journal() {
         id: editingEntryId || Date.now(),
         createdAt: new Date().toISOString(),
         date: draft.date,
-        title: draft.title.trim() || generateFallbackTitle(draft),
+        title: getEntryTitle(draft),
         content: draft.content,
         prompt: draft.prompt,
         mood: draft.mood || MOODS[0],
@@ -948,8 +952,8 @@ export default function Journal() {
             {filteredEntries.map(entry => (
               <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.55rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.42rem' }}>
                 <p style={{ margin: 0, color: '#8f7180', fontSize: '0.96rem' }}>{formatDate(entry.date)}</p>
-                <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35 }}>{entry.title || 'Untitled reflection'}</p>
-                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.content || 'Start writing...'}</p>
+                <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
+                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{getTemplateSummary(entry) || entry.content || 'Start writing...'}</p>
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
@@ -959,6 +963,7 @@ export default function Journal() {
                   </span>
                   <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}>⋯</button>
                 </div>
+                <p style={{ margin: 0, color: '#7d6170', fontSize: '0.9rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.sageResponse || 'Sage response will appear here.'}</p>
                 {entryActionId === entry.id ? (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.55rem', marginTop: '0.4rem' }}>
                     <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>✎</button>
