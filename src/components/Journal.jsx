@@ -160,7 +160,7 @@ function makePreview(text) {
 function getTemplateSummary(entry) {
   if (!entry?.templateFields || !entry?.templateAnswers) return String(entry?.content || '')
   return entry.templateFields
-    .map(field => entry.templateAnswers?.[field.label])
+    .map(field => `${field.label}\n${entry.templateAnswers?.[field.label] || ''}`.trim())
     .filter(Boolean)
     .join('\n\n')
 }
@@ -341,7 +341,7 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
 
 function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
-  const detailBody = getTemplateSummary(entry) || entry.content || ''
+  const detailBody = entry.content || getTemplateSummary(entry) || ''
 
   function speakResponse() {
     if (!window.speechSynthesis || !entry?.sageResponse) return
@@ -382,7 +382,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
             </div>
           </div>
         </div>
-        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
+        <div style={{ display: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
             <p style={sectionLabelStyle}>Sage’s Response</p>
             <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>🔊</button>
@@ -953,7 +953,7 @@ export default function Journal() {
               <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.55rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.42rem' }}>
                 <p style={{ margin: 0, color: '#8f7180', fontSize: '0.96rem' }}>{formatDate(entry.date)}</p>
                 <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
-                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{getTemplateSummary(entry) || entry.content || 'Start writing...'}</p>
+                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.content || getTemplateSummary(entry) || 'Start writing...'}</p>
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
@@ -963,7 +963,7 @@ export default function Journal() {
                   </span>
                   <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}>⋯</button>
                 </div>
-                <p style={{ margin: 0, color: '#7d6170', fontSize: '0.9rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.sageResponse || 'Sage response will appear here.'}</p>
+                <p style={{ display: 'none' }}>{entry.sageResponse || 'Sage response will appear here.'}</p>
                 {entryActionId === entry.id ? (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.55rem', marginTop: '0.4rem' }}>
                     <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>✎</button>
