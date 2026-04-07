@@ -1,10 +1,130 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, LoaderCircle, Mic, Plus } from 'lucide-react'
+import {
+  ArrowLeft,
+  Ellipsis,
+  Image as ImageIcon,
+  List,
+  LoaderCircle,
+  MessageCircleHeart,
+  Mic,
+  Palette,
+  Plus,
+  Sparkles,
+  Tag,
+  Type,
+} from 'lucide-react'
 
 const STORAGE_KEY = 'phasr_journal_entries'
 const LEGACY_KEYS = ['phasr_journal_v2', 'phasr_journal']
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
+
+const JOURNAL_RESPONSE_PROMPT = `You are Sage.
+
+The user is writing in a private journal. You read what they wrote and respond directly as a sharp, caring, and honest best friend would - someone real, not a therapist, not a coach, and not a system following a structure.
+
+Core behavior:
+- Speak directly using "you" and "your."
+- Respond to everything they wrote, moving naturally between topics if needed.
+- Match the length to the entry. Keep it concise but complete. Do not overexplain.
+- Let the content shape the response. No fixed structure or formula.
+- Only ask a question if it genuinely adds value.
+
+Answering:
+- If there is a question, answer it directly and clearly.
+- Have a real opinion. Agree, disagree, or add nuance - but say something meaningful.
+- Do not delay answers with setup.
+
+Tone:
+- Warm, real, and grounded - like a best friend who tells the truth.
+- Natural and conversational, not polished or clinical.
+- No overexplaining. No "teaching mode."
+- Do not speak about the user in third person.
+
+Judgment and honesty:
+- If something is concerning, say it clearly.
+- If something stands out as strong or real, acknowledge it specifically.
+- If there are gaps or blind spots, point them out.
+- If they are overwhelmed, meet them there first - do not rush into fixing.
+
+Return JSON only with these exact keys:
+- title
+- clarityScore
+- clarityLabel
+- sageResponse
+
+Rules:
+- title should be short, natural, and based on what was written.
+- If the user already wrote a title, keep it unless a stronger version is obvious.
+- clarityScore must be an integer from 1 to 10.
+- clarityLabel must be short, like Calm, Focused, Stressed, Confused, Energised.
+- sageResponse must follow the behavior above.
+- Do not include markdown fences or extra keys.`
+
+const JOURNAL_TEMPLATES = [
+  {
+    id: 'freewrite',
+    name: 'Quick Guide',
+    description: 'Follow the guide to record your day easily.',
+    accent: '#f3ddfb',
+    button: '#8b5cf6',
+    prompt: 'What is on your mind?',
+    title: '',
+    starter: '',
+  },
+  {
+    id: 'gratitude',
+    name: 'Gratitude Diary',
+    description: 'Express your gratitude and light up your day.',
+    accent: '#ffe7ca',
+    button: '#ff7a59',
+    prompt: 'What are three things you are grateful for today?',
+    title: 'Gratitude',
+    starter: 'Today I am grateful for:\n1. \n2. \n3. ',
+  },
+  {
+    id: 'clarity',
+    name: 'Clarity Reset',
+    description: 'Get honest about what matters next.',
+    accent: '#dff5ef',
+    button: '#2db89a',
+    prompt: 'What feels tangled, and what would clarity change right now?',
+    title: 'Clarity reset',
+    starter: 'What feels unclear:\nWhat keeps repeating:\nThe next honest move:\n',
+  },
+  {
+    id: 'food',
+    name: 'Food Diary',
+    description: 'Track how food shaped your mood and energy.',
+    accent: '#f6ece6',
+    button: '#bb6a58',
+    prompt: 'How did food affect your body, mood, and energy today?',
+    title: 'Food check-in',
+    starter: 'What I ate:\nHow I felt after:\nWhat I want to change:\n',
+  },
+  {
+    id: 'selfcare',
+    name: 'Self-Care Diary',
+    description: 'Check in with your emotions and your needs.',
+    accent: '#ffe2ea',
+    button: '#ef5f97',
+    prompt: 'How are you feeling, and what do you need more of today?',
+    title: 'Self-care check-in',
+    starter: 'Mood:\nBody:\nMind:\nWhat I need today:\n',
+  },
+]
+
+const MOOD_OPTIONS = ['Calm', 'Focused', 'Stressed', 'Confused', 'Energised']
+const WRITER_TOOLS = [
+  { id: 'decor', icon: Palette, label: 'Decor' },
+  { id: 'image', icon: ImageIcon, label: 'Image' },
+  { id: 'sage', icon: Sparkles, label: 'Sage' },
+  { id: 'emoji', icon: MessageCircleHeart, label: 'Emoji' },
+  { id: 'text', icon: Type, label: 'Text' },
+  { id: 'list', icon: List, label: 'List' },
+  { id: 'tag', icon: Tag, label: 'Tag' },
+  { id: 'record', icon: Mic, label: 'Record' },
+]
 
 function safeRead(key, fallback) {
   try {
@@ -93,6 +213,7 @@ function normalizeEntryShape(entry) {
     clarityLabel: String(entry?.clarityLabel || entry?.mood || fallback.label),
     sageResponse: String(entry?.sageResponse || entry?.insight || fallbackSageResponse(content)),
     prompt: String(entry?.prompt || 'What is on your mind?'),
+    templateId: String(entry?.templateId || 'freewrite'),
   }
 }
 
@@ -150,25 +271,7 @@ async function generateJournalInsight(content, existingTitle) {
   if (!clean) return fallbackPayload
 
   try {
-    const raw = await callGroq(
-      [{ role: 'user', content: clean }],
-      `You are Sage inside Phasr.
-
-Return JSON only with these exact keys:
-- title
-- clarityScore
-- clarityLabel
-- sageResponse
-
-Rules:
-- If the user already has a title, improve it only if needed.
-- clarityScore must be an integer from 1 to 10.
-- clarityLabel must be one word or short phrase like Calm, Focused, Stressed, Confused, Energised.
-- sageResponse should be warm, direct, concise, and helpful.
-- Do not include markdown fences.
-- Do not include extra keys.`
-    )
-
+    const raw = await callGroq([{ role: 'user', content: clean }], JOURNAL_RESPONSE_PROMPT)
     const parsed = JSON.parse(
       String(raw || '')
         .replace(/^```json/i, '')
@@ -215,9 +318,12 @@ export default function Journal() {
   const [screen, setScreen] = useState('list')
   const [draftTitle, setDraftTitle] = useState('')
   const [draftContent, setDraftContent] = useState('')
+  const [draftMood, setDraftMood] = useState('Calm')
+  const [selectedTemplate, setSelectedTemplate] = useState(JOURNAL_TEMPLATES[0])
   const [activeEntry, setActiveEntry] = useState(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingSupported, setRecordingSupported] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
 
   const recognitionRef = useRef(null)
   const baseContentRef = useRef('')
@@ -271,7 +377,17 @@ export default function Journal() {
   function openWriter() {
     setDraftTitle('')
     setDraftContent('')
+    setDraftMood('Calm')
+    setSelectedTemplate(JOURNAL_TEMPLATES[0])
+    setShowTemplates(false)
     setScreen('write')
+  }
+
+  function applyTemplate(template) {
+    setSelectedTemplate(template)
+    setDraftTitle(template.title || '')
+    setDraftContent(template.starter || '')
+    setShowTemplates(false)
   }
 
   function toggleRecording() {
@@ -281,6 +397,33 @@ export default function Journal() {
       return
     }
     recognitionRef.current.start()
+  }
+
+  function applyWriterTool(toolId) {
+    if (toolId === 'record') {
+      toggleRecording()
+      return
+    }
+    if (toolId === 'list') {
+      setDraftContent(current => `${current}${current ? '\n' : ''}• `)
+      return
+    }
+    if (toolId === 'emoji') {
+      setDraftContent(current => `${current}${current ? ' ' : ''}🙂`)
+      return
+    }
+    if (toolId === 'sage') {
+      setDraftContent(current => `${current}${current ? '\n\n' : ''}Sage, help me see this clearly:\n`)
+      return
+    }
+    if (toolId === 'tag') {
+      setDraftContent(current => `${current}${current ? ' ' : ''}#clarity`)
+      return
+    }
+    if (toolId === 'text') {
+      setDraftTitle(current => current || 'New thought')
+      return
+    }
   }
 
   async function handleSaveEntry() {
@@ -293,9 +436,10 @@ export default function Journal() {
       title: String(draftTitle || '').trim() || fallbackTitle(content),
       content,
       clarityScore: null,
-      clarityLabel: '',
+      clarityLabel: draftMood || '',
       sageResponse: '',
-      prompt: 'What is on your mind?',
+      prompt: selectedTemplate?.prompt || 'What is on your mind?',
+      templateId: selectedTemplate?.id || 'freewrite',
     }
 
     setEntries(current => [baseEntry, ...current])
@@ -307,7 +451,7 @@ export default function Journal() {
       ...baseEntry,
       title: insight.title || baseEntry.title,
       clarityScore: insight.clarityScore,
-      clarityLabel: insight.clarityLabel,
+      clarityLabel: draftMood || insight.clarityLabel,
       sageResponse: insight.sageResponse,
     }
 
@@ -328,22 +472,27 @@ export default function Journal() {
           <button type="button" onClick={() => setScreen('list')} style={{ border: 'none', background: 'none', padding: 0, color: '#3d1f2b', cursor: 'pointer' }}>
             <ArrowLeft size={22} />
           </button>
-          <button
-            type="button"
-            onClick={handleSaveEntry}
-            style={{
-              border: 'none',
-              borderRadius: 999,
-              background: 'linear-gradient(135deg, #e8407a, #f472a8)',
-              color: '#fff',
-              padding: '0.7rem 1rem',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Save entry
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button type="button" onClick={() => setShowTemplates(true)} style={{ border: 'none', background: 'none', padding: 0, color: '#7a5a66', cursor: 'pointer' }} aria-label="Open templates">
+              <Ellipsis size={22} />
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveEntry}
+              style={{
+                border: 'none',
+                borderRadius: 999,
+                background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                color: '#fff',
+                padding: '0.7rem 1rem',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Save entry
+            </button>
+          </div>
         </div>
 
         <div style={{ padding: '0 1rem 0.5rem', fontSize: '0.78rem', color: '#9b7a86' }}>{displayDate}</div>
@@ -376,7 +525,7 @@ export default function Journal() {
             style={{
               width: '100%',
               height: '100%',
-              minHeight: 340,
+              minHeight: 280,
               border: 'none',
               outline: 'none',
               resize: 'none',
@@ -390,7 +539,51 @@ export default function Journal() {
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.9rem 1rem 1.2rem', borderTop: '1px solid #f6d9e3' }}>
+        <div style={{ padding: '0.2rem 1rem 0.7rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', paddingBottom: 6 }}>
+            {MOOD_OPTIONS.map(mood => (
+              <button
+                key={mood}
+                type="button"
+                onClick={() => setDraftMood(mood)}
+                style={{
+                  border: '1px solid #f3ccd8',
+                  background: draftMood === mood ? '#fff1f6' : '#fff',
+                  color: draftMood === mood ? '#e8407a' : '#7a5a66',
+                  padding: '0.45rem 0.7rem',
+                  borderRadius: 999,
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                }}
+              >
+                {mood}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding: '0 1rem 0.85rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))', gap: 8, padding: '0.7rem 0.75rem', borderRadius: 24, background: '#fff', border: '1px solid #f3ccd8', boxShadow: '0 8px 20px rgba(232,64,122,0.08)' }}>
+            {WRITER_TOOLS.map(tool => {
+              const Icon = tool.icon
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => applyWriterTool(tool.id)}
+                  style={{ border: 'none', background: 'transparent', padding: 0, display: 'grid', placeItems: 'center', color: tool.id === 'record' && isRecording ? '#e8407a' : '#3d1f2b', cursor: 'pointer' }}
+                  aria-label={tool.label}
+                >
+                  <Icon size={21} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem 1.2rem', borderTop: '1px solid #f6d9e3' }}>
           <span style={{ fontSize: '0.82rem', color: '#9b7a86' }}>{wordCount} words</span>
           <button
             type="button"
@@ -412,6 +605,43 @@ export default function Journal() {
             {isRecording ? 'Recording...' : 'Record'}
           </button>
         </div>
+
+        {showTemplates && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: '#dff0ff', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '1rem', background: '#dff0ff', position: 'sticky', top: 0 }}>
+              <button type="button" onClick={() => setShowTemplates(false)} style={{ border: 'none', background: 'none', padding: 0, color: '#2c2530', cursor: 'pointer' }}>
+                <ArrowLeft size={22} />
+              </button>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#111', fontFamily: "'DM Sans', sans-serif" }}>Templates</h2>
+            </div>
+            <div style={{ padding: '0 1rem 2rem' }}>
+              <div style={{ borderRadius: 18, background: '#fff', padding: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ width: 32, height: 32, borderRadius: '50%', background: '#4ea1ff', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>+</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111' }}>Create My Template</span>
+                </div>
+              </div>
+              {JOURNAL_TEMPLATES.map(template => (
+                <div key={template.id} style={{ borderRadius: 18, background: template.accent, padding: '1.15rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2c2530', marginBottom: 8 }}>{template.name}</div>
+                      <div style={{ fontSize: '0.94rem', color: '#5d5561', lineHeight: 1.55, marginBottom: 16 }}>{template.description}</div>
+                      <button
+                        type="button"
+                        onClick={() => applyTemplate(template)}
+                        style={{ border: 'none', borderRadius: 10, background: template.button, color: '#fff', padding: '0.6rem 1rem', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        START
+                      </button>
+                    </div>
+                    <div style={{ width: 88, height: 88, borderRadius: '50%', background: 'rgba(255,255,255,0.5)' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -424,7 +654,7 @@ export default function Journal() {
             <LoaderCircle size={34} color="#e8407a" style={{ animation: 'spin 1s linear infinite' }} />
           </div>
           <p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '1.5rem', fontWeight: 700, color: '#3d1f2b' }}>Sage is reading your entry...</p>
-          <p style={{ margin: '0.7rem 0 0', color: '#8e6b78', lineHeight: 1.7, fontSize: '0.95rem' }}>Finding your clarity score, mood, and the right response.</p>
+          <p style={{ margin: '0.7rem 0 0', color: '#8e6b78', lineHeight: 1.7, fontSize: '0.95rem' }}>Finding your title, clarity score, mood, and response.</p>
         </div>
         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -474,12 +704,8 @@ export default function Journal() {
   }
 
   return (
-    <div style={{ minHeight: '100%', background: '#fff', padding: '0 0 6rem' }}>
-      <div style={{ padding: '1.1rem 1rem 0.8rem' }}>
-        <h1 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '1.7rem', color: '#3d1f2b' }}>Journal</h1>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', padding: '0 1rem' }}>
+    <div style={{ minHeight: '100%', background: '#fff', padding: '1rem 1rem 6rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
         {entries.length ? entries.map(entry => (
           <button
             key={entry.id}
