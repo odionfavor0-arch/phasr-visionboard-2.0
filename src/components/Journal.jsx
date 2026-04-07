@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
+  ArrowUpDown,
   Image as ImageIcon,
   List,
   Mic,
@@ -39,28 +40,104 @@ const MOODS = [
 
 const TEMPLATES = [
   {
-    id: 'quick-guide',
-    name: 'Quick Guide',
-    description: 'Follow the guide to record your day easily.',
+    id: 'daily-quick-start',
+    tier: 'Basic',
+    name: 'Daily quick start',
+    useWhen: 'Use this when you open the app and need a grounded starting point.',
+    description: 'A simple way to begin the day with clarity and direction.',
     prompt: "What's on your mind?",
-    starter: 'What happened today?\nWhat mattered most?\nWhat do I want to remember?',
+    starter: '• What matters most today?\n• What is one thing I must complete?\n• What might distract me?\n• How do I want to feel today?',
     accent: '#f6d7f7',
   },
   {
-    id: 'gratitude',
-    name: 'Gratitude Diary',
-    description: 'Express what felt beautiful, kind, or grounding today.',
+    id: 'gratitude-diary',
+    tier: 'Basic',
+    name: 'Gratitude diary',
+    useWhen: 'Use this when you want to slow down and notice what is good.',
+    description: 'A softer reflection that helps you stay rooted in what matters.',
     prompt: 'What felt meaningful today?',
-    starter: 'Three things I am grateful for:\n1.\n2.\n3.',
+    starter: '• What am I grateful for today?\n• Why does this matter to me?\n• What moment made me smile today?',
     accent: '#ffe8cc',
   },
   {
-    id: 'self-care',
-    name: 'Self-Care Diary',
-    description: 'Notice your body, energy, and what needs care.',
+    id: 'clarity-reset',
+    tier: 'Basic',
+    name: 'Clarity reset',
+    useWhen: 'Use this when your mind feels crowded and you need clarity.',
+    description: 'Pull the real issue into the light and move toward one next step.',
     prompt: 'What needs attention?',
-    starter: 'How am I feeling?\nWhat do I need more of?\nWhat am I carrying today?',
+    starter: '• What is bothering me right now?\n• Why is this affecting me?\n• What do I need instead?\n• What is the next step I can take?',
     accent: '#ffe3ef',
+  },
+  {
+    id: 'food-diary',
+    tier: 'Basic',
+    name: 'Food diary',
+    useWhen: 'Use this when you want to notice patterns around food and emotion.',
+    description: 'Track what you ate and what it was doing for you emotionally.',
+    prompt: 'What patterns am I noticing?',
+    starter: '• What did I eat today?\n• How did I feel before eating?\n• How did I feel after?\n• What patterns am I noticing?',
+    accent: '#fff0dc',
+  },
+  {
+    id: 'overthinking-dump',
+    tier: 'Pro',
+    name: 'Overthinking dump',
+    useWhen: 'Use this when your head is loud and you need to clear mental noise.',
+    description: 'A fast release for thoughts that keep circling.',
+    prompt: "What's on your mind?",
+    starter: '• What is on my mind right now?\n• What am I overthinking?\n• What is in my control?\n• What can I ignore for now?',
+    accent: '#dff1ff',
+  },
+  {
+    id: 'unsent-message',
+    tier: 'Pro',
+    name: 'Unsent message',
+    useWhen: 'Use this when there is something you wish you could say.',
+    description: 'A private place for emotional release without sending anything.',
+    prompt: 'What do I wish I could say?',
+    starter: '• What do I wish I could say?\n• Why haven’t I said it?\n• How do I truly feel about this?',
+    accent: '#fce1ea',
+  },
+  {
+    id: 'reality-check',
+    tier: 'Pro',
+    name: 'Reality check',
+    useWhen: 'Use this when you need to stop softening the truth.',
+    description: 'A sharper mirror for the thing you keep avoiding.',
+    prompt: 'What truth am I avoiding?',
+    starter: '• What am I avoiding?\n• What excuse have I been repeating?\n• What is the truth I don’t want to admit?',
+    accent: '#efe6ff',
+  },
+  {
+    id: 'decision-helper',
+    tier: 'Pro',
+    name: 'Decision helper',
+    useWhen: 'Use this when you feel stuck between options.',
+    description: 'A clear path for making the next honest choice.',
+    prompt: 'What decision am I trying to make?',
+    starter: '• What decision am I trying to make?\n• What are my options?\n• What feels right long term?\n• What is the next small step?',
+    accent: '#e5f7ef',
+  },
+  {
+    id: 'energy-audit',
+    tier: 'Pro',
+    name: 'Energy audit',
+    useWhen: 'Use this when you want to see what is feeding or draining you.',
+    description: 'A simple awareness reset for your day and your body.',
+    prompt: 'What gave me energy today?',
+    starter: '• What gave me energy today?\n• What drained me?\n• What should I do more of?\n• What should I reduce?',
+    accent: '#fff7d8',
+  },
+  {
+    id: 'future-self-check',
+    tier: 'Pro',
+    name: 'Future self check',
+    useWhen: 'Use this when you want direction and long-term honesty.',
+    description: 'A check-in between where you are and where you want to be.',
+    prompt: 'Where do I want to be in 3 months?',
+    starter: '• Where do I want to be in 3 months?\n• What am I doing today that supports that?\n• What needs to change?',
+    accent: '#e6f0ff',
   },
 ]
 
@@ -71,6 +148,16 @@ const BACKGROUNDS = [
   { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' } },
   { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' } },
 ]
+
+const BACKGROUND_DECOR = {
+  original: '',
+  rosy: '🌹 ✿ 🌷',
+  'dark-cute': '✦ ☾ ✦',
+  butterfly: '🦋 ✦ 🦋',
+  bows: '🎀 ✿ 🎀',
+}
+
+const STICKERS = ['💖', '🎀', '🧸', '🌨️', '✨', '🌸']
 
 const FONT_OPTIONS = [
   { id: 'dm', name: 'Default', family: "'DM Sans', sans-serif" },
@@ -229,13 +316,31 @@ function BottomSheet({ open, onClose, title, children, dim = true }) {
   )
 }
 function JournalList({ entries, search, setSearch, sortOrder, setSortOrder, onNew, onOpen }) {
+  const [showSortSheet, setShowSortSheet] = useState(false)
+
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1rem 1rem 5.5rem', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 22, padding: '0.8rem 0.85rem', boxShadow: '0 12px 28px rgba(86,53,66,0.05)' }}>
           <Search size={18} color="#8b6977" />
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', fontFamily: "'DM Sans', sans-serif", minWidth: 0 }} />
-          <button type="button" onClick={() => setSortOrder(current => (current === 'latest' ? 'oldest' : 'latest'))} style={{ border: '1px solid var(--app-border)', borderRadius: 16, padding: '0.55rem 0.75rem', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>{sortOrder === 'latest' ? 'Latest' : 'Oldest'}</button>
+          <button
+            type="button"
+            onClick={() => setShowSortSheet(true)}
+            style={{
+              width: 42,
+              height: 42,
+              border: '1px solid var(--app-border)',
+              borderRadius: 16,
+              background: '#fff',
+              color: 'var(--app-accent)',
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <ArrowUpDown size={18} />
+          </button>
         </div>
 
         <div style={{ display: 'grid', gap: '0.6rem' }}>
@@ -263,11 +368,42 @@ function JournalList({ entries, search, setSearch, sortOrder, setSortOrder, onNe
       <button type="button" onClick={onNew} style={{ position: 'fixed', right: '50%', transform: 'translateX(50%)', bottom: '1.2rem', width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', boxShadow: '0 18px 28px rgba(232,64,122,0.28)', display: 'grid', placeItems: 'center', cursor: 'pointer', zIndex: 8 }}>
         <Plus size={30} />
       </button>
+
+      <BottomSheet open={showSortSheet} onClose={() => setShowSortSheet(false)} title="Sort entries">
+        <div style={{ display: 'grid', gap: '0.65rem' }}>
+          {[
+            { id: 'latest', label: 'Latest first' },
+            { id: 'oldest', label: 'Oldest first' },
+          ].map(option => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => {
+                setSortOrder(option.id)
+                setShowSortSheet(false)
+              }}
+              style={{
+                ...menuRowStyle,
+                border: option.id === sortOrder ? '1px solid var(--app-accent)' : '1px solid var(--app-border)',
+                padding: '0.95rem 0.9rem',
+              }}
+            >
+              <span>{option.label}</span>
+              {option.id === sortOrder ? <Check size={18} /> : null}
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   )
 }
 
 function TemplatePicker({ onBack, onSelect }) {
+  const groupedTemplates = TEMPLATES.reduce((accumulator, template) => {
+    accumulator[template.tier] = [...(accumulator[template.tier] || []), template]
+    return accumulator
+  }, {})
+
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#eef6ff', padding: '0.8rem 0.8rem 1.4rem', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
@@ -275,11 +411,17 @@ function TemplatePicker({ onBack, onSelect }) {
           <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1d2430' }}>Templates</h2>
         </div>
-        {TEMPLATES.map(template => (
-          <div key={template.id} style={{ background: template.accent, borderRadius: 24, padding: '1.15rem', display: 'grid', gap: '0.55rem', boxShadow: '0 12px 26px rgba(66, 72, 90, 0.08)' }}>
-            <p style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#2f2530' }}>{template.name}</p>
-            <p style={{ margin: 0, color: '#6c6170', lineHeight: 1.55 }}>{template.description}</p>
-            <button type="button" onClick={() => onSelect(template)} style={{ justifySelf: 'start', marginTop: '0.35rem', border: 'none', borderRadius: 14, padding: '0.72rem 1rem', background: '#fff', color: '#6f4fe6', fontWeight: 800, cursor: 'pointer' }}>START</button>
+        {Object.entries(groupedTemplates).map(([group, templates]) => (
+          <div key={group} style={{ display: 'grid', gap: '0.85rem' }}>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6e7fa1' }}>{group}</p>
+            {templates.map(template => (
+              <div key={template.id} style={{ background: template.accent, borderRadius: 24, padding: '1.15rem', display: 'grid', gap: '0.55rem', boxShadow: '0 12px 26px rgba(66, 72, 90, 0.08)' }}>
+                <p style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#2f2530' }}>{template.name}</p>
+                <p style={{ margin: 0, fontSize: '0.84rem', color: '#5c5564', fontWeight: 700 }}>{template.useWhen}</p>
+                <p style={{ margin: 0, color: '#6c6170', lineHeight: 1.55 }}>{template.description}</p>
+                <button type="button" onClick={() => onSelect(template)} style={{ justifySelf: 'start', marginTop: '0.35rem', border: 'none', borderRadius: 14, padding: '0.72rem 1rem', background: '#fff', color: '#6f4fe6', fontWeight: 800, cursor: 'pointer' }}>START</button>
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -335,7 +477,9 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
   const fileInputRef = useRef(null)
+  const dateInputRef = useRef(null)
   const recognitionRef = useRef(null)
+  const [isRecording, setIsRecording] = useState(false)
 
   const wordCount = countWords(draft.content)
   const charCount = String(draft.content || '').length
@@ -364,8 +508,22 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
   function handleImagePick(event) {
     const file = event.target.files?.[0]
     if (!file) return
-    setDraft(prev => ({ ...prev, images: [...prev.images, file.name], content: `${prev.content}${prev.content ? '\n' : ''}[Image: ${file.name}]` }))
-    setActiveTray(null)
+    const reader = new FileReader()
+    reader.onload = () => {
+      setDraft(prev => ({
+        ...prev,
+        images: [
+          ...prev.images,
+          {
+            id: `${Date.now()}-${file.name}`,
+            name: file.name,
+            url: reader.result,
+          },
+        ],
+      }))
+      setActiveTray(null)
+    }
+    reader.readAsDataURL(file)
   }
 
   function startRecording() {
@@ -377,15 +535,33 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
     }
     const recognition = new SpeechRecognition()
     recognition.lang = 'en-US'
-    recognition.interimResults = false
+    recognition.continuous = true
+    recognition.interimResults = true
     recognition.maxAlternatives = 1
+    let finalTranscript = ''
     recognition.onresult = event => {
-      const transcript = event.results?.[0]?.[0]?.transcript || ''
-      setDraft(prev => ({ ...prev, content: `${prev.content}${prev.content ? '\n' : ''}${transcript}` }))
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index]
+        if (result.isFinal) {
+          finalTranscript += `${result[0]?.transcript || ''} `
+        }
+      }
+      if (finalTranscript.trim()) {
+        setDraft(prev => ({ ...prev, content: `${prev.content}${prev.content ? '\n' : ''}${finalTranscript.trim()}` }))
+        finalTranscript = ''
+      }
     }
-    recognition.onend = () => { recognitionRef.current = null }
+    recognition.onerror = () => {
+      setIsRecording(false)
+      recognitionRef.current = null
+    }
+    recognition.onend = () => {
+      setIsRecording(false)
+      recognitionRef.current = null
+    }
     recognition.start()
     recognitionRef.current = recognition
+    setIsRecording(true)
     setActiveTray(null)
   }
 
@@ -399,12 +575,37 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', ...currentBackground.style }}>
-        <div style={{ padding: '1rem 1rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.7rem', color: '#7f6672' }}>
-          <p style={{ margin: 0, fontSize: '0.96rem' }}>{formatFullDate(draft.date)}</p>
+        <div style={{ position: 'relative', padding: '1rem 1rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.7rem', color: '#7f6672', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.16, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.85rem', color: currentBackground.id === 'dark-cute' ? '#fff' : '#d1588b' }}>
+            {BACKGROUND_DECOR[draft.backgroundId] || ''}
+          </div>
+          <button
+            type="button"
+            onClick={() => dateInputRef.current?.showPicker?.() || dateInputRef.current?.click()}
+            style={{ border: 'none', background: 'transparent', padding: 0, margin: 0, color: '#7f6672', fontSize: '0.96rem', cursor: 'pointer' }}
+          >
+            {formatFullDate(draft.date)}
+          </button>
+          <input
+            ref={dateInputRef}
+            type="date"
+            value={draft.date}
+            onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))}
+            style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+          />
           <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || '😊'}</span>
         </div>
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
           <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.2rem 0 0.7rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500 }} />
+          {draft.images.length ? (
+            <div style={{ display: 'flex', gap: '0.7rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
+              {draft.images.map(image => (
+                <div key={image.id} style={{ flex: '0 0 auto', width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff' }}>
+                  <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+            </div>
+          ) : null}
           <textarea value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.12rem', lineHeight: 1.9 }} />
         </div>
       </div>
@@ -417,7 +618,15 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
             return (
               <button key={item.id} type="button" onClick={() => {
                 if (item.id === 'image') { fileInputRef.current?.click(); return }
-                if (item.id === 'mic') { startRecording(); return }
+                if (item.id === 'mic') {
+                  if (recognitionRef.current) {
+                    recognitionRef.current.stop()
+                    setIsRecording(false)
+                    return
+                  }
+                  startRecording()
+                  return
+                }
                 setActiveTray(current => (current === item.id ? null : item.id))
               }} style={{ border: 'none', background: '#fff', color: activeTray === item.id ? 'var(--app-accent)' : '#5d4450', display: 'grid', justifyItems: 'center', gap: '0.22rem', padding: '0.25rem 0', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>
                 <Icon size={18} />
@@ -448,14 +657,29 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
         </div>
       </BottomSheet>
 
-      <BottomSheet open={activeTray === 'emoji'} onClose={() => setActiveTray(null)} title="Mood & stickers" dim={false}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-          {MOODS.map(mood => (
-            <button key={mood.label} type="button" onClick={() => { setDraft(prev => ({ ...prev, mood })); insertEmoji(mood.emoji) }} style={{ border: '1px solid var(--app-border)', borderRadius: 18, background: '#fff', padding: '0.7rem 0.2rem', cursor: 'pointer' }}>
-              <div style={{ fontSize: '1.55rem' }}>{mood.emoji}</div>
-              <div style={{ fontSize: '0.72rem', color: '#7f6672', marginTop: '0.35rem' }}>{mood.label}</div>
-            </button>
-          ))}
+      <BottomSheet open={activeTray === 'emoji'} onClose={() => setActiveTray(null)} title="Emojis & stickers" dim={false}>
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <div>
+            <p style={{ margin: '0 0 0.55rem', fontSize: '0.76rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8f7180' }}>Emojis</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
+              {MOODS.map(mood => (
+                <button key={mood.label} type="button" onClick={() => { setDraft(prev => ({ ...prev, mood })); insertEmoji(mood.emoji) }} style={{ border: '1px solid var(--app-border)', borderRadius: 18, background: '#fff', padding: '0.7rem 0.2rem', cursor: 'pointer' }}>
+                  <div style={{ fontSize: '1.55rem' }}>{mood.emoji}</div>
+                  <div style={{ fontSize: '0.72rem', color: '#7f6672', marginTop: '0.35rem' }}>{mood.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 0.55rem', fontSize: '0.76rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8f7180' }}>Cute stickers</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.7rem' }}>
+              {STICKERS.map(sticker => (
+                <button key={sticker} type="button" onClick={() => insertEmoji(sticker)} style={{ border: '1px solid var(--app-border)', borderRadius: 18, background: '#fff', padding: '0.9rem', cursor: 'pointer', fontSize: '1.8rem' }}>
+                  {sticker}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </BottomSheet>
       <BottomSheet open={activeTray === 'font'} onClose={() => setActiveTray(null)} title="Font" dim={false}>
@@ -475,9 +699,9 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
       <BottomSheet open={activeTray === 'list'} onClose={() => setActiveTray(null)} title="List style" dim={false}>
         <div style={{ display: 'grid', gap: '0.55rem' }}>
-          <button type="button" onClick={() => applyListStyle('bullet')} style={menuRowStyle}>• Bullet points</button>
-          <button type="button" onClick={() => applyListStyle('check')} style={menuRowStyle}>✓ Check list</button>
-          <button type="button" onClick={() => applyListStyle('star')} style={menuRowStyle}>★ Star list</button>
+          <button type="button" onClick={() => applyListStyle('bullet')} style={menuRowStyle}><span>• Bullet points</span><span>• • •</span></button>
+          <button type="button" onClick={() => applyListStyle('check')} style={menuRowStyle}><span>☐ Check list</span><span>☐ ☐ ☐</span></button>
+          <button type="button" onClick={() => applyListStyle('star')} style={menuRowStyle}><span>★ Star list</span><span>★ ★ ★</span></button>
         </div>
       </BottomSheet>
 
@@ -668,7 +892,7 @@ export default function Journal() {
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%', cursor: 'pointer' }}>More moods →</button>
+        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '1rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1rem', width: '100%', cursor: 'pointer' }}>Skip for now →</button>
       </BottomSheet>
     </>
   )
