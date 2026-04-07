@@ -169,6 +169,7 @@ function blankDraft() {
     prompt: PROMPTS[0],
     mood: null,
     backgroundId: 'original',
+    templateAccent: '',
     color: '#2f1e2a',
     fontId: 'dm',
     images: [],
@@ -348,11 +349,17 @@ function EntryDetail({ entry, onBack }) {
 function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpenImageOptions, isSaving }) {
   const [showMenu, setShowMenu] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
+  const [activeImageActionsId, setActiveImageActionsId] = useState(null)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
   const recognitionRef = useRef(null)
+  const longPressTimerRef = useRef(null)
+  const dragRef = useRef(null)
   const currentBackground = BACKGROUNDS.find(item => item.id === draft.backgroundId) || BACKGROUNDS[0]
   const currentFont = FONTS.find(item => item.id === draft.fontId) || FONTS[0]
+  const writerBackgroundStyle = draft.templateAccent
+    ? { background: `linear-gradient(180deg, ${draft.templateAccent}33 0%, ${draft.templateAccent}14 100%)` }
+    : currentBackground.style
   const wordCount = countWords(draft.content)
 
   useEffect(() => () => recognitionRef.current?.stop?.(), [])
@@ -398,11 +405,58 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
     reader.onload = () => {
       setDraft(prev => ({
         ...prev,
-        images: [...prev.images, { id: `${Date.now()}-${file.name}`, name: file.name, url: reader.result }],
+        images: [
+          ...prev.images,
+          {
+            id: `${Date.now()}-${file.name}`,
+            name: file.name,
+            url: reader.result,
+            x: 16 + prev.images.length * 26,
+            y: 12 + prev.images.length * 18,
+          },
+        ],
       }))
       setActiveTray(null)
     }
     reader.readAsDataURL(file)
+  }
+
+  function startImageHold(image) {
+    clearTimeout(longPressTimerRef.current)
+    longPressTimerRef.current = setTimeout(() => {
+      setActiveImageActionsId(image.id)
+    }, 420)
+  }
+
+  function clearImageHold() {
+    clearTimeout(longPressTimerRef.current)
+  }
+
+  function beginDrag(event, image) {
+    dragRef.current = {
+      id: image.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: image.x || 0,
+      originY: image.y || 0,
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function moveDrag(event) {
+    if (!dragRef.current) return
+    const nextX = Math.max(0, dragRef.current.originX + (event.clientX - dragRef.current.startX))
+    const nextY = Math.max(0, dragRef.current.originY + (event.clientY - dragRef.current.startY))
+    setDraft(prev => ({
+      ...prev,
+      images: prev.images.map(image =>
+        image.id === dragRef.current.id ? { ...image, x: nextX, y: nextY } : image,
+      ),
+    }))
+  }
+
+  function endDrag() {
+    dragRef.current = null
   }
 
   return (
@@ -414,7 +468,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
         <button type="button" onClick={onSave} disabled={isSaving} style={{ border: 'none', borderRadius: 999, padding: '0.8rem 1.25rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>{isSaving ? 'Saving...' : 'Save'}</button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', ...currentBackground.style }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', ...writerBackgroundStyle }}>
         <div style={{ position: 'relative', padding: '1rem 1rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.7rem', color: '#7f6672', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.16, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.85rem', color: currentBackground.id === 'dark-cute' ? '#fff' : '#d1588b' }}>{currentBackground.deco}</div>
           <button type="button" onClick={() => dateInputRef.current?.click()} style={{ border: 'none', background: 'transparent', padding: 0, color: '#7f6672', fontSize: '0.96rem' }}>{formatDate(draft.date)}</button>
@@ -425,10 +479,37 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, onOpe
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
           <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.2rem 0 0.7rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500 }} />
           {draft.images.length ? (
-            <div style={{ display: 'flex', gap: '0.7rem', overflowX: 'auto', paddingBottom: '0.2rem' }}>
+            <div style={{ position: 'relative', minHeight: 180, borderRadius: 20, border: '1px dashed var(--app-border)', background: 'rgba(255,255,255,0.55)', overflow: 'hidden' }}>
               {draft.images.map(image => (
-                <button key={image.id} type="button" onClick={() => onOpenImageOptions(image)} onContextMenu={event => { event.preventDefault(); onOpenImageOptions(image) }} style={{ flex: '0 0 auto', width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'relative' }}>
+                <button
+                  key={image.id}
+                  type="button"
+                  onPointerDown={event => {
+                    startImageHold(image)
+                    beginDrag(event, image)
+                  }}
+                  onPointerMove={moveDrag}
+                  onPointerUp={() => {
+                    clearImageHold()
+                    endDrag()
+                  }}
+                  onPointerLeave={() => {
+                    clearImageHold()
+                    endDrag()
+                  }}
+                  onContextMenu={event => {
+                    event.preventDefault()
+                    setActiveImageActionsId(image.id)
+                  }}
+                  style={{ width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'absolute', left: image.x || 0, top: image.y || 0, touchAction: 'none', boxShadow: '0 12px 20px rgba(80,52,65,0.12)' }}
+                >
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {activeImageActionsId === image.id ? (
+                    <>
+                      <button type="button" onClick={event => { event.stopPropagation(); onOpenImageOptions({ ...image, action: 'expand-inline' }) }} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: 'var(--app-accent)', fontWeight: 800 }}>+</button>
+                      <button type="button" onClick={event => { event.stopPropagation(); onOpenImageOptions({ ...image, action: 'delete-inline' }) }} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 30, height: 30, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>×</button>
+                    </>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -599,7 +680,6 @@ export default function Journal() {
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [showMoodPicker, setShowMoodPicker] = useState(false)
   const [showSortSheet, setShowSortSheet] = useState(false)
-  const [templateScreen, setTemplateScreen] = useState('list')
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [templateAnswers, setTemplateAnswers] = useState({})
   const [imageSheet, setImageSheet] = useState(null)
@@ -626,7 +706,7 @@ export default function Journal() {
   function selectTemplate(template) {
     setSelectedTemplate(template)
     setTemplateAnswers(Object.fromEntries(template.fields.map(field => [field.label, ''])))
-    setTemplateScreen('detail')
+    setScreen('template-detail')
   }
 
   async function saveEntry() {
@@ -686,8 +766,9 @@ export default function Journal() {
       prompt: selectedTemplate.name,
       title: prev.title,
       content: buildTemplateContent(selectedTemplate, templateAnswers),
+      templateAccent: selectedTemplate.accent,
     }))
-    setTemplateScreen('none')
+    setScreen('write')
   }
 
   function removeImage(target) {
@@ -698,27 +779,41 @@ export default function Journal() {
 
   if (screen === 'write') {
     return (
-      <>
-        <JournalWriter
-          draft={draft}
-          setDraft={setDraft}
-          onBack={() => setScreen('list')}
-          onSave={saveEntry}
-          onOpenTemplates={() => setTemplateScreen('list')}
-          onOpenImageOptions={image => setImageSheet(image)}
-          isSaving={isSaving}
-        />
-        {templateScreen === 'list' ? <TemplatesPage onBack={() => setTemplateScreen('none')} onSelect={selectTemplate} /> : null}
-        {templateScreen === 'detail' && selectedTemplate ? (
-          <TemplateDetail
-            template={selectedTemplate}
-            answers={templateAnswers}
-            onChange={(key, value) => setTemplateAnswers(current => ({ ...current, [key]: value }))}
-            onBack={() => setTemplateScreen('list')}
-            onApply={applyTemplateAnswers}
-          />
-        ) : null}
-      </>
+      <JournalWriter
+        draft={draft}
+        setDraft={setDraft}
+        onBack={() => setScreen('list')}
+        onSave={saveEntry}
+        onOpenTemplates={() => setScreen('templates')}
+        onOpenImageOptions={image => {
+          if (image.action === 'expand-inline') {
+            setExpandedImage(image)
+            return
+          }
+          if (image.action === 'delete-inline') {
+            removeImage(image)
+            return
+          }
+          setImageSheet(image)
+        }}
+        isSaving={isSaving}
+      />
+    )
+  }
+
+  if (screen === 'templates') {
+    return <TemplatesPage onBack={() => setScreen('write')} onSelect={selectTemplate} />
+  }
+
+  if (screen === 'template-detail' && selectedTemplate) {
+    return (
+      <TemplateDetail
+        template={selectedTemplate}
+        answers={templateAnswers}
+        onChange={(key, value) => setTemplateAnswers(current => ({ ...current, [key]: value }))}
+        onBack={() => setScreen('templates')}
+        onApply={applyTemplateAnswers}
+      />
     )
   }
 
