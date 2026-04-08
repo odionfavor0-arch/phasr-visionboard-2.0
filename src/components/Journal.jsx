@@ -28,12 +28,12 @@ const PROMPTS = [
 ]
 
 const MOODS = [
-  { emoji: 'ðŸ˜Š', label: 'Calm', score: 8 },
-  { emoji: 'ðŸ”¥', label: 'Focused', score: 9 },
-  { emoji: 'ðŸ˜”', label: 'Reflective', score: 5 },
-  { emoji: 'ðŸ˜¤', label: 'Stressed', score: 3 },
-  { emoji: 'ðŸ˜Ž', label: 'Confident', score: 8 },
-  { emoji: 'ðŸ’ª', label: 'Energised', score: 9 },
+  { emoji: '😊', label: 'Calm', score: 8 },
+  { emoji: '🔥', label: 'Focused', score: 9 },
+  { emoji: '😔', label: 'Reflective', score: 5 },
+  { emoji: '😤', label: 'Stressed', score: 3 },
+  { emoji: '😎', label: 'Confident', score: 8 },
+  { emoji: '💪', label: 'Energised', score: 9 },
 ]
 
 const TEMPLATES = [
@@ -96,7 +96,7 @@ const TEMPLATES = [
     accent: '#fce1ea',
     fields: [
       { label: 'What do I wish I could say?', subtext: 'Write the message exactly as it wants to come out.' },
-      { label: 'Why havenâ€™t I said it?', subtext: 'Be honest about fear, timing, or what is holding you back.' },
+      { label: "Why haven't I said it?", subtext: 'Be honest about fear, timing, or what is holding you back.' },
       { label: 'How do I truly feel about this?', subtext: 'Name the feeling under the words.' },
     ],
   },
@@ -117,13 +117,13 @@ const TEMPLATES = [
 
 const BACKGROUNDS = [
   { id: 'original', name: 'Original', style: { background: '#ffffff' }, deco: '' },
-  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: 'ðŸŒ¹ âœ¿ ðŸŒ·' },
-  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: 'âœ¦ â˜¾ âœ¦' },
-  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: 'ðŸ¦‹ âœ¦ ðŸ¦‹' },
-  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: 'ðŸŽ€ âœ¿ ðŸŽ€' },
+  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '🌹 ✿ 🌷' },
+  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '✦ ☾ ✦' },
+  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '🦋 ✦ 🦋' },
+  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '🎀 ✿ 🎀' },
 ]
 
-const STICKERS = ['ðŸ’–', 'ðŸŽ€', 'ðŸ§¸', 'âœ¨', 'ðŸŒ¸']
+const STICKERS = ['💖', '🎀', '🧸', '✨', '🌸']
 const COLORS = ['#2f1e2a', '#7b243e', '#b03060', '#e8407a', '#ff7aaa', '#6e2fb8']
 const FONTS = [
   { id: 'dm', name: 'Default', family: "'DM Sans', sans-serif" },
@@ -604,28 +604,36 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.16, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.85rem', color: currentBackground.id === 'dark-cute' ? '#fff' : '#d1588b' }}>{currentBackground.deco}</div>
           <button type="button" onClick={() => dateInputRef.current?.click()} style={{ border: 'none', background: 'transparent', padding: 0, color: '#7f6672', fontSize: '0.96rem' }}>{formatDate(draft.date)}</button>
           <input ref={dateInputRef} type="date" value={draft.date} onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
-          <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || 'ðŸ˜Š'}</span>
+            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || '😊'}</span>
         </div>
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
-          {!draft.templateFields ? (
-            <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 500 }} />
-          ) : (
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <p style={{ margin: 0, fontSize: '2rem', fontWeight: 500, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
-              {draft.templateFields.map((field, index) => (
-                <div key={field.label} style={{ display: 'grid', gap: '0.42rem' }}>
-                  <p style={{ margin: 0, color: '#4f9bff', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>
-                    {index + 1}. {field.label}
-                  </p>
-                  <p style={{ margin: 0, color: '#6f7d8b', lineHeight: 1.55 }}>{field.subtext}</p>
-                  <p style={{ margin: 0, color: draft.color, lineHeight: 1.9, fontSize: '1.02rem' }}>
-                    {draft.templateAnswers?.[field.label] || '-'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+            {!draft.templateFields ? (
+              <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 500 }} />
+            ) : (
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <p style={{ margin: 0, fontSize: '2rem', fontWeight: 500, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
+                {draft.templateFields.map((field, index) => (
+                  <div key={field.label} style={{ display: 'grid', gap: '0.42rem' }}>
+                    <p style={{ margin: 0, color: '#4f9bff', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>
+                      {index + 1}. {field.label}
+                    </p>
+                    <p style={{ margin: 0, color: '#6f7d8b', lineHeight: 1.55 }}>{field.subtext}</p>
+                    <textarea
+                      value={draft.templateAnswers?.[field.label] || ''}
+                      onChange={event => setDraft(prev => ({
+                        ...prev,
+                        templateAnswers: { ...(prev.templateAnswers || {}), [field.label]: event.target.value },
+                      }))}
+                      onFocus={() => setEditorFocused(true)}
+                      onBlur={() => setEditorFocused(false)}
+                      placeholder="Enter your thoughts..."
+                      style={{ width: '100%', minHeight: 72, border: '1px solid var(--app-border)', borderRadius: 14, padding: '0.7rem 0.8rem', outline: 'none', resize: 'vertical', background: '#fff', color: draft.color, fontFamily: currentFont.family, fontSize: '1rem', lineHeight: 1.6 }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           {draft.images.length ? (
             <div style={{ position: 'relative', minHeight: 190, marginBottom: '0.2rem' }}>
               {draft.images.map(image => (
@@ -659,15 +667,13 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                 >
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {activeImageActionsId === image.id ? (
-                    <button type="button" onClick={event => { event.stopPropagation(); setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) })); setActiveImageActionsId(null) }} style={{ position: 'absolute', right: 8, top: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>Ã—</button>
+                    <button type="button" onClick={event => { event.stopPropagation(); setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) })); setActiveImageActionsId(null) }} style={{ position: 'absolute', right: 8, top: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>×</button>
                   ) : null}
                 </button>
               ))}
             </div>
           ) : null}
-          {!draft.templateFields ? (
-            <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
-          ) : null}
+            <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder={draft.templateFields ? 'Continue writing...' : 'Start writing...'} style={{ flex: 1, minHeight: draft.templateFields ? '24vh' : '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
         </div>
       </div>
 
@@ -713,10 +719,10 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div>
             <p style={sheetLabelStyle}>Emojis</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-              {['ðŸ˜Š', 'ðŸ˜Œ', 'ðŸ”¥', 'ðŸ˜”', 'ðŸ˜¤', 'ðŸ˜Ž', 'ðŸ’–', 'âœ¨', 'ðŸŒ¸', 'ðŸ«¶'].map(emoji => (
-                <button key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</button>
-              ))}
-            </div>
+                {['😊', '😌', '🔥', '😔', '😤', '😎', '💖', '✨', '🌸', '🫶'].map(emoji => (
+                  <button key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</button>
+                ))}
+              </div>
           </div>
           <div>
             <p style={sheetLabelStyle}>Cute stickers</p>
@@ -1089,7 +1095,7 @@ export default function Journal() {
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.76rem', width: '100%' }}>Skip for now →</button>
+        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.7rem', width: '100%' }}>Skip for now →</button>
       </BottomSheet>
 
     </>

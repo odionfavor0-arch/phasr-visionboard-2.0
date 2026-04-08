@@ -1219,8 +1219,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
   if (!open) return null
 
   const isMobile = window.innerWidth <= 768
-  const panelWidth = isMobile ? Math.min(QUICK_WIDTH, window.innerWidth - 32) : QUICK_WIDTH
-  const panelHeight = isMobile ? Math.min(QUICK_HEIGHT, Math.max(320, Math.round(window.innerHeight * 0.55))) : QUICK_HEIGHT
+  const panelWidth = isMobile ? Math.min(320, window.innerWidth - 48) : QUICK_WIDTH
+  const panelHeight = isMobile ? Math.min(430, Math.max(300, Math.round(window.innerHeight * 0.52))) : QUICK_HEIGHT
   const panelPosition = getPanelPosition(position, panelWidth, panelHeight)
 
   return (
