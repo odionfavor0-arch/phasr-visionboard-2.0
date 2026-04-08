@@ -673,7 +673,9 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
               ))}
             </div>
           ) : null}
-            <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder={draft.templateFields ? 'Continue writing...' : 'Start writing...'} style={{ flex: 1, minHeight: draft.templateFields ? '24vh' : '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+            {!draft.templateFields ? (
+              <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+            ) : null}
         </div>
       </div>
 
@@ -878,22 +880,25 @@ export default function Journal() {
     setScreen('template-detail')
   }
 
-  async function saveEntry() {
-    if (!draft.content.trim()) return
-    setIsSaving(true)
-    setScreen('processing')
-    try {
-      const analysisInput = {
-        ...draft,
-        content: draft.templateFields ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers }) : draft.content,
-      }
-      const analysis = await generateSageAnalysis(analysisInput)
-      const entry = {
-        id: editingEntryId || Date.now(),
-        createdAt: new Date().toISOString(),
-        date: draft.date,
-        title: getEntryTitle(draft, analysis.generatedTitle),
-        content: draft.content,
+    async function saveEntry() {
+      if (!draft.content.trim()) return
+      setIsSaving(true)
+      setScreen('processing')
+      try {
+        const normalizedContent = draft.templateFields
+          ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers })
+          : draft.content
+        const analysisInput = {
+          ...draft,
+          content: normalizedContent,
+        }
+        const analysis = await generateSageAnalysis(analysisInput)
+        const entry = {
+          id: editingEntryId || Date.now(),
+          createdAt: new Date().toISOString(),
+          date: draft.date,
+          title: getEntryTitle(draft, analysis.generatedTitle),
+          content: normalizedContent,
         prompt: draft.prompt,
         mood: draft.mood || MOODS[0],
         clarityScore: Number(analysis.clarityScore || draft.mood?.score || 7),
@@ -911,13 +916,16 @@ export default function Journal() {
       setSelectedEntry(entry)
       setEditingEntryId(null)
       setScreen('detail')
-    } catch {
-      const fallback = {
-        id: editingEntryId || Date.now(),
-        createdAt: new Date().toISOString(),
-        date: draft.date,
-        title: getEntryTitle(draft),
-        content: draft.content,
+      } catch {
+        const normalizedContent = draft.templateFields
+          ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers })
+          : draft.content
+        const fallback = {
+          id: editingEntryId || Date.now(),
+          createdAt: new Date().toISOString(),
+          date: draft.date,
+          title: getEntryTitle(draft),
+          content: normalizedContent,
         prompt: draft.prompt,
         mood: draft.mood || MOODS[0],
         clarityScore: draft.mood?.score || 7,
