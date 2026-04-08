@@ -1,16 +1,20 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowUpDown,
   ArrowLeft,
   Image as ImageIcon,
   List,
   Mic,
   MoreHorizontal,
   Paintbrush,
+  Pencil,
   Plus,
   Search,
   Smile,
   Tag,
+  Trash2,
   Type,
+  Volume2,
 } from 'lucide-react'
 
 const STORAGE_KEY = 'phasr_journal_v2'
@@ -310,7 +314,7 @@ function BottomSheet({ open, onClose, title, children }) {
         {title ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
             <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#3c2430' }}>{title}</p>
-            <button type="button" onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', color: '#8b6977' }}>Ã—</button>
+              <button type="button" onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', color: '#8b6977' }}>×</button>
           </div>
         ) : null}
         {children}
@@ -415,11 +419,11 @@ function EntryDetail({ entry, onBack, onEdit }) {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.9rem 1rem', borderBottom: '1px solid var(--app-border)', position: 'sticky', top: 0, background: '#fff', zIndex: 5 }}>
-        <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
-        <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672', marginLeft: 'auto' }}>{formatDate(entry.date)}</p>
-        <button type="button" onClick={onEdit} style={ghostIconButtonStyle}>âœŽ</button>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.9rem 1rem', borderBottom: '1px solid var(--app-border)', position: 'sticky', top: 0, background: '#fff', zIndex: 5 }}>
+          <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
+          <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672', marginLeft: 'auto' }}>{formatDate(entry.date)}</p>
+          <button type="button" onClick={onEdit} style={ghostIconButtonStyle}><Pencil size={16} /></button>
+        </div>
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
           <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
@@ -436,10 +440,10 @@ function EntryDetail({ entry, onBack, onEdit }) {
           ) : null}
         </div>
         <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
-            <p style={sectionLabelStyle}>Sageâ€™s Response</p>
-            <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>ðŸ”Š</button>
-          </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
+              <p style={sectionLabelStyle}>Sage's Response</p>
+              <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
+            </div>
           <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
         </div>
         <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
@@ -688,7 +692,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
       <BottomSheet open={showMenu} onClose={() => setShowMenu(false)} title="">
         <div style={{ display: 'grid', gap: '0.2rem' }}>
-          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>â†’</span></button>
+          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>→</span></button>
           <div style={menuStatStyle}><span>Words</span><strong>{wordCount}</strong></div>
         </div>
       </BottomSheet>
@@ -741,12 +745,12 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
       </BottomSheet>
 
       <BottomSheet open={activeTray === 'list'} onClose={() => setActiveTray(null)} title="List style">
-        <div style={{ display: 'grid', gap: '0.55rem' }}>
-          <button type="button" onClick={() => insertList('â€¢ ')} style={menuRowStyle}><span>â€¢ Bullet points</span><span>â€¢ â€¢ â€¢</span></button>
-          <button type="button" onClick={() => insertList('â˜ ')} style={menuRowStyle}><span>â˜ Check list</span><span>â˜ â˜ â˜</span></button>
-          <button type="button" onClick={() => insertList('â˜… ')} style={menuRowStyle}><span>â˜… Star list</span><span>â˜… â˜… â˜…</span></button>
-        </div>
-      </BottomSheet>
+          <div style={{ display: 'grid', gap: '0.55rem' }}>
+            <button type="button" onClick={() => insertList('• ')} style={menuRowStyle}><span>• Bullet points</span><span>• • •</span></button>
+            <button type="button" onClick={() => insertList('☐ ')} style={menuRowStyle}><span>☐ Check list</span><span>☐ ☐ ☐</span></button>
+            <button type="button" onClick={() => insertList('★ ')} style={menuRowStyle}><span>★ Star list</span><span>★ ★ ★</span></button>
+          </div>
+        </BottomSheet>
 
       <BottomSheet open={activeTray === 'tag'} onClose={() => setActiveTray(null)} title="Tags">
         <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
@@ -1023,7 +1027,7 @@ export default function Journal() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 22, padding: '0.8rem 0.85rem', boxShadow: '0 12px 28px rgba(86,53,66,0.05)' }}>
             <Search size={18} color="#8b6977" />
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', minWidth: 0 }} />
-            <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}>â†•</button>
+              <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></button>
           </div>
 
           <div style={{ display: 'grid', gap: '0.6rem' }}>
@@ -1033,25 +1037,25 @@ export default function Journal() {
                   <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35, flex: 1 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
                   <p style={{ margin: 0, color: '#8f7180', fontSize: '0.9rem', flexShrink: 0, textAlign: 'right' }}>{formatDate(entry.date)}</p>
                 </div>
-                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
-                  {makeTwoParagraphPreview(entry.content || getTemplateSummary(entry) || 'Start writing...')}
-                </p>
+                  <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {makePreview(entry.content || getTemplateSummary(entry) || 'Start writing...')}
+                  </p>
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
-                    <span>{entry.mood?.emoji || 'ðŸ˜Š'}</span>
-                    <span>{entry.clarityLabel || 'Reflective'}</span>
-                    <span>Â· {entry.clarityScore || 7}/10</span>
-                  </span>
-                  <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}>â‹¯</button>
-                </div>
+                      <span>{entry.mood?.emoji || '😊'}</span>
+                      <span>{entry.clarityLabel || 'Reflective'}</span>
+                      <span>· {entry.clarityScore || 7}/10</span>
+                    </span>
+                    <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}><MoreHorizontal size={18} /></button>
+                  </div>
                 <p style={{ display: 'none' }}>{entry.sageResponse || 'Sage response will appear here.'}</p>
                 {entryActionId === entry.id ? (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.55rem', marginTop: '0.4rem' }}>
-                    <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>âœŽ</button>
-                    <button type="button" onClick={event => { event.stopPropagation(); setEntries(current => current.filter(item => item.id !== entry.id)); setEntryActionId(null) }} style={{ ...ghostMiniActionStyle, color: '#d24b78' }}>ðŸ—‘</button>
-                  </div>
-                ) : null}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.55rem', marginTop: '0.4rem' }}>
+                      <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Pencil size={16} /></button>
+                      <button type="button" onClick={event => { event.stopPropagation(); setEntries(current => current.filter(item => item.id !== entry.id)); setEntryActionId(null) }} style={{ ...ghostMiniActionStyle, color: '#d24b78' }}><Trash2 size={16} /></button>
+                    </div>
+                  ) : null}
               </button>
             ))}
 
@@ -1069,7 +1073,7 @@ export default function Journal() {
           {[{ id: 'latest', label: 'Latest first' }, { id: 'oldest', label: 'Oldest first' }].map(option => (
             <button key={option.id} type="button" onClick={() => { setSortOrder(option.id); setShowSortSheet(false) }} style={menuRowStyle}>
               <span>{option.label}</span>
-              {option.id === sortOrder ? <span>âœ“</span> : null}
+              {option.id === sortOrder ? <span>✓</span> : null}
             </button>
           ))}
         </div>
@@ -1085,7 +1089,7 @@ export default function Journal() {
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.88rem', width: '100%' }}>Skip for now -&gt;</button>
+        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.76rem', width: '100%' }}>Skip for now →</button>
       </BottomSheet>
 
     </>
