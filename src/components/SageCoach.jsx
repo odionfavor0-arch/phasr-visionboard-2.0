@@ -1109,13 +1109,13 @@ function getDefaultBubblePosition() {
   return { right: 24, bottom: 24 }
 }
 
-function getPanelPosition(position) {
+function getPanelPosition(position, panelWidth = QUICK_WIDTH, panelHeight = QUICK_HEIGHT) {
   const width = window.innerWidth
   const height = window.innerHeight
   const sidebarWidth = document.querySelector('.hamburger-menu-shell')?.getBoundingClientRect().width || 0
-  const maxRight = Math.max(16, width - QUICK_WIDTH - sidebarWidth - 12)
+  const maxRight = Math.max(16, width - panelWidth - sidebarWidth - 12)
   const right = clamp(position.right + 18, 16, maxRight)
-  const bottom = clamp(position.bottom + 82, 16, Math.max(16, height - QUICK_HEIGHT - 16))
+  const bottom = clamp(position.bottom + 82, 16, Math.max(16, height - panelHeight - 16))
   return { right, bottom }
 }
 
@@ -1218,7 +1218,10 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
 
   if (!open) return null
 
-  const panelPosition = getPanelPosition(position)
+  const isMobile = window.innerWidth <= 768
+  const panelWidth = isMobile ? Math.min(QUICK_WIDTH, window.innerWidth - 32) : QUICK_WIDTH
+  const panelHeight = isMobile ? Math.min(QUICK_HEIGHT, Math.max(320, Math.round(window.innerHeight * 0.55))) : QUICK_HEIGHT
+  const panelPosition = getPanelPosition(position, panelWidth, panelHeight)
 
   return (
     <div
@@ -1226,8 +1229,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           position: 'fixed',
           right: panelPosition.right,
           bottom: panelPosition.bottom,
-          width: QUICK_WIDTH,
-          height: QUICK_HEIGHT,
+          width: panelWidth,
+          height: panelHeight,
           background: '#fffafc',
           border: '1px solid var(--app-border)',
           borderRadius: 24,
@@ -1409,6 +1412,9 @@ export function QuickSageBubble() {
   const dragging = useRef(false)
   const dragMoved = useRef(false)
   const dragStart = useRef({})
+  const isMobileViewport = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  const bubbleSize = isMobileViewport ? 54 : 66
+  const avatarSize = isMobileViewport ? 48 : 60
 
   function clampBubblePosition(nextRight, nextBottom) {
     const sidebarWidth = document.querySelector('.hamburger-menu-shell')?.getBoundingClientRect().width || 0
@@ -1587,8 +1593,8 @@ export function QuickSageBubble() {
           right: position.right,
           bottom: position.bottom,
           zIndex: 9998,
-          width: 66,
-          height: 66,
+          width: bubbleSize,
+          height: bubbleSize,
           borderRadius: '50%',
           border: 'none',
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
@@ -1605,7 +1611,7 @@ export function QuickSageBubble() {
         }}
       >
         {avatarUrl ? (
-          <FemaleSageAvatar size={60} soft imageUrl={avatarUrl} />
+          <FemaleSageAvatar size={avatarSize} soft imageUrl={avatarUrl} />
         ) : (
           <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.08em', color: '#fff' }}>
             SAGE
