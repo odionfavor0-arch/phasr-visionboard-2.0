@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Image as ImageIcon,
@@ -24,12 +24,12 @@ const PROMPTS = [
 ]
 
 const MOODS = [
-  { emoji: '😊', label: 'Calm', score: 8 },
-  { emoji: '🔥', label: 'Focused', score: 9 },
-  { emoji: '😔', label: 'Reflective', score: 5 },
-  { emoji: '😤', label: 'Stressed', score: 3 },
-  { emoji: '😎', label: 'Confident', score: 8 },
-  { emoji: '💪', label: 'Energised', score: 9 },
+  { emoji: 'ðŸ˜Š', label: 'Calm', score: 8 },
+  { emoji: 'ðŸ”¥', label: 'Focused', score: 9 },
+  { emoji: 'ðŸ˜”', label: 'Reflective', score: 5 },
+  { emoji: 'ðŸ˜¤', label: 'Stressed', score: 3 },
+  { emoji: 'ðŸ˜Ž', label: 'Confident', score: 8 },
+  { emoji: 'ðŸ’ª', label: 'Energised', score: 9 },
 ]
 
 const TEMPLATES = [
@@ -92,7 +92,7 @@ const TEMPLATES = [
     accent: '#fce1ea',
     fields: [
       { label: 'What do I wish I could say?', subtext: 'Write the message exactly as it wants to come out.' },
-      { label: 'Why haven’t I said it?', subtext: 'Be honest about fear, timing, or what is holding you back.' },
+      { label: 'Why havenâ€™t I said it?', subtext: 'Be honest about fear, timing, or what is holding you back.' },
       { label: 'How do I truly feel about this?', subtext: 'Name the feeling under the words.' },
     ],
   },
@@ -113,13 +113,13 @@ const TEMPLATES = [
 
 const BACKGROUNDS = [
   { id: 'original', name: 'Original', style: { background: '#ffffff' }, deco: '' },
-  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '🌹 ✿ 🌷' },
-  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '✦ ☾ ✦' },
-  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '🦋 ✦ 🦋' },
-  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '🎀 ✿ 🎀' },
+  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: 'ðŸŒ¹ âœ¿ ðŸŒ·' },
+  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: 'âœ¦ â˜¾ âœ¦' },
+  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: 'ðŸ¦‹ âœ¦ ðŸ¦‹' },
+  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: 'ðŸŽ€ âœ¿ ðŸŽ€' },
 ]
 
-const STICKERS = ['💖', '🎀', '🧸', '✨', '🌸']
+const STICKERS = ['ðŸ’–', 'ðŸŽ€', 'ðŸ§¸', 'âœ¨', 'ðŸŒ¸']
 const COLORS = ['#2f1e2a', '#7b243e', '#b03060', '#e8407a', '#ff7aaa', '#6e2fb8']
 const FONTS = [
   { id: 'dm', name: 'Default', family: "'DM Sans', sans-serif" },
@@ -262,27 +262,25 @@ Scoring rules:
 - clarityLabel must be one short emotional or mental-state label such as Calm, Focused, Stressed, Reflective, Avoidant, Productive, Angry, Happy, Confused, Clear, Heavy, Energised, Confident, or Decisive.
 - Do not judge only how organized the writing sounds. Rate the emotional and mental state underneath it too, including clarity, decision, stress, avoidance, productivity, anger, happiness, confidence, confusion, focus, emotional heaviness, and energy.
 
-How to respond:
-HOW TO RESPOND — read this carefully.
+HOW TO RESPOND â€” read this carefully.
 Do not follow a formula. Do not validate then explain then suggest then ask a question then close. That pattern feels scripted and the user will feel it.
 Instead read what they wrote and respond the way a sharp, warm, honest friend would respond if they received this as a voice note. Not a therapist. Not a coach reading from a framework. A real person who actually absorbed what was said.
 Sometimes the right response is two sentences. Sometimes it is a paragraph. Let the content decide the length, not a template.
 Do not always end with a question. Questions at the end of every response feel like a technique. Only ask something if it genuinely opens something up. If the person just needed to be heard, hear them and close with something that lands, not something that probes.
-Do not use phrases like: ‘this is a common phenomenon’, ‘it is likely that’, ‘if it feels comfortable’, ‘you might consider’, ‘taking a brave step.’ These sound clinical.
-Do use: short sentences when something is heavy. Directness when something needs naming. Warmth without softening the truth. Silence when nothing needs to be added — meaning end the response when it is done, not when a checklist is complete.
-If someone writes something personal and emotional — match that energy first before anything else. Feel it with them before you move them.
-If someone writes something practical and goal-focused — be direct and action-oriented without emotional preamble.
+Do not use phrases like: "this is a common phenomenon", "it is likely that", "if it feels comfortable", "you might consider", "taking a brave step." These sound clinical.
+Do use: short sentences when something is heavy. Directness when something needs naming. Warmth without softening the truth. Silence when nothing needs to be added â€” meaning end the response when it is done, not when a checklist is complete.
+If someone writes something personal and emotional â€” match that energy first before anything else. Feel it with them before you move them.
+If someone writes something practical and goal-focused â€” be direct and action-oriented without emotional preamble.
 Read the room. Every time. That is the whole job.
 Never sound like you are running a session. Sound like you showed up.
 
-MULTI-TOPIC RULE — this is important.
+MULTI-TOPIC RULE â€” this is important.
 If the user wrote about more than one thing in their journal entry, address all of them. Do not pick the most prominent topic and ignore the rest. Do not summarize them into one theme. Each thing they wrote about deserves a response.
-If they wrote about their relationship, their business, and feeling tired — respond to all three. Not in a list. Not with headers. Just naturally, the way a conversation moves between topics.
+If they wrote about their relationship, their business, and feeling tired â€” respond to all three. Not in a list. Not with headers. Just naturally, the way a conversation moves between topics.
 Example of wrong approach: User writes about feeling overwhelmed with work, a fight with a friend, and excitement about a new idea. Sage only addresses the overwhelm and ignores the other two.
 Example of right approach: Move through all three naturally. Maybe the overwhelm connects to the fight. Maybe the new idea is the thing that is actually keeping them going underneath all of it. Find the thread if there is one. If there is not one, just address each thing on its own terms.
 The rule is simple: if they wrote it, it mattered enough to them to put it in their journal. Sage does not get to decide what was important and what was not. Respond to all of it.
 The response can be longer when there are multiple topics. That is fine. Do not rush through them to keep it short. Give each thing the space it deserves without being repetitive or padded.
-
 Sage response rules:
 - sageResponse should feel personal, emotionally aware, grounded, and useful.
 - It should reflect what the user is truly feeling, name the pattern underneath the words, and offer one meaningful next step only when that makes sense.
@@ -312,7 +310,7 @@ function BottomSheet({ open, onClose, title, children }) {
         {title ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
             <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#3c2430' }}>{title}</p>
-            <button type="button" onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', color: '#8b6977' }}>×</button>
+            <button type="button" onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', color: '#8b6977' }}>Ã—</button>
           </div>
         ) : null}
         {children}
@@ -419,12 +417,12 @@ function EntryDetail({ entry, onBack, onEdit }) {
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.9rem 1rem', borderBottom: '1px solid var(--app-border)', position: 'sticky', top: 0, background: '#fff', zIndex: 5 }}>
         <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
-        <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672' }}>{formatDate(entry.date)}</p>
-        <button type="button" onClick={onEdit} style={{ marginLeft: 'auto', ...ghostIconButtonStyle }}>✎</button>
+        <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672', marginLeft: 'auto' }}>{formatDate(entry.date)}</p>
+        <button type="button" onClick={onEdit} style={ghostIconButtonStyle}>âœŽ</button>
       </div>
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
-          <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{formatDate(entry.date)} {entry.mood?.emoji || ''}</p>
+          <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
           <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
         </div>
         <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
@@ -438,6 +436,13 @@ function EntryDetail({ entry, onBack, onEdit }) {
           ) : null}
         </div>
         <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
+            <p style={sectionLabelStyle}>Sageâ€™s Response</p>
+            <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>ðŸ”Š</button>
+          </div>
+          <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
+        </div>
+        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
           <p style={sectionLabelStyle}>Clarity Score</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ width: 92, height: 92, borderRadius: '50%', border: '8px solid #fde3ec', display: 'grid', placeItems: 'center', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>{entry.clarityScore || 7}/10</div>
@@ -445,13 +450,6 @@ function EntryDetail({ entry, onBack, onEdit }) {
               <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#2f1e2a' }}>{entry.clarityLabel || 'Reflective'}</p>
             </div>
           </div>
-        </div>
-        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
-            <p style={sectionLabelStyle}>Sage’s Response</p>
-            <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>🔊</button>
-          </div>
-          <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
         </div>
       </div>
     </div>
@@ -468,6 +466,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
   const recognitionRef = useRef(null)
   const longPressTimerRef = useRef(null)
   const dragRef = useRef(null)
+  const contentRef = useRef(null)
   const currentBackground = BACKGROUNDS.find(item => item.id === draft.backgroundId) || BACKGROUNDS[0]
   const currentFont = FONTS.find(item => item.id === draft.fontId) || FONTS[0]
   const writerBackgroundStyle = draft.templateAccent
@@ -476,6 +475,21 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
   const wordCount = countWords(draft.content)
 
   useEffect(() => () => recognitionRef.current?.stop?.(), [])
+  useEffect(() => {
+    const node = contentRef.current
+    if (!node || draft.templateFields) return
+    const value = String(node.value || '')
+    if (!value.trim()) return
+    requestAnimationFrame(() => {
+      try {
+        node.focus()
+        const end = node.value.length
+        node.setSelectionRange(end, end)
+      } catch {
+        // ignore
+      }
+    })
+  }, [])
 
   function insertText(text) {
     setDraft(prev => ({ ...prev, content: `${prev.content}${text}` }))
@@ -586,7 +600,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.16, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.85rem', color: currentBackground.id === 'dark-cute' ? '#fff' : '#d1588b' }}>{currentBackground.deco}</div>
           <button type="button" onClick={() => dateInputRef.current?.click()} style={{ border: 'none', background: 'transparent', padding: 0, color: '#7f6672', fontSize: '0.96rem' }}>{formatDate(draft.date)}</button>
           <input ref={dateInputRef} type="date" value={draft.date} onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
-          <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || '😊'}</span>
+          <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || 'ðŸ˜Š'}</span>
         </div>
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
@@ -641,14 +655,14 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                 >
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {activeImageActionsId === image.id ? (
-                    <button type="button" onClick={event => { event.stopPropagation(); setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) })); setActiveImageActionsId(null) }} style={{ position: 'absolute', right: 8, top: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>×</button>
+                    <button type="button" onClick={event => { event.stopPropagation(); setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) })); setActiveImageActionsId(null) }} style={{ position: 'absolute', right: 8, top: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>Ã—</button>
                   ) : null}
                 </button>
               ))}
             </div>
           ) : null}
           {!draft.templateFields ? (
-            <textarea value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+            <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
           ) : null}
         </div>
       </div>
@@ -674,7 +688,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
       <BottomSheet open={showMenu} onClose={() => setShowMenu(false)} title="">
         <div style={{ display: 'grid', gap: '0.2rem' }}>
-          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>→</span></button>
+          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>â†’</span></button>
           <div style={menuStatStyle}><span>Words</span><strong>{wordCount}</strong></div>
         </div>
       </BottomSheet>
@@ -695,7 +709,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div>
             <p style={sheetLabelStyle}>Emojis</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-              {['😊', '😌', '🔥', '😔', '😤', '😎', '💖', '✨', '🌸', '🫶'].map(emoji => (
+              {['ðŸ˜Š', 'ðŸ˜Œ', 'ðŸ”¥', 'ðŸ˜”', 'ðŸ˜¤', 'ðŸ˜Ž', 'ðŸ’–', 'âœ¨', 'ðŸŒ¸', 'ðŸ«¶'].map(emoji => (
                 <button key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</button>
               ))}
             </div>
@@ -728,9 +742,9 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
       <BottomSheet open={activeTray === 'list'} onClose={() => setActiveTray(null)} title="List style">
         <div style={{ display: 'grid', gap: '0.55rem' }}>
-          <button type="button" onClick={() => insertList('• ')} style={menuRowStyle}><span>• Bullet points</span><span>• • •</span></button>
-          <button type="button" onClick={() => insertList('☐ ')} style={menuRowStyle}><span>☐ Check list</span><span>☐ ☐ ☐</span></button>
-          <button type="button" onClick={() => insertList('★ ')} style={menuRowStyle}><span>★ Star list</span><span>★ ★ ★</span></button>
+          <button type="button" onClick={() => insertList('â€¢ ')} style={menuRowStyle}><span>â€¢ Bullet points</span><span>â€¢ â€¢ â€¢</span></button>
+          <button type="button" onClick={() => insertList('â˜ ')} style={menuRowStyle}><span>â˜ Check list</span><span>â˜ â˜ â˜</span></button>
+          <button type="button" onClick={() => insertList('â˜… ')} style={menuRowStyle}><span>â˜… Star list</span><span>â˜… â˜… â˜…</span></button>
         </div>
       </BottomSheet>
 
@@ -1009,7 +1023,7 @@ export default function Journal() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 22, padding: '0.8rem 0.85rem', boxShadow: '0 12px 28px rgba(86,53,66,0.05)' }}>
             <Search size={18} color="#8b6977" />
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', minWidth: 0 }} />
-            <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}>↕</button>
+            <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}>â†•</button>
           </div>
 
           <div style={{ display: 'grid', gap: '0.6rem' }}>
@@ -1019,21 +1033,23 @@ export default function Journal() {
                   <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35, flex: 1 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
                   <p style={{ margin: 0, color: '#8f7180', fontSize: '0.9rem', flexShrink: 0, textAlign: 'right' }}>{formatDate(entry.date)}</p>
                 </div>
-                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.content || getTemplateSummary(entry) || 'Start writing...'}</p>
+                <p style={{ margin: 0, color: '#8f7180', fontSize: '0.94rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                  {makeTwoParagraphPreview(entry.content || getTemplateSummary(entry) || 'Start writing...')}
+                </p>
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
-                    <span>{entry.mood?.emoji || '😊'}</span>
+                    <span>{entry.mood?.emoji || 'ðŸ˜Š'}</span>
                     <span>{entry.clarityLabel || 'Reflective'}</span>
-                    <span>· {entry.clarityScore || 7}/10</span>
+                    <span>Â· {entry.clarityScore || 7}/10</span>
                   </span>
-                  <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}>⋯</button>
+                  <button type="button" onClick={event => { event.stopPropagation(); setEntryActionId(current => current === entry.id ? null : entry.id) }} style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800 }}>â‹¯</button>
                 </div>
                 <p style={{ display: 'none' }}>{entry.sageResponse || 'Sage response will appear here.'}</p>
                 {entryActionId === entry.id ? (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.55rem', marginTop: '0.4rem' }}>
-                    <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>✎</button>
-                    <button type="button" onClick={event => { event.stopPropagation(); setEntries(current => current.filter(item => item.id !== entry.id)); setEntryActionId(null) }} style={{ ...ghostMiniActionStyle, color: '#d24b78' }}>🗑</button>
+                    <button type="button" onClick={event => { event.stopPropagation(); editEntry(entry) }} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}>âœŽ</button>
+                    <button type="button" onClick={event => { event.stopPropagation(); setEntries(current => current.filter(item => item.id !== entry.id)); setEntryActionId(null) }} style={{ ...ghostMiniActionStyle, color: '#d24b78' }}>ðŸ—‘</button>
                   </div>
                 ) : null}
               </button>
@@ -1053,7 +1069,7 @@ export default function Journal() {
           {[{ id: 'latest', label: 'Latest first' }, { id: 'oldest', label: 'Oldest first' }].map(option => (
             <button key={option.id} type="button" onClick={() => { setSortOrder(option.id); setShowSortSheet(false) }} style={menuRowStyle}>
               <span>{option.label}</span>
-              {option.id === sortOrder ? <span>✓</span> : null}
+              {option.id === sortOrder ? <span>âœ“</span> : null}
             </button>
           ))}
         </div>
@@ -1075,3 +1091,4 @@ export default function Journal() {
     </>
   )
 }
+
