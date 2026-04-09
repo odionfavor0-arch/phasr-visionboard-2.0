@@ -226,6 +226,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   const shellMuted = isDarkTheme ? 'rgba(255,255,255,0.55)' : '#7e5d68'
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
+  const showSinglePhaseAsPhaseOne = phases.length === 1
+  const autoPulseGate = useMemo(() => {
+    if (!selectedPhase) return null
+    const week1 = weekProgressMap[1]
+    if (!week1?.completed) return null
+    const pulseDoneForWeek1 = isPulseCompletedForWeek(selectedPhase?.name || 'Phase 1', 1)
+    if (pulseDoneForWeek1) return null
+    return {
+      fromWeek: 1,
+      toWeek: 2,
+      phaseName: selectedPhase?.name || 'Phase 1',
+    }
+  }, [selectedPhase, weekProgressMap])
 
   function handleToggleGoal(goal) {
     toggleWeeklyGoalCompletion(goal, phaseBoard)
@@ -280,10 +293,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
             <span>Your streak is at risk. Complete today&apos;s task before midnight.</span>
           </div>
         )}
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-          <div style={{ display: 'flex', gap: 10, width: 'max-content' }}>
+        <div style={{ overflowX: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap' }}>
             {phases.map(phase => {
               const active = phase.id === activePhaseId
+              const phaseLabel = showSinglePhaseAsPhaseOne ? 'Phase 1' : phase.name
               return (
                 <button
                   key={phase.id}
@@ -303,7 +317,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {phase.name}
+                  {phaseLabel}
                 </button>
               )
             })}
@@ -316,10 +330,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
           Turn your goal into daily action
         </div>
 
-        {pulseGate ? (
+        {(pulseGate || autoPulseGate) ? (
           <div style={{ borderRadius: 18, border: `1px solid ${shellBorder}`, background: '#fff5f8', padding: '0.9rem 1rem', marginBottom: 12, display: 'grid', gap: '0.42rem' }}>
-            <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Before week {pulseGate.toWeek} begins, take 5 minutes with Sage.</p>
-            <p style={{ margin: 0, color: shellMuted, fontSize: '0.88rem', lineHeight: 1.55 }}>This helps you carry the right focus into next week. Complete your Weekly Pulse for week {pulseGate.fromWeek} and continue with clarity.</p>
+            <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>
+              Before week {(pulseGate || autoPulseGate).toWeek} begins, take 5 minutes with Sage.
+            </p>
+            <p style={{ margin: 0, color: shellMuted, fontSize: '0.88rem', lineHeight: 1.55 }}>
+              This helps you carry the right focus into next week. Complete your Weekly Pulse for week {(pulseGate || autoPulseGate).fromWeek} and continue with clarity.
+            </p>
             <button
               type="button"
               onClick={openWeeklyPulseFromGate}
@@ -356,8 +374,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: shellMuted, marginBottom: 10 }}>
           All Weeks
         </div>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-          <div style={{ display: 'flex', gap: 8, width: 'max-content', paddingBottom: 2 }}>
+        <div style={{ overflowX: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 8, width: '100%', paddingBottom: 2, flexWrap: 'wrap' }}>
             {weeklyData.weeks.map(week => {
               const active = week.index === activeWeek
               const status = weekProgressMap[week.index]
