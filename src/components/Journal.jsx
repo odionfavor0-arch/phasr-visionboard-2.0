@@ -19,6 +19,7 @@ import {
 
 const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
+const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -294,6 +295,10 @@ function normalizeLabel(value) {
     .trim()
 }
 
+function removeDashPunctuation(text) {
+  return String(text || '').replace(/[-—–]/g, '').replace(/\s+/g, ' ').trim()
+}
+
 function readVisionBoardData() {
   try {
     const direct = localStorage.getItem('phasr_vb')
@@ -330,7 +335,7 @@ function getActivePhase(boardData) {
 
 function buildWeeklyPulsePayload() {
   const boardData = readVisionBoardData()
-  const phase = getActivePhase(boardData)
+  const phase = (Array.isArray(boardData?.phases) && boardData.phases.length ? boardData.phases[0] : null) || getActivePhase(boardData)
   const phaseName = String(phase?.name || 'Phase 1').trim()
   const fixedQuestions = PHASE_QUESTIONS[normalizeLabel(phaseName)] || PHASE_QUESTIONS['phase 1']
 
@@ -339,6 +344,10 @@ function buildWeeklyPulsePayload() {
     : []
 
   const weekIndexSeed = Math.floor(Date.now() / (7 * MS_IN_DAY))
+  const phaseStart = phase?.startDate ? new Date(`${phase.startDate}T12:00:00`) : null
+  const weekNumber = phaseStart && !Number.isNaN(phaseStart.getTime())
+    ? Math.max(1, Math.floor((Date.now() - phaseStart.getTime()) / (7 * MS_IN_DAY)) + 1)
+    : 1
   const firstTwoPillars = pillars.slice(0, 2)
 
   const pillarQuestions = firstTwoPillars.map((pillarName) => {
@@ -363,17 +372,20 @@ function buildWeeklyPulsePayload() {
 
   const safePillars = firstTwoPillars.length ? firstTwoPillars : ['Personal Growth']
   const therapistMove = THERAPIST_MOVES[normalizeLabel(safePillars[0])] || THERAPIST_MOVES['personal growth']
-  const weeklyQuestions = [...fixedQuestions.slice(0, 2), ...pillarQuestions.slice(0, 2)].slice(0, 4)
-
-  while (weeklyQuestions.length < 4) {
-    weeklyQuestions.push('What truth from this week do I need to carry into next week?')
-  }
+  const fixedByDepth = weekNumber <= 1
+    ? fixedQuestions[0]
+    : weekNumber === 2
+      ? fixedQuestions[1] || fixedQuestions[0]
+      : fixedQuestions[(weekNumber - 1) % fixedQuestions.length]
+  const pillarQuestion = pillarQuestions[0] || fixedQuestions[1] || fixedQuestions[0]
+  const weeklyQuestions = [fixedByDepth, pillarQuestion]
 
   return {
-    phaseName,
+    phaseName: removeDashPunctuation(phaseName),
+    weekNumber,
     pillars: safePillars,
-    weeklyQuestions,
-    therapistMove,
+    weeklyQuestions: weeklyQuestions.map(removeDashPunctuation),
+    therapistMove: removeDashPunctuation(therapistMove),
   }
 }
 
@@ -410,37 +422,26 @@ function localSageResponse({ content = '', prompt = '', clarityLabel = 'Reflecti
   const isWeekly = lowerPrompt.includes('week') || lowerPrompt.includes('check-in') || lowerPrompt.includes('weekly')
 
   if (isWeekly) {
-    let pattern = 'You are showing effort, but your consistency shifts when pressure rises.'
-    let correction = 'Pick one non-negotiable block this week and protect it daily.'
-    let focus = 'Show up as the same person on hard days, not only on easy days.'
+    let pattern = 'You are showing effort and there is real intention here. The pattern is that pressure still changes your rhythm.'
+    let correction = 'Protect one non negotiable block this week and treat it like a promise to yourself.'
+    let focus = 'Coming week focus: be consistent on hard days, not only on easy ones.'
 
     const low = text.toLowerCase()
     if (low.includes('avoid') || low.includes('fear')) {
-      pattern = 'Fear is quietly deciding what gets postponed.'
-      correction = 'Start with the one task you have been avoiding in a fixed time block.'
-      focus = 'Courage through one uncomfortable action each day.'
+      pattern = 'Fear is quietly deciding what gets postponed. That is the thread running through your week.'
+      correction = 'Start with the one task you have been avoiding and give it a fixed time.'
+      focus = 'Coming week focus: one uncomfortable action each day.'
     } else if (low.includes('relationship') || low.includes('friend') || low.includes('partner') || low.includes('family')) {
-      pattern = 'You are carrying unsaid things that need honest expression.'
-      correction = 'Have one direct conversation you have been delaying.'
-      focus = 'Clarity in relationships over silent assumptions.'
+      pattern = 'You are carrying unsaid things and that emotional weight is spilling into everything else.'
+      correction = 'Have one direct conversation you have been delaying and keep it honest and simple.'
+      focus = 'Coming week focus: clarity in relationships over silent assumptions.'
     } else if (low.includes('identity') || low.includes('perform') || low.includes('approval')) {
-      pattern = 'You are torn between being real and being accepted.'
+      pattern = 'You are torn between being real and being accepted. That tension is showing in your choices.'
       correction = 'Choose one decision this week that reflects your values, not performance.'
-      focus = 'Lead with identity before image.'
+      focus = 'Coming week focus: identity before image.'
     }
 
-    return `You’re growing faster than you think.
-
-=== Key pattern Sage noticed ===
-${pattern}
-
-=== One correction ===
-${correction}
-
-=== Next focus ===
-${focus}
-
-Ready to start your next week aligned.`
+    return `${pattern}\n\n${correction}\n\n${focus}`
   }
 
   const toneLine = clarityLabel === 'Stressed'
@@ -471,6 +472,7 @@ function blankDraft() {
     templateAnswers: {},
     weeklyPulsePhaseName: '',
     weeklyPulsePillars: [],
+    weeklyPulseWeekNumber: 1,
     color: '#2f1e2a',
     fontId: 'dm',
     images: [],
@@ -748,7 +750,7 @@ function WeeklyPulseWriter({
 
       <div style={{ padding: '20px 16px', display: 'grid', gap: '1rem', flex: 1 }}>
         <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e8407a', margin: 0 }}>
-          Weekly Pulse — {phaseName}
+          Weekly Pulse {phaseName}
         </p>
         <p style={{ fontFamily: "'Cormorant Garamond, serif", fontSize: '1.15rem', fontWeight: 400, color: '#3d1f2b', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
           {currentQuestion}
@@ -1295,6 +1297,7 @@ export default function Journal() {
   const [weeklyPulseDate, setWeeklyPulseDate] = useState(() => localStorage.getItem(WEEKLY_PULSE_DATE_KEY) || '')
   const [weeklyPulseState, setWeeklyPulseState] = useState(() => ({
     phaseName: 'Phase 1',
+    weekNumber: 1,
     pillars: [],
     questions: [],
     therapistMove: '',
@@ -1324,6 +1327,7 @@ export default function Journal() {
     const payload = buildWeeklyPulsePayload()
     setWeeklyPulseState({
       phaseName: payload.phaseName,
+      weekNumber: payload.weekNumber || 1,
       pillars: payload.pillars,
       questions: payload.weeklyQuestions,
       therapistMove: payload.therapistMove,
@@ -1384,6 +1388,7 @@ export default function Journal() {
       templateAnswers,
       weeklyPulsePhaseName: weeklyPulseState.phaseName,
       weeklyPulsePillars: weeklyPulseState.pillars,
+      weeklyPulseWeekNumber: weeklyPulseState.weekNumber,
       mood: MOODS[0],
     }
 
@@ -1415,10 +1420,18 @@ export default function Journal() {
         weeklyPulseMeta: {
           phaseName: weeklyDraft.weeklyPulsePhaseName,
           pillars: weeklyDraft.weeklyPulsePillars,
+          weekNumber: weeklyDraft.weeklyPulseWeekNumber || 1,
         },
       }
       setEntries(current => [entry, ...current])
       setSelectedEntry(entry)
+      const completionStore = (() => {
+        try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+      })()
+      const phaseKey = normalizeLabel(weeklyDraft.weeklyPulsePhaseName || 'phase 1')
+      completionStore[phaseKey] = completionStore[phaseKey] || {}
+      completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
+      localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
       setScreen('detail')
     } catch {
@@ -1443,10 +1456,18 @@ export default function Journal() {
         weeklyPulseMeta: {
           phaseName: weeklyDraft.weeklyPulsePhaseName,
           pillars: weeklyDraft.weeklyPulsePillars,
+          weekNumber: weeklyDraft.weeklyPulseWeekNumber || 1,
         },
       }
       setEntries(current => [fallback, ...current])
       setSelectedEntry(fallback)
+      const completionStore = (() => {
+        try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+      })()
+      const phaseKey = normalizeLabel(weeklyDraft.weeklyPulsePhaseName || 'phase 1')
+      completionStore[phaseKey] = completionStore[phaseKey] || {}
+      completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
+      localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
       setScreen('detail')
     } finally {
@@ -1570,6 +1591,7 @@ export default function Journal() {
       templateAnswers: entry.templateAnswers || {},
       weeklyPulsePhaseName: entry.weeklyPulseMeta?.phaseName || '',
       weeklyPulsePillars: entry.weeklyPulseMeta?.pillars || [],
+      weeklyPulseWeekNumber: entry.weeklyPulseMeta?.weekNumber || 1,
       color: entry.color || '#2f1e2a',
       fontId: entry.fontId || 'dm',
       images: Array.isArray(entry.images) ? entry.images : [],

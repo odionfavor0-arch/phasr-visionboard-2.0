@@ -1357,6 +1357,24 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
   const toggleCheck = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }))
 
+  function logCalendarIntegration(status) {
+    try {
+      const key = 'phasr_calendar_integration_log'
+      const raw = localStorage.getItem(key)
+      const parsed = raw ? JSON.parse(raw) : {}
+      const phase = data.phases.find(item => item.id === phaseId) || data.phases[0]
+      parsed[phase?.id || 'phase-1'] = {
+        phaseId: phase?.id || 'phase-1',
+        phaseName: phase?.name || 'Phase 1',
+        status,
+        date: new Date().toISOString(),
+      }
+      localStorage.setItem(key, JSON.stringify(parsed))
+    } catch {
+      // ignore
+    }
+  }
+
   async function addToCalendarPlan() {
     if (calendarBusy) return
     const next = buildWeeklyCalendarEvents({ ...data, activePhaseId: phaseId })
@@ -1388,6 +1406,13 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
             : 'This browser cannot hand the plan directly to your calendar app. Use Download if you want the calendar file.',
       },
     }))
+    logCalendarIntegration(result.method === 'share' ? 'integrated' : 'skipped')
+    window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
+      detail: {
+        title: 'Weekly check in',
+        message: 'Every week Sage will check in with you. Your weekly reflection is part of your phase.',
+      },
+    }))
   }
 
   function downloadCalendarPlan() {
@@ -1405,6 +1430,13 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }
 
   function closeCalendarPrompt() {
+    logCalendarIntegration('skipped')
+    window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
+      detail: {
+        title: 'Weekly check in',
+        message: 'Every week Sage will check in with you. Your weekly reflection is part of your phase.',
+      },
+    }))
     setCalendarPromptState('hidden')
   }
 

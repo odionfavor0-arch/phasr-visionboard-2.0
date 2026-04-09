@@ -11,6 +11,7 @@ import {
 import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
+const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -30,6 +31,19 @@ function safeRead(key, fallback) {
 
 function safeWrite(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
+}
+
+function normalizeLabel(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function readPulseCompletions() {
+  return safeRead(WEEKLY_PULSE_COMPLETION_KEY, {})
 }
 
 function getUnlockState(summary, tier) {
@@ -142,6 +156,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   const phases = useMemo(() => (boardData?.phases || []).slice(0, 2), [boardData])
   const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
   const [activeWeek, setActiveWeek] = useState(1)
+  const [pulseGate, setPulseGate] = useState(null)
 
   useEffect(() => {
     if (!phases.some(phase => phase.id === activePhaseId)) {
@@ -207,6 +222,38 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     onLockInChange?.()
   }
 
+  function isPulseCompletedForWeek(phaseName, weekIndex) {
+    const phaseKey = normalizeLabel(phaseName || 'phase 1')
+    const store = readPulseCompletions()
+    return Boolean(store?.[phaseKey]?.[String(weekIndex)])
+  }
+
+  function handleWeekSelect(nextWeek) {
+    const nextIndex = nextWeek?.index || 1
+    if (nextIndex <= 1) {
+      setActiveWeek(nextIndex)
+      setPulseGate(null)
+      return
+    }
+
+    const previousIndex = nextIndex - 1
+    const previousStatus = weekProgressMap[previousIndex]
+    const previousCompleted = Boolean(previousStatus?.completed)
+    const pulseDone = isPulseCompletedForWeek(selectedPhase?.name || 'Phase 1', previousIndex)
+
+    if (previousCompleted && !pulseDone) {
+      setPulseGate({
+        fromWeek: previousIndex,
+        toWeek: nextIndex,
+        phaseName: selectedPhase?.name || 'Phase 1',
+      })
+      return
+    }
+
+    setPulseGate(null)
+    setActiveWeek(nextIndex)
+  }
+
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%' }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: '18px 20px 96px' }}>
@@ -252,6 +299,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
           Turn your goal into daily action
         </div>
 
+        {pulseGate ? (
+          <div style={{ borderRadius: 18, border: `1px solid ${shellBorder}`, background: '#fff5f8', padding: '0.9rem 1rem', marginBottom: 12, display: 'grid', gap: '0.42rem' }}>
+            <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Before week {pulseGate.toWeek} begins, take 5 minutes with Sage.</p>
+            <p style={{ margin: 0, color: shellMuted, fontSize: '0.88rem', lineHeight: 1.55 }}>Open Journal and complete Weekly Pulse for week {pulseGate.fromWeek}. This is a soft pause and part of your phase flow.</p>
+          </div>
+        ) : null}
+
         {!briefingDismissed && weeklyLoadPlan && weeklyLoadPlan.week === activeWeek && (
           <SageBriefingCard
             plan={weeklyLoadPlan}
@@ -277,7 +331,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                 <button
                   key={week.id}
                   type="button"
-                  onClick={() => setActiveWeek(week.index)}
+                  onClick={() => handleWeekSelect(week)}
                   style={{
                     padding: '8px 14px',
                     borderRadius: 999,
