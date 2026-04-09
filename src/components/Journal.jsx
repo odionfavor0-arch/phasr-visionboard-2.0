@@ -113,6 +113,62 @@ const TEMPLATES = [
       { label: 'What is the next small step?', subtext: 'Pick one move that gives you more clarity.' },
     ],
   },
+  {
+    id: 'weekly-reflect-identity',
+    tier: 'Weekly reflect',
+    week: 1,
+    name: 'Week 1 — Identity check-in',
+    useWhen: 'Before starting a new week, complete your weekly reset.',
+    accent: '#e8f1ff',
+    fields: [
+      { label: 'Who did I show up as this week?', subtext: 'Name the version of you that was most present this week.' },
+      { label: 'Was that the person I want to be?', subtext: 'Be honest about where your actions matched or missed your values.' },
+      { label: 'What am I tolerating that I should not be?', subtext: 'Name one pattern, habit, or situation you need to stop accepting.' },
+      { label: 'What version of myself do I want to lead with next week?', subtext: 'Choose the identity you want to carry into next week.' },
+    ],
+  },
+  {
+    id: 'weekly-reflect-relationships',
+    tier: 'Weekly reflect',
+    week: 2,
+    name: 'Week 2 — Relationship check-in',
+    useWhen: 'Before starting a new week, complete your weekly reset.',
+    accent: '#efe7ff',
+    fields: [
+      { label: 'Who did I show up for this week?', subtext: 'Name the people you gave your attention and energy to.' },
+      { label: 'Who did I neglect — including myself?', subtext: 'Acknowledge what or who did not receive enough care.' },
+      { label: 'Is there something unsaid that needs to be addressed?', subtext: 'Identify one conversation that needs honesty next week.' },
+      { label: 'What does my closest relationship need from me right now?', subtext: 'Be specific about what support is needed now.' },
+    ],
+  },
+  {
+    id: 'weekly-reflect-fear-avoidance',
+    tier: 'Weekly reflect',
+    week: 3,
+    name: 'Week 3 — Fear & avoidance check-in',
+    useWhen: 'Before starting a new week, complete your weekly reset.',
+    accent: '#ffe9e2',
+    fields: [
+      { label: 'What did I avoid this week that I know mattered?', subtext: 'Name the task, decision, or truth you kept postponing.' },
+      { label: 'What was underneath that avoidance?', subtext: 'Go beneath behavior and name the real fear or tension.' },
+      { label: 'What story have I been telling myself to justify it?', subtext: 'Write the story exactly as you have been repeating it.' },
+      { label: 'What would the more honest version of me do next week?', subtext: 'Choose one action your honest self would take first.' },
+    ],
+  },
+  {
+    id: 'weekly-reflect-alignment',
+    tier: 'Weekly reflect',
+    week: 4,
+    name: 'Week 4 — Alignment check-in',
+    useWhen: 'Before starting a new week, complete your weekly reset.',
+    accent: '#e7f8ef',
+    fields: [
+      { label: 'Did my actions this week match what I say I value?', subtext: 'Check if your behavior matched your values.' },
+      { label: 'Where was I performing instead of being real?', subtext: 'Name one place where authenticity was replaced by performance.' },
+      { label: 'What drained me that I kept choosing anyway?', subtext: 'Spot repeated choices that quietly take your energy.' },
+      { label: 'What one shift would make next week feel different?', subtext: 'Pick one concrete shift to carry into next week.' },
+    ],
+  },
 ]
 
 const BACKGROUNDS = [
@@ -261,6 +317,21 @@ Title rules:
 - If the user used a template, generatedTitle must be the template title exactly.
 - If the user did not use a template and did not write a title, generate a short natural title from what they wrote.
 
+Weekly reflection response format:
+- If prompt includes Weekly, Identity check-in, Relationship check-in, Fear & avoidance check-in, or Alignment check-in, sageResponse must use this exact structure:
+You’re growing faster than you think.
+
+=== Key pattern Sage noticed ===
+[short insight]
+
+=== One correction ===
+[one clear change]
+
+=== Next focus ===
+[one sharp focus for next week]
+
+Ready to start your next week aligned.
+
 Scoring rules:
 - clarityScore must be an integer from 1 to 10.
 - clarityLabel must be one short emotional or mental-state label such as Calm, Focused, Stressed, Reflective, Avoidant, Productive, Angry, Happy, Confused, Clear, Heavy, Energised, Confident, or Decisive.
@@ -339,6 +410,7 @@ function TemplatesPage({ onBack, onSelect }) {
     acc[item.tier] = [...(acc[item.tier] || []), item]
     return acc
   }, {})
+  const orderedGroups = ['Basic', 'Pro', 'Weekly reflect']
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#eef6ff', padding: '0.9rem 0.9rem 1.4rem' }}>
@@ -347,10 +419,15 @@ function TemplatesPage({ onBack, onSelect }) {
           <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1d2430' }}>Templates</h2>
         </div>
-        {Object.entries(grouped).map(([group, items]) => (
+        <div style={{ background: '#ffffff', border: '1px solid #d9e7ff', borderRadius: 20, padding: '1rem 1rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
+          <p style={{ margin: 0, color: '#2e3c56', fontWeight: 800, fontSize: '0.95rem' }}>Before starting a new week, complete your weekly reset.</p>
+          <p style={{ margin: 0, color: '#5f6e87', fontSize: '0.86rem', lineHeight: 1.55 }}>Tap to open your journal with a pre-filled reflection template.</p>
+          <p style={{ margin: 0, color: '#5f6e87', fontSize: '0.84rem', lineHeight: 1.6 }}>Once you submit: Sage analyzes your answers and returns 1 key pattern, 1 correction, and 1 sharp focus for next week.</p>
+        </div>
+        {orderedGroups.filter(group => grouped[group]?.length).map(group => (
           <div key={group} style={{ display: 'grid', gap: '0.85rem' }}>
             <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6e7fa1' }}>{group}</p>
-            {items.map(item => (
+            {grouped[group].map(item => (
               <div key={item.id} style={{ background: item.accent, borderRadius: 24, padding: '1.1rem', display: 'grid', gap: '0.55rem' }}>
                 <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#2f2530' }}>{item.name}</p>
                 <p style={{ margin: 0, fontSize: '0.84rem', color: '#5c5564', fontWeight: 700 }}>{item.useWhen}</p>
