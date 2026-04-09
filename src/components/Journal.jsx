@@ -1337,6 +1337,12 @@ export default function Journal() {
     setScreen('weekly-pulse')
   }
 
+  useEffect(() => {
+    const handler = () => openWeeklyPulse()
+    window.addEventListener('phasr-open-weekly-pulse', handler)
+    return () => window.removeEventListener('phasr-open-weekly-pulse', handler)
+  }, [])
+
   function startNewEntry() {
     setDraft(blankDraft())
     setShowMoodPicker(true)

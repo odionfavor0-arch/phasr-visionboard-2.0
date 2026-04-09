@@ -153,7 +153,15 @@ function isConfiguredPillar(pillar) {
 export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   const [boardData] = useState(() => loadBoardData())
   const [lockInState, setLockInState] = useState(() => loadLockInState())
-  const phases = useMemo(() => (boardData?.phases || []).slice(0, 2), [boardData])
+  const phases = useMemo(() => {
+    const source = Array.isArray(boardData?.phases) ? [...boardData.phases] : []
+    source.sort((a, b) => {
+      const aNum = Number(String(a?.name || '').replace(/[^\d]/g, '')) || 999
+      const bNum = Number(String(b?.name || '').replace(/[^\d]/g, '')) || 999
+      return aNum - bNum
+    })
+    return source
+  }, [boardData])
   const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
   const [activeWeek, setActiveWeek] = useState(1)
   const [pulseGate, setPulseGate] = useState(null)
@@ -196,8 +204,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   const selectedWeekStatus = selectedWeek ? weekProgressMap[selectedWeek.index] : null
   const showRiskWarning = useMemo(() => {
     const now = new Date()
-    return now.getHours() >= 18 && !summary.hasLoggedToday
-  }, [summary.hasLoggedToday])
+    if (now.getHours() < 18) return false
+    if (!selectedWeek) return false
+    const hasOpenGoals = filteredGoals.some(goal => (goal.completed || 0) < (goal.target || 0))
+    return hasOpenGoals && !summary.hasLoggedToday
+  }, [summary.hasLoggedToday, selectedWeek, filteredGoals])
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
   const briefingDismissed = useMemo(() => {
@@ -255,9 +266,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     setActiveWeek(nextIndex)
   }
 
+  function openWeeklyPulseFromGate() {
+    window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal' } }))
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
+  }
+
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%' }}>
-      <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: '18px 20px 96px' }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: '18px 20px 96px', overflowX: 'hidden' }}>
         {showRiskWarning && (
           <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
@@ -303,7 +319,24 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
         {pulseGate ? (
           <div style={{ borderRadius: 18, border: `1px solid ${shellBorder}`, background: '#fff5f8', padding: '0.9rem 1rem', marginBottom: 12, display: 'grid', gap: '0.42rem' }}>
             <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Before week {pulseGate.toWeek} begins, take 5 minutes with Sage.</p>
-            <p style={{ margin: 0, color: shellMuted, fontSize: '0.88rem', lineHeight: 1.55 }}>Open Journal and complete Weekly Pulse for week {pulseGate.fromWeek}. This is a soft pause and part of your phase flow.</p>
+            <p style={{ margin: 0, color: shellMuted, fontSize: '0.88rem', lineHeight: 1.55 }}>This helps you carry the right focus into next week. Complete your Weekly Pulse for week {pulseGate.fromWeek} and continue with clarity.</p>
+            <button
+              type="button"
+              onClick={openWeeklyPulseFromGate}
+              style={{
+                justifySelf: 'start',
+                border: 'none',
+                borderRadius: 12,
+                padding: '0.58rem 0.86rem',
+                background: `linear-gradient(135deg,${accent2},${accent})`,
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+              }}
+            >
+              Start Weekly Pulse
+            </button>
           </div>
         ) : null}
 
