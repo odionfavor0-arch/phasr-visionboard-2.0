@@ -12,6 +12,7 @@ import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingD
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
+const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -165,6 +166,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
   const [activeWeek, setActiveWeek] = useState(1)
   const [pulseGate, setPulseGate] = useState(null)
+  const [autoPulseGateDismissed, setAutoPulseGateDismissed] = useState(false)
 
   useEffect(() => {
     if (!phases.some(phase => phase.id === activePhaseId)) {
@@ -174,6 +176,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
 
   useEffect(() => {
     setActiveWeek(1)
+    setAutoPulseGateDismissed(false)
   }, [activePhaseId])
 
   const phaseBoard = useMemo(() => makeBoardForPhase(boardData, activePhaseId), [boardData, activePhaseId])
@@ -240,6 +243,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     }
   }, [selectedPhase, weekProgressMap])
 
+  useEffect(() => {
+    if (!autoPulseGate) setAutoPulseGateDismissed(false)
+  }, [autoPulseGate])
+
   function handleToggleGoal(goal) {
     toggleWeeklyGoalCompletion(goal, phaseBoard)
     setLockInState(loadLockInState())
@@ -280,13 +287,35 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   }
 
   function openWeeklyPulseFromGate() {
+    // Journal only listens for `phasr-open-weekly-pulse` while mounted; this makes the CTA reliable
+    // even when we’re switching views (check-in -> journal).
+    let stored = false
+    try {
+      localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
+      stored = true
+    } catch {
+      // ignore storage failures (private mode, disabled storage, etc.)
+    }
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal' } }))
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
+    window.dispatchEvent(new CustomEvent('phasr-open-journal'))
+    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 120)
+    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 420)
+  }
+
+  const pulseGateCard = pulseGate || autoPulseGate
+  const showPulseGateCard = Boolean(pulseGate) || (Boolean(autoPulseGate) && !autoPulseGateDismissed)
+
+  function closePulseGateCard() {
+    if (pulseGate) {
+      setPulseGate(null)
+      return
+    }
+    setAutoPulseGateDismissed(true)
   }
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden' }}>
-      <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto', padding: '18px 20px 96px', overflowX: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto', padding: isMobile ? '16px 14px 96px' : '18px 20px 96px', overflowX: 'hidden' }}>
         {showRiskWarning && (
           <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
@@ -330,31 +359,28 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
           Turn your goal into daily action
         </div>
 
-        {(pulseGate || autoPulseGate) ? (
-          <div style={{ borderRadius: 18, border: `1px solid ${shellBorder}`, background: '#fff5f8', padding: '0.9rem 1rem', marginBottom: 12, display: 'grid', gap: '0.42rem' }}>
-            <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>
-              Before week {(pulseGate || autoPulseGate).toWeek} begins, take 5 minutes with Sage.
-            </p>
-            <p style={{ margin: 0, color: shellMuted, fontSize: '0.88rem', lineHeight: 1.55 }}>
-              This helps you carry the right focus into next week. Complete your Weekly Pulse for week {(pulseGate || autoPulseGate).fromWeek} and continue with clarity.
-            </p>
-            <button
-              type="button"
-              onClick={openWeeklyPulseFromGate}
-              style={{
-                justifySelf: 'start',
-                border: 'none',
-                borderRadius: 12,
-                padding: '0.58rem 0.86rem',
-                background: `linear-gradient(135deg,${accent2},${accent})`,
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-              }}
-            >
-              Start Weekly Pulse
-            </button>
+        {showPulseGateCard && pulseGateCard ? (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 170, display: 'grid', placeItems: 'center', background: 'rgba(35,18,28,0.22)', backdropFilter: 'blur(1px)', padding: '18px' }} onClick={closePulseGateCard}>
+            <div onClick={event => event.stopPropagation()} style={{ position: 'relative', width: 'min(92vw, 560px)', background: '#fff5f8', border: '1px solid #f2c8d6', borderRadius: 24, boxShadow: '0 24px 48px rgba(185,87,122,0.2)', padding: isMobile ? '1rem 1rem 0.95rem' : '1.1rem 1.15rem 1rem' }}>
+              <button onClick={closePulseGateCard} aria-label="Close weekly pulse prompt" style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, fontSize: '1.1rem', lineHeight: 1 }}>
+                ×
+              </button>
+              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f' }}>Weekly Pulse</p>
+              <p style={{ color: '#5c3342', fontSize: isMobile ? '1.12rem' : '1.32rem', lineHeight: 1.45, margin: '0.55rem 2.4rem 0.5rem 0', fontWeight: 700 }}>
+                Before week {pulseGateCard.toWeek} begins, take 5 minutes with Sage.
+              </p>
+              <p style={{ color: '#7e5d68', fontSize: '0.94rem', lineHeight: 1.6, margin: '0 1.7rem 0.95rem 0' }}>
+                Complete Weekly Pulse for week {pulseGateCard.fromWeek} and carry a clear focus into your next week.
+              </p>
+              <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                <button onClick={openWeeklyPulseFromGate} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
+                  Open Weekly Pulse
+                </button>
+                <button onClick={closePulseGateCard} style={{ minHeight: 48, padding: '0.75rem 1.1rem', borderRadius: 999, border: '1px solid #efc3d1', background: '#fff', color: '#8a5568', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.94rem' }}>
+                  Later
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -374,8 +400,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: shellMuted, marginBottom: 10 }}>
           All Weeks
         </div>
-        <div style={{ overflowX: 'hidden' }}>
-          <div style={{ display: 'flex', gap: 8, width: '100%', paddingBottom: 2, flexWrap: 'wrap' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+          <div style={{ display: 'flex', gap: 8, width: 'max-content', minWidth: '100%', paddingBottom: 2, flexWrap: 'nowrap' }}>
             {weeklyData.weeks.map(week => {
               const active = week.index === activeWeek
               const status = weekProgressMap[week.index]
@@ -385,12 +411,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                   type="button"
                   onClick={() => handleWeekSelect(week)}
                   style={{
-                    padding: '8px 14px',
+                    padding: isMobile ? '7px 12px' : '8px 14px',
                     borderRadius: 999,
                     border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
                     background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
                     color: active ? accent : shellMuted,
-                    fontSize: 12,
+                    fontSize: isMobile ? 11 : 12,
                     fontWeight: 700,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
