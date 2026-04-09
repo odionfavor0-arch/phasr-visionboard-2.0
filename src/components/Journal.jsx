@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 
 const STORAGE_KEY = 'phasr_journal_v2'
+const WEEKLY_RESET_KEY = 'phasr_weekly_reset_meta_v1'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -263,6 +264,92 @@ function countWords(text) {
   return String(text || '').trim().split(/\s+/).filter(Boolean).length
 }
 
+function localEmotionProfile(content = '') {
+  const text = String(content || '').toLowerCase()
+  const hasAny = (...terms) => terms.some(term => text.includes(term))
+
+  if (hasAny('overwhelmed', 'stressed', 'anxious', 'panic', 'drained', 'tired', 'heavy')) {
+    return { clarityScore: 4, clarityLabel: 'Stressed' }
+  }
+  if (hasAny('avoiding', 'avoid', 'procrastinat', 'stuck', 'confused', 'unsure')) {
+    return { clarityScore: 5, clarityLabel: 'Avoidant' }
+  }
+  if (hasAny('angry', 'frustrated', 'annoyed', 'upset', 'mad')) {
+    return { clarityScore: 5, clarityLabel: 'Angry' }
+  }
+  if (hasAny('grateful', 'calm', 'peace', 'grounded', 'steady')) {
+    return { clarityScore: 8, clarityLabel: 'Calm' }
+  }
+  if (hasAny('focused', 'productive', 'momentum', 'clear', 'decided', 'progress')) {
+    return { clarityScore: 8, clarityLabel: 'Focused' }
+  }
+  return { clarityScore: 6, clarityLabel: 'Reflective' }
+}
+
+function localSageResponse({ content = '', prompt = '', clarityLabel = 'Reflective' }) {
+  const text = String(content || '').trim()
+  const preview = makePreview(text)
+  const lowerPrompt = String(prompt || '').toLowerCase()
+  const isWeekly = lowerPrompt.includes('week') || lowerPrompt.includes('check-in') || lowerPrompt.includes('weekly')
+
+  if (isWeekly) {
+    let pattern = 'You are showing effort, but your consistency shifts when pressure rises.'
+    let correction = 'Pick one non-negotiable block this week and protect it daily.'
+    let focus = 'Show up as the same person on hard days, not only on easy days.'
+
+    const low = text.toLowerCase()
+    if (low.includes('avoid') || low.includes('fear')) {
+      pattern = 'Fear is quietly deciding what gets postponed.'
+      correction = 'Start with the one task you have been avoiding in a fixed time block.'
+      focus = 'Courage through one uncomfortable action each day.'
+    } else if (low.includes('relationship') || low.includes('friend') || low.includes('partner') || low.includes('family')) {
+      pattern = 'You are carrying unsaid things that need honest expression.'
+      correction = 'Have one direct conversation you have been delaying.'
+      focus = 'Clarity in relationships over silent assumptions.'
+    } else if (low.includes('identity') || low.includes('perform') || low.includes('approval')) {
+      pattern = 'You are torn between being real and being accepted.'
+      correction = 'Choose one decision this week that reflects your values, not performance.'
+      focus = 'Lead with identity before image.'
+    }
+
+    return `You’re growing faster than you think.
+
+=== Key pattern Sage noticed ===
+${pattern}
+
+=== One correction ===
+${correction}
+
+=== Next focus ===
+${focus}
+
+Ready to start your next week aligned.`
+  }
+
+  const toneLine = clarityLabel === 'Stressed'
+    ? 'That weight is real. You are carrying a lot right now.'
+    : clarityLabel === 'Focused'
+      ? 'Your momentum is visible. You are not just thinking, you are moving.'
+      : `I can feel where your head is right now: ${clarityLabel.toLowerCase()}.`
+
+  const step = clarityLabel === 'Stressed'
+    ? 'Pick one small action you can finish in 15 minutes and let that reset your energy.'
+    : clarityLabel === 'Avoidant'
+      ? 'Start with the task you are avoiding for just 10 minutes. Action will clear the fog.'
+      : 'Choose one sentence from this entry as your anchor for tomorrow, and act on it first.'
+
+  return `${toneLine} ${preview ? `You said: "${preview}". ` : ''}${step}`.trim()
+}
+
+function getWeeklyTemplateByCycle(cycleNumber) {
+  const weeklyTemplates = TEMPLATES
+    .filter(item => item.tier === 'Weekly reflect')
+    .sort((a, b) => (a.week || 0) - (b.week || 0))
+  if (!weeklyTemplates.length) return null
+  const index = Math.max(0, (Math.max(1, cycleNumber) - 1) % weeklyTemplates.length)
+  return weeklyTemplates[index]
+}
+
 function blankDraft() {
   return {
     date: getToday(),
@@ -281,29 +368,37 @@ function blankDraft() {
 }
 
 async function generateSageAnalysis({ title, content, mood, prompt }) {
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_GROQ_KEY || ''
-  if (!apiKey) {
-    return {
-      generatedTitle: title || prompt || makePreview(content) || 'Journal entry',
-      clarityScore: mood?.score || 7,
-      clarityLabel: mood?.label || 'Reflective',
-      sageResponse: 'You captured something honest here. Hold onto the clearest sentence and let that become your next step.',
-    }
+  const localProfile = localEmotionProfile(content)
+  const localFallback = {
+    generatedTitle: title || prompt || makePreview(content) || 'Journal entry',
+    clarityScore: Number(localProfile.clarityScore || 6),
+    clarityLabel: localProfile.clarityLabel || 'Reflective',
+    sageResponse: localSageResponse({
+      content,
+      prompt,
+      clarityLabel: localProfile.clarityLabel || 'Reflective',
+    }),
   }
 
-  const response = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      temperature: 0.6,
-      messages: [
-        {
-          role: 'system',
-          content: `You are Sage, Phasr's reflective journal guide.
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_GROQ_KEY || ''
+  if (!apiKey) {
+    return localFallback
+  }
+
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.6,
+        messages: [
+          {
+            role: 'system',
+            content: `You are Sage, Phasr's reflective journal guide.
 
 Return strict JSON only with this shape:
 {
@@ -360,20 +455,29 @@ Sage response rules:
 - sageResponse should feel personal, emotionally aware, grounded, and useful.
 - It should reflect what the user is truly feeling, name the pattern underneath the words, and offer one meaningful next step only when that makes sense.
 - Do not use markdown.
-- Do not include any explanation outside the JSON.`,
-        },
-        {
-          role: 'user',
-          content: JSON.stringify({ title, content, mood: mood?.label || '', prompt }),
-        },
-      ],
-    }),
-  })
+  - Do not include any explanation outside the JSON.`,
+          },
+          {
+            role: 'user',
+            content: JSON.stringify({ title, content, mood: mood?.label || '', prompt }),
+          },
+        ],
+      }),
+    })
 
-  if (!response.ok) throw new Error('journal_analysis_failed')
-  const payload = await response.json()
-  const raw = String(payload?.choices?.[0]?.message?.content || '').replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim()
-  return JSON.parse(raw)
+    if (!response.ok) throw new Error('journal_analysis_failed')
+    const payload = await response.json()
+    const raw = String(payload?.choices?.[0]?.message?.content || '').replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim()
+    const parsed = JSON.parse(raw)
+    return {
+      generatedTitle: parsed?.generatedTitle || localFallback.generatedTitle,
+      clarityScore: Number(parsed?.clarityScore || localFallback.clarityScore),
+      clarityLabel: parsed?.clarityLabel || localFallback.clarityLabel,
+      sageResponse: parsed?.sageResponse || localFallback.sageResponse,
+    }
+  } catch {
+    return localFallback
+  }
 }
 
 function BottomSheet({ open, onClose, title, children }) {
@@ -932,12 +1036,36 @@ export default function Journal() {
   const [editingEntryId, setEditingEntryId] = useState(null)
   const [entryActionId, setEntryActionId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [weeklyResetMeta, setWeeklyResetMeta] = useState(() => {
+    try {
+      const raw = localStorage.getItem(WEEKLY_RESET_KEY)
+      const parsed = raw ? JSON.parse(raw) : null
+      return parsed && typeof parsed.lastCompletedCycle === 'number' ? parsed : { lastCompletedCycle: 0 }
+    } catch {
+      return { lastCompletedCycle: 0 }
+    }
+  })
 
   useEffect(() => {
     safeWrite(entries)
   }, [entries])
 
+  useEffect(() => {
+    localStorage.setItem(WEEKLY_RESET_KEY, JSON.stringify(weeklyResetMeta))
+  }, [weeklyResetMeta])
+
   const filteredEntries = useMemo(() => sortEntries(entries, search, sortOrder), [entries, search, sortOrder])
+  const activityDays = useMemo(() => new Set(entries.map(entry => String(entry.date || '').slice(0, 10)).filter(Boolean)).size, [entries])
+  const weeklyCycle = Math.floor(activityDays / 7)
+  const weeklyTemplate = useMemo(() => getWeeklyTemplateByCycle(weeklyCycle || 1), [weeklyCycle])
+  const weeklyResetDue = weeklyCycle > 0 && activityDays % 7 === 0 && weeklyResetMeta.lastCompletedCycle < weeklyCycle
+
+  function openWeeklyReset() {
+    if (!weeklyTemplate) return
+    setSelectedTemplate(weeklyTemplate)
+    setTemplateAnswers(Object.fromEntries(weeklyTemplate.fields.map(field => [field.label, ''])))
+    setScreen('template-detail')
+  }
 
   function startNewEntry() {
     setDraft(blankDraft())
@@ -991,6 +1119,9 @@ export default function Journal() {
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? entry : item) : [entry, ...current])
       setSelectedEntry(entry)
+      if (String(draft.prompt || '').toLowerCase().includes('check-in') && weeklyCycle > 0) {
+        setWeeklyResetMeta({ lastCompletedCycle: weeklyCycle })
+      }
       setEditingEntryId(null)
       setScreen('detail')
       } catch {
@@ -1018,6 +1149,9 @@ export default function Journal() {
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? fallback : item) : [fallback, ...current])
       setSelectedEntry(fallback)
+      if (String(draft.prompt || '').toLowerCase().includes('check-in') && weeklyCycle > 0) {
+        setWeeklyResetMeta({ lastCompletedCycle: weeklyCycle })
+      }
       setEditingEntryId(null)
       setScreen('detail')
     } finally {
@@ -1120,6 +1254,16 @@ export default function Journal() {
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', minWidth: 0 }} />
               <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></button>
           </div>
+
+          {weeklyResetDue ? (
+            <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
+              <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your weekly reset.</p>
+              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Sage will return 1 key pattern, 1 correction, and 1 sharp focus for your next week.</p>
+              <button type="button" onClick={openWeeklyReset} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
+                Open weekly reset
+              </button>
+            </div>
+          ) : null}
 
           <div style={{ display: 'grid', gap: '0.6rem' }}>
             {filteredEntries.map(entry => (
