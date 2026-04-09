@@ -206,6 +206,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     return phaseKey && weekKey ? isBriefingDismissed(phaseKey, weekKey) : false
   }, [selectedPhase, weeklyLoadPlan])
   const isDarkTheme = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'neutral'
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const shellBg = 'var(--app-bg)'
   const shellSurface = isDarkTheme ? '#13131a' : '#ffffff'
   const shellSurfaceAlt = isDarkTheme ? '#1c1c26' : '#fff6f9'
