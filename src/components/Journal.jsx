@@ -18,9 +18,90 @@ import {
 } from 'lucide-react'
 
 const STORAGE_KEY = 'phasr_journal_v2'
-const WEEKLY_RESET_KEY = 'phasr_weekly_reset_meta_v1'
+const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
+
+const MS_IN_DAY = 24 * 60 * 60 * 1000
+
+const PHASE_QUESTIONS = {
+  'phase 1': [
+    'Who did I show up as this week?',
+    'Was that the person I want to be?',
+  ],
+  'phase 2': [
+    'Who did I show up for this week?',
+    'Who did I neglect — including myself?',
+  ],
+  'phase 3': [
+    'What did I avoid this week that I know mattered?',
+    'What was underneath that avoidance?',
+  ],
+  'phase 4': [
+    'Did my actions this week match what I say I value?',
+    'What one shift would make next week feel different?',
+  ],
+}
+
+const PILLAR_QUESTIONS = {
+  'health and fitness': [
+    'Close your eyes. The version of you that has already achieved your health goal is looking back at this exact week. She is not judging you. She is just watching. What does she see?',
+    'Your body kept score this week. What did it register that your mind tried to ignore?',
+    'There is a habit you keep almost starting. Not almost — you have started it and stopped it. What would it mean about you if you actually kept it this week?',
+    'The goal is not the body. The goal is the feeling on the other side of the body. What feeling are you really chasing — and did anything this week give you a taste of it?',
+    'Who in your life would notice first if you became the healthiest version of yourself? What would they see that is not there yet?',
+    'You already know what you need to do. The question is what you are using as a reason not to do it. What is the real reason?',
+  ],
+  'career and business': [
+    'You are building something. But building requires believing before there is proof. Where did your belief waver this week — and what was underneath that?',
+    'Imagine the moment you hit your biggest career goal. Not the achievement. The feeling in your chest in the room where it happens. What did this week do to get you closer to that room?',
+    'What are you still waiting for permission to do? Who are you waiting to get it from?',
+    'The work you avoid the most is usually the work that matters the most. What did you avoid this week that you already know was important?',
+    'Five years from now you will either look back at this phase as the moment everything changed or the moment you played it safe. Which one is this week pointing toward?',
+    'What would you be building right now if you were not afraid of what people would think?',
+  ],
+  'wealth and finance': [
+    'Money follows decision. What financial decision have you been postponing that you already know the answer to?',
+    'What is your relationship with money telling you about your relationship with yourself right now?',
+    'Visualize the version of you who is financially free. Not rich. Free. What does her week look like compared to yours right now?',
+    'Where are you spending money to feel something you have not dealt with yet?',
+    'What belief about money did you inherit that is quietly running your decisions right now?',
+    'The gap between where you are financially and where you want to be — is it a knowledge gap or a behaviour gap? Be honest.',
+  ],
+  relationships: [
+    'Think about the most important relationship in your life right now. How present have you actually been — not how busy, how present?',
+    'There is something you have not said to someone that needs to be said. Not to hurt them. Because it is true. What is stopping you?',
+    'Who showed up for you this week? Did you let them?',
+    'The version of you achieving your goals — is she someone the people you love would recognise? Or is she someone they would have to get used to?',
+    'Where are you keeping the peace at the cost of your own truth?',
+    'What does the most important relationship in your life need from you right now that you have not been giving?',
+  ],
+  'inner life': [
+    'Underneath the week, underneath the tasks and the noise — what were you actually feeling? Not what you told people. What you felt alone.',
+    'There is a version of peace that you have experienced before. Briefly, quietly. What was happening when you last felt it?',
+    'What are you carrying right now that is not yours to carry?',
+    'Your intuition spoke to you this week. You may have called it anxiety or overthinking. But it was trying to tell you something. What was it?',
+    'When did you last feel fully like yourself — not performing, not managing, just present? What made that possible?',
+    'What would you do differently this week if you genuinely believed you were enough exactly as you are right now?',
+  ],
+  'personal growth': [
+    'Who were you this week compared to who you were a month ago? Name one specific thing that is different.',
+    'What uncomfortable thing did you do this week that the old version of you would have avoided?',
+    'The pattern you keep repeating — you know the one. What would it take to actually break it this week?',
+    'What have you learned recently that you have not yet applied? What is stopping you from applying it?',
+    'Growth is not always visible. Sometimes it is just choosing differently in a quiet moment. Where did you choose differently this week?',
+    'What version of yourself are you most afraid of becoming? And are any of your current habits moving you toward that?',
+  ],
+}
+
+const THERAPIST_MOVES = {
+  'health and fitness': 'Before one meal this week, sit with your food for 60 seconds before eating. Notice what you feel — hunger, habit, stress, boredom. Write one word about it afterward.',
+  'career and business': 'Say out loud, alone in a room, exactly what you are building and why it matters. Say it like you mean it. Notice where your voice gets quiet. That is where the doubt lives.',
+  'wealth and finance': 'Open your bank account or spending history and look at the last 30 days without judgment. Notice your first feeling. Not the numbers — the feeling. Write it down.',
+  relationships: 'Send one message this week to someone you have been meaning to reach out to. Not a long message. Just the one that says you thought of them. Notice how long it takes you to press send.',
+  'inner life': 'Sit somewhere quiet for 5 minutes this week with no phone, no music, nothing. Just you. If thoughts come, let them. If nothing comes, stay anyway. Write one sentence about what came up.',
+  'personal growth': 'Do one thing this week that the version of you from a year ago would not have done. It does not have to be big. It just has to be real. Write what it was and how it felt.',
+}
 
 const PROMPTS = [
   "What's on your mind?",
@@ -114,62 +195,6 @@ const TEMPLATES = [
       { label: 'What is the next small step?', subtext: 'Pick one move that gives you more clarity.' },
     ],
   },
-  {
-    id: 'weekly-reflect-identity',
-    tier: 'Weekly reflect',
-    week: 1,
-    name: 'Week 1 — Identity check-in',
-    useWhen: 'Before starting a new week, complete your weekly reset.',
-    accent: '#e8f1ff',
-    fields: [
-      { label: 'Who did I show up as this week?', subtext: 'Name the version of you that was most present this week.' },
-      { label: 'Was that the person I want to be?', subtext: 'Be honest about where your actions matched or missed your values.' },
-      { label: 'What am I tolerating that I should not be?', subtext: 'Name one pattern, habit, or situation you need to stop accepting.' },
-      { label: 'What version of myself do I want to lead with next week?', subtext: 'Choose the identity you want to carry into next week.' },
-    ],
-  },
-  {
-    id: 'weekly-reflect-relationships',
-    tier: 'Weekly reflect',
-    week: 2,
-    name: 'Week 2 — Relationship check-in',
-    useWhen: 'Before starting a new week, complete your weekly reset.',
-    accent: '#efe7ff',
-    fields: [
-      { label: 'Who did I show up for this week?', subtext: 'Name the people you gave your attention and energy to.' },
-      { label: 'Who did I neglect — including myself?', subtext: 'Acknowledge what or who did not receive enough care.' },
-      { label: 'Is there something unsaid that needs to be addressed?', subtext: 'Identify one conversation that needs honesty next week.' },
-      { label: 'What does my closest relationship need from me right now?', subtext: 'Be specific about what support is needed now.' },
-    ],
-  },
-  {
-    id: 'weekly-reflect-fear-avoidance',
-    tier: 'Weekly reflect',
-    week: 3,
-    name: 'Week 3 — Fear & avoidance check-in',
-    useWhen: 'Before starting a new week, complete your weekly reset.',
-    accent: '#ffe9e2',
-    fields: [
-      { label: 'What did I avoid this week that I know mattered?', subtext: 'Name the task, decision, or truth you kept postponing.' },
-      { label: 'What was underneath that avoidance?', subtext: 'Go beneath behavior and name the real fear or tension.' },
-      { label: 'What story have I been telling myself to justify it?', subtext: 'Write the story exactly as you have been repeating it.' },
-      { label: 'What would the more honest version of me do next week?', subtext: 'Choose one action your honest self would take first.' },
-    ],
-  },
-  {
-    id: 'weekly-reflect-alignment',
-    tier: 'Weekly reflect',
-    week: 4,
-    name: 'Week 4 — Alignment check-in',
-    useWhen: 'Before starting a new week, complete your weekly reset.',
-    accent: '#e7f8ef',
-    fields: [
-      { label: 'Did my actions this week match what I say I value?', subtext: 'Check if your behavior matched your values.' },
-      { label: 'Where was I performing instead of being real?', subtext: 'Name one place where authenticity was replaced by performance.' },
-      { label: 'What drained me that I kept choosing anyway?', subtext: 'Spot repeated choices that quietly take your energy.' },
-      { label: 'What one shift would make next week feel different?', subtext: 'Pick one concrete shift to carry into next week.' },
-    ],
-  },
 ]
 
 const BACKGROUNDS = [
@@ -260,6 +285,98 @@ function generateFallbackTitle(draft) {
   return makePreview(draft.content).split(/[.!?]/)[0] || 'Journal entry'
 }
 
+function normalizeLabel(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function readVisionBoardData() {
+  try {
+    const direct = localStorage.getItem('phasr_vb')
+    if (direct) return JSON.parse(direct)
+  } catch {
+    // ignore
+  }
+  try {
+    const keys = Object.keys(localStorage).filter(key => key.startsWith('phasr_vb:'))
+    for (const key of keys) {
+      const raw = localStorage.getItem(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw)
+      if (parsed && Array.isArray(parsed.phases) && parsed.phases.length) return parsed
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function getActivePhase(boardData) {
+  const phases = Array.isArray(boardData?.phases) ? boardData.phases : []
+  if (!phases.length) return null
+  if (typeof boardData?.activePhaseIndex === 'number' && phases[boardData.activePhaseIndex]) {
+    return phases[boardData.activePhaseIndex]
+  }
+  if (boardData?.activePhaseId) {
+    const activeById = phases.find(phase => phase?.id === boardData.activePhaseId)
+    if (activeById) return activeById
+  }
+  return phases[0]
+}
+
+function buildWeeklyPulsePayload() {
+  const boardData = readVisionBoardData()
+  const phase = getActivePhase(boardData)
+  const phaseName = String(phase?.name || 'Phase 1').trim()
+  const fixedQuestions = PHASE_QUESTIONS[normalizeLabel(phaseName)] || PHASE_QUESTIONS['phase 1']
+
+  const pillars = Array.isArray(phase?.pillars)
+    ? phase.pillars.map(item => String(item?.name || '').trim()).filter(Boolean)
+    : []
+
+  const weekIndexSeed = Math.floor(Date.now() / (7 * MS_IN_DAY))
+  const firstTwoPillars = pillars.slice(0, 2)
+
+  const pillarQuestions = firstTwoPillars.map((pillarName) => {
+    const key = normalizeLabel(pillarName)
+    const pool = PILLAR_QUESTIONS[key] || []
+    if (!pool.length) return ''
+    return pool[weekIndexSeed % pool.length]
+  }).filter(Boolean)
+
+  // Guarantee 4 questions when possible by reusing first available pool if user has only one pillar.
+  if (pillarQuestions.length < 2 && firstTwoPillars[0]) {
+    const key = normalizeLabel(firstTwoPillars[0])
+    const pool = PILLAR_QUESTIONS[key] || []
+    if (pool.length > 1) {
+      const fallbackIndex = (weekIndexSeed + 1) % pool.length
+      const fallbackQuestion = pool[fallbackIndex]
+      if (fallbackQuestion && !pillarQuestions.includes(fallbackQuestion)) {
+        pillarQuestions.push(fallbackQuestion)
+      }
+    }
+  }
+
+  const safePillars = firstTwoPillars.length ? firstTwoPillars : ['Personal Growth']
+  const therapistMove = THERAPIST_MOVES[normalizeLabel(safePillars[0])] || THERAPIST_MOVES['personal growth']
+  const weeklyQuestions = [...fixedQuestions.slice(0, 2), ...pillarQuestions.slice(0, 2)].slice(0, 4)
+
+  while (weeklyQuestions.length < 4) {
+    weeklyQuestions.push('What truth from this week do I need to carry into next week?')
+  }
+
+  return {
+    phaseName,
+    pillars: safePillars,
+    weeklyQuestions,
+    therapistMove,
+  }
+}
+
 function countWords(text) {
   return String(text || '').trim().split(/\s+/).filter(Boolean).length
 }
@@ -341,15 +458,6 @@ Ready to start your next week aligned.`
   return `${toneLine} ${preview ? `You said: "${preview}". ` : ''}${step}`.trim()
 }
 
-function getWeeklyTemplateByCycle(cycleNumber) {
-  const weeklyTemplates = TEMPLATES
-    .filter(item => item.tier === 'Weekly reflect')
-    .sort((a, b) => (a.week || 0) - (b.week || 0))
-  if (!weeklyTemplates.length) return null
-  const index = Math.max(0, (Math.max(1, cycleNumber) - 1) % weeklyTemplates.length)
-  return weeklyTemplates[index]
-}
-
 function blankDraft() {
   return {
     date: getToday(),
@@ -361,13 +469,15 @@ function blankDraft() {
     templateAccent: '',
     templateFields: null,
     templateAnswers: {},
+    weeklyPulsePhaseName: '',
+    weeklyPulsePillars: [],
     color: '#2f1e2a',
     fontId: 'dm',
     images: [],
   }
 }
 
-async function generateSageAnalysis({ title, content, mood, prompt }) {
+async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPulse = false }) {
   const localProfile = localEmotionProfile(content)
   const localFallback = {
     generatedTitle: title || prompt || makePreview(content) || 'Journal entry',
@@ -398,7 +508,25 @@ async function generateSageAnalysis({ title, content, mood, prompt }) {
         messages: [
           {
             role: 'system',
-            content: `You are Sage, Phasr's reflective journal guide.
+            content: isWeeklyPulse
+              ? `The user just completed their weekly pulse reflection. They answered 4 deeply personal questions about their goals and inner life. Read all 4 answers together as one picture of where this person is right now.
+
+Respond the way a sharp warm honest friend would respond if they received this as a voice note. Not a therapist. Not a coach. A real person who absorbed everything they said.
+
+Address everything they wrote about. Do not pick one theme and ignore the rest. If something they said connects to something else they said, name that connection.
+
+Do not use bullet points. Do not end with a question unless it genuinely opens something up. Keep it to 2 to 3 paragraphs maximum. Be direct. Be warm. Sound like you showed up.
+
+Do not use m-dashes. Do not use clinical phrases.
+
+Return strict JSON only with this shape:
+{
+  "generatedTitle": "Weekly Pulse",
+  "clarityScore": 8,
+  "clarityLabel": "Calm",
+  "sageResponse": "string"
+}`
+              : `You are Sage, Phasr's reflective journal guide.
 
 Return strict JSON only with this shape:
 {
@@ -514,7 +642,7 @@ function TemplatesPage({ onBack, onSelect }) {
     acc[item.tier] = [...(acc[item.tier] || []), item]
     return acc
   }, {})
-  const orderedGroups = ['Basic', 'Pro', 'Weekly reflect']
+  const orderedGroups = ['Basic', 'Pro']
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#eef6ff', padding: '0.9rem 0.9rem 1.4rem' }}>
@@ -522,11 +650,6 @@ function TemplatesPage({ onBack, onSelect }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1d2430' }}>Templates</h2>
-        </div>
-        <div style={{ background: '#ffffff', border: '1px solid #d9e7ff', borderRadius: 20, padding: '1rem 1rem 0.9rem', display: 'grid', gap: '0.55rem' }}>
-          <p style={{ margin: 0, color: '#2e3c56', fontWeight: 800, fontSize: '0.95rem' }}>Before starting a new week, complete your weekly reset.</p>
-          <p style={{ margin: 0, color: '#5f6e87', fontSize: '0.86rem', lineHeight: 1.55 }}>Tap to open your journal with a pre-filled reflection template.</p>
-          <p style={{ margin: 0, color: '#5f6e87', fontSize: '0.84rem', lineHeight: 1.6 }}>Once you submit: Sage analyzes your answers and returns 1 key pattern, 1 correction, and 1 sharp focus for next week.</p>
         </div>
         {orderedGroups.filter(group => grouped[group]?.length).map(group => (
           <div key={group} style={{ display: 'grid', gap: '0.85rem' }}>
@@ -586,9 +709,106 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
   )
 }
 
+function WeeklyPulseWriter({
+  phaseName,
+  questions,
+  therapistMove,
+  answers,
+  setAnswer,
+  questionIndex,
+  onPrev,
+  onNext,
+  onSave,
+  isSaving,
+}) {
+  const currentQuestion = questions[questionIndex] || ''
+  const isLastQuestion = questionIndex === questions.length - 1
+
+  return (
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', borderBottom: '1px solid var(--app-border)' }}>
+        <button type="button" onClick={onPrev} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
+        <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Weekly Pulse</p>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.38rem' }}>
+          {questions.map((_, idx) => (
+            <span
+              key={`pulse-dot-${idx}`}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: idx === questionIndex ? '#e8407a' : '#f2c4d0',
+                display: 'inline-block',
+              }}
+            />
+          ))}
+          <span style={{ fontSize: '0.72rem', color: '#8f7180', marginLeft: 6 }}>{questionIndex + 1} / {questions.length}</span>
+        </div>
+      </div>
+
+      <div style={{ padding: '20px 16px', display: 'grid', gap: '1rem', flex: 1 }}>
+        <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e8407a', margin: 0 }}>
+          Weekly Pulse — {phaseName}
+        </p>
+        <p style={{ fontFamily: "'Cormorant Garamond, serif", fontSize: '1.15rem', fontWeight: 400, color: '#3d1f2b', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
+          {currentQuestion}
+        </p>
+        <textarea
+          value={answers[questionIndex] || ''}
+          onChange={event => setAnswer(questionIndex, event.target.value)}
+          placeholder="Write your reflection..."
+          style={{
+            width: '100%',
+            minHeight: '36vh',
+            border: '1.5px solid #f2c4d0',
+            borderRadius: 12,
+            padding: '0.9rem',
+            outline: 'none',
+            resize: 'vertical',
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '0.98rem',
+            lineHeight: 1.7,
+            color: '#3d1f2b',
+          }}
+        />
+        {isLastQuestion ? (
+          <div style={{ background: '#fff5f7', border: '1px solid #f2c4d0', borderRadius: 10, padding: '10px 12px', marginTop: '0.2rem' }}>
+            <p style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', margin: '0 0 4px 0' }}>
+              This week&apos;s practice
+            </p>
+            <p style={{ fontSize: '0.78rem', color: '#3d1f2b', lineHeight: 1.7, margin: 0 }}>{therapistMove}</p>
+          </div>
+        ) : null}
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.8rem 1rem max(0.9rem, env(safe-area-inset-bottom))' }}>
+        {isLastQuestion ? (
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            style={{ width: '100%', border: 'none', borderRadius: 14, padding: '0.86rem 1rem', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: '0 10px 22px rgba(232,64,122,0.24)' }}
+          >
+            {isSaving ? 'Saving...' : 'Save Weekly Pulse'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onNext}
+            style={{ width: '100%', border: 'none', borderRadius: 14, padding: '0.86rem 1rem', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: '0 10px 22px rgba(232,64,122,0.24)' }}
+          >
+            Next
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
   const detailBody = entry.content || getTemplateSummary(entry) || ''
+  const isWeeklyPulse = String(entry?.prompt || '').toLowerCase() === 'weekly pulse'
 
   function speakResponse() {
     if (!window.speechSynthesis || !entry?.sageResponse) return
@@ -610,32 +830,68 @@ function EntryDetail({ entry, onBack, onEdit }) {
           <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
           <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
         </div>
-        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
-          <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
-            {expanded ? detailBody : makeTwoParagraphPreview(detailBody)}
-          </div>
-          {detailBody.length > 180 ? (
-            <button type="button" onClick={() => setExpanded(current => !current)} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>
-              {expanded ? 'See less' : 'See more'}
-            </button>
-          ) : null}
-        </div>
-        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
-              <p style={sectionLabelStyle}>Sage's Response</p>
-              <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
+        {isWeeklyPulse ? (
+          <>
+            <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
+                <p style={sectionLabelStyle}>Sage's Response</p>
+                <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
+              </div>
+              <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
             </div>
-          <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
-        </div>
-        <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
-          <p style={sectionLabelStyle}>Clarity Score</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ width: 92, height: 92, borderRadius: '50%', border: '8px solid #fde3ec', display: 'grid', placeItems: 'center', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>{entry.clarityScore || 7}/10</div>
-            <div>
-              <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#2f1e2a' }}>{entry.clarityLabel || 'Reflective'}</p>
+            <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
+              <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+                {expanded ? detailBody : makeTwoParagraphPreview(detailBody)}
+              </div>
+              {detailBody.length > 180 ? (
+                <button type="button" onClick={() => setExpanded(current => !current)} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>
+                  {expanded ? 'See less' : 'See more'}
+                </button>
+              ) : null}
             </div>
-          </div>
-        </div>
+            <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
+              <p style={sectionLabelStyle}>Clarity Score</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: 92, height: 92, borderRadius: '50%', border: '8px solid #fde3ec', display: 'grid', placeItems: 'center', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>{entry.clarityScore || 7}/10</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#2f1e2a' }}>{entry.clarityLabel || 'Reflective'}</p>
+                </div>
+              </div>
+            </div>
+            <p style={{ margin: 0, paddingTop: '0.3rem', color: '#8f7180', fontSize: '0.82rem' }}>
+              Weekly Pulse • {entry.weeklyPulseMeta?.phaseName || 'Phase'} • {(entry.weeklyPulseMeta?.pillars || []).join(' • ')}
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
+              <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+                {expanded ? detailBody : makeTwoParagraphPreview(detailBody)}
+              </div>
+              {detailBody.length > 180 ? (
+                <button type="button" onClick={() => setExpanded(current => !current)} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>
+                  {expanded ? 'See less' : 'See more'}
+                </button>
+              ) : null}
+            </div>
+            <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.8rem' }}>
+                <p style={sectionLabelStyle}>Sage's Response</p>
+                <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
+              </div>
+              <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
+            </div>
+            <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
+              <p style={sectionLabelStyle}>Clarity Score</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: 92, height: 92, borderRadius: '50%', border: '8px solid #fde3ec', display: 'grid', placeItems: 'center', color: 'var(--app-accent)', fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>{entry.clarityScore || 7}/10</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#2f1e2a' }}>{entry.clarityLabel || 'Reflective'}</p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
@@ -1036,35 +1292,45 @@ export default function Journal() {
   const [editingEntryId, setEditingEntryId] = useState(null)
   const [entryActionId, setEntryActionId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [weeklyResetMeta, setWeeklyResetMeta] = useState(() => {
-    try {
-      const raw = localStorage.getItem(WEEKLY_RESET_KEY)
-      const parsed = raw ? JSON.parse(raw) : null
-      return parsed && typeof parsed.lastCompletedCycle === 'number' ? parsed : { lastCompletedCycle: 0 }
-    } catch {
-      return { lastCompletedCycle: 0 }
-    }
-  })
+  const [weeklyPulseDate, setWeeklyPulseDate] = useState(() => localStorage.getItem(WEEKLY_PULSE_DATE_KEY) || '')
+  const [weeklyPulseState, setWeeklyPulseState] = useState(() => ({
+    phaseName: 'Phase 1',
+    pillars: [],
+    questions: [],
+    therapistMove: '',
+    answers: ['', '', '', ''],
+    index: 0,
+  }))
 
   useEffect(() => {
     safeWrite(entries)
   }, [entries])
 
   useEffect(() => {
-    localStorage.setItem(WEEKLY_RESET_KEY, JSON.stringify(weeklyResetMeta))
-  }, [weeklyResetMeta])
+    if (weeklyPulseDate) {
+      localStorage.setItem(WEEKLY_PULSE_DATE_KEY, weeklyPulseDate)
+    }
+  }, [weeklyPulseDate])
 
   const filteredEntries = useMemo(() => sortEntries(entries, search, sortOrder), [entries, search, sortOrder])
-  const activityDays = useMemo(() => new Set(entries.map(entry => String(entry.date || '').slice(0, 10)).filter(Boolean)).size, [entries])
-  const weeklyCycle = Math.floor(activityDays / 7)
-  const weeklyTemplate = useMemo(() => getWeeklyTemplateByCycle(weeklyCycle || 1), [weeklyCycle])
-  const weeklyResetDue = weeklyCycle > 0 && activityDays % 7 === 0 && weeklyResetMeta.lastCompletedCycle < weeklyCycle
+  const weeklyPulseDue = useMemo(() => {
+    if (!weeklyPulseDate) return true
+    const last = new Date(`${weeklyPulseDate}T00:00:00`).getTime()
+    if (Number.isNaN(last)) return true
+    return (Date.now() - last) >= (7 * MS_IN_DAY)
+  }, [weeklyPulseDate])
 
-  function openWeeklyReset() {
-    if (!weeklyTemplate) return
-    setSelectedTemplate(weeklyTemplate)
-    setTemplateAnswers(Object.fromEntries(weeklyTemplate.fields.map(field => [field.label, ''])))
-    setScreen('template-detail')
+  function openWeeklyPulse() {
+    const payload = buildWeeklyPulsePayload()
+    setWeeklyPulseState({
+      phaseName: payload.phaseName,
+      pillars: payload.pillars,
+      questions: payload.weeklyQuestions,
+      therapistMove: payload.therapistMove,
+      answers: payload.weeklyQuestions.map(() => ''),
+      index: 0,
+    })
+    setScreen('weekly-pulse')
   }
 
   function startNewEntry() {
@@ -1085,17 +1351,122 @@ export default function Journal() {
     setScreen('template-detail')
   }
 
+  function setWeeklyPulseAnswer(index, value) {
+    setWeeklyPulseState(current => {
+      const nextAnswers = [...current.answers]
+      nextAnswers[index] = value
+      return { ...current, answers: nextAnswers }
+    })
+  }
+
+  function nextWeeklyPulseQuestion() {
+    setWeeklyPulseState(current => ({ ...current, index: Math.min(current.index + 1, current.questions.length - 1) }))
+  }
+
+  async function saveWeeklyPulseToDraft() {
+    const questions = weeklyPulseState.questions
+    const templateFields = questions.map(question => ({ label: question, subtext: '' }))
+    const templateAnswers = Object.fromEntries(questions.map((question, index) => [question, weeklyPulseState.answers[index] || '']))
+    const content = questions
+      .map((question, index) => `${question}\n${weeklyPulseState.answers[index] || ''}`.trim())
+      .join('\n\n')
+      .trim()
+
+    if (!content) return
+    const weeklyDraft = {
+      ...blankDraft(),
+      date: getToday(),
+      title: 'Weekly Pulse',
+      prompt: 'Weekly Pulse',
+      content,
+      templateAccent: '#fff5f7',
+      templateFields,
+      templateAnswers,
+      weeklyPulsePhaseName: weeklyPulseState.phaseName,
+      weeklyPulsePillars: weeklyPulseState.pillars,
+      mood: MOODS[0],
+    }
+
+    setIsSaving(true)
+    setScreen('processing')
+    try {
+      const analysis = await generateSageAnalysis({
+        ...weeklyDraft,
+        isWeeklyPulse: true,
+      })
+      const entry = {
+        id: Date.now(),
+        createdAt: new Date().toISOString(),
+        date: weeklyDraft.date,
+        title: getEntryTitle(weeklyDraft, analysis.generatedTitle),
+        content: weeklyDraft.content,
+        prompt: weeklyDraft.prompt,
+        mood: weeklyDraft.mood,
+        clarityScore: Number(analysis.clarityScore || 7),
+        clarityLabel: analysis.clarityLabel || 'Reflective',
+        sageResponse: analysis.sageResponse || '',
+        backgroundId: weeklyDraft.backgroundId,
+        fontId: weeklyDraft.fontId,
+        color: weeklyDraft.color,
+        images: weeklyDraft.images,
+        templateAccent: weeklyDraft.templateAccent,
+        templateFields: weeklyDraft.templateFields,
+        templateAnswers: weeklyDraft.templateAnswers,
+        weeklyPulseMeta: {
+          phaseName: weeklyDraft.weeklyPulsePhaseName,
+          pillars: weeklyDraft.weeklyPulsePillars,
+        },
+      }
+      setEntries(current => [entry, ...current])
+      setSelectedEntry(entry)
+      setWeeklyPulseDate(getToday())
+      setScreen('detail')
+    } catch {
+      const fallback = {
+        id: Date.now(),
+        createdAt: new Date().toISOString(),
+        date: weeklyDraft.date,
+        title: 'Weekly Pulse',
+        content: weeklyDraft.content,
+        prompt: weeklyDraft.prompt,
+        mood: weeklyDraft.mood,
+        clarityScore: 6,
+        clarityLabel: 'Reflective',
+        sageResponse: localSageResponse({ content: weeklyDraft.content, prompt: 'Weekly Pulse', clarityLabel: 'Reflective' }),
+        backgroundId: weeklyDraft.backgroundId,
+        fontId: weeklyDraft.fontId,
+        color: weeklyDraft.color,
+        images: weeklyDraft.images,
+        templateAccent: weeklyDraft.templateAccent,
+        templateFields: weeklyDraft.templateFields,
+        templateAnswers: weeklyDraft.templateAnswers,
+        weeklyPulseMeta: {
+          phaseName: weeklyDraft.weeklyPulsePhaseName,
+          pillars: weeklyDraft.weeklyPulsePillars,
+        },
+      }
+      setEntries(current => [fallback, ...current])
+      setSelectedEntry(fallback)
+      setWeeklyPulseDate(getToday())
+      setScreen('detail')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
     async function saveEntry() {
       if (!draft.content.trim()) return
       setIsSaving(true)
       setScreen('processing')
       try {
+        const isWeeklyPulse = String(draft.prompt || '').toLowerCase() === 'weekly pulse'
         const normalizedContent = draft.templateFields
           ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers })
           : draft.content
         const analysisInput = {
           ...draft,
           content: normalizedContent,
+          isWeeklyPulse,
         }
         const analysis = await generateSageAnalysis(analysisInput)
         const entry = {
@@ -1116,11 +1487,15 @@ export default function Journal() {
         templateAccent: draft.templateAccent,
         templateFields: draft.templateFields,
         templateAnswers: draft.templateAnswers,
+        weeklyPulseMeta: isWeeklyPulse ? {
+          phaseName: draft.weeklyPulsePhaseName || '',
+          pillars: draft.weeklyPulsePillars || [],
+        } : null,
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? entry : item) : [entry, ...current])
       setSelectedEntry(entry)
-      if (String(draft.prompt || '').toLowerCase().includes('check-in') && weeklyCycle > 0) {
-        setWeeklyResetMeta({ lastCompletedCycle: weeklyCycle })
+      if (isWeeklyPulse) {
+        setWeeklyPulseDate(getToday())
       }
       setEditingEntryId(null)
       setScreen('detail')
@@ -1146,11 +1521,15 @@ export default function Journal() {
         templateAccent: draft.templateAccent,
         templateFields: draft.templateFields,
         templateAnswers: draft.templateAnswers,
+        weeklyPulseMeta: String(draft.prompt || '').toLowerCase() === 'weekly pulse' ? {
+          phaseName: draft.weeklyPulsePhaseName || '',
+          pillars: draft.weeklyPulsePillars || [],
+        } : null,
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? fallback : item) : [fallback, ...current])
       setSelectedEntry(fallback)
-      if (String(draft.prompt || '').toLowerCase().includes('check-in') && weeklyCycle > 0) {
-        setWeeklyResetMeta({ lastCompletedCycle: weeklyCycle })
+      if (String(draft.prompt || '').toLowerCase() === 'weekly pulse') {
+        setWeeklyPulseDate(getToday())
       }
       setEditingEntryId(null)
       setScreen('detail')
@@ -1189,6 +1568,8 @@ export default function Journal() {
       templateAccent: entry.templateAccent || '',
       templateFields: entry.templateFields || null,
       templateAnswers: entry.templateAnswers || {},
+      weeklyPulsePhaseName: entry.weeklyPulseMeta?.phaseName || '',
+      weeklyPulsePillars: entry.weeklyPulseMeta?.pillars || [],
       color: entry.color || '#2f1e2a',
       fontId: entry.fontId || 'dm',
       images: Array.isArray(entry.images) ? entry.images : [],
@@ -1196,6 +1577,29 @@ export default function Journal() {
     setEditingEntryId(entry.id)
     setEntryActionId(null)
     setScreen('write')
+  }
+
+  if (screen === 'weekly-pulse') {
+    return (
+      <WeeklyPulseWriter
+        phaseName={weeklyPulseState.phaseName}
+        questions={weeklyPulseState.questions}
+        therapistMove={weeklyPulseState.therapistMove}
+        answers={weeklyPulseState.answers}
+        setAnswer={setWeeklyPulseAnswer}
+        questionIndex={weeklyPulseState.index}
+        onPrev={() => {
+          if (weeklyPulseState.index === 0) {
+            setScreen('list')
+            return
+          }
+          setWeeklyPulseState(current => ({ ...current, index: Math.max(0, current.index - 1) }))
+        }}
+        onNext={nextWeeklyPulseQuestion}
+        onSave={saveWeeklyPulseToDraft}
+        isSaving={isSaving}
+      />
+    )
   }
 
   if (screen === 'write') {
@@ -1255,12 +1659,12 @@ export default function Journal() {
               <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></button>
           </div>
 
-          {weeklyResetDue ? (
+          {weeklyPulseDue ? (
             <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your weekly reset.</p>
-              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Sage will return 1 key pattern, 1 correction, and 1 sharp focus for your next week.</p>
-              <button type="button" onClick={openWeeklyReset} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
-                Open weekly reset
+              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Weekly Pulse. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
+              <button type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
+                Open Weekly Pulse
               </button>
             </div>
           ) : null}
