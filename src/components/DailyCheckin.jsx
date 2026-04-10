@@ -378,6 +378,24 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                   Later
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={openWeeklyPulseFromGate}
+                style={{
+                  marginTop: '0.55rem',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--app-accent)',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Open Journal Weekly Pulse link
+              </button>
             </div>
           </div>
         ) : null}
