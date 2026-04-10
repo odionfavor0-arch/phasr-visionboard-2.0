@@ -296,11 +296,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
       // ignore hash failures
     }
 
-    if (typeof onOpenWeeklyPulse === 'function') {
-      onOpenWeeklyPulse()
-      return
-    }
-
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')
@@ -312,6 +307,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     window.dispatchEvent(new CustomEvent('phasr-open-journal', { detail: { openWeeklyPulse: true } }))
     window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { openWeeklyPulse: true } }))
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
+    onOpenWeeklyPulse?.()
+    onOpenJournal?.()
   }
 
   const pulseGateCard = pulseGate || autoPulseGate
