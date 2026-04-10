@@ -145,7 +145,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       setView('journal')
       const shouldOpenPulse = Boolean(event?.detail?.openWeeklyPulse)
       if (shouldOpenPulse) {
-        setWeeklyPulseLaunchToken(Date.now())
+        setWeeklyPulseLaunchToken(current => current + 1)
       }
     }
     window.addEventListener('phasr-open-journal', handleOpenJournal)
@@ -161,7 +161,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   useEffect(() => {
     const handleRequest = () => {
       setView('journal')
-      setWeeklyPulseLaunchToken(Date.now())
+      setWeeklyPulseLaunchToken(current => current + 1)
       setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 40)
       setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 220)
     }
@@ -175,7 +175,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       if (nextView) {
         setView(nextView)
         if (nextView === 'journal' && event.detail?.openWeeklyPulse) {
-          setWeeklyPulseLaunchToken(Date.now())
+          setWeeklyPulseLaunchToken(current => current + 1)
         }
       }
     }
@@ -229,7 +229,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       // ignore storage write failures
     }
     setView('journal')
-    setWeeklyPulseLaunchToken(Date.now())
+    setWeeklyPulseLaunchToken(current => current + 1)
     setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 40)
   }
 
@@ -433,7 +433,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             onOpenBoard={() => setView('board')}
             onOpenJournal={() => {
               setView('journal')
-              setWeeklyPulseLaunchToken(Date.now())
+              setWeeklyPulseLaunchToken(current => current + 1)
             }}
             onOpenWeeklyPulse={openWeeklyPulseFromCheckin}
           />
