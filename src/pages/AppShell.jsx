@@ -186,7 +186,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   useEffect(() => {
     const openFromHash = () => {
       const hash = String(window.location.hash || '').replace('#', '').trim().toLowerCase()
-      if (hash !== 'journal-weekly-pulse') return
+      if (!hash.startsWith('journal-weekly-pulse')) return
       setView('journal')
       setWeeklyPulseLaunchToken(current => current + 1)
       setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 40)
@@ -201,6 +201,21 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     window.addEventListener('hashchange', openFromHash)
     return () => window.removeEventListener('hashchange', openFromHash)
   }, [])
+
+  useEffect(() => {
+    if (view !== 'journal') return
+    let shouldOpen = false
+    try {
+      shouldOpen =
+        localStorage.getItem('phasr_open_weekly_pulse') === 'true' ||
+        localStorage.getItem('phasr_pending_weekly_pulse_open') === 'true'
+    } catch {
+      shouldOpen = false
+    }
+    if (!shouldOpen) return
+    setWeeklyPulseLaunchToken(current => current + 1)
+    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 60)
+  }, [view])
 
   useEffect(() => {
     const handleResize = () => setIsMobileView(window.innerWidth <= 768)

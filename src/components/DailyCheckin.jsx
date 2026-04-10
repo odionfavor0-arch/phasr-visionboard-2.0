@@ -297,6 +297,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')
+      window.location.hash = `journal-weekly-pulse-${Date.now()}`
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
