@@ -12,9 +12,6 @@ import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingD
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
-const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
-const OPEN_WEEKLY_PULSE_KEY = 'phasr_open_weekly_pulse'
-const WEEKLY_PULSE_REDIRECT_HASH = 'journal-weekly-pulse'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -289,38 +286,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     setActiveWeek(nextIndex)
   }
 
-  function openWeeklyPulseFromGate() {
-    // 1) close gate modal first
-    setPulseGate(null)
-    setAutoPulseGateDismissed(true)
-
-    // Direct URL deep-link path for mobile reliability.
-    try {
-      const launchUrl = `${window.location.origin}${window.location.pathname}?openWeeklyPulse=1#${WEEKLY_PULSE_REDIRECT_HASH}`
-      window.location.assign(launchUrl)
-      return
-    } catch {
-      // continue to in-app fallback if URL launch fails
-    }
-
-    // 2) set open flags first
-    try {
-      localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
-      localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')
-      window.location.hash = `journal-weekly-pulse-${Date.now()}`
-    } catch {
-      // ignore storage failures (private mode, disabled storage, etc.)
-    }
-
-    // 3) fire all navigation/open paths so mobile never misses it
-    onOpenWeeklyPulse?.()
-    onOpenJournal?.()
-    window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
-    window.dispatchEvent(new CustomEvent('phasr-open-journal', { detail: { openWeeklyPulse: true } }))
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { openWeeklyPulse: true } }))
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
-  }
-
   const pulseGateCard = pulseGate || autoPulseGate
   const showPulseGateCard = Boolean(pulseGate) || (Boolean(autoPulseGate) && !autoPulseGateDismissed)
 
@@ -392,7 +357,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                 Sage reads your week and tells you what actually matters going into week 2.
               </p>
               <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={openWeeklyPulseFromGate} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
+                <button type="button" onClick={onOpenWeeklyPulse} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
                   Open Weekly Pulse
                 </button>
                 <button type="button" onClick={closePulseGateCard} style={{ minHeight: 48, padding: '0.75rem 1.1rem', borderRadius: 999, border: '1px solid #efc3d1', background: '#fff', color: '#8a5568', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.94rem' }}>

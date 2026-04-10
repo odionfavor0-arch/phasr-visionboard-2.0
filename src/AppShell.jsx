@@ -136,7 +136,10 @@ function HamburgerButton({ open, onClick, mobile }) {
 }
 
 export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
-  const [view, setView] = useState('board')
+  const [activeView, setActiveView] = useState('board')
+  const [autoOpenWeeklyPulse, setAutoOpenWeeklyPulse] = useState(false)
+  const view = activeView
+  const setView = setActiveView
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.matchMedia(MOBILE_QUERY).matches
@@ -221,11 +224,26 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   )
 
   if (view === 'journal') {
-    content = <Journal user={user} />
+    content = (
+      <Journal
+        user={user}
+        autoOpenWeeklyPulse={autoOpenWeeklyPulse}
+        onWeeklyPulseOpened={() => setAutoOpenWeeklyPulse(false)}
+      />
+    )
   } else if (view === 'entries') {
     content = <JournalEntries onBack={() => setView('journal')} />
   } else if (view === 'checkin') {
-    content = <DailyCheckin onOpenBoard={() => setView('board')} />
+    content = (
+      <DailyCheckin
+        onOpenBoard={() => setView('board')}
+        onOpenJournal={() => setView('journal')}
+        onOpenWeeklyPulse={() => {
+          setAutoOpenWeeklyPulse(true)
+          setActiveView('journal')
+        }}
+      />
+    )
   } else if (view === 'showup') {
     content = <ShowUp user={user} />
   } else if (view === 'analytics') {
