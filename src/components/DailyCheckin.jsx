@@ -294,12 +294,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     setPulseGate(null)
     setAutoPulseGateDismissed(true)
 
-    // Direct in-app link path plus direct callback path for guaranteed open.
+    // Direct URL deep-link path for mobile reliability.
     try {
-      const uniqueHash = `${WEEKLY_PULSE_REDIRECT_HASH}-${Date.now()}`
-      window.location.hash = uniqueHash
+      const launchUrl = `${window.location.origin}${window.location.pathname}?openWeeklyPulse=1#${WEEKLY_PULSE_REDIRECT_HASH}`
+      window.location.assign(launchUrl)
+      return
     } catch {
-      // continue to in-app fallback if hash write fails
+      // continue to in-app fallback if URL launch fails
     }
 
     // 2) set open flags first

@@ -203,6 +203,24 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   }, [])
 
   useEffect(() => {
+    let shouldOpen = false
+    try {
+      const url = new URL(window.location.href)
+      shouldOpen = url.searchParams.get('openWeeklyPulse') === '1'
+      if (shouldOpen) {
+        url.searchParams.delete('openWeeklyPulse')
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+      }
+    } catch {
+      shouldOpen = false
+    }
+    if (!shouldOpen) return
+    setView('journal')
+    setWeeklyPulseLaunchToken(current => current + 1)
+    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 60)
+  }, [])
+
+  useEffect(() => {
     if (view !== 'journal') return
     let shouldOpen = false
     try {
