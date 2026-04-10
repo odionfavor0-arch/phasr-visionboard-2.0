@@ -292,12 +292,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   function openWeeklyPulseFromGate() {
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
+      localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')
+      localStorage.setItem(FORCE_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
     onOpenJournal?.()
-    window.dispatchEvent(new CustomEvent('phasr-open-journal'))
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request'))
+    window.dispatchEvent(new CustomEvent('phasr-open-journal', { detail: { openWeeklyPulse: true } }))
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { openWeeklyPulse: true } }))
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
   }
 
@@ -372,10 +374,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                 Sage reads your week and tells you what actually matters going into week 2.
               </p>
               <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
-                <button onClick={openWeeklyPulseFromGate} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
+                <button type="button" onClick={openWeeklyPulseFromGate} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
                   Open Weekly Pulse
                 </button>
-                <button onClick={closePulseGateCard} style={{ minHeight: 48, padding: '0.75rem 1.1rem', borderRadius: 999, border: '1px solid #efc3d1', background: '#fff', color: '#8a5568', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.94rem' }}>
+                <button type="button" onClick={closePulseGateCard} style={{ minHeight: 48, padding: '0.75rem 1.1rem', borderRadius: 999, border: '1px solid #efc3d1', background: '#fff', color: '#8a5568', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.94rem' }}>
                   Later
                 </button>
               </div>

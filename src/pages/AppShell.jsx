@@ -141,7 +141,13 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   }, [])
 
   useEffect(() => {
-    const handleOpenJournal = () => setView('journal')
+    const handleOpenJournal = event => {
+      setView('journal')
+      const shouldOpenPulse = Boolean(event?.detail?.openWeeklyPulse)
+      if (shouldOpenPulse) {
+        setWeeklyPulseLaunchToken(Date.now())
+      }
+    }
     window.addEventListener('phasr-open-journal', handleOpenJournal)
     return () => window.removeEventListener('phasr-open-journal', handleOpenJournal)
   }, [])

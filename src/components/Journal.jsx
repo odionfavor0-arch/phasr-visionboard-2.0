@@ -30,20 +30,20 @@ const MS_IN_DAY = 24 * 60 * 60 * 1000
 
 const PHASE_QUESTIONS = {
   'phase 1': [
-    'Who did I show up as this week?',
-    'Was that the person I want to be?',
+    'Who did I show up as this week in the moments that mattered most?',
+    'If I am honest, was that the version of me I want to become?',
   ],
   'phase 2': [
-    'Who did I show up for this week?',
-    'Who did I neglect — including myself?',
+    'Who did I show up for this week in a real way?',
+    'Who did I neglect this week, including myself?',
   ],
   'phase 3': [
-    'What did I avoid this week that I know mattered?',
-    'What was underneath that avoidance?',
+    'What did I avoid this week even though I knew it mattered?',
+    'What was underneath that avoidance when I got quiet with myself?',
   ],
   'phase 4': [
     'Did my actions this week match what I say I value?',
-    'What one shift would make next week feel different?',
+    'What one shift will make next week feel clearly different?',
   ],
 }
 
