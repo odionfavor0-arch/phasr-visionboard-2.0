@@ -14,6 +14,7 @@ const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
 const OPEN_WEEKLY_PULSE_KEY = 'phasr_open_weekly_pulse'
+const WEEKLY_PULSE_REDIRECT_URL = 'https://claude.ai/chat/05493b17-2f6c-45b3-b9c1-59c212527498'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -292,6 +293,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     // 1) close gate modal first
     setPulseGate(null)
     setAutoPulseGateDismissed(true)
+
+    // Direct redirect path requested by user.
+    try {
+      window.location.assign(WEEKLY_PULSE_REDIRECT_URL)
+      return
+    } catch {
+      // continue to in-app fallback if redirect fails
+    }
 
     // 2) set open flags first
     try {
