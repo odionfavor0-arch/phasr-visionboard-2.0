@@ -20,9 +20,6 @@ import {
 const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
-const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
-const FORCE_WEEKLY_PULSE_OPEN_KEY = 'phasr_force_weekly_pulse_open'
-const OPEN_WEEKLY_PULSE_KEY = 'phasr_open_weekly_pulse'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -1231,7 +1228,7 @@ const ghostMiniActionStyle = {
   placeItems: 'center',
 }
 
-export default function Journal({ weeklyPulseLaunchToken = 0 }) {
+export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpened = () => {} }) {
   const [entries, setEntries] = useState(() => safeRead())
   const [screen, setScreen] = useState('list')
   const [search, setSearch] = useState('')
@@ -1274,7 +1271,7 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
     return (Date.now() - last) >= (7 * MS_IN_DAY)
   }, [weeklyPulseDate])
 
-  function openWeeklyPulse() {
+  function prepareWeeklyPulseState() {
     const payload = buildWeeklyPulsePayload()
     setWeeklyPulseState({
       phaseName: payload.phaseName,
@@ -1285,67 +1282,22 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
       answers: payload.weeklyQuestions.map(() => ''),
       index: 0,
     })
+  }
+
+  function openWeeklyPulse() {
     setScreen('weekly-pulse')
   }
 
   useEffect(() => {
-    const handler = () => {
-      try {
-        localStorage.removeItem(PENDING_WEEKLY_PULSE_OPEN_KEY)
-      } catch {
-        // ignore storage failures
-      }
-      openWeeklyPulse()
-    }
-    window.addEventListener('phasr-open-weekly-pulse', handler)
-    return () => window.removeEventListener('phasr-open-weekly-pulse', handler)
-  }, [])
-
-  useEffect(() => {
-    const pending = (() => {
-      try { return localStorage.getItem(PENDING_WEEKLY_PULSE_OPEN_KEY) } catch { return null }
-    })()
-    if (!pending) return
-
-    try {
-      localStorage.removeItem(PENDING_WEEKLY_PULSE_OPEN_KEY)
-    } catch {
-      // ignore storage failures
-    }
-    openWeeklyPulse()
-  }, [])
-
-  useEffect(() => {
-    const shouldOpen = (() => {
-      try { return localStorage.getItem(OPEN_WEEKLY_PULSE_KEY) } catch { return null }
-    })()
-    if (shouldOpen !== 'true') return
-    try {
-      localStorage.removeItem(OPEN_WEEKLY_PULSE_KEY)
-    } catch {
-      // ignore storage failures
-    }
-    openWeeklyPulse()
-  }, [])
-
-  useEffect(() => {
-    if (!weeklyPulseLaunchToken) return
-    openWeeklyPulse()
-  }, [weeklyPulseLaunchToken])
-
-  useEffect(() => {
-    const forced = (() => {
-      try { return localStorage.getItem(FORCE_WEEKLY_PULSE_OPEN_KEY) } catch { return null }
-    })()
-    if (!forced) return
-    try {
-      localStorage.removeItem(FORCE_WEEKLY_PULSE_OPEN_KEY)
-      localStorage.removeItem(PENDING_WEEKLY_PULSE_OPEN_KEY)
-    } catch {
-      // ignore
-    }
-    openWeeklyPulse()
+    if (screen !== 'weekly-pulse') return
+    prepareWeeklyPulseState()
   }, [screen])
+
+  useEffect(() => {
+    if (!autoOpenWeeklyPulse) return
+    openWeeklyPulse()
+    onWeeklyPulseOpened?.()
+  }, [autoOpenWeeklyPulse])
 
   function startNewEntry() {
     setDraft(blankDraft())
