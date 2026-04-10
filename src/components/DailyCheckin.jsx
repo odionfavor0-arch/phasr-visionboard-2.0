@@ -292,8 +292,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   function openWeeklyPulseFromGate() {
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
-      localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
-      localStorage.setItem(FORCE_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
@@ -367,9 +365,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
               <p style={{ color: '#5c3342', fontSize: isMobile ? '1.12rem' : '1.32rem', lineHeight: 1.45, margin: '0.55rem 2.4rem 0.5rem 0', fontWeight: 700 }}>
                 Before week {pulseGateCard.toWeek} begins, take 5 minutes with Sage.
               </p>
-              <p style={{ color: '#7e5d68', fontSize: '0.94rem', lineHeight: 1.6, margin: '0 1.7rem 0.95rem 0' }}>
-                Complete Weekly Pulse for week {pulseGateCard.fromWeek} and carry a clear focus into your next week.
-              </p>
               <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
                 <button onClick={openWeeklyPulseFromGate} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
                   Open Weekly Pulse
@@ -378,24 +373,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
                   Later
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={openWeeklyPulseFromGate}
-                style={{
-                  marginTop: '0.55rem',
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--app-accent)',
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                Open Journal Weekly Pulse link
-              </button>
             </div>
           </div>
         ) : null}
