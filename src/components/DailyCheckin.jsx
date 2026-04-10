@@ -153,7 +153,7 @@ function isConfiguredPillar(pillar) {
   return hasImage || hasStates
 }
 
-export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJournal }) {
+export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJournal, onOpenWeeklyPulse }) {
   const [boardData] = useState(() => loadBoardData())
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const phases = useMemo(() => {
@@ -290,6 +290,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   }
 
   function openWeeklyPulseFromGate() {
+    if (typeof onOpenWeeklyPulse === 'function') {
+      onOpenWeeklyPulse()
+      return
+    }
+
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')

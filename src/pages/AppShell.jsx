@@ -220,6 +220,19 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     }
   }, [view])
 
+  function openWeeklyPulseFromCheckin() {
+    try {
+      localStorage.setItem('phasr_open_weekly_pulse', 'true')
+      localStorage.setItem('phasr_pending_weekly_pulse_open', 'true')
+      localStorage.setItem('phasr_force_weekly_pulse_open', String(Date.now()))
+    } catch {
+      // ignore storage write failures
+    }
+    setView('journal')
+    setWeeklyPulseLaunchToken(Date.now())
+    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 40)
+  }
+
   return (
     <div
       style={{
@@ -422,6 +435,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               setView('journal')
               setWeeklyPulseLaunchToken(Date.now())
             }}
+            onOpenWeeklyPulse={openWeeklyPulseFromCheckin}
           />
         )}
         {view === 'analytics' && <Analytics />}
