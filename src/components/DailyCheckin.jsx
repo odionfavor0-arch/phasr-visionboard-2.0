@@ -293,20 +293,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     setPulseGate(null)
     setAutoPulseGateDismissed(true)
 
-    // 2) navigate to journal + 3) open weekly pulse directly (primary path)
-    if (typeof onOpenWeeklyPulse === 'function') {
-      onOpenWeeklyPulse()
-      return
-    }
-
-    // fallback path if callback is not provided
+    // 2) set open flags first
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
+
+    // 3) fire all navigation/open paths so mobile never misses it
+    onOpenWeeklyPulse?.()
+    onOpenJournal?.()
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
+    window.dispatchEvent(new CustomEvent('phasr-open-journal', { detail: { openWeeklyPulse: true } }))
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { openWeeklyPulse: true } }))
     window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
   }
 
