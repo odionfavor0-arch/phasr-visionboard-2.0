@@ -239,46 +239,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     }
   }, [view])
 
-  useEffect(() => {
-    const tryForceWeeklyPulseOpen = () => {
-      let shouldOpen = false
-      try {
-        shouldOpen =
-          localStorage.getItem('phasr_open_weekly_pulse') === 'true' ||
-          localStorage.getItem('phasr_pending_weekly_pulse_open') === 'true' ||
-          Boolean(localStorage.getItem('phasr_force_weekly_pulse_open'))
-      } catch {
-        shouldOpen = false
-      }
-      if (!shouldOpen) return
-
-      setView('journal')
-      setWeeklyPulseLaunchToken(current => current + 1)
-      setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 30)
-
-      try {
-        localStorage.removeItem('phasr_open_weekly_pulse')
-        localStorage.removeItem('phasr_pending_weekly_pulse_open')
-        localStorage.removeItem('phasr_force_weekly_pulse_open')
-      } catch {
-        // ignore
-      }
-    }
-
-    tryForceWeeklyPulseOpen()
-    const intervalId = window.setInterval(tryForceWeeklyPulseOpen, 350)
-    window.addEventListener('storage', tryForceWeeklyPulseOpen)
-    return () => {
-      window.clearInterval(intervalId)
-      window.removeEventListener('storage', tryForceWeeklyPulseOpen)
-    }
-  }, [])
-
   function openWeeklyPulseFromCheckin() {
     try {
       localStorage.setItem('phasr_open_weekly_pulse', 'true')
       localStorage.setItem('phasr_pending_weekly_pulse_open', 'true')
-      localStorage.setItem('phasr_force_weekly_pulse_open', String(Date.now()))
     } catch {
       // ignore storage write failures
     }

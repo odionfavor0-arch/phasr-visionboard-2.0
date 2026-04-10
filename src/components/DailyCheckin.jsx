@@ -13,7 +13,6 @@ import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingD
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
-const FORCE_WEEKLY_PULSE_OPEN_KEY = 'phasr_force_weekly_pulse_open'
 const OPEN_WEEKLY_PULSE_KEY = 'phasr_open_weekly_pulse'
 
 function makeBoardForPhase(boardData, phaseId) {
@@ -290,25 +289,25 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   }
 
   function openWeeklyPulseFromGate() {
-    try {
-      window.location.hash = 'journal-weekly-pulse'
-    } catch {
-      // ignore hash failures
+    // 1) close gate modal first
+    setPulseGate(null)
+    setAutoPulseGateDismissed(true)
+
+    // 2) navigate to journal + 3) open weekly pulse directly (primary path)
+    if (typeof onOpenWeeklyPulse === 'function') {
+      onOpenWeeklyPulse()
+      return
     }
 
+    // fallback path if callback is not provided
     try {
       localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, 'true')
-      localStorage.setItem(FORCE_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
-    onOpenJournal?.()
-    window.dispatchEvent(new CustomEvent('phasr-open-journal', { detail: { openWeeklyPulse: true } }))
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { openWeeklyPulse: true } }))
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
-    onOpenWeeklyPulse?.()
-    onOpenJournal?.()
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
   }
 
   const pulseGateCard = pulseGate || autoPulseGate
