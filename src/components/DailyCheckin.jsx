@@ -13,6 +13,7 @@ import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingD
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
+const FORCE_WEEKLY_PULSE_OPEN_KEY = 'phasr_force_weekly_pulse_open'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -293,6 +294,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     let stored = false
     try {
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
+      localStorage.setItem(FORCE_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
       stored = true
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
