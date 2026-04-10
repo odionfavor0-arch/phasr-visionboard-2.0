@@ -28,73 +28,36 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000
 
-const PHASE_QUESTIONS = {
-  'phase 1': [
-    'Who did I show up as this week in the moments that mattered most?',
-    'If I am honest, was that the version of me I want to become?',
-  ],
-  'phase 2': [
-    'Who did I show up for this week in a real way?',
-    'Who did I neglect this week, including myself?',
-  ],
-  'phase 3': [
-    'What did I avoid this week even though I knew it mattered?',
-    'What was underneath that avoidance when I got quiet with myself?',
-  ],
-  'phase 4': [
-    'Did my actions this week match what I say I value?',
-    'What one shift will make next week feel clearly different?',
-  ],
-}
-
 const PILLAR_QUESTIONS = {
   'health and fitness': [
-    'Close your eyes. The version of you that has already achieved your health goal is looking back at this exact week. She is not judging you. She is just watching. What does she see?',
-    'Your body kept score this week. What did it register that your mind tried to ignore?',
-    'There is a habit you keep almost starting. Not almost — you have started it and stopped it. What would it mean about you if you actually kept it this week?',
-    'The goal is not the body. The goal is the feeling on the other side of the body. What feeling are you really chasing — and did anything this week give you a taste of it?',
-    'Who in your life would notice first if you became the healthiest version of yourself? What would they see that is not there yet?',
-    'You already know what you need to do. The question is what you are using as a reason not to do it. What is the real reason?',
+    'How did your body feel this week honestly?',
+    'Did you do what you planned for your health this week? If not, what got in the way?',
+    'What is one thing your body needs more of next week?',
   ],
   'career and business': [
-    'You are building something. But building requires believing before there is proof. Where did your belief waver this week — and what was underneath that?',
-    'Imagine the moment you hit your biggest career goal. Not the achievement. The feeling in your chest in the room where it happens. What did this week do to get you closer to that room?',
-    'What are you still waiting for permission to do? Who are you waiting to get it from?',
-    'The work you avoid the most is usually the work that matters the most. What did you avoid this week that you already know was important?',
-    'Five years from now you will either look back at this phase as the moment everything changed or the moment you played it safe. Which one is this week pointing toward?',
-    'What would you be building right now if you were not afraid of what people would think?',
+    'Did you move the needle on anything that actually matters this week?',
+    'What did you avoid that you know you should not have?',
+    'How are you feeling about where things are headed excited, stuck, or somewhere in between?',
   ],
   'wealth and finance': [
-    'Money follows decision. What financial decision have you been postponing that you already know the answer to?',
-    'What is your relationship with money telling you about your relationship with yourself right now?',
-    'Visualize the version of you who is financially free. Not rich. Free. What does her week look like compared to yours right now?',
-    'Where are you spending money to feel something you have not dealt with yet?',
-    'What belief about money did you inherit that is quietly running your decisions right now?',
-    'The gap between where you are financially and where you want to be — is it a knowledge gap or a behaviour gap? Be honest.',
+    'Did your spending this week reflect your goals?',
+    'Is there a money decision you have been sitting on? What is holding you back?',
+    'How does your financial situation make you feel right now and is that feeling based on facts or fear?',
   ],
   relationships: [
-    'Think about the most important relationship in your life right now. How present have you actually been — not how busy, how present?',
-    'There is something you have not said to someone that needs to be said. Not to hurt them. Because it is true. What is stopping you?',
-    'Who showed up for you this week? Did you let them?',
-    'The version of you achieving your goals — is she someone the people you love would recognise? Or is she someone they would have to get used to?',
-    'Where are you keeping the peace at the cost of your own truth?',
-    'What does the most important relationship in your life need from you right now that you have not been giving?',
+    'Were you actually present with the people who matter to you this week?',
+    'Is there something that needs to be said to someone that you have not said?',
+    'Did you feel supported this week? Did you let yourself be?',
   ],
   'inner life': [
-    'Underneath the week, underneath the tasks and the noise — what were you actually feeling? Not what you told people. What you felt alone.',
-    'There is a version of peace that you have experienced before. Briefly, quietly. What was happening when you last felt it?',
-    'What are you carrying right now that is not yours to carry?',
-    'Your intuition spoke to you this week. You may have called it anxiety or overthinking. But it was trying to tell you something. What was it?',
-    'When did you last feel fully like yourself — not performing, not managing, just present? What made that possible?',
-    'What would you do differently this week if you genuinely believed you were enough exactly as you are right now?',
+    'How are you actually doing beneath the busy?',
+    'What drained you most this week? What gave you energy?',
+    'Is there something you are carrying right now that you need to put down?',
   ],
   'personal growth': [
-    'Who were you this week compared to who you were a month ago? Name one specific thing that is different.',
-    'What uncomfortable thing did you do this week that the old version of you would have avoided?',
-    'The pattern you keep repeating — you know the one. What would it take to actually break it this week?',
-    'What have you learned recently that you have not yet applied? What is stopping you from applying it?',
-    'Growth is not always visible. Sometimes it is just choosing differently in a quiet moment. Where did you choose differently this week?',
-    'What version of yourself are you most afraid of becoming? And are any of your current habits moving you toward that?',
+    'Did you show up this week as the person you are trying to become?',
+    'What is one thing you did differently compared to a month ago?',
+    'What do you want to do better next week just one thing?',
   ],
 }
 
@@ -338,56 +301,27 @@ function getActivePhase(boardData) {
 
 function buildWeeklyPulsePayload() {
   const boardData = readVisionBoardData()
-  const phase = (Array.isArray(boardData?.phases) && boardData.phases.length ? boardData.phases[0] : null) || getActivePhase(boardData)
+  const phase = getActivePhase(boardData) || (Array.isArray(boardData?.phases) ? boardData.phases[0] : null)
   const phaseName = String(phase?.name || 'Phase 1').trim()
 
   const pillars = Array.isArray(phase?.pillars)
     ? phase.pillars.map(item => String(item?.name || '').trim()).filter(Boolean)
     : []
 
-  const weekIndexSeed = Math.floor(Date.now() / (7 * MS_IN_DAY))
   const phaseStart = phase?.startDate ? new Date(`${phase.startDate}T12:00:00`) : null
   const weekNumber = phaseStart && !Number.isNaN(phaseStart.getTime())
     ? Math.max(1, Math.floor((Date.now() - phaseStart.getTime()) / (7 * MS_IN_DAY)) + 1)
     : 1
-  const firstTwoPillars = pillars.slice(0, 2)
-
-  const pillarQuestions = firstTwoPillars.map((pillarName) => {
-    const key = normalizeLabel(pillarName)
-    const pool = PILLAR_QUESTIONS[key] || []
-    if (!pool.length) return ''
-    return pool[weekIndexSeed % pool.length]
-  }).filter(Boolean)
-
-  // Guarantee 2 deep questions.
-  if (pillarQuestions.length < 2 && firstTwoPillars[0]) {
-    const key = normalizeLabel(firstTwoPillars[0])
-    const pool = PILLAR_QUESTIONS[key] || []
-    if (pool.length > 1) {
-      const fallbackIndex = (weekIndexSeed + 1) % pool.length
-      const fallbackQuestion = pool[fallbackIndex]
-      if (fallbackQuestion && !pillarQuestions.includes(fallbackQuestion)) {
-        pillarQuestions.push(fallbackQuestion)
-      }
-    }
-  }
-
-  const safePillars = firstTwoPillars.length ? firstTwoPillars : ['Personal Growth']
-  const therapistMove = THERAPIST_MOVES[normalizeLabel(safePillars[0])] || THERAPIST_MOVES['personal growth']
-  const defaultPool = PILLAR_QUESTIONS['personal growth']
-  const fallbackQ1 = defaultPool[weekIndexSeed % defaultPool.length]
-  const fallbackQ2 = defaultPool[(weekIndexSeed + 1) % defaultPool.length]
-  const weeklyQuestions = [
-    pillarQuestions[0] || fallbackQ1,
-    pillarQuestions[1] || fallbackQ2,
-  ]
+  const primaryPillar = pillars[0] || 'Personal Growth'
+  const primaryPool = PILLAR_QUESTIONS[normalizeLabel(primaryPillar)] || PILLAR_QUESTIONS['personal growth']
+  const safePillars = [primaryPillar]
 
   return {
     phaseName: removeDashPunctuation(phaseName),
     weekNumber,
     pillars: safePillars,
-    weeklyQuestions: weeklyQuestions.map(removeDashPunctuation),
-    therapistMove: removeDashPunctuation(therapistMove),
+    weeklyQuestions: primaryPool.map(removeDashPunctuation),
+    therapistMove: '',
   }
 }
 
@@ -1338,16 +1272,25 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
 
   function openWeeklyPulse() {
     const payload = buildWeeklyPulsePayload()
-    setWeeklyPulseState({
-      phaseName: payload.phaseName,
-      weekNumber: payload.weekNumber || 1,
-      pillars: payload.pillars,
-      questions: payload.weeklyQuestions,
-      therapistMove: payload.therapistMove,
-      answers: payload.weeklyQuestions.map(() => ''),
-      index: 0,
-    })
-    setScreen('weekly-pulse')
+    const weeklyFields = payload.weeklyQuestions.map(question => ({ label: question, subtext: '' }))
+    const weeklyAnswers = Object.fromEntries(weeklyFields.map(field => [field.label, '']))
+    setDraft(prev => ({
+      ...prev,
+      date: getToday(),
+      title: 'Weekly Pulse',
+      prompt: 'Weekly Pulse',
+      content: '',
+      templateAccent: '#fff5f7',
+      templateFields: weeklyFields,
+      templateAnswers: weeklyAnswers,
+      weeklyPulsePhaseName: payload.phaseName,
+      weeklyPulsePillars: payload.pillars,
+      weeklyPulseWeekNumber: payload.weekNumber || 1,
+      mood: prev.mood || MOODS[0],
+    }))
+    setEditingEntryId(null)
+    setShowMoodPicker(false)
+    setScreen('write')
   }
 
   useEffect(() => {
@@ -1608,12 +1551,20 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
         weeklyPulseMeta: isWeeklyPulse ? {
           phaseName: draft.weeklyPulsePhaseName || '',
           pillars: draft.weeklyPulsePillars || [],
+          weekNumber: draft.weeklyPulseWeekNumber || 1,
         } : null,
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? entry : item) : [entry, ...current])
       setSelectedEntry(entry)
       if (isWeeklyPulse) {
         setWeeklyPulseDate(getToday())
+        const completionStore = (() => {
+          try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+        })()
+        const phaseKey = normalizeLabel(draft.weeklyPulsePhaseName || 'phase 1')
+        completionStore[phaseKey] = completionStore[phaseKey] || {}
+        completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
+        localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       }
       setEditingEntryId(null)
       setScreen('detail')
@@ -1642,12 +1593,20 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
         weeklyPulseMeta: String(draft.prompt || '').toLowerCase() === 'weekly pulse' ? {
           phaseName: draft.weeklyPulsePhaseName || '',
           pillars: draft.weeklyPulsePillars || [],
+          weekNumber: draft.weeklyPulseWeekNumber || 1,
         } : null,
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? fallback : item) : [fallback, ...current])
       setSelectedEntry(fallback)
       if (String(draft.prompt || '').toLowerCase() === 'weekly pulse') {
         setWeeklyPulseDate(getToday())
+        const completionStore = (() => {
+          try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+        })()
+        const phaseKey = normalizeLabel(draft.weeklyPulsePhaseName || 'phase 1')
+        completionStore[phaseKey] = completionStore[phaseKey] || {}
+        completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
+        localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       }
       setEditingEntryId(null)
       setScreen('detail')
