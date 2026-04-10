@@ -156,6 +156,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     const handleRequest = () => {
       setView('journal')
       setWeeklyPulseLaunchToken(Date.now())
+      setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 40)
+      setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 220)
     }
     window.addEventListener('phasr-open-weekly-pulse-request', handleRequest)
     return () => window.removeEventListener('phasr-open-weekly-pulse-request', handleRequest)
@@ -164,7 +166,12 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   useEffect(() => {
     const handleOpenView = event => {
       const nextView = event.detail?.view
-      if (nextView) setView(nextView)
+      if (nextView) {
+        setView(nextView)
+        if (nextView === 'journal' && event.detail?.openWeeklyPulse) {
+          setWeeklyPulseLaunchToken(Date.now())
+        }
+      }
     }
     window.addEventListener('phasr-open-view', handleOpenView)
     return () => window.removeEventListener('phasr-open-view', handleOpenView)
@@ -352,7 +359,19 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         </div>
       </aside>
 
-      <div ref={contentRef} style={{ position: 'relative', zIndex: 1, width: '100%', height: '100vh', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+      <div
+        ref={contentRef}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: isMobileView ? `calc(100vw - ${sidebarOpen ? sidebarWidth : closedRailWidth}px)` : '100%',
+          maxWidth: '100%',
+          height: '100vh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          minWidth: 0,
+        }}
+      >
         <header style={{ position: 'sticky', top: 0, zIndex: 80, background: 'color-mix(in srgb, var(--app-bg) 88%, white)', backdropFilter: 'blur(18px)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>

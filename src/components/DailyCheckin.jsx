@@ -297,7 +297,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
-    window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal' } }))
+    window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
   }
 
   const pulseGateCard = pulseGate || autoPulseGate
@@ -312,8 +312,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden' }}>
-      <div style={{ width: '100%', maxWidth: isMobile ? '100%' : 1080, margin: '0 auto', padding: isMobile ? '14px 10px 96px' : '18px 20px 96px', overflowX: 'hidden' }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: 'min(100%, 1080px)', maxWidth: '100%', margin: '0 auto', padding: isMobile ? '14px 10px 96px' : '18px 20px 96px', overflowX: 'hidden', boxSizing: 'border-box' }}>
         {showRiskWarning && (
           <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
