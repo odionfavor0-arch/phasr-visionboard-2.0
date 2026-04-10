@@ -407,7 +407,17 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         {view === 'board' && <VisionBoard user={user} lockInSummary={lockInSummary} editing={boardEditing} onEditingChange={setBoardEditing} onOpenDailyStreak={() => setView('checkin')} />}
         {view === 'journal' && <Journal user={user} onOpenEntries={() => setView('entries')} weeklyPulseLaunchToken={weeklyPulseLaunchToken} />}
         {view === 'entries' && <JournalEntries onBack={() => setView('journal')} />}
-        {view === 'checkin' && <DailyCheckin user={user} onLockInChange={refreshLockIn} onOpenBoard={() => setView('board')} />}
+        {view === 'checkin' && (
+          <DailyCheckin
+            user={user}
+            onLockInChange={refreshLockIn}
+            onOpenBoard={() => setView('board')}
+            onOpenJournal={() => {
+              setView('journal')
+              setWeeklyPulseLaunchToken(Date.now())
+            }}
+          />
+        )}
         {view === 'analytics' && <Analytics />}
         {view === 'showup' && <ShowUp user={user} onLockInChange={refreshLockIn} />}
         {view === 'settings' && <SettingsPanel user={user} theme={theme} onThemeChange={onThemeChange} onSignOut={onSignOut} />}

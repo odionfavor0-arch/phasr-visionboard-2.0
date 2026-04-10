@@ -153,7 +153,7 @@ function isConfiguredPillar(pillar) {
   return hasImage || hasStates
 }
 
-export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
+export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJournal }) {
   const [boardData] = useState(() => loadBoardData())
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const phases = useMemo(() => {
@@ -295,6 +295,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
+    onOpenJournal?.()
+    window.dispatchEvent(new CustomEvent('phasr-open-journal'))
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request'))
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal', openWeeklyPulse: true } }))
   }
 
@@ -364,6 +367,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
               <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f' }}>Weekly Pulse</p>
               <p style={{ color: '#5c3342', fontSize: isMobile ? '1.12rem' : '1.32rem', lineHeight: 1.45, margin: '0.55rem 2.4rem 0.5rem 0', fontWeight: 700 }}>
                 Before week {pulseGateCard.toWeek} begins, take 5 minutes with Sage.
+              </p>
+              <p style={{ color: '#7d5666', fontSize: isMobile ? '0.95rem' : '1rem', lineHeight: 1.5, margin: '0 0 0.85rem 0' }}>
+                Sage reads your week and tells you what actually matters going into week 2.
               </p>
               <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
                 <button onClick={openWeeklyPulseFromGate} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
