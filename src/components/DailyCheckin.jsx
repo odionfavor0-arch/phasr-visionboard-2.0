@@ -290,6 +290,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   }
 
   function openWeeklyPulseFromGate() {
+    try {
+      window.location.hash = 'journal-weekly-pulse'
+    } catch {
+      // ignore hash failures
+    }
+
     if (typeof onOpenWeeklyPulse === 'function') {
       onOpenWeeklyPulse()
       return

@@ -315,13 +315,17 @@ function buildWeeklyPulsePayload() {
   const primaryPillar = pillars[0] || 'Personal Growth'
   const primaryPool = PILLAR_QUESTIONS[normalizeLabel(primaryPillar)] || PILLAR_QUESTIONS['personal growth']
   const safePillars = [primaryPillar]
+  const weekIndexSeed = Math.floor(Date.now() / (7 * MS_IN_DAY))
+  const questionOne = primaryPool[weekIndexSeed % primaryPool.length] || primaryPool[0]
+  const questionTwo = primaryPool[(weekIndexSeed + 1) % primaryPool.length] || primaryPool[1] || primaryPool[0]
+  const therapistMove = THERAPIST_MOVES[normalizeLabel(primaryPillar)] || THERAPIST_MOVES['personal growth']
 
   return {
     phaseName: removeDashPunctuation(phaseName),
     weekNumber,
     pillars: safePillars,
-    weeklyQuestions: primaryPool.map(removeDashPunctuation),
-    therapistMove: '',
+    weeklyQuestions: [questionOne, questionTwo].map(removeDashPunctuation),
+    therapistMove: removeDashPunctuation(therapistMove),
   }
 }
 
@@ -1272,25 +1276,16 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
 
   function openWeeklyPulse() {
     const payload = buildWeeklyPulsePayload()
-    const weeklyFields = payload.weeklyQuestions.map(question => ({ label: question, subtext: '' }))
-    const weeklyAnswers = Object.fromEntries(weeklyFields.map(field => [field.label, '']))
-    setDraft(prev => ({
-      ...prev,
-      date: getToday(),
-      title: 'Weekly Pulse',
-      prompt: 'Weekly Pulse',
-      content: '',
-      templateAccent: '#fff5f7',
-      templateFields: weeklyFields,
-      templateAnswers: weeklyAnswers,
-      weeklyPulsePhaseName: payload.phaseName,
-      weeklyPulsePillars: payload.pillars,
-      weeklyPulseWeekNumber: payload.weekNumber || 1,
-      mood: prev.mood || MOODS[0],
-    }))
-    setEditingEntryId(null)
-    setShowMoodPicker(false)
-    setScreen('write')
+    setWeeklyPulseState({
+      phaseName: payload.phaseName,
+      weekNumber: payload.weekNumber || 1,
+      pillars: payload.pillars,
+      questions: payload.weeklyQuestions,
+      therapistMove: payload.therapistMove,
+      answers: payload.weeklyQuestions.map(() => ''),
+      index: 0,
+    })
+    setScreen('weekly-pulse')
   }
 
   useEffect(() => {
