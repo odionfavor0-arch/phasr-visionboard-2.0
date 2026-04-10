@@ -200,9 +200,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     if (!activePillarNames.length) return []
     return goals.filter(goal => activePillarNames.includes(goal.pillar))
   }, [selectedWeek, activePillarNames])
-  const filteredWeekTarget = filteredGoals.reduce((total, goal) => total + (goal.target || 0), 0)
+  const completedGoalItems = filteredGoals.filter(goal => (goal.completed || 0) >= (goal.target || 0)).length
+  const filteredWeekTarget = filteredGoals.length
   const filteredWeekProgress = filteredWeekTarget
-    ? Math.min(100, Math.round((filteredGoals.reduce((total, goal) => total + (goal.completed || 0), 0) / filteredWeekTarget) * 100))
+    ? Math.min(100, Math.round((completedGoalItems / filteredWeekTarget) * 100))
     : 0
   const selectedWeekStatus = selectedWeek ? weekProgressMap[selectedWeek.index] : null
   const showRiskWarning = useMemo(() => {
@@ -298,6 +299,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     }
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal' } }))
     window.dispatchEvent(new CustomEvent('phasr-open-journal'))
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
     setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 120)
     setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 420)
   }
@@ -315,7 +317,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden' }}>
-      <div style={{ width: '100%', maxWidth: 1080, margin: '0 auto', padding: isMobile ? '16px 14px 96px' : '18px 20px 96px', overflowX: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: isMobile ? '100%' : 1080, margin: '0 auto', padding: isMobile ? '14px 10px 96px' : '18px 20px 96px', overflowX: 'hidden' }}>
         {showRiskWarning && (
           <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
@@ -437,7 +439,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
               {selectedWeek?.weekLabel || 'Week 1'} To-Do List
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
-              {filteredGoals.reduce((total, goal) => total + (goal.completed || 0), 0)}/{filteredWeekTarget}
+              {completedGoalItems}/{filteredWeekTarget}
             </div>
           </div>
 

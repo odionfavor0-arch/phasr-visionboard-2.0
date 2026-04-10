@@ -20,6 +20,7 @@ import {
 const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
+const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -511,7 +512,7 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
           {
             role: 'system',
             content: isWeeklyPulse
-              ? `The user just completed their weekly pulse reflection. They answered 4 deeply personal questions about their goals and inner life. Read all 4 answers together as one picture of where this person is right now.
+              ? `The user just completed their weekly pulse reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
 
 Respond the way a sharp warm honest friend would respond if they received this as a voice note. Not a therapist. Not a coach. A real person who absorbed everything they said.
 
@@ -718,6 +719,7 @@ function WeeklyPulseWriter({
   answers,
   setAnswer,
   questionIndex,
+  onVoiceCapture,
   onPrev,
   onNext,
   onSave,
@@ -773,6 +775,16 @@ function WeeklyPulseWriter({
             color: '#3d1f2b',
           }}
         />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => onVoiceCapture?.(questionIndex)}
+            style={{ border: '1px solid #f2c4d0', background: '#fff', color: '#7a5567', borderRadius: 999, minHeight: 36, padding: '0.42rem 0.74rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700, fontSize: '0.82rem' }}
+          >
+            <Mic size={15} />
+            Voice input
+          </button>
+        </div>
         {isLastQuestion ? (
           <div style={{ background: '#fff5f7', border: '1px solid #f2c4d0', borderRadius: 10, padding: '10px 12px', marginTop: '0.2rem' }}>
             <p style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', margin: '0 0 4px 0' }}>
@@ -1338,9 +1350,30 @@ export default function Journal() {
   }
 
   useEffect(() => {
-    const handler = () => openWeeklyPulse()
+    const handler = () => {
+      try {
+        localStorage.removeItem(PENDING_WEEKLY_PULSE_OPEN_KEY)
+      } catch {
+        // ignore storage failures
+      }
+      openWeeklyPulse()
+    }
     window.addEventListener('phasr-open-weekly-pulse', handler)
     return () => window.removeEventListener('phasr-open-weekly-pulse', handler)
+  }, [])
+
+  useEffect(() => {
+    const pending = (() => {
+      try { return localStorage.getItem(PENDING_WEEKLY_PULSE_OPEN_KEY) } catch { return null }
+    })()
+    if (!pending) return
+
+    try {
+      localStorage.removeItem(PENDING_WEEKLY_PULSE_OPEN_KEY)
+    } catch {
+      // ignore storage failures
+    }
+    openWeeklyPulse()
   }, [])
 
   function startNewEntry() {
@@ -1367,6 +1400,31 @@ export default function Journal() {
       nextAnswers[index] = value
       return { ...current, answers: nextAnswers }
     })
+  }
+
+  function captureWeeklyPulseVoice(index) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      return
+    }
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.onresult = event => {
+      const transcript = Array.from(event.results)
+        .map(result => result?.[0]?.transcript || '')
+        .join(' ')
+        .trim()
+      if (!transcript) return
+      setWeeklyPulseState(current => {
+        const nextAnswers = [...current.answers]
+        const base = (nextAnswers[index] || '').trim()
+        nextAnswers[index] = base ? `${base}\n${transcript}` : transcript
+        return { ...current, answers: nextAnswers }
+      })
+    }
+    recognition.start()
   }
 
   function nextWeeklyPulseQuestion() {
@@ -1616,6 +1674,7 @@ export default function Journal() {
         answers={weeklyPulseState.answers}
         setAnswer={setWeeklyPulseAnswer}
         questionIndex={weeklyPulseState.index}
+        onVoiceCapture={captureWeeklyPulseVoice}
         onPrev={() => {
           if (weeklyPulseState.index === 0) {
             setScreen('list')

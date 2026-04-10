@@ -91,7 +91,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   const displayName = useMemo(() => getDisplayName(user), [user])
   const initial = displayName.charAt(0).toUpperCase()
-  const closedRailWidth = isMobileView ? 58 : 110
+  const closedRailWidth = isMobileView ? 46 : 110
   const sidebarWidth = isMobileView ? 156 : 260
 
   function refreshLockIn() {
@@ -143,6 +143,12 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     const handleOpenJournal = () => setView('journal')
     window.addEventListener('phasr-open-journal', handleOpenJournal)
     return () => window.removeEventListener('phasr-open-journal', handleOpenJournal)
+  }, [])
+
+  useEffect(() => {
+    const handleOpenWeeklyPulse = () => setView('journal')
+    window.addEventListener('phasr-open-weekly-pulse', handleOpenWeeklyPulse)
+    return () => window.removeEventListener('phasr-open-weekly-pulse', handleOpenWeeklyPulse)
   }, [])
 
   useEffect(() => {
