@@ -21,6 +21,8 @@ const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
+const FORCE_WEEKLY_PULSE_OPEN_KEY = 'phasr_force_weekly_pulse_open'
+const OPEN_WEEKLY_PULSE_KEY = 'phasr_open_weekly_pulse'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -338,7 +340,6 @@ function buildWeeklyPulsePayload() {
   const boardData = readVisionBoardData()
   const phase = (Array.isArray(boardData?.phases) && boardData.phases.length ? boardData.phases[0] : null) || getActivePhase(boardData)
   const phaseName = String(phase?.name || 'Phase 1').trim()
-  const fixedQuestions = PHASE_QUESTIONS[normalizeLabel(phaseName)] || PHASE_QUESTIONS['phase 1']
 
   const pillars = Array.isArray(phase?.pillars)
     ? phase.pillars.map(item => String(item?.name || '').trim()).filter(Boolean)
@@ -358,7 +359,7 @@ function buildWeeklyPulsePayload() {
     return pool[weekIndexSeed % pool.length]
   }).filter(Boolean)
 
-  // Guarantee 4 questions when possible by reusing first available pool if user has only one pillar.
+  // Guarantee 2 deep questions.
   if (pillarQuestions.length < 2 && firstTwoPillars[0]) {
     const key = normalizeLabel(firstTwoPillars[0])
     const pool = PILLAR_QUESTIONS[key] || []
@@ -373,13 +374,13 @@ function buildWeeklyPulsePayload() {
 
   const safePillars = firstTwoPillars.length ? firstTwoPillars : ['Personal Growth']
   const therapistMove = THERAPIST_MOVES[normalizeLabel(safePillars[0])] || THERAPIST_MOVES['personal growth']
-  const fixedByDepth = weekNumber <= 1
-    ? fixedQuestions[0]
-    : weekNumber === 2
-      ? fixedQuestions[1] || fixedQuestions[0]
-      : fixedQuestions[(weekNumber - 1) % fixedQuestions.length]
-  const pillarQuestion = pillarQuestions[0] || fixedQuestions[1] || fixedQuestions[0]
-  const weeklyQuestions = [fixedByDepth, pillarQuestion]
+  const defaultPool = PILLAR_QUESTIONS['personal growth']
+  const fallbackQ1 = defaultPool[weekIndexSeed % defaultPool.length]
+  const fallbackQ2 = defaultPool[(weekIndexSeed + 1) % defaultPool.length]
+  const weeklyQuestions = [
+    pillarQuestions[0] || fallbackQ1,
+    pillarQuestions[1] || fallbackQ2,
+  ]
 
   return {
     phaseName: removeDashPunctuation(phaseName),
@@ -1377,9 +1378,36 @@ export default function Journal({ weeklyPulseLaunchToken = 0 }) {
   }, [])
 
   useEffect(() => {
+    const shouldOpen = (() => {
+      try { return localStorage.getItem(OPEN_WEEKLY_PULSE_KEY) } catch { return null }
+    })()
+    if (shouldOpen !== 'true') return
+    try {
+      localStorage.removeItem(OPEN_WEEKLY_PULSE_KEY)
+    } catch {
+      // ignore storage failures
+    }
+    openWeeklyPulse()
+  }, [])
+
+  useEffect(() => {
     if (!weeklyPulseLaunchToken) return
     openWeeklyPulse()
   }, [weeklyPulseLaunchToken])
+
+  useEffect(() => {
+    const forced = (() => {
+      try { return localStorage.getItem(FORCE_WEEKLY_PULSE_OPEN_KEY) } catch { return null }
+    })()
+    if (!forced) return
+    try {
+      localStorage.removeItem(FORCE_WEEKLY_PULSE_OPEN_KEY)
+      localStorage.removeItem(PENDING_WEEKLY_PULSE_OPEN_KEY)
+    } catch {
+      // ignore
+    }
+    openWeeklyPulse()
+  }, [screen])
 
   function startNewEntry() {
     setDraft(blankDraft())

@@ -14,6 +14,7 @@ const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const PENDING_WEEKLY_PULSE_OPEN_KEY = 'phasr_pending_weekly_pulse_open'
 const FORCE_WEEKLY_PULSE_OPEN_KEY = 'phasr_force_weekly_pulse_open'
+const OPEN_WEEKLY_PULSE_KEY = 'phasr_open_weekly_pulse'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -289,20 +290,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
   }
 
   function openWeeklyPulseFromGate() {
-    // Journal only listens for `phasr-open-weekly-pulse` while mounted; this makes the CTA reliable
-    // even when we’re switching views (check-in -> journal).
-    let stored = false
     try {
+      localStorage.setItem(OPEN_WEEKLY_PULSE_KEY, 'true')
       localStorage.setItem(PENDING_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
       localStorage.setItem(FORCE_WEEKLY_PULSE_OPEN_KEY, String(Date.now()))
-      stored = true
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { source: 'daily-checkin-cta', ts: Date.now() } }))
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal' } }))
-    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 120)
-    setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 420)
   }
 
   const pulseGateCard = pulseGate || autoPulseGate
@@ -364,7 +359,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
 
         {showPulseGateCard && pulseGateCard ? (
           <div style={{ position: 'fixed', inset: 0, zIndex: 170, display: 'grid', placeItems: 'center', background: 'rgba(35,18,28,0.22)', backdropFilter: 'blur(1px)', padding: '18px' }} onClick={closePulseGateCard}>
-            <div onClick={event => event.stopPropagation()} style={{ position: 'relative', width: 'min(92vw, 560px)', background: '#fff5f8', border: '1px solid #f2c8d6', borderRadius: 24, boxShadow: '0 24px 48px rgba(185,87,122,0.2)', padding: isMobile ? '1rem 1rem 0.95rem' : '1.1rem 1.15rem 1rem' }}>
+            <div onClick={event => event.stopPropagation()} style={{ position: 'relative', width: 'min(calc(100% - 20px), 560px)', background: '#fff5f8', border: '1px solid #f2c8d6', borderRadius: 24, boxShadow: '0 24px 48px rgba(185,87,122,0.2)', padding: isMobile ? '1rem 1rem 0.95rem' : '1.1rem 1.15rem 1rem' }}>
               <button onClick={closePulseGateCard} aria-label="Close weekly pulse prompt" style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, fontSize: '1.1rem', lineHeight: 1 }}>
                 ×
               </button>
