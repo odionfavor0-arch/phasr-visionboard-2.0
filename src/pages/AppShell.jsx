@@ -81,6 +81,7 @@ function getDisplayName(user) {
 
 export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const [view, setView] = useState('board')
+  const [weeklyPulseLaunchToken, setWeeklyPulseLaunchToken] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [boardEditing, setBoardEditing] = useState(false)
   const [lockInSummary, setLockInSummary] = useState(() => getLockInSummary(loadLockInState()))
@@ -149,6 +150,15 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     const handleOpenWeeklyPulse = () => setView('journal')
     window.addEventListener('phasr-open-weekly-pulse', handleOpenWeeklyPulse)
     return () => window.removeEventListener('phasr-open-weekly-pulse', handleOpenWeeklyPulse)
+  }, [])
+
+  useEffect(() => {
+    const handleRequest = () => {
+      setView('journal')
+      setWeeklyPulseLaunchToken(Date.now())
+    }
+    window.addEventListener('phasr-open-weekly-pulse-request', handleRequest)
+    return () => window.removeEventListener('phasr-open-weekly-pulse-request', handleRequest)
   }, [])
 
   useEffect(() => {
@@ -376,7 +386,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         )}
 
         {view === 'board' && <VisionBoard user={user} lockInSummary={lockInSummary} editing={boardEditing} onEditingChange={setBoardEditing} onOpenDailyStreak={() => setView('checkin')} />}
-        {view === 'journal' && <Journal user={user} onOpenEntries={() => setView('entries')} />}
+        {view === 'journal' && <Journal user={user} onOpenEntries={() => setView('entries')} weeklyPulseLaunchToken={weeklyPulseLaunchToken} />}
         {view === 'entries' && <JournalEntries onBack={() => setView('journal')} />}
         {view === 'checkin' && <DailyCheckin user={user} onLockInChange={refreshLockIn} onOpenBoard={() => setView('board')} />}
         {view === 'analytics' && <Analytics />}

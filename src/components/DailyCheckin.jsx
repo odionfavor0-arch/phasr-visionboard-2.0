@@ -297,9 +297,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard }) {
     } catch {
       // ignore storage failures (private mode, disabled storage, etc.)
     }
+    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse-request', { detail: { source: 'daily-checkin-cta', ts: Date.now() } }))
     window.dispatchEvent(new CustomEvent('phasr-open-view', { detail: { view: 'journal' } }))
-    window.dispatchEvent(new CustomEvent('phasr-open-journal'))
-    window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse'))
     setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 120)
     setTimeout(() => window.dispatchEvent(new CustomEvent('phasr-open-weekly-pulse')), 420)
   }

@@ -1292,7 +1292,7 @@ const ghostMiniActionStyle = {
   placeItems: 'center',
 }
 
-export default function Journal() {
+export default function Journal({ weeklyPulseLaunchToken = 0 }) {
   const [entries, setEntries] = useState(() => safeRead())
   const [screen, setScreen] = useState('list')
   const [search, setSearch] = useState('')
@@ -1375,6 +1375,11 @@ export default function Journal() {
     }
     openWeeklyPulse()
   }, [])
+
+  useEffect(() => {
+    if (!weeklyPulseLaunchToken) return
+    openWeeklyPulse()
+  }, [weeklyPulseLaunchToken])
 
   function startNewEntry() {
     setDraft(blankDraft())
