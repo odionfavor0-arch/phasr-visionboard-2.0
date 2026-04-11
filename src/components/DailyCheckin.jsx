@@ -11,7 +11,7 @@ import {
 import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
-const DAILY_TASKS_KEY_PREFIX = 'phasr_daily_tasks'
+const DAILY_SCHEDULE_KEY_PREFIX = 'phasr_daily_schedule'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -86,8 +86,8 @@ function isConfiguredPillar(pillar) {
   return hasImage || hasStates
 }
 
-function getDailyTasksStorageKey(weekNumber, dayNumber) {
-  return `${DAILY_TASKS_KEY_PREFIX}_${weekNumber}_${dayNumber}`
+function getDailyScheduleStorageKey(phaseId, weekNumber) {
+  return `${DAILY_SCHEDULE_KEY_PREFIX}_${phaseId}_${weekNumber}`
 }
 
 function getDayNumberForWeek(week) {
@@ -129,7 +129,8 @@ function buildDailyAssignments(weeklyGoals, weekNumber) {
   }
 
   weeklyGoals.forEach(goal => {
-    const days = pickDistributedDays(goal.target || 1)
+    const frequency = Math.max(1, Number(goal.target) || 1)
+    const days = frequency >= 7 ? [1, 2, 3, 4, 5, 6, 7] : pickDistributedDays(frequency)
     days.forEach(day => daySets[day].add(goal.id))
   })
 
@@ -155,23 +156,25 @@ function buildDailyAssignments(weeklyGoals, weekNumber) {
   }
 }
 
-function getOrCreateWeekSchedule(weekNumber, weeklyGoals) {
-  const existing = {}
-  let hasAllDays = true
-  for (let day = 1; day <= 7; day += 1) {
-    const data = safeRead(getDailyTasksStorageKey(weekNumber, day), null)
-    if (!Array.isArray(data)) {
-      hasAllDays = false
-      break
-    }
-    existing[day] = data
+function getOrCreateWeekSchedule(phaseId, weekNumber, weeklyGoals) {
+  const key = getDailyScheduleStorageKey(phaseId, weekNumber)
+  const existing = safeRead(key, null)
+  if (
+    existing &&
+    typeof existing === 'object' &&
+    Array.isArray(existing['1']) &&
+    Array.isArray(existing['2']) &&
+    Array.isArray(existing['3']) &&
+    Array.isArray(existing['4']) &&
+    Array.isArray(existing['5']) &&
+    Array.isArray(existing['6']) &&
+    Array.isArray(existing['7'])
+  ) {
+    return existing
   }
-  if (hasAllDays) return existing
 
   const created = buildDailyAssignments(weeklyGoals, weekNumber)
-  for (let day = 1; day <= 7; day += 1) {
-    safeWrite(getDailyTasksStorageKey(weekNumber, day), created[day] || [])
-  }
+  safeWrite(key, created)
   return created
 }
 
@@ -251,8 +254,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const dayNumber = useMemo(() => getDayNumberForWeek(selectedWeek), [selectedWeek])
 
   const weeklySchedule = useMemo(
-    () => getOrCreateWeekSchedule(weekNumber, weeklyGoals),
-    [weekNumber, weeklyGoals],
+    () => getOrCreateWeekSchedule(selectedPhase?.id || 'phase', weekNumber, weeklyGoals),
+    [selectedPhase?.id, weekNumber, weeklyGoals],
   )
 
   const todaysTasks = useMemo(() => {
@@ -282,7 +285,39 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }))], [weeklyGoals])
   const allTasksThisWeek = weekTasks.flat()
   const completedThisWeek = allTasksThisWeek.filter(t => t.done).length
-  const weekCompletionPercent = Math.round((completedThisWeek / allTasksThisWeek.length) * 100) || 0
+  const totalThisWeek = allTasksThisWeek.length
+  const weekScore = Math.round((completedThisWeek / totalThisWeek) * 100) || 0
+  const weekCompletionPercent = weekScore
+
+  const nonNegotiables = useMemo(
+    () => weeklyGoals.map(goal => ({
+      id: goal.id,
+      label: goal.activity,
+      pillar: goal.pillar,
+      activityId: goal.activityId,
+      timesPerWeek: Math.max(1, Number(goal.target) || 1),
+      completed: Math.max(0, Number(goal.completed) || 0),
+    })),
+    [weeklyGoals],
+  )
+
+  function getActivitiesForNonNeg(nonNeg) {
+    const target = Math.max(1, Number(nonNeg.timesPerWeek) || 1)
+    const doneCount = Math.min(target, Math.max(0, Number(nonNeg.completed) || 0))
+    return Array.from({ length: target }, (_, index) => ({
+      id: `${nonNeg.id}-${index + 1}`,
+      done: index < doneCount,
+    }))
+  }
+
+  const nonNegProgress = useMemo(
+    () => nonNegotiables.map(nn => ({
+      ...nn,
+      progress: getActivitiesForNonNeg(nn).filter(a => a.done).length,
+      target: nn.timesPerWeek,
+    })),
+    [nonNegotiables],
+  )
 
   const weekEndDate = useMemo(() => {
     const phaseStart = selectedPhase?.startDate ? new Date(`${selectedPhase.startDate}T12:00:00`) : new Date()
@@ -291,6 +326,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [selectedPhase?.startDate, currentWeek])
   const weekHasEnded = new Date() > weekEndDate
   const pulseNotDone = !localStorage.getItem(`phasr_weekly_pulse_w${Math.max(1, currentWeek - 1)}_done`)
+  const daysSinceWeekStart = Math.max(0, dayNumber - 1)
+  const daysIntoNewWeek = daysSinceWeekStart
 
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
@@ -329,6 +366,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   const showPulseEndedCard = weekHasEnded && pulseNotDone
+  const showQuietReminder = !showPulseEndedCard && pulseNotDone && daysIntoNewWeek > 2
+
+  const openPulse = () => {
+    if (typeof onOpenWeeklyPulse === 'function') {
+      onOpenWeeklyPulse({
+        weekNumber: Math.max(1, currentWeek - 1),
+        completionPercent: weekScore,
+        tasksCompleted: completedThisWeek,
+        tasksTotal: totalThisWeek,
+        nonNegProgress,
+      })
+    }
+  }
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden', display: 'flex', justifyContent: 'center' }}>
@@ -385,7 +435,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               This takes 5 minutes. Two questions. Sage reads your week and tells you what actually matters going into week {currentWeek}.
             </p>
             <button
-              onClick={onOpenWeeklyPulse}
+              onClick={openPulse}
               style={{
                 background: 'linear-gradient(135deg, #e8407a, #f472a8)',
                 color: '#fff', border: 'none', borderRadius: 99,
@@ -415,6 +465,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <p style={{ fontSize: '0.72rem', color: '#7a5a66' }}>
               {weekCompletionPercent}% of this week complete
             </p>
+            {showQuietReminder ? (
+              <p style={{
+                fontSize: '0.68rem', color: '#e8407a', marginTop: 8,
+                fontWeight: 500, cursor: 'pointer',
+                borderTop: '1px solid #f2c4d0', paddingTop: 8,
+              }} onClick={openPulse}>
+                Week {Math.max(1, currentWeek - 1)} reflection with Sage is pending.
+                Complete it so Sage can guide this week properly. ->
+              </p>
+            ) : null}
           </div>
         )}
 
