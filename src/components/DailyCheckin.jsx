@@ -11,8 +11,7 @@ import {
 import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
-const WEEKLY_PULSE_W1_DONE_KEY = 'phasr_weekly_pulse_w1_done'
-const PULSE_SNOOZED_UNTIL_KEY = 'phasr_pulse_snoozed_until'
+const DAILY_TASKS_KEY_PREFIX = 'phasr_daily_tasks'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -40,58 +39,8 @@ function getUnlockState(summary, tier) {
   return 'locked'
 }
 
-function SageBriefingCard({ plan, message, onDismiss }) {
-  if (!plan || !message) return null
-
-  const difficultyTone =
-    plan.difficulty === 'up' ? { label: 'Difficulty Up', bg: 'rgba(74,222,128,0.12)', color: '#2f9e57' } :
-    plan.difficulty === 'down' ? { label: 'Difficulty Down', bg: '#f5eef2', color: '#8f7683' } :
-    { label: 'Difficulty Same', bg: 'rgba(244,197,66,0.16)', color: '#b28700' }
-
-  return (
-    <div style={{ borderRadius: 18, padding: '1rem', background: '#fff', border: '1px solid var(--app-border)', boxShadow: '0 12px 28px rgba(240,96,144,0.12)', position: 'relative', marginBottom: 16 }}>
-      <div style={{ position: 'absolute', inset: 0, borderRadius: 18, padding: 1, background: 'linear-gradient(135deg,var(--app-accent2),rgba(255,255,255,0.4),var(--app-accent))', WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', pointerEvents: 'none' }} />
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, position: 'relative' }}>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Sage</p>
-          <p style={{ margin: '0.45rem 0 0', fontSize: '0.94rem', lineHeight: 1.65, color: '#5a3d47' }}>{message}</p>
-        </div>
-        <button type="button" onClick={onDismiss} aria-label="Dismiss weekly Sage briefing" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--app-border)', background: '#fff', color: '#b85a82', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>
-          ×
-        </button>
-      </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-        <span style={{ padding: '0.38rem 0.7rem', borderRadius: 999, background: '#fff1f6', border: '1px solid #f2c8d6', color: '#b85a82', fontSize: '0.72rem', fontWeight: 700 }}>
-          {plan.completionRate}% done
-        </span>
-        <span style={{ padding: '0.38rem 0.7rem', borderRadius: 999, background: '#fff1f6', border: '1px solid #f2c8d6', color: '#b85a82', fontSize: '0.72rem', fontWeight: 700 }}>
-          {plan.streakDays}/7 streak days
-        </span>
-        <span style={{ padding: '0.38rem 0.7rem', borderRadius: 999, background: difficultyTone.bg, border: '1px solid transparent', color: difficultyTone.color, fontSize: '0.72rem', fontWeight: 700 }}>
-          {difficultyTone.label}
-        </span>
-      </div>
-    </div>
-  )
-}
-
 function getCompletedGoalCount(week) {
   return (week?.goals || []).filter(goal => goal.completed >= goal.target).length
-}
-
-function getFormattedGoalText(activity, target) {
-  const text = String(activity || '').trim()
-  const lower = text.toLowerCase()
-
-  if (lower.includes('gym')) return `Go to the gym ${target} times this week`
-  if (lower.includes('strength')) return `Complete ${target} strength sessions this week`
-  if (lower.includes('walk')) return `Walk ${Math.min(20 + ((target - 1) * 10), 60)} minutes daily`
-  if (lower.includes('meal prep')) return `Meal prep ${target} time${target === 1 ? '' : 's'} this week`
-  if (lower.includes('track')) return `${text} ${target} time${target === 1 ? '' : 's'} this week`
-  if (lower.includes('review')) return `${text} ${target} time${target === 1 ? '' : 's'} this week`
-  if (lower.includes('journal')) return `Journal ${target} time${target === 1 ? '' : 's'} this week`
-
-  return `${text} ${target} time${target === 1 ? '' : 's'} this week`
 }
 
 function buildWeekProgressMap(phaseId, weeks) {
@@ -102,7 +51,6 @@ function buildWeekProgressMap(phaseId, weeks) {
   weeks.forEach((week, index) => {
     const totalGoals = week.goals?.length || 0
     const completedGoals = getCompletedGoalCount(week)
-    const halfThreshold = Math.floor(totalGoals / 2) + (totalGoals % 2 === 0 ? 1 : 0)
     const previousWeek = weeks[index - 1]
     const previousCompletedGoals = getCompletedGoalCount(previousWeek)
     const previousTotalGoals = previousWeek?.goals?.length || 0
@@ -138,7 +86,119 @@ function isConfiguredPillar(pillar) {
   return hasImage || hasStates
 }
 
-export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJournal, onOpenWeeklyPulse }) {
+function getDailyTasksStorageKey(weekNumber, dayNumber) {
+  return `${DAILY_TASKS_KEY_PREFIX}_${weekNumber}_${dayNumber}`
+}
+
+function getDayNumberForWeek(week) {
+  if (!week?.startDate) return 1
+  const start = new Date(`${week.startDate}T12:00:00`)
+  const now = new Date()
+  const diff = Math.floor((now - start) / (24 * 60 * 60 * 1000))
+  return Math.min(7, Math.max(1, diff + 1))
+}
+
+function pickDistributedDays(target = 1) {
+  const count = Math.max(1, Math.min(7, Number(target) || 1))
+  if (count === 1) return [1]
+  const days = []
+  for (let i = 0; i < count; i += 1) {
+    const day = Math.min(7, Math.floor((i * 7) / count) + 1)
+    if (!days.includes(day)) days.push(day)
+  }
+  while (days.length < count) {
+    const candidate = ((days[days.length - 1] || 0) % 7) + 1
+    if (!days.includes(candidate)) days.push(candidate)
+  }
+  return days
+}
+
+function buildDailyAssignments(weeklyGoals, weekNumber) {
+  const daySets = {
+    1: new Set(),
+    2: new Set(),
+    3: new Set(),
+    4: new Set(),
+    5: new Set(),
+    6: new Set(),
+    7: new Set(),
+  }
+  const allIds = weeklyGoals.map(goal => goal.id)
+  if (!allIds.length) {
+    return { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] }
+  }
+
+  weeklyGoals.forEach(goal => {
+    const days = pickDistributedDays(goal.target || 1)
+    days.forEach(day => daySets[day].add(goal.id))
+  })
+
+  for (let day = 1; day <= 7; day += 1) {
+    const ordered = Array.from(daySets[day])
+    let cursor = (weekNumber + day) % allIds.length
+    while (ordered.length < Math.min(2, allIds.length)) {
+      const candidate = allIds[cursor % allIds.length]
+      if (!ordered.includes(candidate)) ordered.push(candidate)
+      cursor += 1
+    }
+    daySets[day] = new Set(ordered.slice(0, 3))
+  }
+
+  return {
+    1: Array.from(daySets[1]),
+    2: Array.from(daySets[2]),
+    3: Array.from(daySets[3]),
+    4: Array.from(daySets[4]),
+    5: Array.from(daySets[5]),
+    6: Array.from(daySets[6]),
+    7: Array.from(daySets[7]),
+  }
+}
+
+function getOrCreateWeekSchedule(weekNumber, weeklyGoals) {
+  const existing = {}
+  let hasAllDays = true
+  for (let day = 1; day <= 7; day += 1) {
+    const data = safeRead(getDailyTasksStorageKey(weekNumber, day), null)
+    if (!Array.isArray(data)) {
+      hasAllDays = false
+      break
+    }
+    existing[day] = data
+  }
+  if (hasAllDays) return existing
+
+  const created = buildDailyAssignments(weeklyGoals, weekNumber)
+  for (let day = 1; day <= 7; day += 1) {
+    safeWrite(getDailyTasksStorageKey(weekNumber, day), created[day] || [])
+  }
+  return created
+}
+
+function getFormattedGoalText(activity, target) {
+  const text = String(activity || '').trim()
+  if (!text) return `Complete ${target} times this week`
+  return `${text} (${target}x this week)`
+}
+
+function SageBriefingCard({ plan, message, onDismiss }) {
+  if (!plan || !message) return null
+  return (
+    <div style={{ borderRadius: 18, padding: '1rem', background: '#fff', border: '1px solid var(--app-border)', boxShadow: '0 12px 28px rgba(240,96,144,0.12)', position: 'relative', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Sage</p>
+          <p style={{ margin: '0.45rem 0 0', fontSize: '0.94rem', lineHeight: 1.65, color: '#5a3d47' }}>{message}</p>
+        </div>
+        <button type="button" onClick={onDismiss} aria-label="Dismiss weekly Sage briefing" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--app-border)', background: '#fff', color: '#b85a82', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>
+          x
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse }) {
   const [boardData] = useState(() => loadBoardData())
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const phases = useMemo(() => {
@@ -150,12 +210,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     })
     return source
   }, [boardData])
+
   const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
   const [activeWeek, setActiveWeek] = useState(1)
-  const [pulseSnoozedUntil, setPulseSnoozedUntil] = useState(() => {
-    const saved = Number(localStorage.getItem(PULSE_SNOOZED_UNTIL_KEY) || 0)
-    return Number.isFinite(saved) ? saved : 0
-  })
 
   useEffect(() => {
     if (!phases.some(phase => phase.id === activePhaseId)) {
@@ -172,39 +229,69 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     [selectedPhase, weeklyData.weeks, lockInState],
   )
   const selectedWeek = weeklyData.weeks.find(week => week.index === activeWeek) || weeklyData.weeks[0] || null
+
   useEffect(() => {
     const currentIndex = weeklyData.currentWeek?.index || 1
     setActiveWeek(currentIndex)
   }, [activePhaseId, weeklyData.currentWeek?.index])
 
-  const selectedWeekProgress = selectedWeek?.totalTarget
-    ? Math.min(100, Math.round((selectedWeek.totalProgress / selectedWeek.totalTarget) * 100))
-    : 0
   const activePillarNames = useMemo(() => {
     const pillars = selectedPhase?.pillars || []
     return pillars.filter(isConfiguredPillar).map(pillar => pillar.name).filter(Boolean)
   }, [selectedPhase])
-  const filteredGoals = useMemo(() => {
+
+  const weeklyGoals = useMemo(() => {
     const goals = selectedWeek?.goals || []
     if (!activePillarNames.length) return []
     return goals.filter(goal => activePillarNames.includes(goal.pillar))
   }, [selectedWeek, activePillarNames])
-  const completedGoalItems = filteredGoals.filter(goal => (goal.completed || 0) >= (goal.target || 0)).length
-  const filteredWeekTarget = filteredGoals.length
-  const filteredWeekProgress = filteredWeekTarget
-    ? Math.min(100, Math.round((completedGoalItems / filteredWeekTarget) * 100))
-    : 0
-  const selectedWeekStatus = {
-    ...(selectedWeek ? weekProgressMap[selectedWeek.index] : {}),
-    unlocked: true,
-  }
-  const showRiskWarning = useMemo(() => {
-    const now = new Date()
-    if (now.getHours() < 18) return false
-    if (!selectedWeek) return false
-    const hasOpenGoals = filteredGoals.some(goal => (goal.completed || 0) < (goal.target || 0))
-    return hasOpenGoals && !summary.hasLoggedToday
-  }, [summary.hasLoggedToday, selectedWeek, filteredGoals])
+
+  const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
+  const currentWeek = weekNumber
+  const dayNumber = useMemo(() => getDayNumberForWeek(selectedWeek), [selectedWeek])
+
+  const weeklySchedule = useMemo(
+    () => getOrCreateWeekSchedule(weekNumber, weeklyGoals),
+    [weekNumber, weeklyGoals],
+  )
+
+  const todaysTasks = useMemo(() => {
+    const ids = weeklySchedule[dayNumber] || []
+    const byId = new Map(weeklyGoals.map(goal => [goal.id, goal]))
+    const assigned = ids
+      .map(id => byId.get(id))
+      .filter(Boolean)
+      .map(goal => ({
+        ...goal,
+        done: (goal.completed || 0) >= (goal.target || 0),
+      }))
+    if (assigned.length) return assigned
+    return weeklyGoals.slice(0, Math.min(3, weeklyGoals.length)).map(goal => ({
+      ...goal,
+      done: (goal.completed || 0) >= (goal.target || 0),
+    }))
+  }, [weeklyGoals, weeklySchedule, dayNumber])
+
+  const completedToday = todaysTasks.filter(t => t.done).length
+  const totalToday = todaysTasks.length
+  const todayScore = Math.round((completedToday / totalToday) * 100) || 0
+
+  const weekTasks = useMemo(() => [weeklyGoals.map(goal => ({
+    ...goal,
+    done: (goal.completed || 0) >= (goal.target || 0),
+  }))], [weeklyGoals])
+  const allTasksThisWeek = weekTasks.flat()
+  const completedThisWeek = allTasksThisWeek.filter(t => t.done).length
+  const weekCompletionPercent = Math.round((completedThisWeek / allTasksThisWeek.length) * 100) || 0
+
+  const weekEndDate = useMemo(() => {
+    const phaseStart = selectedPhase?.startDate ? new Date(`${selectedPhase.startDate}T12:00:00`) : new Date()
+    phaseStart.setDate(phaseStart.getDate() + (currentWeek * 7))
+    return phaseStart
+  }, [selectedPhase?.startDate, currentWeek])
+  const weekHasEnded = new Date() > weekEndDate
+  const pulseNotDone = !localStorage.getItem(`phasr_weekly_pulse_w${Math.max(1, currentWeek - 1)}_done`)
+
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
   const briefingDismissed = useMemo(() => {
@@ -212,6 +299,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     const weekKey = weeklyLoadPlan?.week
     return phaseKey && weekKey ? isBriefingDismissed(phaseKey, weekKey) : false
   }, [selectedPhase, weeklyLoadPlan])
+
   const isDarkTheme = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'neutral'
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const shellBg = 'var(--app-bg)'
@@ -223,6 +311,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
   const showSinglePhaseAsPhaseOne = phases.length === 1
+
   function handleToggleGoal(goal) {
     toggleWeeklyGoalCompletion(goal, phaseBoard)
     setLockInState(loadLockInState())
@@ -231,30 +320,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   }
 
   function handleWeekSelect(nextWeek) {
-    const nextIndex = nextWeek?.index || 1
-    setActiveWeek(nextIndex)
+    setActiveWeek(nextWeek?.index || 1)
   }
 
-  const weekOne = weeklyData.weeks.find(week => week.index === 1) || null
-  const weekOneEnded = Boolean(weekOne?.endDate) && Date.now() > new Date(`${weekOne.endDate}T23:59:59`).getTime()
-  const weeklyPulseDone = localStorage.getItem(WEEKLY_PULSE_W1_DONE_KEY) === 'true'
-  const showPulseGateCard = weekOneEnded && !weeklyPulseDone && Date.now() > pulseSnoozedUntil
-
-  function closePulseGateCard() {
-    const until = Date.now() + (24 * 60 * 60 * 1000)
-    localStorage.setItem(PULSE_SNOOZED_UNTIL_KEY, String(until))
-    setPulseSnoozedUntil(until)
+  const selectedWeekStatus = {
+    ...(selectedWeek ? weekProgressMap[selectedWeek.index] : {}),
+    unlocked: true,
   }
+
+  const showPulseEndedCard = weekHasEnded && pulseNotDone
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', overflowX: 'hidden', display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: 'min(100%, 1080px)', maxWidth: '100%', margin: '0 auto', padding: isMobile ? '14px 10px 96px' : '18px 20px 96px', overflowX: 'hidden', boxSizing: 'border-box' }}>
-        {showRiskWarning && (
-          <div style={{ borderRadius: 14, padding: '0.85rem 1rem', border: '1px solid rgba(239,68,68,0.65)', background: 'rgba(239,68,68,0.08)', color: '#b4233f', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 16 }}>⚠️</span>
-            <span>Your streak is at risk. Complete today&apos;s task before midnight.</span>
-          </div>
-        )}
         <div style={{ overflowX: 'hidden' }}>
           <div style={{ display: 'flex', gap: 10, width: '100%', flexWrap: 'wrap' }}>
             {phases.map(phase => {
@@ -292,30 +370,53 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
           Turn your goal into daily action
         </div>
 
-        {showPulseGateCard ? (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 170, display: 'grid', placeItems: 'center', background: 'rgba(35,18,28,0.22)', backdropFilter: 'blur(1px)', padding: '18px' }} onClick={closePulseGateCard}>
-            <div onClick={event => event.stopPropagation()} style={{ position: 'relative', width: 'min(calc(100% - 20px), 560px)', background: '#fff5f8', border: '1px solid #f2c8d6', borderRadius: 24, boxShadow: '0 24px 48px rgba(185,87,122,0.2)', padding: isMobile ? '1rem 1rem 0.95rem' : '1.1rem 1.15rem 1rem' }}>
-              <button onClick={closePulseGateCard} aria-label="Close weekly pulse prompt" style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, fontSize: '1.1rem', lineHeight: 1 }}>
-                ×
-              </button>
-              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f' }}>Weekly Pulse</p>
-              <p style={{ color: '#5c3342', fontSize: isMobile ? '1.12rem' : '1.32rem', lineHeight: 1.45, margin: '0.55rem 2.4rem 0.5rem 0', fontWeight: 700 }}>
-                Before week 2 begins, take 5 minutes with Sage.
-              </p>
-              <p style={{ color: '#7d5666', fontSize: isMobile ? '0.95rem' : '1rem', lineHeight: 1.5, margin: '0 0 0.85rem 0' }}>
-                Sage reads your week and tells you what actually matters going into week 2.
-              </p>
-              <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
-                <button type="button" onClick={onOpenWeeklyPulse} style={{ minHeight: 48, padding: '0.75rem 1.25rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.96rem' }}>
-                  Open Weekly Pulse
-                </button>
-                <button type="button" onClick={closePulseGateCard} style={{ minHeight: 48, padding: '0.75rem 1.1rem', borderRadius: 999, border: '1px solid #efc3d1', background: '#fff', color: '#8a5568', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: '0.94rem' }}>
-                  Later
-                </button>
-              </div>
-            </div>
+        {showPulseEndedCard ? (
+          <div style={{
+            background: 'linear-gradient(135deg, #fff5f7, #fffbfc)',
+            border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', margin: '0 0 1rem',
+          }}>
+            <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 4 }}>
+              Week {Math.max(1, currentWeek - 1)} closed
+            </p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4 }}>
+              {weekCompletionPercent}% completion
+            </p>
+            <p style={{ fontSize: '0.78rem', color: '#7a5a66', marginBottom: 12, lineHeight: 1.5 }}>
+              This takes 5 minutes. Two questions. Sage reads your week and tells you what actually matters going into week {currentWeek}.
+            </p>
+            <button
+              onClick={onOpenWeeklyPulse}
+              style={{
+                background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                color: '#fff', border: 'none', borderRadius: 99,
+                padding: '0.6rem 1.4rem', fontSize: '0.82rem',
+                fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Open Weekly Pulse
+            </button>
           </div>
-        ) : null}
+        ) : (
+          <div style={{
+            background: '#fff', border: '1px solid #f2c4d0',
+            borderRadius: 16, padding: '1rem', margin: '0 0 1rem',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
+                Week {currentWeek} - In Progress
+              </p>
+              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3d1f2b' }}>
+                {completedToday}/{totalToday} today
+              </p>
+            </div>
+            <div style={{ height: 6, background: '#f2c4d0', borderRadius: 99, marginBottom: 8 }}>
+              <div style={{ height: '100%', width: `${weekCompletionPercent}%`, background: 'linear-gradient(90deg, #e8407a, #f472a8)', borderRadius: 99, transition: 'width 0.4s ease' }} />
+            </div>
+            <p style={{ fontSize: '0.72rem', color: '#7a5a66' }}>
+              {weekCompletionPercent}% of this week complete
+            </p>
+          </div>
+        )}
 
         {!briefingDismissed && weeklyLoadPlan && weeklyLoadPlan.week === activeWeek && (
           <SageBriefingCard
@@ -355,7 +456,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Week {week.index}{status?.completed ? ' ✓' : ''}
+                  Week {week.index}{status?.completed ? ' (done)' : ''}
                 </button>
               )
             })}
@@ -367,17 +468,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
         <div style={{ background: shellSurface, border: `1px solid ${shellBorder}`, borderRadius: 22, padding: isMobile ? 14 : 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
             <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, color: shellText }}>
-              {selectedWeek?.weekLabel || 'Week 1'} To-Do List
+              {selectedWeek?.weekLabel || 'Week 1'} Daily To-Do
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
-              {completedGoalItems}/{filteredWeekTarget}
+              {completedToday}/{totalToday}
             </div>
           </div>
 
           <div style={{ height: 8, borderRadius: 999, background: shellSurfaceAlt, overflow: 'hidden', marginBottom: 10 }}>
             <div
               style={{
-                width: `${filteredWeekProgress}%`,
+                width: `${todayScore}%`,
                 height: '100%',
                 borderRadius: 999,
                 background: `linear-gradient(90deg,${accent},${accent2})`,
@@ -386,12 +487,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
           </div>
 
           <div style={{ fontSize: 11, color: shellMuted, marginBottom: 14 }}>
-            This week&apos;s checklist is pulled from your active pillars. Tap once to complete. Tap again to undo.
+            Daily tasks rotate automatically from your weekly non-negotiables.
           </div>
 
           {selectedWeekStatus?.unlocked ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredGoals.length === 0 && (
+              {todaysTasks.length === 0 && (
                 <div style={{ padding: '18px 16px', borderRadius: 14, border: `1px solid ${shellBorder}`, background: shellSurfaceAlt, color: shellMuted, fontSize: 12, display: 'grid', gap: 10 }}>
                   <span>Set up your vision board first to activate your daily tasks.</span>
                   <button
@@ -413,8 +514,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                   </button>
                 </div>
               )}
-              {filteredGoals.map(goal => {
-                const done = goal.completed >= goal.target
+              {todaysTasks.map(goal => {
+                const done = goal.done
                 return (
                   <button
                     key={goal.id}
@@ -451,10 +552,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                         fontWeight: 700,
                       }}
                     >
-                      {done ? '\u2713' : ''}
+                      {done ? 'ok' : ''}
                     </div>
                     <div style={{ flex: 1 }}>
-              <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, lineHeight: 1.45, color: done ? shellMuted : shellText, textDecoration: done ? 'line-through' : 'none' }}>
+                      <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, lineHeight: 1.45, color: done ? shellMuted : shellText, textDecoration: done ? 'line-through' : 'none' }}>
                         {getFormattedGoalText(goal.activity, goal.target)}
                       </div>
                       <div style={{ fontSize: 12, color: shellMuted, marginTop: 4 }}>
@@ -465,34 +566,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                 )
               })}
             </div>
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                justifyItems: 'center',
-                gap: 10,
-                padding: '28px 18px',
-                borderRadius: 18,
-                background: shellSurfaceAlt,
-                border: `1px solid ${shellBorder}`,
-                opacity: 0.58,
-                pointerEvents: 'none',
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ width: 46, height: 46, borderRadius: 14, background: isDarkTheme ? '#242433' : '#fff1f6', border: `1px solid ${shellBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                🔒
-              </div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: shellText }}>
-                Week {selectedWeek?.index || 1}
-              </div>
-              <div style={{ fontSize: 13, lineHeight: 1.6, color: shellMuted }}>
-                {selectedWeekStatus?.neededToUnlock > 0
-                  ? `Finish this week first. You need ${selectedWeekStatus.neededToUnlock} more tasks to move forward.`
-                  : `Complete Week ${selectedWeekStatus?.previousWeek || 1} to unlock.`}
-              </div>
-            </div>
-          )}
+          ) : null}
         </div>
 
         <div style={{ height: 18 }} />
@@ -557,7 +631,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
                       </div>
                       {isUnlocked ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
-                          <span style={{ fontSize: 14 }}>✓</span>
                           <span>Unlocked</span>
                         </div>
                       ) : (
