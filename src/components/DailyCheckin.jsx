@@ -11,7 +11,8 @@ import {
 import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
-const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
+const WEEKLY_PULSE_W1_DONE_KEY = 'phasr_weekly_pulse_w1_done'
+const PULSE_SNOOZED_UNTIL_KEY = 'phasr_pulse_snoozed_until'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -31,19 +32,6 @@ function safeRead(key, fallback) {
 
 function safeWrite(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
-}
-
-function normalizeLabel(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function readPulseCompletions() {
-  return safeRead(WEEKLY_PULSE_COMPLETION_KEY, {})
 }
 
 function getUnlockState(summary, tier) {
@@ -164,19 +152,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   }, [boardData])
   const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
   const [activeWeek, setActiveWeek] = useState(1)
-  const [pulseGate, setPulseGate] = useState(null)
-  const [autoPulseGateDismissed, setAutoPulseGateDismissed] = useState(false)
+  const [pulseSnoozedUntil, setPulseSnoozedUntil] = useState(() => {
+    const saved = Number(localStorage.getItem(PULSE_SNOOZED_UNTIL_KEY) || 0)
+    return Number.isFinite(saved) ? saved : 0
+  })
 
   useEffect(() => {
     if (!phases.some(phase => phase.id === activePhaseId)) {
       setActivePhaseId(phases[0]?.id || null)
     }
   }, [phases, activePhaseId])
-
-  useEffect(() => {
-    setActiveWeek(1)
-    setAutoPulseGateDismissed(false)
-  }, [activePhaseId])
 
   const phaseBoard = useMemo(() => makeBoardForPhase(boardData, activePhaseId), [boardData, activePhaseId])
   const weeklyData = useMemo(() => buildWeeklyGoals(phaseBoard, lockInState), [phaseBoard, lockInState])
@@ -187,6 +172,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     [selectedPhase, weeklyData.weeks, lockInState],
   )
   const selectedWeek = weeklyData.weeks.find(week => week.index === activeWeek) || weeklyData.weeks[0] || null
+  useEffect(() => {
+    const currentIndex = weeklyData.currentWeek?.index || 1
+    setActiveWeek(currentIndex)
+  }, [activePhaseId, weeklyData.currentWeek?.index])
+
   const selectedWeekProgress = selectedWeek?.totalTarget
     ? Math.min(100, Math.round((selectedWeek.totalProgress / selectedWeek.totalTarget) * 100))
     : 0
@@ -204,7 +194,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   const filteredWeekProgress = filteredWeekTarget
     ? Math.min(100, Math.round((completedGoalItems / filteredWeekTarget) * 100))
     : 0
-  const selectedWeekStatus = selectedWeek ? weekProgressMap[selectedWeek.index] : null
+  const selectedWeekStatus = {
+    ...(selectedWeek ? weekProgressMap[selectedWeek.index] : {}),
+    unlocked: true,
+  }
   const showRiskWarning = useMemo(() => {
     const now = new Date()
     if (now.getHours() < 18) return false
@@ -230,23 +223,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
   const showSinglePhaseAsPhaseOne = phases.length === 1
-  const autoPulseGate = useMemo(() => {
-    if (!selectedPhase) return null
-    const week1 = weekProgressMap[1]
-    if (!week1?.completed) return null
-    const pulseDoneForWeek1 = isPulseCompletedForWeek(selectedPhase?.name || 'Phase 1', 1)
-    if (pulseDoneForWeek1) return null
-    return {
-      fromWeek: 1,
-      toWeek: 2,
-      phaseName: selectedPhase?.name || 'Phase 1',
-    }
-  }, [selectedPhase, weekProgressMap])
-
-  useEffect(() => {
-    if (!autoPulseGate) setAutoPulseGateDismissed(false)
-  }, [autoPulseGate])
-
   function handleToggleGoal(goal) {
     toggleWeeklyGoalCompletion(goal, phaseBoard)
     setLockInState(loadLockInState())
@@ -254,47 +230,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
     onLockInChange?.()
   }
 
-  function isPulseCompletedForWeek(phaseName, weekIndex) {
-    const phaseKey = normalizeLabel(phaseName || 'phase 1')
-    const store = readPulseCompletions()
-    return Boolean(store?.[phaseKey]?.[String(weekIndex)])
-  }
-
   function handleWeekSelect(nextWeek) {
     const nextIndex = nextWeek?.index || 1
-    if (nextIndex <= 1) {
-      setActiveWeek(nextIndex)
-      setPulseGate(null)
-      return
-    }
-
-    const previousIndex = nextIndex - 1
-    const previousStatus = weekProgressMap[previousIndex]
-    const previousCompleted = Boolean(previousStatus?.completed)
-    const pulseDone = isPulseCompletedForWeek(selectedPhase?.name || 'Phase 1', previousIndex)
-
-    if (previousCompleted && !pulseDone) {
-      setPulseGate({
-        fromWeek: previousIndex,
-        toWeek: nextIndex,
-        phaseName: selectedPhase?.name || 'Phase 1',
-      })
-      return
-    }
-
-    setPulseGate(null)
     setActiveWeek(nextIndex)
   }
 
-  const pulseGateCard = pulseGate || autoPulseGate
-  const showPulseGateCard = Boolean(pulseGate) || (Boolean(autoPulseGate) && !autoPulseGateDismissed)
+  const weekOne = weeklyData.weeks.find(week => week.index === 1) || null
+  const weekOneEnded = Boolean(weekOne?.endDate) && Date.now() > new Date(`${weekOne.endDate}T23:59:59`).getTime()
+  const weeklyPulseDone = localStorage.getItem(WEEKLY_PULSE_W1_DONE_KEY) === 'true'
+  const showPulseGateCard = weekOneEnded && !weeklyPulseDone && Date.now() > pulseSnoozedUntil
 
   function closePulseGateCard() {
-    if (pulseGate) {
-      setPulseGate(null)
-      return
-    }
-    setAutoPulseGateDismissed(true)
+    const until = Date.now() + (24 * 60 * 60 * 1000)
+    localStorage.setItem(PULSE_SNOOZED_UNTIL_KEY, String(until))
+    setPulseSnoozedUntil(until)
   }
 
   return (
@@ -343,7 +292,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
           Turn your goal into daily action
         </div>
 
-        {showPulseGateCard && pulseGateCard ? (
+        {showPulseGateCard ? (
           <div style={{ position: 'fixed', inset: 0, zIndex: 170, display: 'grid', placeItems: 'center', background: 'rgba(35,18,28,0.22)', backdropFilter: 'blur(1px)', padding: '18px' }} onClick={closePulseGateCard}>
             <div onClick={event => event.stopPropagation()} style={{ position: 'relative', width: 'min(calc(100% - 20px), 560px)', background: '#fff5f8', border: '1px solid #f2c8d6', borderRadius: 24, boxShadow: '0 24px 48px rgba(185,87,122,0.2)', padding: isMobile ? '1rem 1rem 0.95rem' : '1.1rem 1.15rem 1rem' }}>
               <button onClick={closePulseGateCard} aria-label="Close weekly pulse prompt" style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, fontSize: '1.1rem', lineHeight: 1 }}>
@@ -351,7 +300,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenJourna
               </button>
               <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f' }}>Weekly Pulse</p>
               <p style={{ color: '#5c3342', fontSize: isMobile ? '1.12rem' : '1.32rem', lineHeight: 1.45, margin: '0.55rem 2.4rem 0.5rem 0', fontWeight: 700 }}>
-                Before week {pulseGateCard.toWeek} begins, take 5 minutes with Sage.
+                Before week 2 begins, take 5 minutes with Sage.
               </p>
               <p style={{ color: '#7d5666', fontSize: isMobile ? '0.95rem' : '1rem', lineHeight: 1.5, margin: '0 0 0.85rem 0' }}>
                 Sage reads your week and tells you what actually matters going into week 2.

@@ -20,6 +20,7 @@ import {
 const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
+const WEEKLY_PULSE_W1_DONE_KEY = 'phasr_weekly_pulse_w1_done'
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
@@ -193,6 +194,11 @@ function safeWrite(entries) {
 
 function getToday() {
   return new Date().toISOString().slice(0, 10)
+}
+
+function markWeeklyPulseDoneIfWeekOne(weekNumber) {
+  if (Number(weekNumber) !== 1) return
+  localStorage.setItem(WEEKLY_PULSE_W1_DONE_KEY, 'true')
 }
 
 function formatDate(dateString) {
@@ -1420,6 +1426,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
       localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
+      markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
       setScreen('detail')
     } catch {
       const fallback = {
@@ -1456,6 +1463,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
       localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
+      markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
       setScreen('detail')
     } finally {
       setIsSaving(false)
@@ -1512,6 +1520,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         completionStore[phaseKey] = completionStore[phaseKey] || {}
         completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
         localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+        markWeeklyPulseDoneIfWeekOne(draft.weeklyPulseWeekNumber || 1)
       }
       setEditingEntryId(null)
       setScreen('detail')
@@ -1554,6 +1563,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         completionStore[phaseKey] = completionStore[phaseKey] || {}
         completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
         localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+        markWeeklyPulseDoneIfWeekOne(draft.weeklyPulseWeekNumber || 1)
       }
       setEditingEntryId(null)
       setScreen('detail')
