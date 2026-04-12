@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  broadcastLockInUpdate,
   buildWeeklyGoals,
   getLockInSummary,
   loadBoardData,
   loadLockInState,
-  toggleWeeklyGoalCompletion,
   UNLOCK_TIERS,
 } from '../lib/lockIn'
 import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
@@ -86,30 +84,21 @@ function isConfiguredPillar(pillar) {
 }
 
 function generateTasksForDay(activities, dayOfWeek, currentWeek) {
-  const scheduleMap = {
-    7: [1, 2, 3, 4, 5, 6, 7],
-    6: [1, 2, 3, 4, 5, 6],
-    5: [1, 2, 3, 5, 6],
-    4: [1, 2, 4, 6],
-    3: [1, 3, 5],
-    2: [2, 5],
-    1: [3],
-  }
+  if (!Array.isArray(activities) || !activities.length) return []
 
-  return activities
-    .filter(activity => {
-      const timesPerWeek = Math.max(1, Number(activity.timesPerWeek) || 1)
-      const activeDays = scheduleMap[timesPerWeek] || scheduleMap[3]
-      return activeDays.includes(dayOfWeek)
-    })
-    .map(activity => ({
-      id: `${activity.id}-w${currentWeek}-d${dayOfWeek}`,
-      goalId: activity.id,
-      description: activity.description,
-      pillar: activity.pillar,
-      done: false,
-      timesPerWeek: activity.timesPerWeek,
-    }))
+  // Keep the same vision-board activities visible each day, but rotate
+  // ordering daily so the day view changes every 24h.
+  const rotateBy = (Math.max(1, Number(dayOfWeek) || 1) - 1 + Math.max(1, Number(currentWeek) || 1) - 1) % activities.length
+  const rotated = activities.slice(rotateBy).concat(activities.slice(0, rotateBy))
+
+  return rotated.map(activity => ({
+    id: `${activity.id}-w${currentWeek}-d${dayOfWeek}`,
+    goalId: activity.id,
+    description: activity.description,
+    pillar: activity.pillar,
+    done: false,
+    timesPerWeek: activity.timesPerWeek,
+  }))
 }
 
 function getFormattedGoalText(activity, target) {
@@ -233,7 +222,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         if (!goal) return null
         return {
           ...goal,
-          done: (goal.completed || 0) >= (goal.target || 0),
+          done: !!task.done,
           activity: task.description || goal.activity,
           pillar: task.pillar || goal.pillar,
         }
@@ -255,24 +244,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const weekScore = Math.round((completedThisWeek / totalThisWeek) * 100) || 0
   const weekCompletionPercent = weekScore
 
-  function getActivitiesForNonNeg(nonNeg) {
-    const target = Math.max(1, Number(nonNeg.timesPerWeek) || 1)
-    const doneCount = Math.min(target, Math.max(0, Number(nonNeg.completedCount) || 0))
-    return Array.from({ length: target }, (_, index) => ({
-      id: `${nonNeg.id}-${index + 1}`,
-      done: index < doneCount,
-    }))
-  }
-
-  const nonNegProgress = useMemo(
-    () => nonNegotiables.map(nn => ({
-      ...nn,
-      progress: getActivitiesForNonNeg(nn).filter(a => a.done).length,
-      target: nn.timesPerWeek,
-    })),
-    [nonNegotiables],
-  )
-
   const weekStartDate = useMemo(() => {
     const start = new Date(phaseStartDate)
     start.setDate(start.getDate() + ((currentWeek - 1) * 7))
@@ -288,6 +259,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const pulseDone = localStorage.getItem(pulseKey) === 'true'
   const showPulseBanner = weekHasEnded && !pulseDone
   const showWeek2 = weekHasEnded && pulseDone
+
+  const completedDaysInWeek = useMemo(() => {
+    let completed = 0
+    for (let day = 1; day <= 7; day += 1) {
+      const key = `phasr_tasks_w${currentWeek}_d${day}`
+      const dayTasks = safeRead(key, null)
+      if (Array.isArray(dayTasks) && dayTasks.length > 0 && dayTasks.every(task => task.done)) {
+        completed += 1
+      }
+    }
+    return completed
+  }, [currentWeek, lockInState])
+
+  const weekDayProgressPercent = Math.round((completedDaysInWeek / 7) * 100) || 0
 
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
@@ -316,10 +301,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   function handleToggleGoal(goal) {
-    toggleWeeklyGoalCompletion(goal, phaseBoard)
+    const taskKey = `phasr_tasks_w${currentWeek}_d${dayOfWeek}`
+    const stored = safeRead(taskKey, [])
+    if (!Array.isArray(stored)) return
+    const next = stored.map(task => (
+      task.goalId === goal.id ? { ...task, done: !task.done } : task
+    ))
+    safeWrite(taskKey, next)
     setLockInState(loadLockInState())
-    broadcastLockInUpdate()
-    onLockInChange?.()
   }
 
   function handleWeekSelect(nextWeek) {
@@ -360,7 +349,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         completionPercent: weekScore,
         tasksCompleted: completedThisWeek,
         tasksTotal: totalThisWeek,
-        nonNegProgress,
       })
     }
   }
@@ -614,27 +602,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </div>
           ) : null}
 
-          <div style={{ marginTop: '1rem' }}>
-            <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b08090', marginBottom: 6 }}>
-              This Week&apos;s Milestones
-            </p>
-            {nonNegProgress.map((nn, i) => (
-              <div key={`${nn.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <div style={{ flex: 1, height: 4, background: '#f2c4d0', borderRadius: 99 }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${Math.min((nn.progress / nn.timesPerWeek) * 100, 100)}%`,
-                    background: 'linear-gradient(90deg, #e8407a, #f472a8)',
-                    borderRadius: 99,
-                    transition: 'width 0.4s ease',
-                  }} />
-                </div>
-                <p style={{ fontSize: '0.65rem', color: '#7a5a66', whiteSpace: 'nowrap' }}>
-                  {nn.progress}/{nn.timesPerWeek}
-                </p>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div style={{ height: 18 }} />
