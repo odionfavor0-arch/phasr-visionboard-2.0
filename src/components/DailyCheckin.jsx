@@ -90,6 +90,10 @@ function getDailyScheduleStorageKey(phaseId, weekNumber) {
   return `${DAILY_SCHEDULE_KEY_PREFIX}_${phaseId}_${weekNumber}`
 }
 
+function getDayTaskStorageKey(phaseId, weekNumber, dayNumber) {
+  return `phasr_tasks_${phaseId}_w${weekNumber}_d${dayNumber}`
+}
+
 function getDayNumberForWeek(week) {
   if (!week?.startDate) return 1
   const start = new Date(`${week.startDate}T12:00:00`)
@@ -156,6 +160,25 @@ function buildDailyAssignments(weeklyGoals, weekNumber) {
   }
 }
 
+function generateDailyTasks(nonNegotiable, weekNumber, dayNumber) {
+  const { timesPerWeek, description, pillar, id, completedCount } = nonNegotiable
+  const scheduleMap = {
+    7: [1, 2, 3, 4, 5, 6, 7],
+    6: [1, 2, 3, 4, 5, 6],
+    5: [1, 2, 3, 5, 6],
+    4: [1, 2, 4, 6],
+    3: [1, 3, 5],
+    2: [2, 5],
+    1: [3],
+  }
+
+  const activeDays = scheduleMap[timesPerWeek] || scheduleMap[3]
+  const done = completedCount >= Math.max(1, Number(timesPerWeek) || 1)
+  return activeDays.includes(dayNumber)
+    ? [{ id, description, pillar, done, weekNumber, dayNumber }]
+    : []
+}
+
 function getOrCreateWeekSchedule(phaseId, weekNumber, weeklyGoals) {
   const key = getDailyScheduleStorageKey(phaseId, weekNumber)
   const existing = safeRead(key, null)
@@ -176,6 +199,16 @@ function getOrCreateWeekSchedule(phaseId, weekNumber, weeklyGoals) {
   const created = buildDailyAssignments(weeklyGoals, weekNumber)
   safeWrite(key, created)
   return created
+}
+
+function getOrCreateDayTasks(phaseId, weekNumber, dayNumber, nonNegotiables) {
+  const key = getDayTaskStorageKey(phaseId, weekNumber, dayNumber)
+  const existing = safeRead(key, null)
+  if (Array.isArray(existing)) return existing
+
+  const generated = nonNegotiables.flatMap(nn => generateDailyTasks(nn, weekNumber, dayNumber))
+  safeWrite(key, generated)
+  return generated
 }
 
 function getFormattedGoalText(activity, target) {
@@ -216,6 +249,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const [activePhaseId, setActivePhaseId] = useState(() => phases[0]?.id || null)
   const [activeWeek, setActiveWeek] = useState(1)
+  const [showPhaseModal, setShowPhaseModal] = useState(false)
 
   useEffect(() => {
     if (!phases.some(phase => phase.id === activePhaseId)) {
@@ -258,10 +292,37 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     [selectedPhase?.id, weekNumber, weeklyGoals],
   )
 
+  const nonNegotiables = useMemo(
+    () => weeklyGoals.map(goal => ({
+      id: goal.id,
+      description: goal.activity,
+      pillar: goal.pillar,
+      timesPerWeek: Math.max(1, Number(goal.target) || 1),
+      completedCount: Math.max(0, Number(goal.completed) || 0),
+      goalRef: goal,
+    })),
+    [weeklyGoals],
+  )
+
+  const dayTaskRows = useMemo(
+    () => getOrCreateDayTasks(selectedPhase?.id || 'phase', weekNumber, dayNumber, nonNegotiables),
+    [selectedPhase?.id, weekNumber, dayNumber, nonNegotiables],
+  )
+
   const todaysTasks = useMemo(() => {
-    const ids = weeklySchedule[dayNumber] || []
     const byId = new Map(weeklyGoals.map(goal => [goal.id, goal]))
-    const assigned = ids
+    const scheduledIds = weeklySchedule[dayNumber] || []
+    const fromStoredDay = dayTaskRows
+      .map(row => byId.get(row.id))
+      .filter(Boolean)
+      .map(goal => ({
+        ...goal,
+        done: (goal.completed || 0) >= (goal.target || 0),
+      }))
+
+    if (fromStoredDay.length) return fromStoredDay
+
+    const assigned = scheduledIds
       .map(id => byId.get(id))
       .filter(Boolean)
       .map(goal => ({
@@ -273,7 +334,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       ...goal,
       done: (goal.completed || 0) >= (goal.target || 0),
     }))
-  }, [weeklyGoals, weeklySchedule, dayNumber])
+  }, [weeklyGoals, weeklySchedule, dayNumber, dayTaskRows])
 
   const completedToday = todaysTasks.filter(t => t.done).length
   const totalToday = todaysTasks.length
@@ -289,21 +350,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const weekScore = Math.round((completedThisWeek / totalThisWeek) * 100) || 0
   const weekCompletionPercent = weekScore
 
-  const nonNegotiables = useMemo(
-    () => weeklyGoals.map(goal => ({
-      id: goal.id,
-      label: goal.activity,
-      pillar: goal.pillar,
-      activityId: goal.activityId,
-      timesPerWeek: Math.max(1, Number(goal.target) || 1),
-      completed: Math.max(0, Number(goal.completed) || 0),
-    })),
-    [weeklyGoals],
-  )
-
   function getActivitiesForNonNeg(nonNeg) {
     const target = Math.max(1, Number(nonNeg.timesPerWeek) || 1)
-    const doneCount = Math.min(target, Math.max(0, Number(nonNeg.completed) || 0))
+    const doneCount = Math.min(target, Math.max(0, Number(nonNeg.completedCount) || 0))
     return Array.from({ length: target }, (_, index) => ({
       id: `${nonNeg.id}-${index + 1}`,
       done: index < doneCount,
@@ -325,9 +374,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     return phaseStart
   }, [selectedPhase?.startDate, currentWeek])
   const weekHasEnded = new Date() > weekEndDate
-  const pulseNotDone = !localStorage.getItem(`phasr_weekly_pulse_w${Math.max(1, currentWeek - 1)}_done`)
-  const daysSinceWeekStart = Math.max(0, dayNumber - 1)
-  const daysIntoNewWeek = daysSinceWeekStart
+  const pulseAlreadyDone = localStorage.getItem(`phasr_weekly_pulse_w${currentWeek}_done`) === 'true'
+  const showPulseBanner = weekHasEnded && !pulseAlreadyDone
 
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
@@ -360,13 +408,32 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setActiveWeek(nextWeek?.index || 1)
   }
 
+  function handlePhaseSelect(nextPhaseId) {
+    if (!selectedPhase || nextPhaseId === selectedPhase.id) {
+      setActivePhaseId(nextPhaseId)
+      return
+    }
+    const currentIndex = phases.findIndex(phase => phase.id === selectedPhase.id)
+    const nextIndex = phases.findIndex(phase => phase.id === nextPhaseId)
+
+    if (nextIndex > currentIndex) {
+      const lastWeekNumber = weeklyData.weeks[weeklyData.weeks.length - 1]?.index || 1
+      const phasePulseDone = localStorage.getItem(`phasr_weekly_pulse_w${lastWeekNumber}_done`) === 'true'
+      if (!phasePulseDone) {
+        setShowPhaseModal(true)
+        return
+      }
+    }
+
+    setActivePhaseId(nextPhaseId)
+  }
+
   const selectedWeekStatus = {
     ...(selectedWeek ? weekProgressMap[selectedWeek.index] : {}),
     unlocked: true,
   }
 
-  const showPulseEndedCard = weekHasEnded && pulseNotDone
-  const showQuietReminder = !showPulseEndedCard && pulseNotDone && daysIntoNewWeek > 2
+  const showPulseEndedCard = showPulseBanner
 
   const openPulse = () => {
     if (typeof onOpenWeeklyPulse === 'function') {
@@ -392,7 +459,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 <button
                   key={phase.id}
                   type="button"
-                  onClick={() => setActivePhaseId(phase.id)}
+                  onClick={() => handlePhaseSelect(phase.id)}
                   style={{
                     padding: '10px 18px',
                     borderRadius: 999,
@@ -420,19 +487,50 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           Turn your goal into daily action
         </div>
 
+        <div style={{
+          background: '#fff', border: '1px solid #f2c4d0',
+          borderRadius: 16, padding: '1rem', marginBottom: '1rem',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
+              Today's Tasks
+            </p>
+            <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
+              {completedToday}/{totalToday}
+            </p>
+          </div>
+          <div style={{ height: 6, background: '#f2c4d0', borderRadius: 99, marginBottom: 8 }}>
+            <div style={{
+              height: '100%',
+              width: totalToday > 0 ? `${(completedToday / totalToday) * 100}%` : '0%',
+              background: completedToday === totalToday && totalToday > 0
+                ? 'linear-gradient(90deg, #34d399, #059669)'
+                : 'linear-gradient(90deg, #e8407a, #f472a8)',
+              borderRadius: 99,
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+          <p style={{ fontSize: '0.72rem', color: '#7a5a66' }}>
+            {completedToday === totalToday && totalToday > 0
+              ? 'All done for today. Streak secured.'
+              : `${Math.max(0, totalToday - completedToday)} task${Math.max(0, totalToday - completedToday) !== 1 ? 's' : ''} remaining today`
+            }
+          </p>
+        </div>
+
         {showPulseEndedCard ? (
           <div style={{
             background: 'linear-gradient(135deg, #fff5f7, #fffbfc)',
             border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', margin: '0 0 1rem',
           }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 4 }}>
-              Week {Math.max(1, currentWeek - 1)} closed
+              Week {currentWeek} closed
             </p>
             <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4 }}>
               {weekCompletionPercent}% completion
             </p>
             <p style={{ fontSize: '0.78rem', color: '#7a5a66', marginBottom: 12, lineHeight: 1.5 }}>
-              This takes 5 minutes. Two questions. Sage reads your week and tells you what actually matters going into week {currentWeek}.
+              This takes 5 minutes. Two questions. Sage reads your week and tells you what actually matters going into week {currentWeek + 1}.
             </p>
             <button
               onClick={openPulse}
@@ -446,37 +544,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               Open Weekly Pulse
             </button>
           </div>
-        ) : (
-          <div style={{
-            background: '#fff', border: '1px solid #f2c4d0',
-            borderRadius: 16, padding: '1rem', margin: '0 0 1rem',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
-                Week {currentWeek} - In Progress
-              </p>
-              <p style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3d1f2b' }}>
-                {completedToday}/{totalToday} today
-              </p>
-            </div>
-            <div style={{ height: 6, background: '#f2c4d0', borderRadius: 99, marginBottom: 8 }}>
-              <div style={{ height: '100%', width: `${weekCompletionPercent}%`, background: 'linear-gradient(90deg, #e8407a, #f472a8)', borderRadius: 99, transition: 'width 0.4s ease' }} />
-            </div>
-            <p style={{ fontSize: '0.72rem', color: '#7a5a66' }}>
-              {weekCompletionPercent}% of this week complete
-            </p>
-            {showQuietReminder ? (
-              <p style={{
-                fontSize: '0.68rem', color: '#e8407a', marginTop: 8,
-                fontWeight: 500, cursor: 'pointer',
-                borderTop: '1px solid #f2c4d0', paddingTop: 8,
-              }} onClick={openPulse}>
-                Week {Math.max(1, currentWeek - 1)} reflection with Sage is pending.
-                Complete it so Sage can guide this week properly. ->
-              </p>
-            ) : null}
-          </div>
-        )}
+        ) : null}
 
         {!briefingDismissed && weeklyLoadPlan && weeklyLoadPlan.week === activeWeek && (
           <SageBriefingCard
@@ -627,6 +695,28 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               })}
             </div>
           ) : null}
+
+          <div style={{ marginTop: '1rem' }}>
+            <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b08090', marginBottom: 6 }}>
+              This Week&apos;s Milestones
+            </p>
+            {nonNegProgress.map((nn, i) => (
+              <div key={`${nn.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{ flex: 1, height: 4, background: '#f2c4d0', borderRadius: 99 }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min((nn.progress / nn.timesPerWeek) * 100, 100)}%`,
+                    background: 'linear-gradient(90deg, #e8407a, #f472a8)',
+                    borderRadius: 99,
+                    transition: 'width 0.4s ease',
+                  }} />
+                </div>
+                <p style={{ fontSize: '0.65rem', color: '#7a5a66', whiteSpace: 'nowrap' }}>
+                  {nn.progress}/{nn.timesPerWeek}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{ height: 18 }} />
@@ -710,6 +800,46 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             })}
           </div>
         </div>
+
+        {showPhaseModal ? (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            zIndex: 500,
+          }}>
+            <div style={{
+              background: '#fff', borderRadius: '20px 20px 0 0',
+              padding: '1.5rem', width: '100%', maxWidth: 480,
+            }}>
+              <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 6 }}>
+                Before you move forward
+              </p>
+              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8, fontFamily: 'Playfair Display, serif' }}>
+                Complete your phase reflection with Sage first.
+              </p>
+              <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 16 }}>
+                Sage needs your phase 1 answers to guide phase 2 properly. This takes 5 minutes.
+              </p>
+              <button onClick={openPulse} style={{
+                width: '100%', padding: '0.85rem', borderRadius: 12, border: 'none',
+                background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                color: '#fff', fontSize: '0.9rem', fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                marginBottom: 8,
+              }}>
+                Reflect with Sage now
+              </button>
+              <button onClick={() => setShowPhaseModal(false)} style={{
+                width: '100%', padding: '0.75rem', borderRadius: 12,
+                border: '1.5px solid #f2c4d0', background: 'transparent',
+                color: '#7a5a66', fontSize: '0.85rem', cursor: 'pointer',
+                fontFamily: 'DM Sans, sans-serif',
+              }}>
+                I will do it later
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )
