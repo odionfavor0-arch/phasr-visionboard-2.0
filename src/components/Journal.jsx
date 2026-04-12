@@ -1234,7 +1234,7 @@ const ghostMiniActionStyle = {
   placeItems: 'center',
 }
 
-export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpened = () => {} }) {
+export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpened = () => {}, onWeeklyPulseSaved = () => {} }) {
   const [entries, setEntries] = useState(() => safeRead())
   const [screen, setScreen] = useState('list')
   const [search, setSearch] = useState('')
@@ -1426,7 +1426,9 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
       localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
+      localStorage.setItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
       markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
+      onWeeklyPulseSaved?.()
       setScreen('detail')
     } catch {
       const fallback = {
@@ -1463,7 +1465,9 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
       localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
+      localStorage.setItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
       markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
+      onWeeklyPulseSaved?.()
       setScreen('detail')
     } finally {
       setIsSaving(false)
@@ -1520,7 +1524,9 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         completionStore[phaseKey] = completionStore[phaseKey] || {}
         completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
         localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+        localStorage.setItem(`phasr_weekly_pulse_w${draft.weeklyPulseWeekNumber || 1}_done`, 'true')
         markWeeklyPulseDoneIfWeekOne(draft.weeklyPulseWeekNumber || 1)
+        onWeeklyPulseSaved?.()
       }
       setEditingEntryId(null)
       setScreen('detail')
@@ -1563,7 +1569,9 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         completionStore[phaseKey] = completionStore[phaseKey] || {}
         completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
         localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+        localStorage.setItem(`phasr_weekly_pulse_w${draft.weeklyPulseWeekNumber || 1}_done`, 'true')
         markWeeklyPulseDoneIfWeekOne(draft.weeklyPulseWeekNumber || 1)
+        onWeeklyPulseSaved?.()
       }
       setEditingEntryId(null)
       setScreen('detail')

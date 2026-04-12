@@ -11,7 +11,6 @@ import {
 import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
-const DAILY_SCHEDULE_KEY_PREFIX = 'phasr_daily_schedule'
 
 function makeBoardForPhase(boardData, phaseId) {
   return {
@@ -86,82 +85,7 @@ function isConfiguredPillar(pillar) {
   return hasImage || hasStates
 }
 
-function getDailyScheduleStorageKey(phaseId, weekNumber) {
-  return `${DAILY_SCHEDULE_KEY_PREFIX}_${phaseId}_${weekNumber}`
-}
-
-function getDayTaskStorageKey(phaseId, weekNumber, dayNumber) {
-  return `phasr_tasks_${phaseId}_w${weekNumber}_d${dayNumber}`
-}
-
-function getDayNumberForWeek(week) {
-  if (!week?.startDate) return 1
-  const start = new Date(`${week.startDate}T12:00:00`)
-  const now = new Date()
-  const diff = Math.floor((now - start) / (24 * 60 * 60 * 1000))
-  return Math.min(7, Math.max(1, diff + 1))
-}
-
-function pickDistributedDays(target = 1) {
-  const count = Math.max(1, Math.min(7, Number(target) || 1))
-  if (count === 1) return [1]
-  const days = []
-  for (let i = 0; i < count; i += 1) {
-    const day = Math.min(7, Math.floor((i * 7) / count) + 1)
-    if (!days.includes(day)) days.push(day)
-  }
-  while (days.length < count) {
-    const candidate = ((days[days.length - 1] || 0) % 7) + 1
-    if (!days.includes(candidate)) days.push(candidate)
-  }
-  return days
-}
-
-function buildDailyAssignments(weeklyGoals, weekNumber) {
-  const daySets = {
-    1: new Set(),
-    2: new Set(),
-    3: new Set(),
-    4: new Set(),
-    5: new Set(),
-    6: new Set(),
-    7: new Set(),
-  }
-  const allIds = weeklyGoals.map(goal => goal.id)
-  if (!allIds.length) {
-    return { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] }
-  }
-
-  weeklyGoals.forEach(goal => {
-    const frequency = Math.max(1, Number(goal.target) || 1)
-    const days = frequency >= 7 ? [1, 2, 3, 4, 5, 6, 7] : pickDistributedDays(frequency)
-    days.forEach(day => daySets[day].add(goal.id))
-  })
-
-  for (let day = 1; day <= 7; day += 1) {
-    const ordered = Array.from(daySets[day])
-    let cursor = (weekNumber + day) % allIds.length
-    while (ordered.length < Math.min(2, allIds.length)) {
-      const candidate = allIds[cursor % allIds.length]
-      if (!ordered.includes(candidate)) ordered.push(candidate)
-      cursor += 1
-    }
-    daySets[day] = new Set(ordered.slice(0, 3))
-  }
-
-  return {
-    1: Array.from(daySets[1]),
-    2: Array.from(daySets[2]),
-    3: Array.from(daySets[3]),
-    4: Array.from(daySets[4]),
-    5: Array.from(daySets[5]),
-    6: Array.from(daySets[6]),
-    7: Array.from(daySets[7]),
-  }
-}
-
-function generateDailyTasks(nonNegotiable, weekNumber, dayNumber) {
-  const { timesPerWeek, description, pillar, id, completedCount } = nonNegotiable
+function generateTasksForDay(activities, dayOfWeek, currentWeek) {
   const scheduleMap = {
     7: [1, 2, 3, 4, 5, 6, 7],
     6: [1, 2, 3, 4, 5, 6],
@@ -172,43 +96,20 @@ function generateDailyTasks(nonNegotiable, weekNumber, dayNumber) {
     1: [3],
   }
 
-  const activeDays = scheduleMap[timesPerWeek] || scheduleMap[3]
-  const done = completedCount >= Math.max(1, Number(timesPerWeek) || 1)
-  return activeDays.includes(dayNumber)
-    ? [{ id, description, pillar, done, weekNumber, dayNumber }]
-    : []
-}
-
-function getOrCreateWeekSchedule(phaseId, weekNumber, weeklyGoals) {
-  const key = getDailyScheduleStorageKey(phaseId, weekNumber)
-  const existing = safeRead(key, null)
-  if (
-    existing &&
-    typeof existing === 'object' &&
-    Array.isArray(existing['1']) &&
-    Array.isArray(existing['2']) &&
-    Array.isArray(existing['3']) &&
-    Array.isArray(existing['4']) &&
-    Array.isArray(existing['5']) &&
-    Array.isArray(existing['6']) &&
-    Array.isArray(existing['7'])
-  ) {
-    return existing
-  }
-
-  const created = buildDailyAssignments(weeklyGoals, weekNumber)
-  safeWrite(key, created)
-  return created
-}
-
-function getOrCreateDayTasks(phaseId, weekNumber, dayNumber, nonNegotiables) {
-  const key = getDayTaskStorageKey(phaseId, weekNumber, dayNumber)
-  const existing = safeRead(key, null)
-  if (Array.isArray(existing)) return existing
-
-  const generated = nonNegotiables.flatMap(nn => generateDailyTasks(nn, weekNumber, dayNumber))
-  safeWrite(key, generated)
-  return generated
+  return activities
+    .filter(activity => {
+      const timesPerWeek = Math.max(1, Number(activity.timesPerWeek) || 1)
+      const activeDays = scheduleMap[timesPerWeek] || scheduleMap[3]
+      return activeDays.includes(dayOfWeek)
+    })
+    .map(activity => ({
+      id: `${activity.id}-w${currentWeek}-d${dayOfWeek}`,
+      goalId: activity.id,
+      description: activity.description,
+      pillar: activity.pillar,
+      done: false,
+      timesPerWeek: activity.timesPerWeek,
+    }))
 }
 
 function getFormattedGoalText(activity, target) {
@@ -283,15 +184,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     return goals.filter(goal => activePillarNames.includes(goal.pillar))
   }, [selectedWeek, activePillarNames])
 
-  const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
-  const currentWeek = weekNumber
-  const dayNumber = useMemo(() => getDayNumberForWeek(selectedWeek), [selectedWeek])
-
-  const weeklySchedule = useMemo(
-    () => getOrCreateWeekSchedule(selectedPhase?.id || 'phase', weekNumber, weeklyGoals),
-    [selectedPhase?.id, weekNumber, weeklyGoals],
-  )
-
   const nonNegotiables = useMemo(
     () => weeklyGoals.map(goal => ({
       id: goal.id,
@@ -304,37 +196,50 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     [weeklyGoals],
   )
 
-  const dayTaskRows = useMemo(
-    () => getOrCreateDayTasks(selectedPhase?.id || 'phase', weekNumber, dayNumber, nonNegotiables),
-    [selectedPhase?.id, weekNumber, dayNumber, nonNegotiables],
-  )
+  const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
+  const currentWeek = weekNumber
+  const phaseStartDate = useMemo(() => {
+    if (selectedPhase?.startDate) {
+      return new Date(`${selectedPhase.startDate}T12:00:00`)
+    }
+    if (selectedWeek?.startDate) {
+      return new Date(`${selectedWeek.startDate}T12:00:00`)
+    }
+    const fallback = new Date()
+    fallback.setHours(12, 0, 0, 0)
+    return fallback
+  }, [selectedPhase?.startDate, selectedWeek?.startDate])
+
+  const today = new Date()
+  const rawDayOfWeek = Math.floor((today - phaseStartDate) / 86400000) % 7 + 1
+  const dayOfWeek = rawDayOfWeek <= 0 ? rawDayOfWeek + 7 : rawDayOfWeek
 
   const todaysTasks = useMemo(() => {
-    const byId = new Map(weeklyGoals.map(goal => [goal.id, goal]))
-    const scheduledIds = weeklySchedule[dayNumber] || []
-    const fromStoredDay = dayTaskRows
-      .map(row => byId.get(row.id))
-      .filter(Boolean)
-      .map(goal => ({
-        ...goal,
-        done: (goal.completed || 0) >= (goal.target || 0),
-      }))
+    const activities = nonNegotiables
+    const taskKey = `phasr_tasks_w${currentWeek}_d${dayOfWeek}`
+    const stored = safeRead(taskKey, null)
+    const dayTasks = Array.isArray(stored) && stored.length
+      ? stored
+      : generateTasksForDay(activities, dayOfWeek, currentWeek)
 
-    if (fromStoredDay.length) return fromStoredDay
+    if (!Array.isArray(stored) || !stored.length) {
+      safeWrite(taskKey, dayTasks)
+    }
 
-    const assigned = scheduledIds
-      .map(id => byId.get(id))
+    const goalsById = new Map(weeklyGoals.map(goal => [goal.id, goal]))
+    return dayTasks
+      .map(task => {
+        const goal = goalsById.get(task.goalId)
+        if (!goal) return null
+        return {
+          ...goal,
+          done: (goal.completed || 0) >= (goal.target || 0),
+          activity: task.description || goal.activity,
+          pillar: task.pillar || goal.pillar,
+        }
+      })
       .filter(Boolean)
-      .map(goal => ({
-        ...goal,
-        done: (goal.completed || 0) >= (goal.target || 0),
-      }))
-    if (assigned.length) return assigned
-    return weeklyGoals.slice(0, Math.min(3, weeklyGoals.length)).map(goal => ({
-      ...goal,
-      done: (goal.completed || 0) >= (goal.target || 0),
-    }))
-  }, [weeklyGoals, weeklySchedule, dayNumber, dayTaskRows])
+  }, [nonNegotiables, currentWeek, dayOfWeek, weeklyGoals])
 
   const completedToday = todaysTasks.filter(t => t.done).length
   const totalToday = todaysTasks.length
@@ -368,14 +273,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     [nonNegotiables],
   )
 
+  const weekStartDate = useMemo(() => {
+    const start = new Date(phaseStartDate)
+    start.setDate(start.getDate() + ((currentWeek - 1) * 7))
+    return start
+  }, [phaseStartDate, currentWeek])
   const weekEndDate = useMemo(() => {
-    const phaseStart = selectedPhase?.startDate ? new Date(`${selectedPhase.startDate}T12:00:00`) : new Date()
-    phaseStart.setDate(phaseStart.getDate() + (currentWeek * 7))
-    return phaseStart
-  }, [selectedPhase?.startDate, currentWeek])
-  const weekHasEnded = new Date() > weekEndDate
-  const pulseAlreadyDone = localStorage.getItem(`phasr_weekly_pulse_w${currentWeek}_done`) === 'true'
-  const showPulseBanner = weekHasEnded && !pulseAlreadyDone
+    const end = new Date(weekStartDate)
+    end.setDate(end.getDate() + 7)
+    return end
+  }, [weekStartDate])
+  const weekHasEnded = new Date() >= weekEndDate
+  const pulseKey = `phasr_weekly_pulse_w${currentWeek}_done`
+  const pulseDone = localStorage.getItem(pulseKey) === 'true'
+  const showPulseBanner = weekHasEnded && !pulseDone
+  const showWeek2 = weekHasEnded && pulseDone
 
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
@@ -397,6 +309,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent2 = 'var(--app-accent2)'
   const showSinglePhaseAsPhaseOne = phases.length === 1
 
+  function canAccessWeek(weekNumberToOpen) {
+    if (weekNumberToOpen === 1) return true
+    const prevPulseKey = `phasr_weekly_pulse_w${weekNumberToOpen - 1}_done`
+    return localStorage.getItem(prevPulseKey) === 'true'
+  }
+
   function handleToggleGoal(goal) {
     toggleWeeklyGoalCompletion(goal, phaseBoard)
     setLockInState(loadLockInState())
@@ -405,7 +323,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   function handleWeekSelect(nextWeek) {
-    setActiveWeek(nextWeek?.index || 1)
+    const nextWeekNumber = nextWeek?.index || 1
+    if (!canAccessWeek(nextWeekNumber)) return
+    setActiveWeek(nextWeekNumber)
   }
 
   function handlePhaseSelect(nextPhaseId) {
@@ -433,12 +353,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     unlocked: true,
   }
 
-  const showPulseEndedCard = showPulseBanner
-
   const openPulse = () => {
     if (typeof onOpenWeeklyPulse === 'function') {
       onOpenWeeklyPulse({
-        weekNumber: Math.max(1, currentWeek - 1),
+        weekNumber: currentWeek,
         completionPercent: weekScore,
         tasksCompleted: completedThisWeek,
         tasksTotal: totalThisWeek,
@@ -482,67 +400,65 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         <div style={{ height: 16 }} />
-
-        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, color: shellText, marginBottom: 10 }}>
-          Turn your goal into daily action
-        </div>
-
-        <div style={{
-          background: '#fff', border: '1px solid #f2c4d0',
-          borderRadius: 16, padding: '1rem', marginBottom: '1rem',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
-              Today's Tasks
-            </p>
-            <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
-              {completedToday}/{totalToday}
+        {!weekHasEnded ? (
+          <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
+                Week {currentWeek} — Day {dayOfWeek} of 7
+              </p>
+              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
+                {completedToday}/{totalToday}
+              </p>
+            </div>
+            <div style={{ height: 6, background: '#f2c4d0', borderRadius: 99, marginBottom: 6 }}>
+              <div style={{
+                height: '100%',
+                width: `${totalToday > 0 ? (completedToday / totalToday) * 100 : 0}%`,
+                background: completedToday === totalToday && totalToday > 0
+                  ? 'linear-gradient(90deg, #34d399, #059669)'
+                  : 'linear-gradient(90deg, #e8407a, #f472a8)',
+                borderRadius: 99,
+                transition: 'width 0.4s ease',
+              }} />
+            </div>
+            <p style={{ fontSize: '0.7rem', color: '#7a5a66' }}>
+              {completedToday === totalToday && totalToday > 0
+                ? 'All done today. Streak secured.'
+                : `${totalToday - completedToday} task${totalToday - completedToday !== 1 ? 's' : ''} left today`
+              }
             </p>
           </div>
-          <div style={{ height: 6, background: '#f2c4d0', borderRadius: 99, marginBottom: 8 }}>
-            <div style={{
-              height: '100%',
-              width: totalToday > 0 ? `${(completedToday / totalToday) * 100}%` : '0%',
-              background: completedToday === totalToday && totalToday > 0
-                ? 'linear-gradient(90deg, #34d399, #059669)'
-                : 'linear-gradient(90deg, #e8407a, #f472a8)',
-              borderRadius: 99,
-              transition: 'width 0.4s ease',
-            }} />
-          </div>
-          <p style={{ fontSize: '0.72rem', color: '#7a5a66' }}>
-            {completedToday === totalToday && totalToday > 0
-              ? 'All done for today. Streak secured.'
-              : `${Math.max(0, totalToday - completedToday)} task${Math.max(0, totalToday - completedToday) !== 1 ? 's' : ''} remaining today`
-            }
-          </p>
-        </div>
-
-        {showPulseEndedCard ? (
-          <div style={{
-            background: 'linear-gradient(135deg, #fff5f7, #fffbfc)',
-            border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', margin: '0 0 1rem',
-          }}>
+        ) : showPulseBanner ? (
+          <div style={{ background: 'linear-gradient(135deg, #fff5f7, #fffbfc)', border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 4 }}>
               Week {currentWeek} closed
             </p>
-            <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4 }}>
+            <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4, fontFamily: 'Playfair Display, serif' }}>
               {weekCompletionPercent}% completion
             </p>
-            <p style={{ fontSize: '0.78rem', color: '#7a5a66', marginBottom: 12, lineHeight: 1.5 }}>
-              This takes 5 minutes. Two questions. Sage reads your week and tells you what actually matters going into week {currentWeek + 1}.
+            <p style={{ fontSize: '0.78rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
+              Two questions. Sage reads your week and tells you what matters going into week {currentWeek + 1}.
             </p>
-            <button
-              onClick={openPulse}
-              style={{
-                background: 'linear-gradient(135deg, #e8407a, #f472a8)',
-                color: '#fff', border: 'none', borderRadius: 99,
-                padding: '0.6rem 1.4rem', fontSize: '0.82rem',
-                fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-              }}
-            >
+            <button onClick={openPulse} style={{
+              width: '100%', padding: '0.75rem', borderRadius: 12, border: 'none',
+              background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+              color: '#fff', fontSize: '0.85rem', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+            }}>
               Open Weekly Pulse
             </button>
+          </div>
+        ) : showWeek2 ? (
+          <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b08090', marginBottom: 4 }}>
+              Week {currentWeek} closed
+            </p>
+            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d1f2b' }}>
+              {weekCompletionPercent}% complete
+            </p>
+            <p style={{ fontSize: '0.7rem', color: '#34d399', marginTop: 4 }}>
+              Reflection done. Week {currentWeek + 1} is open.
+            </p>
           </div>
         ) : null}
 
@@ -567,21 +483,23 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             {weeklyData.weeks.map(week => {
               const active = week.index === activeWeek
               const status = weekProgressMap[week.index]
+              const unlocked = canAccessWeek(week.index)
               return (
                 <button
                   key={week.id}
                   type="button"
-                  onClick={() => handleWeekSelect(week)}
+                  onClick={unlocked ? () => handleWeekSelect(week) : undefined}
                   style={{
                     padding: isMobile ? '7px 12px' : '8px 14px',
                     borderRadius: 999,
                     border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
                     background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
-                    color: active ? accent : shellMuted,
+                    color: unlocked ? (active ? accent : shellMuted) : '#beaeb5',
                     fontSize: isMobile ? 11 : 12,
                     fontWeight: 700,
-                    cursor: 'pointer',
+                    cursor: unlocked ? 'pointer' : 'not-allowed',
                     whiteSpace: 'nowrap',
+                    opacity: unlocked ? 1 : 0.55,
                   }}
                 >
                   Week {week.index}{status?.completed ? ' (done)' : ''}
