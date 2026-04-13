@@ -2512,9 +2512,8 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   function PillarCard({ pl, editing, checked, phaseId, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, onCalendarOpen, calendarEvents = [], isPro }) {
     const beforeReady = cleanText(pl.beforeState)
     const afterReady = cleanText(pl.afterState)
-    const descriptionReady = cleanText(getPlanDescription(pl))
     const hasImageContext = Boolean(pl.beforeImage || pl.afterImage)
-    const canGeneratePlan = Boolean(beforeReady && afterReady && descriptionReady && hasImageContext)
+    const canGeneratePlan = Boolean(beforeReady && afterReady && hasImageContext)
     const hasGeneratedPlan = Boolean(pl.planGeneratedFrom && !isPlanBlank(pl))
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
 
@@ -2595,7 +2594,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
           {editing && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderRadius: 12, padding: '0.7rem 0.8rem', background: '#fff8fb', border: '1px dashed var(--app-border)' }}>
               <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                {canGeneratePlan ? 'Generate a Sage plan from this image, before and after states, and description.' : 'Add a photo plus your before state, after state, and description to generate your plan.'}
+                {canGeneratePlan ? 'Generate a Sage plan from this image plus your before and after states.' : 'Add a photo plus your before and after states to generate your plan.'}
               </p>
               <button
                 type="button"
