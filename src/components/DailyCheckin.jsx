@@ -169,6 +169,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const dayNumber = Math.min(Math.floor((now - start) / 86400000) + 1, 7)
   const currentWeek = Math.max(1, Math.floor((now - start) / 86400000 / 7) + 1)
   const [todaysTasks, setTodaysTasks] = useState([])
+  const selectedWeekStart = selectedWeek?.startDate ? new Date(`${selectedWeek.startDate}T12:00:00`) : start
+  const selectedWeekDayNumber = Math.min(Math.max(1, Math.floor((now - selectedWeekStart) / 86400000) + 1), 7)
 
   useEffect(() => {
     setActiveWeek(Math.max(1, currentWeek))
@@ -179,7 +181,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       setTodaysTasks([])
       return
     }
-    const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
+    const taskKey = `phasr_tasks_w${activeWeek}_d${selectedWeekDayNumber}`
     const savedTasks = safeRead(taskKey, null)
     const dayProgressionLabel = {
       1: '',
@@ -190,9 +192,25 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       6: '',
       7: ' - finish strong. Last day of the week.',
     }
-    const baseTasks = generateTasksForDay(allActivities, dayNumber, currentWeek).map(task => ({
+    const weekGoals = Array.isArray(selectedWeek?.goals) && selectedWeek.goals.length
+      ? selectedWeek.goals
+      : allActivities.map(activity => ({
+          activity: activity.description,
+          activityId: activity.id,
+          pillar: activity.pillar,
+          target: activity.timesPerWeek || 3,
+        }))
+    const baseTasks = generateTasksForDay(
+      weekGoals.map(goal => ({
+        id: goal.activityId || goal.activity,
+        description: `${goal.activity} (${goal.target}x this week)`,
+        pillar: goal.pillar,
+      })),
+      selectedWeekDayNumber,
+      activeWeek
+    ).map(task => ({
       ...task,
-      description: `${task.description}${dayProgressionLabel[dayNumber] || ''}`,
+      description: `${task.description}${dayProgressionLabel[selectedWeekDayNumber] || ''}`,
       done: false,
     }))
     const nextTasks = Array.isArray(savedTasks) && savedTasks.length
@@ -203,7 +221,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       safeWrite(taskKey, nextTasks)
     }
     setTodaysTasks(nextTasks)
-  }, [allActivities, currentWeek, dayNumber, hasPillars])
+  }, [allActivities, activeWeek, selectedWeekDayNumber, hasPillars, selectedWeek])
 
   const completedToday = todaysTasks.filter(t => t.done).length
   const totalToday = todaysTasks.length
@@ -267,13 +285,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const updated = todaysTasks.map(task => (
       task.id === taskId ? { ...task, done: !task.done } : task
     ))
-    const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
+    const taskKey = `phasr_tasks_w${activeWeek}_d${selectedWeekDayNumber}`
     safeWrite(taskKey, updated)
     setTodaysTasks(updated)
 
     const allDoneToday = updated.length > 0 && updated.every(task => task.done)
     if (allDoneToday) {
-      const streakKey = `phasr_streak_w${currentWeek}_d${dayNumber}`
+      const streakKey = `phasr_streak_w${activeWeek}_d${selectedWeekDayNumber}`
       localStorage.setItem(streakKey, 'true')
     }
 
@@ -465,13 +483,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <div style={{ display: 'flex', gap: 8, width: 'max-content', minWidth: '100%', paddingBottom: 2, flexWrap: 'nowrap' }}>
               {weeklyData.weeks.map(week => {
                   const active = week.index === activeWeek
-                  const daysDoneForWeek = getDaysCompleted(week.index)
                   const pulseDoneForWeek = localStorage.getItem(`phasr_weekly_pulse_w${week.index}_done`) === 'true'
-                  const prevWeekDone = week.index === 1 || getDaysCompleted(week.index - 1) === 7
+                  const prevPulseDone = week.index === 1 || localStorage.getItem(`phasr_weekly_pulse_w${week.index - 1}_done`) === 'true'
                   const state = (() => {
                     if (week.index === currentWeek) return 'current'
-                    if (!prevWeekDone && week.index > 1) return 'locked'
-                    if (daysDoneForWeek === 7 && pulseDoneForWeek) return 'completed_with_pulse'
+                    if (!prevPulseDone && week.index > 1) return 'locked'
+                    if (pulseDoneForWeek) return 'completed_with_pulse'
                     return 'completed_no_pulse'
                   })()
                   const isLocked = state === 'locked'
@@ -511,7 +528,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 Daily To-Do
               </div>
               <div style={{ fontSize: '0.65rem', color: '#b08090' }}>
-                Day {dayNumber} of 7
+                Day {selectedWeekDayNumber} of 7
               </div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>

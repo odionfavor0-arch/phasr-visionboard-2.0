@@ -1370,10 +1370,11 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       .trim()
 
     if (!content) return
+    const weeklyPulseTitle = `Weekly Pulse — Week ${weeklyPulseState.weekNumber || 1}`
     const weeklyDraft = {
       ...blankDraft(),
       date: getToday(),
-      title: 'Weekly Pulse',
+      title: weeklyPulseTitle,
       prompt: 'Weekly Pulse',
       content,
       templateAccent: '#fff5f7',
@@ -1396,7 +1397,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         id: Date.now(),
         createdAt: new Date().toISOString(),
         date: weeklyDraft.date,
-        title: getEntryTitle(weeklyDraft, analysis.generatedTitle),
+        title: weeklyPulseTitle,
         content: weeklyDraft.content,
         prompt: weeklyDraft.prompt,
         mood: weeklyDraft.mood,
@@ -1435,7 +1436,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         id: Date.now(),
         createdAt: new Date().toISOString(),
         date: weeklyDraft.date,
-        title: 'Weekly Pulse',
+        title: weeklyPulseTitle,
         content: weeklyDraft.content,
         prompt: weeklyDraft.prompt,
         mood: weeklyDraft.mood,
