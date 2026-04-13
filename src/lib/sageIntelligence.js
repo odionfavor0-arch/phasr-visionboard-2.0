@@ -250,20 +250,32 @@ export function getSageWeeklyMessage() {
 function normalizePlanJson(rawText) {
   const trimmed = String(rawText || '').trim()
   const fenced = trimmed.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim()
-  const parsed = JSON.parse(fenced)
-  return {
-    resources: Array.isArray(parsed.resources) ? parsed.resources : [],
-    activities: Array.isArray(parsed.activities) ? parsed.activities : [],
-    weeklyNonNegotiables: Array.isArray(parsed.weeklyNonNegotiables) ? parsed.weeklyNonNegotiables : [],
-    outputs: Array.isArray(parsed.outputs) ? parsed.outputs : [],
-    shortTermOutcome: String(parsed.shortTermOutcome || ''),
-    longTermOutcome: String(parsed.longTermOutcome || ''),
+  try {
+    const parsed = JSON.parse(fenced)
+    return {
+      resources: Array.isArray(parsed.resources) ? parsed.resources : [],
+      activities: Array.isArray(parsed.activities) ? parsed.activities : [],
+      weeklyNonNegotiables: Array.isArray(parsed.weeklyNonNegotiables) ? parsed.weeklyNonNegotiables : [],
+      outputs: Array.isArray(parsed.outputs) ? parsed.outputs : [],
+      shortTermOutcome: String(parsed.shortTermOutcome || ''),
+      longTermOutcome: String(parsed.longTermOutcome || ''),
+    }
+  } catch {
+    return {
+      resources: [],
+      activities: [],
+      weeklyNonNegotiables: [],
+      outputs: [],
+      shortTermOutcome: '',
+      longTermOutcome: '',
+    }
   }
 }
 
 export async function fetchRealWorldPlan(goalText) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_KEY || import.meta.env.VITE_ANTHROPIC_API_KEY
-  if (!apiKey) throw new Error('missing_anthropic_key')
+  const apiKey = import.meta.env.VITE_GROQ_KEY || import.meta.env.GROQ_API_KEY
+  if (!apiKey) throw new Error('missing_groq_key')
+  const model = import.meta.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 
   const systemPrompt = `You are Sage, an AI life coach. The user has set the following goal from their vision board: ${goalText}. Generate a structured plan that includes: recommended resources they will need, a 12-week activity breakdown with progressive weekly targets, weekly non-negotiables for the first 4 weeks, measurable outputs to track, and short-term and long-term outcomes. Base this on proven real-world frameworks for this goal type. Be specific with numbers. Do not be generic.
 
@@ -275,28 +287,31 @@ outputs
 shortTermOutcome
 longTermOutcome`
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
+      model,
+      temperature: 0.2,
       max_tokens: 1800,
-      system: systemPrompt,
       messages: [
         {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
           role: 'user',
-          content: [{ type: 'text', text: goalText }],
+          content: goalText,
         },
       ],
     }),
   })
 
   const data = await res.json()
-  const text = data?.content?.find(item => item.type === 'text')?.text || '{}'
+  const text = data?.choices?.[0]?.message?.content || '{}'
   return normalizePlanJson(text)
 }
 
