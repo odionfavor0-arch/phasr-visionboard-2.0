@@ -129,9 +129,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const selectedWeek = weeklyData.weeks.find(week => week.index === activeWeek) || weeklyData.weeks[0] || null
 
   useEffect(() => {
-    const currentIndex = weeklyData.currentWeek?.index || 1
-    setActiveWeek(currentIndex)
-  }, [activePhaseId, weeklyData.currentWeek?.index])
+    setActiveWeek(Math.max(1, calculatedWeek))
+  }, [activePhaseId, calculatedWeek])
 
   const boardStore = useMemo(() => safeRead('phasr_vb', {}), [])
   const currentPhase = boardStore?.phases?.[0] || selectedPhase
@@ -158,7 +157,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const hasPillars = Array.isArray(currentPhase?.pillars) && currentPhase.pillars.length > 0
 
   const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
-  const currentWeek = weekNumber
   const phaseStartDate = useMemo(() => {
     if (selectedPhase?.startDate) {
       return new Date(`${selectedPhase.startDate}T12:00:00`)
@@ -172,7 +170,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [selectedPhase?.startDate, selectedWeek?.startDate])
 
   const today = new Date()
-  const rawDayOfWeek = Math.floor((today - phaseStartDate) / 86400000) % 7 + 1
+  const daysSinceStart = Math.floor((today - phaseStartDate) / 86400000)
+  const calculatedWeek = Math.floor(daysSinceStart / 7) + 1
+  const currentWeek = Math.max(1, calculatedWeek)
+  const rawDayOfWeek = (daysSinceStart % 7) + 1
   const dayNumber = rawDayOfWeek <= 0 ? rawDayOfWeek + 7 : rawDayOfWeek
   const [todaysTasks, setTodaysTasks] = useState([])
 
@@ -507,29 +508,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ display: 'flex', gap: 8, width: 'max-content', minWidth: '100%', paddingBottom: 2, flexWrap: 'nowrap' }}>
             {weeklyData.weeks.map(week => {
                   const active = week.index === activeWeek
+                  const daysDoneForWeek = getDaysCompleted(week.index)
+                  const pulseDoneForWeek = localStorage.getItem(`phasr_weekly_pulse_w${week.index}_done`) === 'true'
+                  const prevWeekDone = week.index === 1 || getDaysCompleted(week.index - 1) === 7
                   const state = (() => {
-                    const allTasksDone = (() => {
-                      for (let day = 1; day <= 7; day += 1) {
-                        const key = `phasr_tasks_w${week.index}_d${day}`
-                        const tasks = safeRead(key, null)
-                        if (!Array.isArray(tasks) || tasks.length === 0) return false
-                        if (!tasks.every(task => task.done)) return false
-                      }
-                      return true
-                    })()
-                    const pulseDone = localStorage.getItem(`phasr_weekly_pulse_w${week.index}_done`) === 'true'
-                    const prevPulseDone = week.index === 1
-                      || localStorage.getItem(`phasr_weekly_pulse_w${week.index - 1}_done`) === 'true'
                     if (week.index === currentWeek) return 'current'
-                    if (!prevPulseDone && week.index > 1) return 'locked'
-                    if (allTasksDone && pulseDone) return 'completed_with_pulse'
+                    if (!prevWeekDone && week.index > 1) return 'locked'
+                    if (daysDoneForWeek === 7 && pulseDoneForWeek) return 'completed_with_pulse'
                     return 'completed_no_pulse'
                   })()
+                  const isLocked = state === 'locked'
                   return (
                     <button
                       key={week.id}
                       type="button"
-                      onClick={() => handleWeekSelect(week)}
+                      onClick={isLocked ? undefined : () => handleWeekSelect(week)}
                       style={{
                         padding: isMobile ? '7px 12px' : '8px 14px',
                         borderRadius: 999,
@@ -538,8 +531,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                         color: active ? accent : shellMuted,
                         fontSize: isMobile ? 11 : 12,
                         fontWeight: 700,
-                        cursor: 'pointer',
+                        cursor: isLocked ? 'default' : 'pointer',
                         whiteSpace: 'nowrap',
+                        opacity: isLocked ? 0.4 : 1,
                       }}
                     >
                       {state === 'completed_with_pulse' ? `Week ${week.index} done` : `Week ${week.index}`}
@@ -559,6 +553,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
               {completedToday}/{totalToday}
             </div>
+          </div>
+          <div style={{ fontSize: 11, color: shellMuted, marginBottom: 10 }}>
+            Day {dayNumber} of 7
           </div>
 
           <div style={{ height: 8, borderRadius: 999, background: shellSurfaceAlt, overflow: 'hidden', marginBottom: 10 }}>
