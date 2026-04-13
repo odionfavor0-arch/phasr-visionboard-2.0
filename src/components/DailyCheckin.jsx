@@ -129,7 +129,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const selectedWeek = weeklyData.weeks.find(week => week.index === activeWeek) || weeklyData.weeks[0] || null
 
   const boardStore = useMemo(() => safeRead('phasr_vb', {}), [])
-  const currentPhase = boardStore?.phases?.[0] || selectedPhase
+  const activePhaseIndex = Number.isInteger(boardStore?.activePhaseIndex)
+    ? boardStore.activePhaseIndex
+    : 0
+  const currentPhase = boardStore?.phases?.[activePhaseIndex] || boardStore?.phases?.[0] || selectedPhase
   const allActivities = useMemo(() => {
     const pillars = Array.isArray(currentPhase?.pillars) ? currentPhase.pillars : []
     return pillars.flatMap((pillar, pillarIndex) => {
@@ -154,23 +157,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
   const phaseStartDate = useMemo(() => {
-    if (selectedPhase?.startDate) {
-      return new Date(`${selectedPhase.startDate}T12:00:00`)
-    }
-    if (selectedWeek?.startDate) {
-      return new Date(`${selectedWeek.startDate}T12:00:00`)
+    const rawStart = currentPhase?.startDate
+    if (rawStart) {
+      return new Date(`${rawStart}T12:00:00`)
     }
     const fallback = new Date()
     fallback.setHours(12, 0, 0, 0)
     return fallback
-  }, [selectedPhase?.startDate, selectedWeek?.startDate])
+  }, [currentPhase?.startDate])
 
   const today = new Date()
-  const daysSinceStart = Math.floor((today - phaseStartDate) / 86400000)
+  const daysSinceStart = Math.max(0, Math.floor((today - phaseStartDate) / 86400000))
   const calculatedWeek = Math.floor(daysSinceStart / 7) + 1
   const currentWeek = Math.max(1, calculatedWeek)
   const rawDayOfWeek = (daysSinceStart % 7) + 1
-  const dayNumber = rawDayOfWeek <= 0 ? rawDayOfWeek + 7 : rawDayOfWeek
+  const dayNumber = rawDayOfWeek <= 0 ? 1 : rawDayOfWeek
   const [todaysTasks, setTodaysTasks] = useState([])
 
   useEffect(() => {
@@ -531,12 +532,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                         borderRadius: 999,
                         border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
                         background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
-                        color: active ? accent : shellMuted,
+                        color: active ? accent : shellText,
                         fontSize: isMobile ? 11 : 12,
                         fontWeight: 700,
                         cursor: isLocked ? 'default' : 'pointer',
                         whiteSpace: 'nowrap',
-                        opacity: isLocked ? 0.4 : 1,
+                        opacity: 1,
                       }}
                     >
                       {state === 'completed_with_pulse' ? `Week ${week.index} done` : `Week ${week.index}`}
