@@ -128,10 +128,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   )
   const selectedWeek = weeklyData.weeks.find(week => week.index === activeWeek) || weeklyData.weeks[0] || null
 
-  useEffect(() => {
-    setActiveWeek(Math.max(1, calculatedWeek))
-  }, [activePhaseId, calculatedWeek])
-
   const boardStore = useMemo(() => safeRead('phasr_vb', {}), [])
   const currentPhase = boardStore?.phases?.[0] || selectedPhase
   const allActivities = useMemo(() => {
@@ -176,6 +172,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const rawDayOfWeek = (daysSinceStart % 7) + 1
   const dayNumber = rawDayOfWeek <= 0 ? rawDayOfWeek + 7 : rawDayOfWeek
   const [todaysTasks, setTodaysTasks] = useState([])
+
+  useEffect(() => {
+    setActiveWeek(Math.max(1, calculatedWeek))
+  }, [activePhaseId, calculatedWeek])
 
   useEffect(() => {
     const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
