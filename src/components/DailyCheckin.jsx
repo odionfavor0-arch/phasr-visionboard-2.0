@@ -219,6 +219,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     return Math.min(totalWeeks, weekStatuses[weekStatuses.length - 1].week)
   }, [weekStatuses, totalWeeks])
+  const now = new Date()
 
   useEffect(() => {
     setActiveWeek(currentWeek)
