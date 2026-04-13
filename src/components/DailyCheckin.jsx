@@ -35,16 +35,6 @@ function buildFingerprint(phase) {
   return `${phase?.id || 'phase'}_${Math.abs(hash)}`
 }
 
-function getPhaseStartDate(phase, scope) {
-  const key = `phasr_phase_timing_${scope}`
-  const today = new Date().toISOString().slice(0, 10)
-  const saved = safeRead(key, null)
-  if (saved?.scope === scope && saved?.startDate) return saved.startDate
-  const next = String(phase?.startDate || '').trim() || today
-  safeWrite(key, { scope, startDate: next })
-  return next
-}
-
 function hasConfiguredPillars(phase) {
   const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
   return pillars.some(pillar => {
@@ -86,6 +76,19 @@ function pulseDoneForWeek(phaseName, weekNumber) {
 
 function taskKey(scope, week, day) {
   return `phasr_tasks_${scope}_w${week}_d${day}`
+}
+
+function weekStartKey(scope, week) {
+  return `phasr_week_start_${scope}_w${week}`
+}
+
+function getWeekStartDate(scope, week) {
+  const today = new Date().toISOString().slice(0, 10)
+  const key = weekStartKey(scope, week)
+  const saved = localStorage.getItem(key)
+  if (saved) return saved
+  localStorage.setItem(key, today)
+  return today
 }
 
 function dayLabel(day) {
@@ -191,23 +194,45 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const hasPillars = hasConfiguredPillars(currentPhase)
   const activities = useMemo(() => buildActivities(currentPhase), [currentPhase])
   const phaseScope = useMemo(() => buildFingerprint(currentPhase || {}), [currentPhase])
-  const startDate = useMemo(() => getPhaseStartDate(currentPhase, phaseScope), [currentPhase, phaseScope])
   const totalWeeks = Math.max(weeklyData.weeks?.length || 1, 1)
-  const now = new Date()
-  const start = new Date(`${startDate}T12:00:00`)
-  const diffDays = Math.max(0, Math.floor((now - start) / 86400000))
-  const currentWeek = Math.min(totalWeeks, Math.floor(diffDays / 7) + 1)
-  const currentDay = Math.min(7, (diffDays % 7) + 1)
-  const [activeWeek, setActiveWeek] = useState(currentWeek)
+  const [activeWeek, setActiveWeek] = useState(1)
   const [tasks, setTasks] = useState([])
   const [showPhaseModal, setShowPhaseModal] = useState(false)
+  const [lockedWeekMessage, setLockedWeekMessage] = useState('')
+
+  const weekStatuses = useMemo(() => {
+    return (weeklyData.weeks || []).map(item => {
+      const daysDone = hasPillars ? countDaysDone(phaseScope, item.index) : 0
+      const pulseDone = pulseDoneForWeek(currentPhase?.name, item.index) && daysDone === 7
+      return {
+        week: item.index,
+        daysDone,
+        pulseDone,
+      }
+    })
+  }, [weeklyData.weeks, hasPillars, phaseScope, currentPhase, tasks, refresh])
+
+  const currentWeek = useMemo(() => {
+    if (!weekStatuses.length) return 1
+    for (const item of weekStatuses) {
+      if (!(item.daysDone === 7 && item.pulseDone)) return item.week
+    }
+    return Math.min(totalWeeks, weekStatuses[weekStatuses.length - 1].week)
+  }, [weekStatuses, totalWeeks])
 
   useEffect(() => {
     setActiveWeek(currentWeek)
-  }, [currentWeek, activePhaseId, phaseScope])
+  }, [currentWeek, activePhaseId])
+
+  useEffect(() => {
+    if (!hasPillars) return
+    getWeekStartDate(phaseScope, currentWeek)
+  }, [hasPillars, phaseScope, currentWeek])
 
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
-  const displayedDay = activeWeek < currentWeek ? 7 : activeWeek > currentWeek ? 1 : currentDay
+  const currentWeekStart = getWeekStartDate(phaseScope, currentWeek)
+  const elapsedCurrentWeekDays = Math.max(0, Math.floor((now - new Date(`${currentWeekStart}T12:00:00`)) / 86400000))
+  const displayedDay = activeWeek < currentWeek ? 7 : activeWeek > currentWeek ? 1 : Math.min(7, elapsedCurrentWeekDays + 1)
 
   useEffect(() => {
     if (!hasPillars || !week) {
@@ -224,9 +249,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(phaseScope, activeWeek) : 0, [hasPillars, phaseScope, activeWeek, tasks])
   const totalTasksThisWeek = hasPillars ? activities.length * 7 : 0
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
-  const currentPulseDone = pulseDoneForWeek(currentPhase?.name, activeWeek)
-  const previousPulseDone = activeWeek === 1 ? true : pulseDoneForWeek(currentPhase?.name, activeWeek - 1)
-  const isNewUser = activeWeek === 1 && currentDay === 1 && completedTasksThisWeek === 0
+  const currentPulseDone = weekStatuses.find(item => item.week === activeWeek)?.pulseDone || false
+  const previousPulseDone = activeWeek === 1 ? true : (weekStatuses.find(item => item.week === activeWeek - 1)?.pulseDone || false)
+  const isNewUser = activeWeek === 1 && displayedDay === 1 && completedTasksThisWeek === 0
   const showReminder = activeWeek > 1 && displayedDay > 1 && !previousPulseDone
   const weekComplete = daysCompleted === 7
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -235,7 +260,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   function canAccessWeek(weekNumber) {
     if (weekNumber === 1) return true
-    return pulseDoneForWeek(currentPhase?.name, weekNumber - 1)
+    const previous = weekStatuses.find(item => item.week === weekNumber - 1)
+    return Boolean(previous?.pulseDone)
   }
 
   function toggleTask(taskId) {
@@ -337,7 +363,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </p>
           )}
           {hasPillars && !isNewUser && !weekComplete && !showReminder && (
-            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               Day {displayedDay} of 7. You have completed {completedTasksThisWeek} of {totalTasksThisWeek} tasks this week.
               {weekPercent >= 50 ? ' You are on track. Keep going.' : ' Stay consistent. Every task counts.'}
             </p>
@@ -362,12 +388,18 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             {weeklyData.weeks.map(item => {
               const active = item.index === activeWeek
               const locked = !canAccessWeek(item.index)
-              const pulseDone = pulseDoneForWeek(currentPhase?.name, item.index)
+              const pulseDone = weekStatuses.find(weekItem => weekItem.week === item.index)?.pulseDone || false
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={locked ? undefined : () => setActiveWeek(item.index)}
+                  onClick={() => {
+                    if (locked) {
+                      setLockedWeekMessage(`Finish Week ${item.index - 1} and complete its weekly reflection with Sage first.`)
+                      return
+                    }
+                    setActiveWeek(item.index)
+                  }}
                   style={{
                     padding: isMobile ? '7px 12px' : '8px 14px',
                     borderRadius: 999,
@@ -376,8 +408,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                     color: active ? accent : 'var(--app-text)',
                     fontSize: isMobile ? 11 : 12,
                     fontWeight: 700,
-                    cursor: locked ? 'default' : 'pointer',
-                    opacity: locked ? 0.4 : 1,
+                    cursor: 'pointer',
+                    opacity: locked ? 0.7 : 1,
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -389,6 +421,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         <div style={{ height: 14 }} />
+
+        {lockedWeekMessage ? (
+          <div style={{ background: '#fff8ec', border: '1px solid #f3d38a', borderRadius: 16, padding: '0.9rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <p style={{ margin: 0, fontSize: '0.82rem', color: '#5a4310', lineHeight: 1.5 }}>
+              {lockedWeekMessage}
+            </p>
+            <button
+              type="button"
+              onClick={() => setLockedWeekMessage('')}
+              style={{ border: 'none', background: 'transparent', color: '#9f7a18', fontWeight: 700, cursor: 'pointer' }}
+            >
+              OK
+            </button>
+          </div>
+        ) : null}
 
         <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 14 : 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
