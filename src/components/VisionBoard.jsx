@@ -1241,24 +1241,62 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     pl.planWasEdited = false
     return d
   })
-  const forceGeneratePlan = plId => upd(d => {
-    const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
-    if (!pl) return d
-    const hasRequiredInputs = hasVisualPlanInputs(pl)
-    if (!hasRequiredInputs) return d
-    pl.planGenerationCount = Number(pl.planGenerationCount || 0) + 1
-    const generated = buildGeneratedPlan(pl, isPro)
-    pl.resources = generated.resources.length ? generated.resources : ['']
-    pl.activities = generated.activities.length ? generated.activities : ['']
-    pl.weeklyActions = generated.weeklyActions.length ? generated.weeklyActions : ['']
-    pl.outputs = generated.outputs.length ? generated.outputs : ['']
-    pl.shortOutcome = generated.shortOutcome
-    pl.longOutcome = generated.longOutcome
-    pl.planGeneratedFrom = getPlanSignature(pl)
-    pl.planGenerationTier = isPro ? 'pro' : 'free'
-    pl.planWasEdited = false
-    return d
-  })
+  const forceGeneratePlan = async plId => {
+    const targetPhase = data.phases.find(p => p.id === phaseId)
+    const targetPillar = targetPhase?.pillars.find(p => p.id === plId)
+    if (!targetPillar) return
+    if (!hasVisualPlanInputs(targetPillar)) {
+      setUploadMessage('Add before and after states plus at least one image to generate your plan.')
+      return
+    }
+
+    const goalText = [targetPillar.name, targetPillar.afterState, targetPillar.afterDesc]
+      .map(cleanText)
+      .filter(Boolean)
+      .join(' - ')
+
+    let generated = null
+    let usedAiPlan = false
+    if (isPro) {
+      try {
+        setUploadMessage('Sage is generating your plan...')
+        const plan = await fetchRealWorldPlan(goalText)
+        generated = {
+          resources: plan.resources || [],
+          activities: plan.activities || [],
+          weeklyActions: plan.weeklyNonNegotiables || [],
+          outputs: plan.outputs || [],
+          shortOutcome: plan.shortTermOutcome || '',
+          longOutcome: plan.longTermOutcome || '',
+        }
+        usedAiPlan = true
+      } catch {
+        setUploadMessage('Sage plan unavailable. Using a quick plan instead.')
+      }
+    }
+
+    if (!generated) {
+      generated = buildGeneratedPlan(targetPillar, isPro)
+    }
+
+    upd(d => {
+      const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
+      if (!pl) return d
+      pl.planGenerationCount = Number(pl.planGenerationCount || 0) + 1
+      pl.resources = generated.resources.length ? generated.resources : ['']
+      pl.activities = generated.activities.length ? generated.activities : ['']
+      pl.weeklyActions = generated.weeklyActions.length ? generated.weeklyActions : ['']
+      pl.outputs = generated.outputs.length ? generated.outputs : ['']
+      pl.shortOutcome = generated.shortOutcome
+      pl.longOutcome = generated.longOutcome
+      pl.planGeneratedFrom = getPlanSignature(pl)
+      pl.planGenerationTier = usedAiPlan ? 'pro' : 'free'
+      pl.planWasEdited = false
+      return d
+    })
+
+    setUploadMessage('')
+  }
   const toggleReviewCollapse = () => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.reviewCollapsed = !ph.reviewCollapsed; return d })
   const finalizeGeneratedPlans = () => upd(d => {
     const ph = d.phases.find(p => p.id === phaseId)
