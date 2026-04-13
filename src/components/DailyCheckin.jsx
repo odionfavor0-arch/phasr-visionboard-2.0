@@ -101,12 +101,6 @@ function generateTasksForDay(activities, dayOfWeek, currentWeek) {
   }))
 }
 
-function getFormattedGoalText(activity, target) {
-  const text = String(activity || '').trim()
-  if (!text) return `Complete ${target} times this week`
-  return `${text} (${target}x this week)`
-}
-
 function SageBriefingCard({ plan, message, onDismiss }) {
   if (!plan || !message) return null
   return (
@@ -162,28 +156,26 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setActiveWeek(currentIndex)
   }, [activePhaseId, weeklyData.currentWeek?.index])
 
-  const activePillarNames = useMemo(() => {
-    const pillars = selectedPhase?.pillars || []
-    return pillars.filter(isConfiguredPillar).map(pillar => pillar.name).filter(Boolean)
+  const allActivities = useMemo(() => {
+    const pillars = Array.isArray(selectedPhase?.pillars) ? selectedPhase.pillars : []
+    return pillars.flatMap((pillar, pillarIndex) => {
+      const activities = Array.isArray(pillar?.activities) ? pillar.activities : []
+      return activities
+        .map((activity, activityIndex) => {
+          const description = typeof activity === 'string'
+            ? activity.trim()
+            : String(activity?.description || activity?.title || '').trim()
+          if (!description) return null
+          return {
+            id: `${pillar?.id || pillar?.name || `pillar-${pillarIndex}`}_${description}_${activityIndex}`,
+            description,
+            pillar: pillar?.name || 'Pillar',
+            done: false,
+          }
+        })
+        .filter(Boolean)
+    })
   }, [selectedPhase])
-
-  const weeklyGoals = useMemo(() => {
-    const goals = selectedWeek?.goals || []
-    if (!activePillarNames.length) return []
-    return goals.filter(goal => activePillarNames.includes(goal.pillar))
-  }, [selectedWeek, activePillarNames])
-
-  const nonNegotiables = useMemo(
-    () => weeklyGoals.map(goal => ({
-      id: goal.id,
-      description: goal.activity,
-      pillar: goal.pillar,
-      timesPerWeek: Math.max(1, Number(goal.target) || 1),
-      completedCount: Math.max(0, Number(goal.completed) || 0),
-      goalRef: goal,
-    })),
-    [weeklyGoals],
-  )
 
   const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
   const currentWeek = weekNumber
@@ -201,78 +193,69 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const today = new Date()
   const rawDayOfWeek = Math.floor((today - phaseStartDate) / 86400000) % 7 + 1
-  const dayOfWeek = rawDayOfWeek <= 0 ? rawDayOfWeek + 7 : rawDayOfWeek
+  const dayNumber = rawDayOfWeek <= 0 ? rawDayOfWeek + 7 : rawDayOfWeek
+  const [todaysTasks, setTodaysTasks] = useState([])
 
-  const todaysTasks = useMemo(() => {
-    const activities = nonNegotiables
-    const taskKey = `phasr_tasks_w${currentWeek}_d${dayOfWeek}`
-    const stored = safeRead(taskKey, null)
-    const dayTasks = Array.isArray(stored) && stored.length
-      ? stored
-      : generateTasksForDay(activities, dayOfWeek, currentWeek)
+  useEffect(() => {
+    const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
+    const savedTasks = safeRead(taskKey, null)
+    const generatedTasks = generateTasksForDay(allActivities, dayNumber, currentWeek)
+    const nextTasks = Array.isArray(savedTasks) && savedTasks.length
+      ? savedTasks
+      : generatedTasks
 
-    if (!Array.isArray(stored) || !stored.length) {
-      safeWrite(taskKey, dayTasks)
+    if (!Array.isArray(savedTasks) || !savedTasks.length) {
+      safeWrite(taskKey, nextTasks)
     }
-
-    const goalsById = new Map(weeklyGoals.map(goal => [goal.id, goal]))
-    return dayTasks
-      .map(task => {
-        const goal = goalsById.get(task.goalId)
-        if (!goal) return null
-        return {
-          ...goal,
-          done: !!task.done,
-          activity: task.description || goal.activity,
-          pillar: task.pillar || goal.pillar,
-        }
-      })
-      .filter(Boolean)
-  }, [nonNegotiables, currentWeek, dayOfWeek, weeklyGoals])
+    setTodaysTasks(nextTasks)
+  }, [allActivities, currentWeek, dayNumber])
 
   const completedToday = todaysTasks.filter(t => t.done).length
   const totalToday = todaysTasks.length
   const todayScore = Math.round((completedToday / totalToday) * 100) || 0
 
-  const weekTasks = useMemo(() => [weeklyGoals.map(goal => ({
-    ...goal,
-    done: (goal.completed || 0) >= (goal.target || 0),
-  }))], [weeklyGoals])
-  const allTasksThisWeek = weekTasks.flat()
-  const completedThisWeek = allTasksThisWeek.filter(t => t.done).length
-  const totalThisWeek = allTasksThisWeek.length
-  const weekScore = Math.round((completedThisWeek / totalThisWeek) * 100) || 0
-  const weekCompletionPercent = weekScore
-
-  const weekStartDate = useMemo(() => {
-    const start = new Date(phaseStartDate)
-    start.setDate(start.getDate() + ((currentWeek - 1) * 7))
-    return start
-  }, [phaseStartDate, currentWeek])
-  const weekEndDate = useMemo(() => {
-    const end = new Date(weekStartDate)
-    end.setDate(end.getDate() + 7)
-    return end
-  }, [weekStartDate])
-  const weekHasEnded = new Date() >= weekEndDate
-  const pulseKey = `phasr_weekly_pulse_w${currentWeek}_done`
-  const pulseDone = localStorage.getItem(pulseKey) === 'true'
-  const showPulseBanner = weekHasEnded && !pulseDone
-  const showWeek2 = weekHasEnded && pulseDone
-
-  const completedDaysInWeek = useMemo(() => {
-    let completed = 0
+  function getDaysCompleted(weekNumberToCheck) {
+    let daysCount = 0
     for (let day = 1; day <= 7; day += 1) {
-      const key = `phasr_tasks_w${currentWeek}_d${day}`
-      const dayTasks = safeRead(key, null)
-      if (Array.isArray(dayTasks) && dayTasks.length > 0 && dayTasks.every(task => task.done)) {
-        completed += 1
+      const key = `phasr_tasks_w${weekNumberToCheck}_d${day}`
+      const tasks = safeRead(key, null)
+      if (Array.isArray(tasks) && tasks.length > 0 && tasks.every(task => task.done)) {
+        daysCount += 1
       }
     }
-    return completed
-  }, [currentWeek, lockInState])
+    return daysCount
+  }
 
-  const weekDayProgressPercent = Math.round((completedDaysInWeek / 7) * 100) || 0
+  const daysCompleted = useMemo(
+    () => getDaysCompleted(currentWeek),
+    [currentWeek, todaysTasks, allActivities.length],
+  )
+  const totalDays = 7
+  const weekDayProgressPercent = Math.round((daysCompleted / totalDays) * 100) || 0
+
+  const allTasksAllDays = allActivities.length * 7
+  const completedTasksAllDays = useMemo(() => {
+    let count = 0
+    for (let day = 1; day <= 7; day += 1) {
+      const key = `phasr_tasks_w${currentWeek}_d${day}`
+      const tasks = safeRead(key, []) || []
+      count += tasks.filter(task => task.done).length
+    }
+    return count
+  }, [currentWeek, todaysTasks, allActivities.length])
+
+  const weekStreakPercent = allTasksAllDays > 0
+    ? Math.round((completedTasksAllDays / allTasksAllDays) * 100)
+    : 0
+
+  const weekStartDate = new Date(phaseStartDate)
+  weekStartDate.setDate(weekStartDate.getDate() + ((currentWeek - 1) * 7))
+  const weekEndDate = new Date(weekStartDate)
+  weekEndDate.setDate(weekEndDate.getDate() + 7)
+  const weekHasEnded = new Date() >= weekEndDate
+
+  const pulseKey = `phasr_weekly_pulse_w${currentWeek}_done`
+  const pulseDone = localStorage.getItem(pulseKey) === 'true'
 
   const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
   const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
@@ -294,27 +277,31 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent2 = 'var(--app-accent2)'
   const showSinglePhaseAsPhaseOne = phases.length === 1
 
-  function canAccessWeek(weekNumberToOpen) {
-    if (weekNumberToOpen === 1) return true
-    const prevPulseKey = `phasr_weekly_pulse_w${weekNumberToOpen - 1}_done`
-    return localStorage.getItem(prevPulseKey) === 'true'
-  }
-
-  function handleToggleGoal(goal) {
-    const taskKey = `phasr_tasks_w${currentWeek}_d${dayOfWeek}`
-    const stored = safeRead(taskKey, [])
-    if (!Array.isArray(stored)) return
-    const next = stored.map(task => (
-      task.goalId === goal.id ? { ...task, done: !task.done } : task
+  function toggleTask(taskId) {
+    const updated = todaysTasks.map(task => (
+      task.id === taskId ? { ...task, done: !task.done } : task
     ))
-    safeWrite(taskKey, next)
+    const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
+    safeWrite(taskKey, updated)
+    setTodaysTasks(updated)
+
+    const allDoneToday = updated.length > 0 && updated.every(task => task.done)
+    if (allDoneToday) {
+      const streakKey = `phasr_streak_w${currentWeek}_d${dayNumber}`
+      localStorage.setItem(streakKey, 'true')
+    }
+
     setLockInState(loadLockInState())
   }
 
   function handleWeekSelect(nextWeek) {
-    const nextWeekNumber = nextWeek?.index || 1
-    if (!canAccessWeek(nextWeekNumber)) return
-    setActiveWeek(nextWeekNumber)
+    setActiveWeek(nextWeek?.index || 1)
+  }
+
+  function canAccessWeek(weekNumber) {
+    if (weekNumber === 1) return true
+    const prevPulseKey = `phasr_weekly_pulse_w${weekNumber - 1}_done`
+    return localStorage.getItem(prevPulseKey) === 'true'
   }
 
   function handlePhaseSelect(nextPhaseId) {
@@ -337,18 +324,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setActivePhaseId(nextPhaseId)
   }
 
-  const selectedWeekStatus = {
-    ...(selectedWeek ? weekProgressMap[selectedWeek.index] : {}),
-    unlocked: true,
-  }
-
   const openPulse = () => {
     if (typeof onOpenWeeklyPulse === 'function') {
       onOpenWeeklyPulse({
         weekNumber: currentWeek,
-        completionPercent: weekScore,
-        tasksCompleted: completedThisWeek,
-        tasksTotal: totalThisWeek,
+        completionPercent: weekStreakPercent,
+        tasksCompleted: completedTasksAllDays,
+        tasksTotal: allTasksAllDays,
       })
     }
   }
@@ -388,11 +370,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         <div style={{ height: 16 }} />
-        {!weekHasEnded ? (
+        {!weekHasEnded && (
           <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
-                Week {currentWeek} — Day {dayOfWeek} of 7
+                Week {currentWeek} - Day {dayNumber} of 7
               </p>
               <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
                 {completedToday}/{totalToday}
@@ -416,13 +398,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               }
             </p>
           </div>
-        ) : showPulseBanner ? (
+        )}
+
+        {weekHasEnded && !pulseDone && (
           <div style={{ background: 'linear-gradient(135deg, #fff5f7, #fffbfc)', border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 4 }}>
               Week {currentWeek} closed
             </p>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4, fontFamily: 'Playfair Display, serif' }}>
-              {weekCompletionPercent}% completion
+              {weekStreakPercent}% completion
             </p>
             <p style={{ fontSize: '0.78rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
               Two questions. Sage reads your week and tells you what matters going into week {currentWeek + 1}.
@@ -436,19 +420,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               Open Weekly Pulse
             </button>
           </div>
-        ) : showWeek2 ? (
+        )}
+
+        {weekHasEnded && pulseDone && (
           <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b08090', marginBottom: 4 }}>
               Week {currentWeek} closed
             </p>
             <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d1f2b' }}>
-              {weekCompletionPercent}% complete
+              {weekStreakPercent}% complete
             </p>
             <p style={{ fontSize: '0.7rem', color: '#34d399', marginTop: 4 }}>
               Reflection done. Week {currentWeek + 1} is open.
             </p>
           </div>
-        ) : null}
+        )}
 
         {!briefingDismissed && weeklyLoadPlan && weeklyLoadPlan.week === activeWeek && (
           <SageBriefingCard
@@ -469,31 +455,30 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ overflowX: 'auto', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
           <div style={{ display: 'flex', gap: 8, width: 'max-content', minWidth: '100%', paddingBottom: 2, flexWrap: 'nowrap' }}>
             {weeklyData.weeks.map(week => {
-              const active = week.index === activeWeek
-              const status = weekProgressMap[week.index]
-              const unlocked = canAccessWeek(week.index)
-              return (
-                <button
-                  key={week.id}
-                  type="button"
-                  onClick={unlocked ? () => handleWeekSelect(week) : undefined}
-                  style={{
-                    padding: isMobile ? '7px 12px' : '8px 14px',
-                    borderRadius: 999,
-                    border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
-                    background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
-                    color: unlocked ? (active ? accent : shellMuted) : '#beaeb5',
-                    fontSize: isMobile ? 11 : 12,
-                    fontWeight: 700,
-                    cursor: unlocked ? 'pointer' : 'not-allowed',
-                    whiteSpace: 'nowrap',
-                    opacity: unlocked ? 1 : 0.55,
-                  }}
-                >
-                  Week {week.index}{status?.completed ? ' (done)' : ''}
-                </button>
-              )
-            })}
+                  const active = week.index === activeWeek
+                  const access = canAccessWeek(week.index)
+                  return (
+                    <button
+                      key={week.id}
+                      type="button"
+                      onClick={access ? () => handleWeekSelect(week) : undefined}
+                      style={{
+                        padding: isMobile ? '7px 12px' : '8px 14px',
+                        borderRadius: 999,
+                        border: active ? `1px solid ${accent}` : `1px solid ${shellBorder}`,
+                        background: active ? (isDarkTheme ? 'rgba(249,95,133,0.12)' : '#fff1f6') : shellSurface,
+                        color: active ? accent : shellMuted,
+                        fontSize: isMobile ? 11 : 12,
+                        fontWeight: 700,
+                        cursor: access ? 'pointer' : 'default',
+                        whiteSpace: 'nowrap',
+                        opacity: access ? 1 : 0.45,
+                      }}
+                    >
+                      Week {week.index}
+                    </button>
+                  )
+                })}
           </div>
         </div>
 
@@ -524,83 +509,81 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             Daily tasks rotate automatically from your weekly non-negotiables.
           </div>
 
-          {selectedWeekStatus?.unlocked ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {todaysTasks.length === 0 && (
-                <div style={{ padding: '18px 16px', borderRadius: 14, border: `1px solid ${shellBorder}`, background: shellSurfaceAlt, color: shellMuted, fontSize: 12, display: 'grid', gap: 10 }}>
-                  <span>Set up your vision board first to activate your daily tasks.</span>
-                  <button
-                    type="button"
-                    onClick={onOpenBoard}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {todaysTasks.length === 0 && (
+              <div style={{ padding: '18px 16px', borderRadius: 14, border: `1px solid ${shellBorder}`, background: shellSurfaceAlt, color: shellMuted, fontSize: 12, display: 'grid', gap: 10 }}>
+                <span>Set up your vision board first to activate your daily tasks.</span>
+                <button
+                  type="button"
+                  onClick={onOpenBoard}
+                  style={{
+                    width: 'fit-content',
+                    borderRadius: 999,
+                    border: `1px solid ${accent}`,
+                    background: 'transparent',
+                    color: accent,
+                    padding: '0.45rem 0.9rem',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Go to Vision Board
+                </button>
+              </div>
+            )}
+            {todaysTasks.map(task => {
+              const done = task.done
+              return (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => toggleTask(task.id)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: '14px 16px',
+                    background: shellSurfaceAlt,
+                    border: `1px solid ${done ? 'rgba(74,222,128,0.25)' : shellBorder}`,
+                    borderRadius: 14,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    opacity: done ? 0.72 : 1,
+                  }}
+                >
+                  <div
                     style={{
-                      width: 'fit-content',
-                      borderRadius: 999,
-                      border: `1px solid ${accent}`,
-                      background: 'transparent',
-                      color: accent,
-                      padding: '0.45rem 0.9rem',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Go to Vision Board
-                  </button>
-                </div>
-              )}
-              {todaysTasks.map(goal => {
-                const done = goal.done
-                return (
-                  <button
-                    key={goal.id}
-                    type="button"
-                    onClick={() => handleToggleGoal(goal)}
-                    style={{
-                      width: '100%',
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      border: `2px solid ${done ? '#22c55e' : shellBorder}`,
+                      background: done ? '#22c55e' : 'transparent',
+                      color: '#fff',
                       display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 12,
-                      padding: '14px 16px',
-                      background: shellSurfaceAlt,
-                      border: `1px solid ${done ? 'rgba(74,222,128,0.25)' : shellBorder}`,
-                      borderRadius: 14,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      opacity: done ? 0.72 : 1,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      marginTop: 2,
+                      fontSize: 11,
+                      fontWeight: 700,
                     }}
                   >
-                    <div
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        border: `2px solid ${done ? '#22c55e' : shellBorder}`,
-                        background: done ? '#22c55e' : 'transparent',
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        marginTop: 2,
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {done ? 'ok' : ''}
+                    {done ? 'v' : ''}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, lineHeight: 1.45, color: done ? shellMuted : shellText, textDecoration: done ? 'line-through' : 'none' }}>
+                      {task.description}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, lineHeight: 1.45, color: done ? shellMuted : shellText, textDecoration: done ? 'line-through' : 'none' }}>
-                        {getFormattedGoalText(goal.activity, goal.target)}
-                      </div>
-                      <div style={{ fontSize: 12, color: shellMuted, marginTop: 4 }}>
-                        {goal.pillar}
-                      </div>
+                    <div style={{ fontSize: 12, color: shellMuted, marginTop: 4 }}>
+                      {task.pillar}
                     </div>
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
 
         </div>
 
