@@ -6,7 +6,7 @@ import {
   loadLockInState,
   UNLOCK_TIERS,
 } from '../lib/lockIn'
-import { calculateWeeklyLoad, dismissBriefing, getSageWeeklyMessage, isBriefingDismissed } from '../lib/sageIntelligence'
+// Sage briefing card removed; live score card is rendered inline below.
 
 const WEEK_PROGRESS_KEY = 'phasr_week_progress'
 
@@ -85,37 +85,14 @@ function isConfiguredPillar(pillar) {
 
 function generateTasksForDay(activities, dayOfWeek, currentWeek) {
   if (!Array.isArray(activities) || !activities.length) return []
-
-  // Keep the same vision-board activities visible each day, but rotate
-  // ordering daily so the day view changes every 24h.
-  const rotateBy = (Math.max(1, Number(dayOfWeek) || 1) - 1 + Math.max(1, Number(currentWeek) || 1) - 1) % activities.length
-  const rotated = activities.slice(rotateBy).concat(activities.slice(0, rotateBy))
-
-  return rotated.map(activity => ({
-    id: `${activity.id}-w${currentWeek}-d${dayOfWeek}`,
+  return activities.map(activity => ({
+    id: activity.id,
     goalId: activity.id,
     description: activity.description,
     pillar: activity.pillar,
     done: false,
     timesPerWeek: activity.timesPerWeek,
   }))
-}
-
-function SageBriefingCard({ plan, message, onDismiss }) {
-  if (!plan || !message) return null
-  return (
-    <div style={{ borderRadius: 18, padding: '1rem', background: '#fff', border: '1px solid var(--app-border)', boxShadow: '0 12px 28px rgba(240,96,144,0.12)', position: 'relative', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Sage</p>
-          <p style={{ margin: '0.45rem 0 0', fontSize: '0.94rem', lineHeight: 1.65, color: '#5a3d47' }}>{message}</p>
-        </div>
-        <button type="button" onClick={onDismiss} aria-label="Dismiss weekly Sage briefing" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--app-border)', background: '#fff', color: '#b85a82', cursor: 'pointer', lineHeight: 1, padding: 0, flexShrink: 0 }}>
-          x
-        </button>
-      </div>
-    </div>
-  )
 }
 
 export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse }) {
@@ -156,8 +133,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setActiveWeek(currentIndex)
   }, [activePhaseId, weeklyData.currentWeek?.index])
 
+  const boardStore = useMemo(() => safeRead('phasr_vb', {}), [])
+  const currentPhase = boardStore?.phases?.[0] || selectedPhase
   const allActivities = useMemo(() => {
-    const pillars = Array.isArray(selectedPhase?.pillars) ? selectedPhase.pillars : []
+    const pillars = Array.isArray(currentPhase?.pillars) ? currentPhase.pillars : []
     return pillars.flatMap((pillar, pillarIndex) => {
       const activities = Array.isArray(pillar?.activities) ? pillar.activities : []
       return activities
@@ -175,7 +154,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         })
         .filter(Boolean)
     })
-  }, [selectedPhase])
+  }, [currentPhase, selectedPhase])
+  const hasPillars = Array.isArray(currentPhase?.pillars) && currentPhase.pillars.length > 0
 
   const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
   const currentWeek = weekNumber
@@ -199,10 +179,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   useEffect(() => {
     const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
     const savedTasks = safeRead(taskKey, null)
-    const generatedTasks = generateTasksForDay(allActivities, dayNumber, currentWeek)
+    const baseTasks = generateTasksForDay(allActivities, dayNumber, currentWeek)
     const nextTasks = Array.isArray(savedTasks) && savedTasks.length
       ? savedTasks
-      : generatedTasks
+      : baseTasks
 
     if (!Array.isArray(savedTasks) || !savedTasks.length) {
       safeWrite(taskKey, nextTasks)
@@ -233,8 +213,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const totalDays = 7
   const weekDayProgressPercent = Math.round((daysCompleted / totalDays) * 100) || 0
 
-  const allTasksAllDays = allActivities.length * 7
-  const completedTasksAllDays = useMemo(() => {
+  const totalTasksThisWeek = allActivities.length * 7
+  const completedTasksThisWeek = useMemo(() => {
     let count = 0
     for (let day = 1; day <= 7; day += 1) {
       const key = `phasr_tasks_w${currentWeek}_d${day}`
@@ -244,26 +224,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     return count
   }, [currentWeek, todaysTasks, allActivities.length])
 
-  const weekStreakPercent = allTasksAllDays > 0
-    ? Math.round((completedTasksAllDays / allTasksAllDays) * 100)
+  const weekStreakPercent = totalTasksThisWeek > 0
+    ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100)
     : 0
-
-  const weekStartDate = new Date(phaseStartDate)
-  weekStartDate.setDate(weekStartDate.getDate() + ((currentWeek - 1) * 7))
-  const weekEndDate = new Date(weekStartDate)
-  weekEndDate.setDate(weekEndDate.getDate() + 7)
-  const weekHasEnded = new Date() >= weekEndDate
+  const weekCompletionPercent = weekStreakPercent
 
   const pulseKey = `phasr_weekly_pulse_w${currentWeek}_done`
-  const pulseDone = localStorage.getItem(pulseKey) === 'true'
-
-  const weeklyLoadPlan = useMemo(() => calculateWeeklyLoad(phaseBoard), [phaseBoard, lockInState])
-  const sageWeeklyMessage = useMemo(() => getSageWeeklyMessage(), [weeklyLoadPlan])
-  const briefingDismissed = useMemo(() => {
-    const phaseKey = selectedPhase?.id
-    const weekKey = weeklyLoadPlan?.week
-    return phaseKey && weekKey ? isBriefingDismissed(phaseKey, weekKey) : false
-  }, [selectedPhase, weeklyLoadPlan])
+  const currentWeekPulseDone = localStorage.getItem(pulseKey) === 'true'
+  const prevWeekPulseDone = currentWeek === 1
+    || localStorage.getItem(`phasr_weekly_pulse_w${currentWeek - 1}_done`) === 'true'
+  const weekComplete = daysCompleted === 7
 
   const isDarkTheme = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'neutral'
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -298,12 +268,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setActiveWeek(nextWeek?.index || 1)
   }
 
-  function canAccessWeek(weekNumber) {
-    if (weekNumber === 1) return true
-    const prevPulseKey = `phasr_weekly_pulse_w${weekNumber - 1}_done`
-    return localStorage.getItem(prevPulseKey) === 'true'
-  }
-
   function handlePhaseSelect(nextPhaseId) {
     if (!selectedPhase || nextPhaseId === selectedPhase.id) {
       setActivePhaseId(nextPhaseId)
@@ -329,10 +293,25 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       onOpenWeeklyPulse({
         weekNumber: currentWeek,
         completionPercent: weekStreakPercent,
-        tasksCompleted: completedTasksAllDays,
-        tasksTotal: allTasksAllDays,
+        tasksCompleted: completedTasksThisWeek,
+        tasksTotal: totalTasksThisWeek,
       })
     }
+  }
+
+  if (!hasPillars) {
+    return (
+      <div style={{ minHeight: 'calc(100vh - 56px)', background: shellBg, color: shellText, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+          <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>
+            Set up your Vision Board first
+          </p>
+          <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6 }}>
+            Your daily tasks come from your pillars and activities. Add them to your Vision Board to activate your streak.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -370,7 +349,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         <div style={{ height: 16 }} />
-        {!weekHasEnded && (
+        {currentWeek > 1 && !prevWeekPulseDone && (
+          <p
+            style={{ fontSize: '0.7rem', color: '#e8407a', marginBottom: 8, cursor: 'pointer' }}
+            onClick={openPulse}
+          >
+            Week {currentWeek - 1} reflection with Sage is still pending. Tap to complete it.
+          </p>
+        )}
+
+        {!weekComplete && (
           <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
@@ -400,13 +388,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
         )}
 
-        {weekHasEnded && !pulseDone && (
+        {weekComplete && !currentWeekPulseDone && (
           <div style={{ background: 'linear-gradient(135deg, #fff5f7, #fffbfc)', border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 4 }}>
               Week {currentWeek} closed
             </p>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4, fontFamily: 'Playfair Display, serif' }}>
-              {weekStreakPercent}% completion
+              {weekCompletionPercent}% completion
             </p>
             <p style={{ fontSize: '0.78rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
               Two questions. Sage reads your week and tells you what matters going into week {currentWeek + 1}.
@@ -422,13 +410,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
         )}
 
-        {weekHasEnded && pulseDone && (
+        {weekComplete && currentWeekPulseDone && (
           <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
             <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b08090', marginBottom: 4 }}>
               Week {currentWeek} closed
             </p>
             <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d1f2b' }}>
-              {weekStreakPercent}% complete
+              {weekCompletionPercent}% complete
             </p>
             <p style={{ fontSize: '0.7rem', color: '#34d399', marginTop: 4 }}>
               Reflection done. Week {currentWeek + 1} is open.
@@ -436,18 +424,81 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
         )}
 
-        {!briefingDismissed && weeklyLoadPlan && weeklyLoadPlan.week === activeWeek && (
-          <SageBriefingCard
-            plan={weeklyLoadPlan}
-            message={sageWeeklyMessage}
-            onDismiss={() => {
-              if (selectedPhase?.id && weeklyLoadPlan?.week) {
-                dismissBriefing(selectedPhase.id, weeklyLoadPlan.week)
-                setLockInState(loadLockInState())
+        <div style={{
+          background: '#fff', border: '1.5px solid #f2c4d0',
+          borderRadius: 16, padding: '1rem', marginBottom: '1rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'DM Sans, sans-serif', fontWeight: 800,
+              fontSize: '0.55rem', color: '#fff', flexShrink: 0,
+            }}>SAGE</div>
+            <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>
+              Live Score
+            </p>
+            <p style={{ fontSize: '0.65rem', color: '#b08090', marginLeft: 'auto' }}>
+              {weekStreakPercent}% this week
+            </p>
+          </div>
+
+          {weekComplete && !currentWeekPulseDone && (
+            <>
+              <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
+                Week {currentWeek} closed at {weekStreakPercent}%.
+                Two questions. Sage reads your week and tells you
+                what matters going into week {currentWeek + 1}.
+              </p>
+              <button
+                onClick={openPulse}
+                style={{
+                  width: '100%', padding: '0.7rem', borderRadius: 12,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                  color: '#fff', fontSize: '0.82rem', fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                Open Weekly Pulse
+              </button>
+            </>
+          )}
+
+          {weekComplete && currentWeekPulseDone && (
+            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              Week {currentWeek} done. Reflection complete.
+              Week {currentWeek + 1} is open.
+            </p>
+          )}
+
+          {!weekComplete && !prevWeekPulseDone && currentWeek > 1 && (
+            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              You are {dayNumber} days into week {currentWeek}.
+              Your week {currentWeek - 1} reflection with Sage
+              is still pending. Complete it so Sage can shape
+              this week properly.{' '}
+              <span
+                onClick={openPulse}
+                style={{ color: '#e8407a', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Complete now
+              </span>
+            </p>
+          )}
+
+          {!weekComplete && prevWeekPulseDone && (
+            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              Day {dayNumber} of 7. You have completed{' '}
+              {completedTasksThisWeek} of {totalTasksThisWeek} tasks
+              this week. {weekStreakPercent >= 50
+                ? 'You are on track. Keep going.'
+                : 'Stay consistent. Every task counts.'
               }
-            }}
-          />
-        )}
+            </p>
+          )}
+        </div>
 
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: shellMuted, marginBottom: 10 }}>
           All Weeks
@@ -456,12 +507,29 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ display: 'flex', gap: 8, width: 'max-content', minWidth: '100%', paddingBottom: 2, flexWrap: 'nowrap' }}>
             {weeklyData.weeks.map(week => {
                   const active = week.index === activeWeek
-                  const access = canAccessWeek(week.index)
+                  const state = (() => {
+                    const allTasksDone = (() => {
+                      for (let day = 1; day <= 7; day += 1) {
+                        const key = `phasr_tasks_w${week.index}_d${day}`
+                        const tasks = safeRead(key, null)
+                        if (!Array.isArray(tasks) || tasks.length === 0) return false
+                        if (!tasks.every(task => task.done)) return false
+                      }
+                      return true
+                    })()
+                    const pulseDone = localStorage.getItem(`phasr_weekly_pulse_w${week.index}_done`) === 'true'
+                    const prevPulseDone = week.index === 1
+                      || localStorage.getItem(`phasr_weekly_pulse_w${week.index - 1}_done`) === 'true'
+                    if (week.index === currentWeek) return 'current'
+                    if (!prevPulseDone && week.index > 1) return 'locked'
+                    if (allTasksDone && pulseDone) return 'completed_with_pulse'
+                    return 'completed_no_pulse'
+                  })()
                   return (
                     <button
                       key={week.id}
                       type="button"
-                      onClick={access ? () => handleWeekSelect(week) : undefined}
+                      onClick={() => handleWeekSelect(week)}
                       style={{
                         padding: isMobile ? '7px 12px' : '8px 14px',
                         borderRadius: 999,
@@ -470,12 +538,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                         color: active ? accent : shellMuted,
                         fontSize: isMobile ? 11 : 12,
                         fontWeight: 700,
-                        cursor: access ? 'pointer' : 'default',
+                        cursor: 'pointer',
                         whiteSpace: 'nowrap',
-                        opacity: access ? 1 : 0.45,
                       }}
                     >
-                      Week {week.index}
+                      {state === 'completed_with_pulse' ? `Week ${week.index} done` : `Week ${week.index}`}
                     </button>
                   )
                 })}
