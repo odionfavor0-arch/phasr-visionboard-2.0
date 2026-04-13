@@ -157,26 +157,22 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const weekNumber = selectedWeek?.index || weeklyData.currentWeek?.index || 1
   const phaseStartDate = useMemo(() => {
-    const rawStart = currentPhase?.startDate
-    if (rawStart) {
-      return new Date(`${rawStart}T12:00:00`)
-    }
-    const fallback = new Date()
-    fallback.setHours(12, 0, 0, 0)
-    return fallback
-  }, [currentPhase?.startDate])
+    const stored = localStorage.getItem('phasr_phase1_start_date')
+    if (stored) return stored
+    const todayIso = new Date().toISOString().slice(0, 10)
+    localStorage.setItem('phasr_phase1_start_date', todayIso)
+    return todayIso
+  }, [])
 
-  const today = new Date()
-  const daysSinceStart = Math.max(0, Math.floor((today - phaseStartDate) / 86400000))
-  const calculatedWeek = Math.floor(daysSinceStart / 7) + 1
-  const currentWeek = Math.max(1, calculatedWeek)
-  const rawDayOfWeek = (daysSinceStart % 7) + 1
-  const dayNumber = rawDayOfWeek <= 0 ? 1 : rawDayOfWeek
+  const start = new Date(phaseStartDate)
+  const now = new Date()
+  const dayNumber = Math.min(Math.floor((now - start) / 86400000) + 1, 7)
+  const currentWeek = Math.max(1, Math.floor((now - start) / 86400000 / 7) + 1)
   const [todaysTasks, setTodaysTasks] = useState([])
 
   useEffect(() => {
-    setActiveWeek(Math.max(1, calculatedWeek))
-  }, [activePhaseId, calculatedWeek])
+    setActiveWeek(Math.max(1, currentWeek))
+  }, [activePhaseId, currentWeek])
 
   useEffect(() => {
     if (!hasPillars) {
@@ -185,7 +181,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     const taskKey = `phasr_tasks_w${currentWeek}_d${dayNumber}`
     const savedTasks = safeRead(taskKey, null)
-    const baseTasks = generateTasksForDay(allActivities, dayNumber, currentWeek)
+    const dayProgressionLabel = {
+      1: '',
+      2: '',
+      3: ' - push for one extra rep today',
+      4: '',
+      5: ' - match your best day this week',
+      6: '',
+      7: ' - finish strong. Last day of the week.',
+    }
+    const baseTasks = generateTasksForDay(allActivities, dayNumber, currentWeek).map(task => ({
+      ...task,
+      description: `${task.description}${dayProgressionLabel[dayNumber] || ''}`,
+      done: false,
+    }))
     const nextTasks = Array.isArray(savedTasks) && savedTasks.length
       ? savedTasks
       : baseTasks
@@ -198,7 +207,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const completedToday = todaysTasks.filter(t => t.done).length
   const totalToday = todaysTasks.length
-  const todayScore = Math.round((completedToday / totalToday) * 100) || 0
 
   function getDaysCompleted(weekNumberToCheck) {
     let daysCount = 0
@@ -240,6 +248,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const prevWeekPulseDone = currentWeek === 1
     || localStorage.getItem(`phasr_weekly_pulse_w${currentWeek - 1}_done`) === 'true'
   const weekComplete = daysCompleted === 7
+  const isNewUser = completedTasksThisWeek === 0 && dayNumber === 1
+  const showPulseReminder = currentWeek > 1 && dayNumber > 1 && !prevWeekPulseDone
 
   const isDarkTheme = typeof document !== 'undefined' && document.documentElement.dataset.theme === 'neutral'
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -340,7 +350,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         <div style={{ height: 16 }} />
-        {hasPillars && currentWeek > 1 && !prevWeekPulseDone && (
+        {hasPillars && showPulseReminder && (
           <p
             style={{ fontSize: '0.7rem', color: '#e8407a', marginBottom: 8, cursor: 'pointer' }}
             onClick={openPulse}
@@ -349,71 +359,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </p>
         )}
 
-        {hasPillars && !weekComplete && (
-          <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a' }}>
-                Week {currentWeek} - Day {dayNumber} of 7
-              </p>
-              <p style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
-                {completedToday}/{totalToday}
-              </p>
-            </div>
-            <div style={{ height: 6, background: '#f2c4d0', borderRadius: 99, marginBottom: 6 }}>
-              <div style={{
-                height: '100%',
-                width: `${totalToday > 0 ? (completedToday / totalToday) * 100 : 0}%`,
-                background: completedToday === totalToday && totalToday > 0
-                  ? 'linear-gradient(90deg, #34d399, #059669)'
-                  : 'linear-gradient(90deg, #e8407a, #f472a8)',
-                borderRadius: 99,
-                transition: 'width 0.4s ease',
-              }} />
-            </div>
-            <p style={{ fontSize: '0.7rem', color: '#7a5a66' }}>
-              {completedToday === totalToday && totalToday > 0
-                ? 'All done today. Streak secured.'
-                : `${totalToday - completedToday} task${totalToday - completedToday !== 1 ? 's' : ''} left today`
-              }
-            </p>
-          </div>
-        )}
-
-        {hasPillars && weekComplete && !currentWeekPulseDone && (
-          <div style={{ background: 'linear-gradient(135deg, #fff5f7, #fffbfc)', border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
-            <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 4 }}>
-              Week {currentWeek} closed
-            </p>
-            <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4, fontFamily: 'Playfair Display, serif' }}>
-              {weekCompletionPercent}% completion
-            </p>
-            <p style={{ fontSize: '0.78rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
-              Two questions. Sage reads your week and tells you what matters going into week {currentWeek + 1}.
-            </p>
-            <button onClick={openPulse} style={{
-              width: '100%', padding: '0.75rem', borderRadius: 12, border: 'none',
-              background: 'linear-gradient(135deg, #e8407a, #f472a8)',
-              color: '#fff', fontSize: '0.85rem', fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-            }}>
-              Open Weekly Pulse
-            </button>
-          </div>
-        )}
-
-        {hasPillars && weekComplete && currentWeekPulseDone && (
-          <div style={{ background: '#fff', border: '1px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
-            <p style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b08090', marginBottom: 4 }}>
-              Week {currentWeek} closed
-            </p>
-            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#3d1f2b' }}>
-              {weekCompletionPercent}% complete
-            </p>
-            <p style={{ fontSize: '0.7rem', color: '#34d399', marginTop: 4 }}>
-              Reflection done. Week {currentWeek + 1} is open.
-            </p>
-          </div>
-        )}
 
         <div style={{
           background: '#fff', border: '1.5px solid #f2c4d0',
@@ -435,7 +380,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </p>
           </div>
 
-          {hasPillars && weekComplete && !currentWeekPulseDone && (
+          {hasPillars && isNewUser && (
+            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              Your week 1 starts today. Complete your daily tasks
+              and come back tomorrow. Sage will track your progress
+              and guide you as the week builds.
+            </p>
+          )}
+
+          {hasPillars && !isNewUser && weekComplete && !currentWeekPulseDone && (
             <>
               <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
                 Week {currentWeek} closed at {weekStreakPercent}%.
@@ -457,14 +410,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </>
           )}
 
-          {hasPillars && weekComplete && currentWeekPulseDone && (
+          {hasPillars && !isNewUser && weekComplete && currentWeekPulseDone && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               Week {currentWeek} done. Reflection complete.
               Week {currentWeek + 1} is open.
             </p>
           )}
 
-          {hasPillars && !weekComplete && !prevWeekPulseDone && currentWeek > 1 && (
+          {hasPillars && !isNewUser && !weekComplete && !prevWeekPulseDone && currentWeek > 1 && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               You are {dayNumber} days into week {currentWeek}.
               Your week {currentWeek - 1} reflection with Sage
@@ -479,7 +432,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </p>
           )}
 
-          {hasPillars && !weekComplete && prevWeekPulseDone && (
+          {hasPillars && !isNewUser && !weekComplete && prevWeekPulseDone && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               Day {dayNumber} of 7. You have completed{' '}
               {completedTasksThisWeek} of {totalTasksThisWeek} tasks
@@ -553,21 +506,23 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         {hasPillars && (
         <div style={{ background: shellSurface, border: `1px solid ${shellBorder}`, borderRadius: 22, padding: isMobile ? 14 : 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 800, color: shellText }}>
-              {selectedWeek?.weekLabel || 'Week 1'} Daily To-Do
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
+                Daily To-Do
+              </div>
+              <div style={{ fontSize: '0.65rem', color: '#b08090' }}>
+                Day {dayNumber} of 7
+              </div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
               {completedToday}/{totalToday}
             </div>
           </div>
-          <div style={{ fontSize: 11, color: shellMuted, marginBottom: 10 }}>
-            Day {dayNumber} of 7
-          </div>
 
           <div style={{ height: 8, borderRadius: 999, background: shellSurfaceAlt, overflow: 'hidden', marginBottom: 10 }}>
             <div
               style={{
-                width: `${todayScore}%`,
+                width: `${(daysCompleted / 7) * 100}%`,
                 height: '100%',
                 borderRadius: 999,
                 background: `linear-gradient(90deg,${accent},${accent2})`,
