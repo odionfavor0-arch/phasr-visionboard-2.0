@@ -54,6 +54,16 @@ function getRankMood(streak) {
   return { label: 'Beginner', sublabel: 'starting out' }
 }
 
+function getStageLevel(streak) {
+  if (streak >= 120) return { level: 7, label: 'Mastery', sublabel: 'long-term insight' }
+  if (streak >= 90) return { level: 6, label: 'Identity', sublabel: 'legacy unlocked' }
+  if (streak >= 60) return { level: 5, label: 'Depth', sublabel: 'harder truths open' }
+  if (streak >= 30) return { level: 4, label: 'Momentum', sublabel: 'reports unlocked' }
+  if (streak >= 14) return { level: 3, label: 'Pattern', sublabel: 'stats are live' }
+  if (streak >= 7) return { level: 2, label: 'Pulse', sublabel: 'weekly reflection active' }
+  return { level: 1, label: 'Starter', sublabel: 'learning you' }
+}
+
 function safeRead(key, fallback) {
   try {
     const raw = localStorage.getItem(key)
@@ -307,6 +317,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent2 = 'var(--app-accent2)'
   const currentStreak = summary.currentStreak || 0
   const rankMood = getRankMood(currentStreak)
+  const stageLevel = getStageLevel(currentStreak)
   const nextUnlock = UNLOCK_PATH.find(item => currentStreak < item.day) || null
   const lastUnlocked = [...UNLOCK_PATH].reverse().find(item => currentStreak >= item.day) || null
   const previousUnlockDay = nextUnlock
@@ -321,6 +332,28 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const pathBody = currentStreak > 0
     ? (nextUnlock ? `${lastUnlocked ? `Day ${lastUnlocked.day} is unlocked.` : 'You just started.'} ${daysAway} more day${daysAway === 1 ? '' : 's'} and your next layer opens.` : 'You have unlocked the full path. Keep building on what you started.')
     : 'Every day you complete your tasks, something builds. This is what you are working toward.'
+
+  useEffect(() => {
+    const unlockState = {
+      streakDays: currentStreak,
+      completedActionsThisWeek: completedTasksThisWeek,
+      rank: rankMood.label,
+      rankSubtitle: rankMood.sublabel,
+      stageLevel: stageLevel.level,
+      stageLabel: stageLevel.label,
+      personalizedSageMemory: currentStreak >= 3,
+      weeklyPulseUnlocked: currentStreak >= 7,
+      statisticsUnlocked: currentStreak >= 14,
+      monthlyReportUnlocked: currentStreak >= 30,
+      deeperTemplatesUnlocked: currentStreak >= 60,
+      phaseLegacyUnlocked: currentStreak >= 90,
+      masteryInsightsUnlocked: currentStreak >= 120,
+      unlockedDays: UNLOCK_PATH.filter(item => currentStreak >= item.day).map(item => item.day),
+    }
+
+    localStorage.setItem('phasr_unlock_state', JSON.stringify(unlockState))
+    window.dispatchEvent(new CustomEvent('phasr-unlocks-updated', { detail: unlockState }))
+  }, [currentStreak, completedTasksThisWeek, rankMood.label, rankMood.sublabel, stageLevel.level, stageLevel.label])
 
   function canAccessWeek(weekNumber) {
     if (weekNumber === 1) return true
@@ -565,9 +598,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 12 : 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
             <div style={{ background: '#fff8fa', border: '1px solid #f2c8d6', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Streak</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 24 : 30, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{currentStreak}</div>
-              <div style={{ fontSize: 11, color: '#8f6f7a' }}>days</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 24 : 30, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
+              <div style={{ fontSize: 11, color: '#8f6f7a' }}>done this week</div>
             </div>
             <div style={{ background: '#f7fff8', border: '1px solid #cfe7d5', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8aa596', marginBottom: 10 }}>Rank</div>
@@ -575,9 +608,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <div style={{ fontSize: 11, color: '#7f9388' }}>{rankMood.sublabel}</div>
             </div>
             <div style={{ background: '#faf7ff', border: '1px solid #d9cdee', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a8cb7', marginBottom: 10 }}>Next Unlock</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{nextUnlock ? `Day ${nextUnlock.day}` : 'All open'}</div>
-              <div style={{ fontSize: 11, color: '#9a8cb7' }}>{nextUnlock ? `${daysAway} day${daysAway === 1 ? '' : 's'} away` : 'everything active'}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a8cb7', marginBottom: 10 }}>Sage Level</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{`Level ${stageLevel.level}`}</div>
+              <div style={{ fontSize: 11, color: '#9a8cb7' }}>{stageLevel.label}</div>
             </div>
           </div>
         </div>
@@ -602,10 +635,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {UNLOCK_PATH.map(item => {
-                const unlocked = currentStreak >= item.day
-                const isNext = nextUnlock?.day === item.day
-                const isLatestUnlocked = lastUnlocked?.day === item.day
-                const showProgress = isNext
+              const unlocked = currentStreak >= item.day
+              const isNext = nextUnlock?.day === item.day
+              const isLatestUnlocked = lastUnlocked?.day === item.day
+              const showProgress = isNext
 
                 return (
                   <div key={item.day} style={{ position: 'relative' }}>
@@ -636,7 +669,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                         border: `1.5px solid ${isNext || isLatestUnlocked ? '#ef7ea7' : '#f2d9e2'}`,
                         borderRadius: 20,
                         padding: isMobile ? '14px 14px 12px' : '16px 16px 14px',
-                        opacity: unlocked || isNext ? 1 : 0.48,
+                        opacity: unlocked || isNext ? 1 : 0.34,
+                        filter: unlocked || isNext ? 'none' : 'blur(0.6px)',
                         boxShadow: isNext || isLatestUnlocked ? '0 10px 24px rgba(232,64,122,0.08)' : 'none',
                       }}
                     >
