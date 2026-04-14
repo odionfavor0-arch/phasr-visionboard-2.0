@@ -1,5 +1,43 @@
 import { useEffect, useMemo, useState } from 'react'
-import { buildWeeklyGoals, getLockInSummary, loadBoardData, loadLockInState, UNLOCK_TIERS } from '../lib/lockIn'
+import { buildWeeklyGoals, getLockInSummary, loadBoardData, loadLockInState } from '../lib/lockIn'
+
+const UNLOCK_PATH = [
+  {
+    day: 3,
+    title: 'First win',
+    description: 'Sage starts remembering what you said in your journal. Responses become more personal.',
+  },
+  {
+    day: 7,
+    title: 'Week complete',
+    description: 'Your first Weekly Pulse unlocks. Sage shows you patterns from your first week.',
+  },
+  {
+    day: 14,
+    title: 'Consistency confirmed',
+    description: 'Statistics page unlocks. See completion rate, strongest days, weak patterns.',
+  },
+  {
+    day: 30,
+    title: 'One month in',
+    description: 'Monthly report unlocks. One page summary of your progress and focus.',
+  },
+  {
+    day: 60,
+    title: 'Depth unlocked',
+    description: 'Reality Check and Unsent Message templates unlock.',
+  },
+  {
+    day: 90,
+    title: 'Identity',
+    description: 'Phase Legacy card generates. Who you were vs who you are now.',
+  },
+  {
+    day: 120,
+    title: 'Mastery',
+    description: 'Advanced insights, deeper pattern recognition, long-term tracking.',
+  },
+]
 
 function safeRead(key, fallback) {
   try {
@@ -144,12 +182,6 @@ function countWeekTasksDone(scope, week) {
     done += tasks.filter(item => item.done).length
   }
   return done
-}
-
-function tierState(summary, tier) {
-  if (summary.currentStreak >= tier.minStreak) return 'done'
-  if (summary.nextTier?.id === tier.id) return 'next'
-  return 'locked'
 }
 
 export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse }) {
@@ -521,28 +553,61 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{ height: 18 }} />
 
-        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>Unlock Path</div>
-          <div style={{ fontSize: 12, color: '#7e5d68', marginBottom: 14 }}>Day 3 is encouragement. Day 14 unlocks real control.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {UNLOCK_TIERS.map(tier => {
-              const unlocked = summary.currentStreak >= tier.minStreak
-              const progress = tier.minStreak ? Math.min(100, Math.round((summary.currentStreak / tier.minStreak) * 100)) : 0
+        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 14 : 16 }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: accent, marginBottom: 6 }}>
+              Your Path
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#8c6f7a' }}>
+              Consistency reveals more over time.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {UNLOCK_PATH.map(item => {
+              const unlocked = summary.currentStreak >= item.day
+
               return (
-                <div key={tier.id} style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 16, padding: '16px', opacity: unlocked ? 1 : 0.7 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8d7bb0', marginBottom: 10 }}>Tier {tier.id}</div>
-                  <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 700, color: '#24131f', marginBottom: 10 }}>{tier.name}</div>
-                  <div style={{ fontSize: 13, color: '#7e5d68', lineHeight: 1.7, marginBottom: 12 }}>{tier.reward}</div>
-                  {tierState(summary, tier) === 'done' ? (
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>Unlocked</div>
-                  ) : (
-                    <>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>Unlock at {tier.minStreak} days</div>
-                      <div style={{ height: 6, borderRadius: 999, background: '#fff6f9', overflow: 'hidden', marginTop: 8 }}>
-                        <div style={{ width: `${progress}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg,${accent},${accent2})` }} />
-                      </div>
-                    </>
-                  )}
+                <div
+                  key={item.day}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: isMobile ? '14px 12px' : '14px',
+                    borderRadius: 14,
+                    background: '#fff5f7',
+                    border: '1px solid #f2c4d0',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        border: '2px solid #e8407a',
+                        background: unlocked ? '#e8407a' : 'transparent',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 4 }}>
+                      {item.title}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#7a5a65', lineHeight: 1.6 }}>
+                      {item.description}
+                    </div>
+                  </div>
+
+                  <div style={{ flexShrink: 0, textAlign: 'right', fontSize: '0.7rem' }}>
+                    {unlocked ? (
+                      <span style={{ color: '#e8407a', fontWeight: 600 }}>Unlocked</span>
+                    ) : (
+                      <span style={{ color: '#b89aa5' }}>Day {item.day}</span>
+                    )}
+                  </div>
                 </div>
               )
             })}
