@@ -593,7 +593,9 @@ function getPlanDescription(pillar) {
 }
 
 function hasCorePlanInputs(pillar) {
-  return Boolean(cleanText(pillar?.beforeState) && cleanText(pillar?.afterState))
+  const before = cleanText(pillar?.beforeState) || cleanText(pillar?.beforeDesc)
+  const after = cleanText(pillar?.afterState) || cleanText(pillar?.afterDesc)
+  return Boolean(before && after)
 }
 
 function hasVisualPlanInputs(pillar) {
@@ -1726,7 +1728,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const dailyPlan = getDailyTaskPlan({ ...data, activePhaseId: phaseId })
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
 
-  const todayTask = currentTodo?.task || 'Complete 1 action from your current phase'
+  const todayTask = currentTodo?.task || 'Complete 1 action from your phase'
   const weeklyPlan = phase?.pillars?.flatMap(p => {
     const tasks = (p.weeklyActions || []).filter(Boolean)
     const fallbackTasks = tasks.length ? tasks : (p.activities || []).filter(Boolean).slice(0, 3)
@@ -1773,13 +1775,12 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               Today's Task - {phaseDisplayName}
             </p>
             <p style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 600, color: '#fff', lineHeight: isMobile ? 1.3 : 1.45, maxWidth: isMobile ? 190 : 'none' }}>
-              {isMobile ? 'Complete 1 action from your phase' : todayTask}
+              {todayTask}
             </p>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => onOpenDailyStreak?.()} style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.7rem' : '0.86rem' }}>
-              <span style={{ width: isMobile ? 12 : 14, height: isMobile ? 12 : 14, borderRadius: '50%', background: '#fff', opacity: lockInSummary?.mode === 'broken' ? 0.45 : 0.95, boxShadow: lockInSummary?.mode === 'broken' ? 'none' : '0 0 0 4px rgba(255,255,255,0.16)' }} />
-              {lockInSummary?.mode === 'broken' ? 'Streak Paused' : 'Streak Active'}
+              {isMobile ? 'Start' : 'Complete action'}
             </button>
           </div>
 
@@ -2510,8 +2511,8 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
 /* â”€â”€ Pillar Card â”€â”€ */
   function PillarCard({ pl, editing, checked, phaseId, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, onCalendarOpen, calendarEvents = [], isPro }) {
-    const beforeReady = cleanText(pl.beforeState)
-    const afterReady = cleanText(pl.afterState)
+    const beforeReady = cleanText(pl.beforeState) || cleanText(pl.beforeDesc)
+    const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
     const hasImageContext = Boolean(pl.beforeImage || pl.afterImage)
     const canGeneratePlan = Boolean(beforeReady && afterReady && hasImageContext)
     const hasGeneratedPlan = Boolean(pl.planGeneratedFrom && !isPlanBlank(pl))
@@ -2594,7 +2595,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
           {editing && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderRadius: 12, padding: '0.7rem 0.8rem', background: '#fff8fb', border: '1px dashed var(--app-border)' }}>
               <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                {canGeneratePlan ? 'Generate a Sage plan from this image plus your before and after states.' : 'Add a photo plus your before and after states to generate your plan.'}
+                {canGeneratePlan ? 'Generate a Sage plan from this image plus your before and after details.' : 'Add a photo plus your before and after details to generate your plan.'}
               </p>
               <button
                 type="button"

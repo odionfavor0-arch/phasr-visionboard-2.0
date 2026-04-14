@@ -284,7 +284,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   function handlePhaseChange(nextPhaseId) {
-    if (nextPhaseId === activePhaseId) return
+    if (nextPhaseId === activePhaseId) {
+      onOpenBoard?.()
+      return
+    }
     const currentIndex = phases.findIndex(item => item.id === activePhaseId)
     const nextIndex = phases.findIndex(item => item.id === nextPhaseId)
     if (currentIndex >= 0 && nextIndex > currentIndex) {
