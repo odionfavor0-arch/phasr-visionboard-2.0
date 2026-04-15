@@ -47,6 +47,7 @@ const UNLOCK_PATH = [
 ]
 
 const UNLOCK_CARD_HIDE_KEY = 'phasr_unlock_card_hidden_until'
+const UNLOCKED_MILESTONES_KEY = 'phasr_unlocked_milestones'
 
 function getTodayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -237,13 +238,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [sageCardExpanded, setSageCardExpanded] = useState(true)
   const [unlockCardState, setUnlockCardState] = useState('active')
   const [displayMilestoneDay, setDisplayMilestoneDay] = useState(UNLOCK_PATH[0].day)
+  const [unlockedMilestones, setUnlockedMilestones] = useState(() => safeRead(UNLOCKED_MILESTONES_KEY, []))
   const [unlockCardVisible, setUnlockCardVisible] = useState(() => {
     if (typeof window === 'undefined') return true
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
     return !hiddenUntil || hiddenUntil <= getTodayIso()
   })
   const [unlockHovering, setUnlockHovering] = useState(false)
-  const previousStreakRef = useRef(0)
+  const unlockTimersRef = useRef({ transition: null, enter: null })
 
   useEffect(() => {
     const sync = () => {
@@ -353,15 +355,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const rankMood = getRankMood(currentStreak)
   const stageLevel = getStageLevel(currentStreak)
   const progressStreak = isNewUser ? 0 : Math.max(currentStreak, ((currentWeek - 1) * 7) + currentDisplayedDay)
-  const nextUnlock = UNLOCK_PATH.find(item => item.day > overallDaysDone) || null
-  const reachedMilestone = UNLOCK_PATH.find(item => item.day === overallDaysDone) || null
-  const latestUnlockedMilestone = [...UNLOCK_PATH].reverse().find(item => item.day <= overallDaysDone) || null
+  const normalizedUnlocked = Array.isArray(unlockedMilestones) ? unlockedMilestones.filter(Number.isFinite) : []
+  const nextUnlock = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day)) || null
   const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || nextUnlock || UNLOCK_PATH[UNLOCK_PATH.length - 1]
   const progress = displayedMilestone ? Math.max(0, Math.min(1, progressStreak / displayedMilestone.day)) : 1
   const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressStreak) : 0
-  const milestoneUnlocked = Boolean(displayedMilestone && overallDaysDone >= displayedMilestone.day)
-  const milestoneReadyByTime = Boolean(displayedMilestone && progressStreak >= displayedMilestone.day)
-  const activationPending = milestoneReadyByTime && !milestoneUnlocked
+  const milestoneUnlocked = Boolean(displayedMilestone && normalizedUnlocked.includes(displayedMilestone.day))
+
+  useEffect(() => {
+    safeWrite(UNLOCKED_MILESTONES_KEY, normalizedUnlocked)
+  }, [normalizedUnlocked])
 
   useEffect(() => {
     const unlockState = {
@@ -371,19 +374,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       rankSubtitle: rankMood.sublabel,
       stageLevel: stageLevel.level,
       stageLabel: stageLevel.label,
-      personalizedSageMemory: overallDaysDone >= 3,
-      weeklyPulseUnlocked: overallDaysDone >= 7,
-      statisticsUnlocked: overallDaysDone >= 14,
-      monthlyReportUnlocked: overallDaysDone >= 30,
-      deeperTemplatesUnlocked: overallDaysDone >= 60,
-      phaseLegacyUnlocked: overallDaysDone >= 90,
-      masteryInsightsUnlocked: overallDaysDone >= 120,
-      unlockedDays: UNLOCK_PATH.filter(item => overallDaysDone >= item.day).map(item => item.day),
+      personalizedSageMemory: normalizedUnlocked.includes(3),
+      weeklyPulseUnlocked: normalizedUnlocked.includes(7),
+      statisticsUnlocked: normalizedUnlocked.includes(14),
+      monthlyReportUnlocked: normalizedUnlocked.includes(30),
+      deeperTemplatesUnlocked: normalizedUnlocked.includes(60),
+      phaseLegacyUnlocked: normalizedUnlocked.includes(90),
+      masteryInsightsUnlocked: normalizedUnlocked.includes(120),
+      unlockedDays: normalizedUnlocked,
     }
 
     localStorage.setItem('phasr_unlock_state', JSON.stringify(unlockState))
     window.dispatchEvent(new CustomEvent('phasr-unlocks-updated', { detail: unlockState }))
-  }, [currentStreak, completedTasksThisWeek, overallDaysDone, rankMood.label, rankMood.sublabel, stageLevel.level, stageLevel.label])
+  }, [currentStreak, completedTasksThisWeek, normalizedUnlocked, rankMood.label, rankMood.sublabel, stageLevel.level, stageLevel.label])
 
   useEffect(() => {
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
@@ -391,42 +394,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [refresh, currentStreak])
 
   useEffect(() => {
-    const previousStreak = previousStreakRef.current
-    const hitMilestone = reachedMilestone && overallDaysDone > previousStreak
-
-    let unlockTimer
-    let transitionTimer
-    let enterTimer
-
-    if (hitMilestone) {
-      setDisplayMilestoneDay(reachedMilestone.day)
-      setUnlockCardState('unlock')
-
-      transitionTimer = window.setTimeout(() => {
-        setUnlockCardState('transition')
-      }, 1400)
-
-      enterTimer = window.setTimeout(() => {
-        const upcoming = UNLOCK_PATH.find(item => item.day > overallDaysDone)
-        if (upcoming) {
-          setDisplayMilestoneDay(upcoming.day)
-          setUnlockCardState('active')
-        }
-      }, 1650)
-    } else {
-      const upcoming = UNLOCK_PATH.find(item => item.day > overallDaysDone) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
-      setDisplayMilestoneDay(upcoming.day)
-      setUnlockCardState('active')
-    }
-
-    previousStreakRef.current = overallDaysDone
-
-    return () => {
-      window.clearTimeout(unlockTimer)
-      window.clearTimeout(transitionTimer)
-      window.clearTimeout(enterTimer)
-    }
-  }, [overallDaysDone, reachedMilestone])
+    const upcoming = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day)) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
+    setDisplayMilestoneDay(upcoming.day)
+    setUnlockCardState('active')
+  }, [normalizedUnlocked])
 
   function canAccessWeek(weekNumber) {
     if (weekNumber === 1) return true
@@ -440,6 +411,31 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setTasks(updated)
     setLockInState(loadLockInState())
     onLockInChange?.()
+
+    const allDoneToday = updated.length > 0 && updated.every(item => item.done)
+    const milestone = displayedMilestone
+    if (!allDoneToday || !milestone) return
+    if (normalizedUnlocked.includes(milestone.day)) return
+    if (progressStreak < milestone.day) return
+
+    setUnlockedMilestones(prev => {
+      const list = Array.isArray(prev) ? prev.slice() : []
+      if (!list.includes(milestone.day)) list.push(milestone.day)
+      return list.sort((a, b) => a - b)
+    })
+
+    setUnlockCardState('unlock')
+    setDisplayMilestoneDay(milestone.day)
+
+    if (unlockTimersRef.current.transition) window.clearTimeout(unlockTimersRef.current.transition)
+    if (unlockTimersRef.current.enter) window.clearTimeout(unlockTimersRef.current.enter)
+
+    unlockTimersRef.current.transition = window.setTimeout(() => setUnlockCardState('transition'), 1400)
+    unlockTimersRef.current.enter = window.setTimeout(() => {
+      const upcoming = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day) && item.day !== milestone.day) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
+      setDisplayMilestoneDay(upcoming.day)
+      setUnlockCardState('active')
+    }, 1650)
   }
 
   function openPulse() {
@@ -818,11 +814,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </div>
 
               <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.36rem 0.7rem', borderRadius: 999, border: '1px solid #ef7ea7', color: '#e8407a', fontSize: '0.75rem', fontWeight: 700, marginBottom: 12 }}>
-                {milestoneUnlocked && latestUnlockedMilestone?.day === displayedMilestone.day
-                  ? '✓ Active'
-                  : activationPending
-                  ? "Ready · complete today's tasks to activate"
-                  : `Next unlock · ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}
+                {milestoneUnlocked ? '✓ Active' : `Next unlock · ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -833,7 +825,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                       height: '100%',
                       borderRadius: 999,
                       background: 'linear-gradient(90deg, #ef5d90, #f4a3bf)',
-                      opacity: activationPending ? 0.55 : 1,
                       transition: 'width 600ms ease',
                     }}
                   />
