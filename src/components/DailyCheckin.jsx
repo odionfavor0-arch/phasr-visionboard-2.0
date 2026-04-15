@@ -239,6 +239,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [unlockCardState, setUnlockCardState] = useState('active')
   const [displayMilestoneDay, setDisplayMilestoneDay] = useState(UNLOCK_PATH[0].day)
   const [unlockedMilestones, setUnlockedMilestones] = useState(() => safeRead(UNLOCKED_MILESTONES_KEY, []))
+  const [recentlyUnlockedDay, setRecentlyUnlockedDay] = useState(null)
   const [unlockCardVisible, setUnlockCardVisible] = useState(() => {
     if (typeof window === 'undefined') return true
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
@@ -357,10 +358,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const progressStreak = isNewUser ? 0 : Math.max(currentStreak, ((currentWeek - 1) * 7) + currentDisplayedDay)
   const normalizedUnlocked = Array.isArray(unlockedMilestones) ? unlockedMilestones.filter(Number.isFinite) : []
   const nextUnlock = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day)) || null
+  const latestUnlocked = [...UNLOCK_PATH].reverse().find(item => normalizedUnlocked.includes(item.day)) || null
   const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || nextUnlock || UNLOCK_PATH[UNLOCK_PATH.length - 1]
   const progress = displayedMilestone ? Math.max(0, Math.min(1, progressStreak / displayedMilestone.day)) : 1
   const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressStreak) : 0
-  const milestoneUnlocked = Boolean(displayedMilestone && normalizedUnlocked.includes(displayedMilestone.day))
+  const milestoneActivated = Boolean(displayedMilestone && (normalizedUnlocked.includes(displayedMilestone.day) || recentlyUnlockedDay === displayedMilestone.day))
 
   useEffect(() => {
     safeWrite(UNLOCKED_MILESTONES_KEY, normalizedUnlocked)
@@ -412,31 +414,50 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setLockInState(loadLockInState())
     onLockInChange?.()
 
-    const allDoneToday = updated.length > 0 && updated.every(item => item.done)
     const milestone = displayedMilestone
-    if (!allDoneToday || !milestone) return
-    if (normalizedUnlocked.includes(milestone.day)) return
-    if (progressStreak < milestone.day) return
+    const allDoneToday = updated.length > 0 && updated.every(item => item.done)
+    if (milestone && allDoneToday && progressStreak >= milestone.day) {
+      unlockMilestoneNow(milestone.day)
+    }
+  }
 
+  function unlockMilestoneNow(milestoneDay) {
+    if (!milestoneDay) return
+    if (normalizedUnlocked.includes(milestoneDay)) return
+
+    setRecentlyUnlockedDay(milestoneDay)
     setUnlockedMilestones(prev => {
       const list = Array.isArray(prev) ? prev.slice() : []
-      if (!list.includes(milestone.day)) list.push(milestone.day)
+      if (!list.includes(milestoneDay)) list.push(milestoneDay)
       return list.sort((a, b) => a - b)
     })
 
     setUnlockCardState('unlock')
-    setDisplayMilestoneDay(milestone.day)
+    setDisplayMilestoneDay(milestoneDay)
 
     if (unlockTimersRef.current.transition) window.clearTimeout(unlockTimersRef.current.transition)
     if (unlockTimersRef.current.enter) window.clearTimeout(unlockTimersRef.current.enter)
 
     unlockTimersRef.current.transition = window.setTimeout(() => setUnlockCardState('transition'), 1400)
     unlockTimersRef.current.enter = window.setTimeout(() => {
-      const upcoming = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day) && item.day !== milestone.day) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
+      const upcoming = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day) && item.day !== milestoneDay) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
       setDisplayMilestoneDay(upcoming.day)
       setUnlockCardState('active')
+      setRecentlyUnlockedDay(null)
     }, 1650)
   }
+
+  // If the user already completed today's tasks, unlock immediately (no extra tap required).
+  useEffect(() => {
+    const milestone = displayedMilestone
+    if (!hasPillars || !milestone) return
+    if (normalizedUnlocked.includes(milestone.day)) return
+    const allDoneToday = tasks.length > 0 && tasks.every(item => item.done)
+    if (!allDoneToday) return
+    if (progressStreak < milestone.day) return
+    unlockMilestoneNow(milestone.day)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, hasPillars, displayedMilestone?.day, progressStreak, normalizedUnlocked.join('|')])
 
   function openPulse() {
     onOpenWeeklyPulse?.({
@@ -685,7 +706,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
             <div style={{ background: '#fff8fa', border: '1px solid #f2c8d6', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 18 : 30, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 28, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
               <div style={{ fontSize: 11, color: '#8f6f7a' }}>done this week</div>
             </div>
             <div style={{ background: '#f7fff8', border: '1px solid #cfe7d5', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
@@ -755,7 +776,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   transition: 'opacity 180ms ease',
                 }}
               >
-                ×
+                x
               </button>
             </div>
           )}
@@ -763,7 +784,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         {unlockCardVisible && displayedMilestone ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {latestUnlockedMilestone && latestUnlockedMilestone.day < displayedMilestone.day ? (
+            {latestUnlocked && latestUnlocked.day < displayedMilestone.day ? (
               <div
                 style={{
                   background: '#fffafc',
@@ -776,16 +797,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 }}
               >
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e8407a', marginBottom: 8 }}>
-                  {`Day ${latestUnlockedMilestone.day} — Unlocked`}
+                  {`Day ${latestUnlocked.day} - Unlocked`}
                 </div>
                 <div style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? '1.05rem' : '1.22rem', lineHeight: 1.2, color: '#3d1f2b', marginBottom: 8 }}>
-                  {latestUnlockedMilestone.description}
+                  {latestUnlocked.description}
                 </div>
                 <div style={{ fontSize: '0.82rem', color: '#7a5a65', lineHeight: 1.6, marginBottom: 14 }}>
-                  {latestUnlockedMilestone.detail}
+                  {latestUnlocked.detail}
                 </div>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0.75rem', borderRadius: 999, background: '#ef5d90', color: '#fff', fontSize: '0.75rem', fontWeight: 700 }}>
-                  ✓ Active
+                  Active
                 </div>
               </div>
             ) : null}
@@ -814,7 +835,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </div>
 
               <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.36rem 0.7rem', borderRadius: 999, border: '1px solid #ef7ea7', color: '#e8407a', fontSize: '0.75rem', fontWeight: 700, marginBottom: 12 }}>
-                {milestoneUnlocked ? '✓ Active' : `Next unlock · ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}
+                {milestoneActivated ? 'Active' : `Next unlock - ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
