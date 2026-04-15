@@ -48,6 +48,8 @@ const UNLOCK_PATH = [
 
 const UNLOCK_CARD_HIDE_KEY = 'phasr_unlock_card_hidden_until'
 const UNLOCKED_MILESTONES_KEY = 'phasr_unlocked_milestones'
+const UNLOCK_MILESTONE_INDEX_KEY = 'phasr_unlock_milestone_index'
+const UNLOCK_BASELINE_DAYS_KEY = 'phasr_unlock_baseline_days'
 
 function getTodayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -239,6 +241,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [unlockCardState, setUnlockCardState] = useState('active')
   const [displayMilestoneDay, setDisplayMilestoneDay] = useState(UNLOCK_PATH[0].day)
   const [unlockedMilestones, setUnlockedMilestones] = useState(() => safeRead(UNLOCKED_MILESTONES_KEY, []))
+  const [unlockMilestoneIndex, setUnlockMilestoneIndex] = useState(() => Number(localStorage.getItem(UNLOCK_MILESTONE_INDEX_KEY) || 0) || 0)
+  const [unlockBaselineDays, setUnlockBaselineDays] = useState(() => Number(localStorage.getItem(UNLOCK_BASELINE_DAYS_KEY) || 0) || 0)
   const [recentlyUnlockedDay, setRecentlyUnlockedDay] = useState(null)
   const [unlockCardVisible, setUnlockCardVisible] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -357,16 +361,41 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const stageLevel = getStageLevel(currentStreak)
   const progressStreak = isNewUser ? 0 : Math.max(currentStreak, ((currentWeek - 1) * 7) + currentDisplayedDay)
   const normalizedUnlocked = Array.isArray(unlockedMilestones) ? unlockedMilestones.filter(Number.isFinite) : []
-  const nextUnlock = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day)) || null
   const latestUnlocked = [...UNLOCK_PATH].reverse().find(item => normalizedUnlocked.includes(item.day)) || null
-  const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || nextUnlock || UNLOCK_PATH[UNLOCK_PATH.length - 1]
-  const progress = displayedMilestone ? Math.max(0, Math.min(1, progressStreak / displayedMilestone.day)) : 1
-  const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressStreak) : 0
+  const inferredBaselineDays = useMemo(() => normalizedUnlocked.reduce((sum, day) => sum + day, 0), [normalizedUnlocked])
+  const safeBaselineDays = useMemo(() => {
+    const baseline = Number.isFinite(unlockBaselineDays) ? unlockBaselineDays : 0
+    if (baseline < 0) return 0
+    if (baseline > overallDaysDone && inferredBaselineDays <= overallDaysDone) return inferredBaselineDays
+    return baseline
+  }, [unlockBaselineDays, overallDaysDone, inferredBaselineDays])
+  const progressDays = Math.max(0, overallDaysDone - safeBaselineDays)
+  const upcomingMilestone = UNLOCK_PATH[Math.min(Math.max(0, unlockMilestoneIndex), UNLOCK_PATH.length - 1)] || UNLOCK_PATH[0]
+  const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || upcomingMilestone
+  const progress = displayedMilestone ? Math.max(0, Math.min(1, progressDays / displayedMilestone.day)) : 1
+  const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressDays) : 0
   const milestoneActivated = Boolean(displayedMilestone && (normalizedUnlocked.includes(displayedMilestone.day) || recentlyUnlockedDay === displayedMilestone.day))
 
   useEffect(() => {
     safeWrite(UNLOCKED_MILESTONES_KEY, normalizedUnlocked)
   }, [normalizedUnlocked])
+
+  useEffect(() => {
+    // Keep the new milestone system stable for existing users by inferring baseline from unlocked milestones once.
+    if (!localStorage.getItem(UNLOCK_BASELINE_DAYS_KEY) && inferredBaselineDays > 0) {
+      localStorage.setItem(UNLOCK_BASELINE_DAYS_KEY, String(inferredBaselineDays))
+      setUnlockBaselineDays(inferredBaselineDays)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inferredBaselineDays])
+
+  useEffect(() => {
+    localStorage.setItem(UNLOCK_MILESTONE_INDEX_KEY, String(Math.max(0, Math.min(unlockMilestoneIndex, UNLOCK_PATH.length - 1))))
+  }, [unlockMilestoneIndex])
+
+  useEffect(() => {
+    localStorage.setItem(UNLOCK_BASELINE_DAYS_KEY, String(Math.max(0, safeBaselineDays)))
+  }, [safeBaselineDays])
 
   useEffect(() => {
     const unlockState = {
@@ -396,10 +425,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [refresh, currentStreak])
 
   useEffect(() => {
-    const upcoming = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day)) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
-    setDisplayMilestoneDay(upcoming.day)
-    setUnlockCardState('active')
+    // Unlocks are sequential; milestone index tracks the next interval milestone.
+    const nextIndex = Math.min(normalizedUnlocked.length, UNLOCK_PATH.length - 1)
+    if (nextIndex !== unlockMilestoneIndex) setUnlockMilestoneIndex(nextIndex)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [normalizedUnlocked])
+
+  useEffect(() => {
+    setDisplayMilestoneDay(upcomingMilestone.day)
+    setUnlockCardState('active')
+  }, [upcomingMilestone.day])
 
   function canAccessWeek(weekNumber) {
     if (weekNumber === 1) return true
@@ -408,6 +443,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   function toggleTask(taskId) {
+    const allDoneBefore = tasks.length > 0 && tasks.every(item => item.done)
     const updated = tasks.map(item => item.id === taskId ? { ...item, done: !item.done } : item)
     safeWrite(taskKey(phaseScope, activeWeek, displayedDay), updated)
     setTasks(updated)
@@ -416,12 +452,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
     const milestone = displayedMilestone
     const allDoneToday = updated.length > 0 && updated.every(item => item.done)
-    if (milestone && allDoneToday && progressStreak >= milestone.day) {
-      unlockMilestoneNow(milestone.day)
+    const dayJustCompleted = allDoneToday && !allDoneBefore
+    const projectedOverallDaysDone = overallDaysDone + (dayJustCompleted ? 1 : 0)
+    const projectedProgressDays = Math.max(0, projectedOverallDaysDone - safeBaselineDays)
+
+    if (milestone && allDoneToday && projectedProgressDays >= milestone.day) {
+      unlockMilestoneNow(milestone.day, projectedOverallDaysDone)
     }
   }
 
-  function unlockMilestoneNow(milestoneDay) {
+  function unlockMilestoneNow(milestoneDay, nextBaselineDays) {
     if (!milestoneDay) return
     if (normalizedUnlocked.includes(milestoneDay)) return
 
@@ -434,13 +474,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
     setUnlockCardState('unlock')
     setDisplayMilestoneDay(milestoneDay)
+    if (Number.isFinite(nextBaselineDays)) setUnlockBaselineDays(Math.max(0, Number(nextBaselineDays)))
 
     if (unlockTimersRef.current.transition) window.clearTimeout(unlockTimersRef.current.transition)
     if (unlockTimersRef.current.enter) window.clearTimeout(unlockTimersRef.current.enter)
 
     unlockTimersRef.current.transition = window.setTimeout(() => setUnlockCardState('transition'), 1400)
     unlockTimersRef.current.enter = window.setTimeout(() => {
-      const upcoming = UNLOCK_PATH.find(item => !normalizedUnlocked.includes(item.day) && item.day !== milestoneDay) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
+      const currentIndex = UNLOCK_PATH.findIndex(item => item.day === milestoneDay)
+      const nextIndex = Math.min(Math.max(0, currentIndex + 1), UNLOCK_PATH.length - 1)
+      const upcoming = UNLOCK_PATH[nextIndex] || UNLOCK_PATH[UNLOCK_PATH.length - 1]
+      setUnlockMilestoneIndex(nextIndex)
       setDisplayMilestoneDay(upcoming.day)
       setUnlockCardState('active')
       setRecentlyUnlockedDay(null)
@@ -454,10 +498,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     if (normalizedUnlocked.includes(milestone.day)) return
     const allDoneToday = tasks.length > 0 && tasks.every(item => item.done)
     if (!allDoneToday) return
-    if (progressStreak < milestone.day) return
-    unlockMilestoneNow(milestone.day)
+    if (progressDays < milestone.day) return
+    unlockMilestoneNow(milestone.day, overallDaysDone)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, hasPillars, displayedMilestone?.day, progressStreak, normalizedUnlocked.join('|')])
+  }, [tasks, hasPillars, displayedMilestone?.day, progressDays, overallDaysDone, normalizedUnlocked.join('|')])
 
   function openPulse() {
     onOpenWeeklyPulse?.({
@@ -776,7 +820,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   transition: 'opacity 180ms ease',
                 }}
               >
-                x
+                Hide for now
               </button>
             </div>
           )}

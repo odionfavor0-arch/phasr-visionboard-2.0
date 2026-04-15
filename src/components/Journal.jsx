@@ -453,8 +453,10 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
         messages: [
           {
             role: 'system',
-            content: isWeeklyPulse
-              ? `The user just completed their weekly pulse reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
+             content: isWeeklyPulse
+               ? `The user just completed their weekly pulse reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
+
+Weekly Pulse is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
 
 Respond the way a sharp warm honest friend would respond if they received this as a voice note. Not a therapist. Not a coach. A real person who absorbed everything they said.
 
@@ -768,6 +770,18 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const weeklySession = entry?.weeklyPulseSession || null
   const sessionMessages = Array.isArray(weeklySession?.messages) ? weeklySession.messages : []
   const sessionCompleted = Boolean(weeklySession?.completedAt || weeklySession?.status === 'completed')
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const tomorrowIso = (() => {
+    const next = new Date()
+    next.setDate(next.getDate() + 1)
+    return next.toISOString().slice(0, 10)
+  })()
+  const sessionCtaHideKey = entry?.id ? `phasr_weekly_session_cta_hidden_until_${entry.id}` : ''
+  const [sessionCtaHidden, setSessionCtaHidden] = useState(() => {
+    if (!sessionCtaHideKey) return false
+    const hiddenUntil = localStorage.getItem(sessionCtaHideKey)
+    return Boolean(hiddenUntil && hiddenUntil > todayIso)
+  })
 
   function speakResponse() {
     if (!window.speechSynthesis || !entry?.sageResponse) return
@@ -781,6 +795,12 @@ function EntryDetail({ entry, onBack, onEdit }) {
     if (!entry?.id) return
     window.dispatchEvent(new CustomEvent('phasr-weekly-session-start', { detail: { entryId: entry.id } }))
     window.dispatchEvent(new Event('phasr-open-sage-float'))
+  }
+
+  function hideWeeklySessionCtaForToday() {
+    if (!sessionCtaHideKey) return
+    localStorage.setItem(sessionCtaHideKey, tomorrowIso)
+    setSessionCtaHidden(true)
   }
 
   return (
@@ -802,24 +822,64 @@ function EntryDetail({ entry, onBack, onEdit }) {
                 <p style={sectionLabelStyle}>Sage's Response</p>
                 <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
               </div>
-              <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
-              <button
-                type="button"
-                onClick={openWeeklySession}
-                style={{
-                  justifySelf: 'start',
-                  border: '1px solid #f2c4d0',
-                  background: '#fff',
-                  borderRadius: 999,
-                  padding: '0.55rem 0.85rem',
-                  fontWeight: 800,
-                  color: 'var(--app-accent)',
-                  cursor: 'pointer',
-                  fontSize: '0.84rem',
-                }}
-              >
-                {sessionCompleted ? 'View session with Sage' : 'Talk it through with Sage'}
-              </button>
+               <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
+              {!sessionCtaHidden ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={openWeeklySession}
+                    style={{
+                      justifySelf: 'start',
+                      border: 'none',
+                      background: '#e8407a',
+                      borderRadius: 14,
+                      padding: '0.72rem 1rem',
+                      fontWeight: 800,
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      boxShadow: '0 10px 18px rgba(232,64,122,0.24)',
+                    }}
+                  >
+                    {sessionCompleted ? 'View your session with Sage' : 'Talk it through with Sage'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={hideWeeklySessionCtaForToday}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#b08090',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    Hide for now
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSessionCtaHidden(false)}
+                  style={{
+                    justifySelf: 'start',
+                    border: '1px solid #f2c4d0',
+                    background: '#fff',
+                    borderRadius: 999,
+                    padding: '0.45rem 0.8rem',
+                    fontWeight: 800,
+                    color: 'var(--app-accent)',
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  Session with Sage
+                </button>
+              )}
             </div>
             <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
               <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
