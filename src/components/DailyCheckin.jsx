@@ -349,15 +349,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
   const currentStreak = summary.currentStreak || 0
+  const overallDaysDone = useMemo(() => weekStatuses.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0), [weekStatuses])
   const rankMood = getRankMood(currentStreak)
   const stageLevel = getStageLevel(currentStreak)
   const progressStreak = isNewUser ? 0 : Math.max(currentStreak, ((currentWeek - 1) * 7) + currentDisplayedDay)
-  const nextUnlock = UNLOCK_PATH.find(item => item.day > currentStreak) || null
-  const reachedMilestone = UNLOCK_PATH.find(item => item.day === currentStreak) || null
-  const latestUnlockedMilestone = [...UNLOCK_PATH].reverse().find(item => item.day <= currentStreak) || null
+  const nextUnlock = UNLOCK_PATH.find(item => item.day > overallDaysDone) || null
+  const reachedMilestone = UNLOCK_PATH.find(item => item.day === overallDaysDone) || null
+  const latestUnlockedMilestone = [...UNLOCK_PATH].reverse().find(item => item.day <= overallDaysDone) || null
   const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || nextUnlock || UNLOCK_PATH[UNLOCK_PATH.length - 1]
   const progress = displayedMilestone ? Math.max(0, Math.min(1, progressStreak / displayedMilestone.day)) : 1
   const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressStreak) : 0
+  const milestoneUnlocked = Boolean(displayedMilestone && overallDaysDone >= displayedMilestone.day)
+  const milestoneReadyByTime = Boolean(displayedMilestone && progressStreak >= displayedMilestone.day)
+  const activationPending = milestoneReadyByTime && !milestoneUnlocked
 
   useEffect(() => {
     const unlockState = {
@@ -367,19 +371,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       rankSubtitle: rankMood.sublabel,
       stageLevel: stageLevel.level,
       stageLabel: stageLevel.label,
-      personalizedSageMemory: currentStreak >= 3,
-      weeklyPulseUnlocked: currentStreak >= 7,
-      statisticsUnlocked: currentStreak >= 14,
-      monthlyReportUnlocked: currentStreak >= 30,
-      deeperTemplatesUnlocked: currentStreak >= 60,
-      phaseLegacyUnlocked: currentStreak >= 90,
-      masteryInsightsUnlocked: currentStreak >= 120,
-      unlockedDays: UNLOCK_PATH.filter(item => currentStreak >= item.day).map(item => item.day),
+      personalizedSageMemory: overallDaysDone >= 3,
+      weeklyPulseUnlocked: overallDaysDone >= 7,
+      statisticsUnlocked: overallDaysDone >= 14,
+      monthlyReportUnlocked: overallDaysDone >= 30,
+      deeperTemplatesUnlocked: overallDaysDone >= 60,
+      phaseLegacyUnlocked: overallDaysDone >= 90,
+      masteryInsightsUnlocked: overallDaysDone >= 120,
+      unlockedDays: UNLOCK_PATH.filter(item => overallDaysDone >= item.day).map(item => item.day),
     }
 
     localStorage.setItem('phasr_unlock_state', JSON.stringify(unlockState))
     window.dispatchEvent(new CustomEvent('phasr-unlocks-updated', { detail: unlockState }))
-  }, [currentStreak, completedTasksThisWeek, rankMood.label, rankMood.sublabel, stageLevel.level, stageLevel.label])
+  }, [currentStreak, completedTasksThisWeek, overallDaysDone, rankMood.label, rankMood.sublabel, stageLevel.level, stageLevel.label])
 
   useEffect(() => {
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
@@ -388,7 +392,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   useEffect(() => {
     const previousStreak = previousStreakRef.current
-    const hitMilestone = reachedMilestone && currentStreak > previousStreak
+    const hitMilestone = reachedMilestone && overallDaysDone > previousStreak
 
     let unlockTimer
     let transitionTimer
@@ -403,26 +407,26 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       }, 1400)
 
       enterTimer = window.setTimeout(() => {
-        const upcoming = UNLOCK_PATH.find(item => item.day > currentStreak)
+        const upcoming = UNLOCK_PATH.find(item => item.day > overallDaysDone)
         if (upcoming) {
           setDisplayMilestoneDay(upcoming.day)
           setUnlockCardState('active')
         }
       }, 1650)
     } else {
-      const upcoming = UNLOCK_PATH.find(item => item.day > currentStreak) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
+      const upcoming = UNLOCK_PATH.find(item => item.day > overallDaysDone) || UNLOCK_PATH[UNLOCK_PATH.length - 1]
       setDisplayMilestoneDay(upcoming.day)
       setUnlockCardState('active')
     }
 
-    previousStreakRef.current = currentStreak
+    previousStreakRef.current = overallDaysDone
 
     return () => {
       window.clearTimeout(unlockTimer)
       window.clearTimeout(transitionTimer)
       window.clearTimeout(enterTimer)
     }
-  }, [currentStreak, reachedMilestone])
+  }, [overallDaysDone, reachedMilestone])
 
   function canAccessWeek(weekNumber) {
     if (weekNumber === 1) return true
@@ -497,26 +501,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ height: 16 }} />
 
         <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <div
+            onClick={() => setSageCardExpanded(value => !value)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}
+            title={sageCardExpanded ? 'Collapse' : 'Expand'}
+          >
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #e8407a, #f472a8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>Live Score</p>
             <p style={{ fontSize: '0.65rem', color: '#b08090', marginLeft: 'auto' }}>{weekPercent}% this week</p>
-            <button
-              type="button"
-              onClick={() => setSageCardExpanded(value => !value)}
-              style={{
-                border: '1px solid #f2c4d0',
-                background: '#fff',
-                borderRadius: 999,
-                padding: '0.25rem 0.55rem',
-                fontWeight: 800,
-                fontSize: 11,
-                color: '#7a5a66',
-                cursor: 'pointer',
-              }}
-            >
-              {sageCardExpanded ? 'Hide' : 'Open'}
-            </button>
           </div>
 
           {!sageCardExpanded && (
@@ -697,7 +689,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
             <div style={{ background: '#fff8fa', border: '1px solid #f2c8d6', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 24 : 30, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 18 : 30, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
               <div style={{ fontSize: 11, color: '#8f6f7a' }}>done this week</div>
             </div>
             <div style={{ background: '#f7fff8', border: '1px solid #cfe7d5', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
@@ -826,7 +818,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </div>
 
               <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.36rem 0.7rem', borderRadius: 999, border: '1px solid #ef7ea7', color: '#e8407a', fontSize: '0.75rem', fontWeight: 700, marginBottom: 12 }}>
-                Next unlock · {daysLeft} day{daysLeft === 1 ? '' : 's'} away
+                {milestoneUnlocked && latestUnlockedMilestone?.day === displayedMilestone.day
+                  ? '✓ Active'
+                  : activationPending
+                  ? "Ready · complete today's tasks to activate"
+                  : `Next unlock · ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -837,6 +833,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                       height: '100%',
                       borderRadius: 999,
                       background: 'linear-gradient(90deg, #ef5d90, #f4a3bf)',
+                      opacity: activationPending ? 0.55 : 1,
                       transition: 'width 600ms ease',
                     }}
                   />
