@@ -149,6 +149,16 @@ function pulseDoneForWeek(phaseName, weekNumber) {
   return fromEntries || localStorage.getItem(`phasr_weekly_pulse_w${weekNumber}_done`) === 'true'
 }
 
+function isQuarterlyReviewComplete(phase) {
+  const fields = [
+    phase?.reviewWorked,
+    phase?.reviewDrained,
+    phase?.reviewPaid,
+    phase?.reviewStrategy,
+  ]
+  return fields.every(value => String(value || '').trim().length > 0)
+}
+
 function taskKey(scope, week, day) {
   return `phasr_tasks_${scope}_w${week}_d${day}`
 }
@@ -221,9 +231,10 @@ function countWeekTasksDone(scope, week) {
   return done
 }
 
-export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse }) {
+export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview }) {
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [refresh, setRefresh] = useState(0)
+  const [sageCardExpanded, setSageCardExpanded] = useState(true)
   const [unlockCardState, setUnlockCardState] = useState('active')
   const [displayMilestoneDay, setDisplayMilestoneDay] = useState(UNLOCK_PATH[0].day)
   const [unlockCardVisible, setUnlockCardVisible] = useState(() => {
@@ -311,6 +322,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
   const currentWeekStart = getWeekStartDate(phaseScope, currentWeek)
   const elapsedCurrentWeekDays = Math.max(0, Math.floor((now - new Date(`${currentWeekStart}T12:00:00`)) / 86400000))
+  const currentDisplayedDay = Math.min(7, elapsedCurrentWeekDays + 1)
   const displayedDay = activeWeek < currentWeek ? 7 : activeWeek > currentWeek ? 1 : Math.min(7, elapsedCurrentWeekDays + 1)
 
   useEffect(() => {
@@ -339,12 +351,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const currentStreak = summary.currentStreak || 0
   const rankMood = getRankMood(currentStreak)
   const stageLevel = getStageLevel(currentStreak)
+  const progressStreak = isNewUser ? 0 : Math.max(currentStreak, ((currentWeek - 1) * 7) + currentDisplayedDay)
   const nextUnlock = UNLOCK_PATH.find(item => item.day > currentStreak) || null
   const reachedMilestone = UNLOCK_PATH.find(item => item.day === currentStreak) || null
   const latestUnlockedMilestone = [...UNLOCK_PATH].reverse().find(item => item.day <= currentStreak) || null
   const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || nextUnlock || UNLOCK_PATH[UNLOCK_PATH.length - 1]
-  const progress = displayedMilestone ? Math.max(0, Math.min(1, currentStreak / displayedMilestone.day)) : 1
-  const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - currentStreak) : 0
+  const progress = displayedMilestone ? Math.max(0, Math.min(1, progressStreak / displayedMilestone.day)) : 1
+  const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressStreak) : 0
 
   useEffect(() => {
     const unlockState = {
@@ -435,6 +448,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     })
   }
 
+  function openQuarterlyReview() {
+    onOpenQuarterlyReview?.(currentPhase)
+  }
+
   function handlePhaseChange(nextPhaseId) {
     if (nextPhaseId === activePhaseId) {
       onOpenBoard?.()
@@ -443,8 +460,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const currentIndex = phases.findIndex(item => item.id === activePhaseId)
     const nextIndex = phases.findIndex(item => item.id === nextPhaseId)
     if (currentIndex >= 0 && nextIndex > currentIndex) {
-      const lastWeek = weeklyData.weeks[weeklyData.weeks.length - 1]?.index || 1
-      if (!pulseDoneForWeek(currentPhase?.name, lastWeek)) {
+      if (!isQuarterlyReviewComplete(currentPhase)) {
         setShowPhaseModal(true)
         return
       }
@@ -485,8 +501,32 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #e8407a, #f472a8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>Live Score</p>
             <p style={{ fontSize: '0.65rem', color: '#b08090', marginLeft: 'auto' }}>{weekPercent}% this week</p>
+            <button
+              type="button"
+              onClick={() => setSageCardExpanded(value => !value)}
+              style={{
+                border: '1px solid #f2c4d0',
+                background: '#fff',
+                borderRadius: 999,
+                padding: '0.25rem 0.55rem',
+                fontWeight: 800,
+                fontSize: 11,
+                color: '#7a5a66',
+                cursor: 'pointer',
+              }}
+            >
+              {sageCardExpanded ? 'Hide' : 'Open'}
+            </button>
           </div>
 
+          {!sageCardExpanded && (
+            <p style={{ margin: 0, fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              {hasPillars ? `Day ${displayedDay} of 7. ${weekPercent >= 50 ? 'You are on track.' : 'Stay consistent.'}` : 'Add pillar activities to activate your streak.'}
+            </p>
+          )}
+
+          {sageCardExpanded && (
+            <>
           {!hasPillars && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               Add your pillar activities in Vision Board and Sage will turn them into your daily streak plan.
@@ -523,6 +563,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               Day {displayedDay} of 7. You have completed {completedTasksThisWeek} of {totalTasksThisWeek} tasks this week.
               {weekPercent >= 50 ? ' You are on track. Keep going.' : ' Stay consistent. Every task counts.'}
             </p>
+          )}
+            </>
           )}
         </div>
 
@@ -800,7 +842,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   />
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#8f6f7a', whiteSpace: 'nowrap' }}>
-                  {Math.min(currentStreak, displayedMilestone.day)} / {displayedMilestone.day} days
+                  {Math.min(progressStreak, displayedMilestone.day)} / {displayedMilestone.day} days
                 </div>
               </div>
             </div>
@@ -811,9 +853,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 500 }}>
             <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: '1.5rem', width: '100%', maxWidth: 480 }}>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 6 }}>Before you move forward</p>
-              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8, fontFamily: 'Playfair Display, serif' }}>Complete your phase reflection with Sage first.</p>
-              <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 16 }}>Sage needs your previous phase answers to guide the next phase properly. This takes 5 minutes.</p>
-              <button onClick={openPulse} style={{ width: '100%', padding: '0.85rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', marginBottom: 8 }}>Reflect with Sage now</button>
+              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8, fontFamily: 'Playfair Display, serif' }}>Complete your phase review first.</p>
+              <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 16 }}>Before moving into the next phase, Sage needs your quarterly review from this phase so the next one starts with the right clarity.</p>
+              <button onClick={openQuarterlyReview} style={{ width: '100%', padding: '0.85rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', marginBottom: 8 }}>Open phase review</button>
               <button onClick={() => setShowPhaseModal(false)} style={{ width: '100%', padding: '0.75rem', borderRadius: 12, border: '1.5px solid #f2c4d0', background: 'transparent', color: '#7a5a66', fontSize: '0.85rem', cursor: 'pointer' }}>I will do it later</button>
             </div>
           </div>
