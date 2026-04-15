@@ -6,6 +6,8 @@ import { getUserAccess } from '../lib/access'
 import { getSageAvatarUrl, getVoicePreference } from '../lib/userPreferences'
 
 const QUICK_SESSION_KEY = 'phasr_sage_float'
+const WEEKLY_SESSION_EVENT = 'phasr-weekly-session-start'
+const WEEKLY_SESSION_END_EVENT = 'phasr-weekly-session-end'
 const FULL_SESSION_KEY = 'phasr_sage_full'
 const FULL_THREADS_KEY = 'phasr_sage_threads'
 const FULL_ACTIVE_THREAD_KEY = 'phasr_sage_active_thread'
@@ -24,6 +26,7 @@ const INWORLD_TTS_MODEL = import.meta.env.VITE_INWORLD_TTS_MODEL || 'inworld-tts
 const INWORLD_TTS_VOICE = import.meta.env.VITE_INWORLD_TTS_VOICE || 'Eleanor'
 const QUICK_WIDTH = 360
 const QUICK_HEIGHT = 480
+const JOURNAL_STORAGE_KEY = 'phasr_journal_v2'
 const THINK_DAILY_WORD_LIMIT = 500
 const RESEARCH_TRIGGER_RE = /\b(how|why|what is required|what do i need|steps|process|requirements|visa|move to|relocate|problem|issue|fix|troubleshoot|not working|error|current|latest)\b/i
 let activeSageAudio = null
@@ -40,6 +43,83 @@ function safeRead(key, fallback) {
 
 function safeWrite(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
+}
+
+function readJournalEntries() {
+  try {
+    const raw = localStorage.getItem(JOURNAL_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function writeJournalEntries(entries) {
+  localStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(entries))
+}
+
+function updateWeeklySessionEntry(entryId, updater) {
+  const entries = readJournalEntries()
+  const nextEntries = entries.map(entry => {
+    if (entry.id !== entryId) return entry
+    return updater(entry)
+  })
+  writeJournalEntries(nextEntries)
+}
+
+function getWeeklyPulseEntry(entryId) {
+  if (!entryId) return null
+  const entries = readJournalEntries()
+  return entries.find(entry => entry?.id === entryId) || null
+}
+
+function normalizeWeeklySessionMessages(messages) {
+  if (!Array.isArray(messages)) return []
+  return messages
+    .map(item => {
+      const roleRaw = String(item?.role || '').toLowerCase()
+      const role = roleRaw === 'user' ? 'user' : 'sage'
+      const text = String(item?.text || item?.content || '').trim()
+      if (!text) return null
+      return { role, text }
+    })
+    .filter(Boolean)
+}
+
+function buildWeeklySessionSystemPrompt(entry, boardData) {
+  const meta = entry?.weeklyPulseMeta || {}
+  const phaseName = String(meta?.phaseName || entry?.weeklyPulsePhaseName || '').trim() || 'Phase 1'
+  const weekNumber = Number(meta?.weekNumber || entry?.weeklyPulseWeekNumber || 1) || 1
+  const pillars = Array.isArray(meta?.pillars) ? meta.pillars : Array.isArray(entry?.weeklyPulsePillars) ? entry.weeklyPulsePillars : []
+  const questionLabels = Array.isArray(entry?.templateFields) ? entry.templateFields.map(field => field?.label).filter(Boolean) : []
+  const answersByQuestion = entry?.templateAnswers && typeof entry.templateAnswers === 'object' ? entry.templateAnswers : {}
+  const answersBlock = questionLabels.length
+    ? questionLabels
+        .map(label => `${label}\n${String(answersByQuestion?.[label] || '').trim()}`.trim())
+        .filter(Boolean)
+        .join('\n\n')
+    : String(entry?.content || '').trim()
+
+  return `You are Sage in Weekly Reflection Session Mode.
+
+The user just finished their Weekly Pulse.
+Phase: ${phaseName}
+Week: ${weekNumber}
+Pillars: ${pillars.length ? pillars.join(', ') : 'Not provided'}
+
+Weekly Pulse answers (do not repeat these questions verbatim):
+${answersBlock || 'No answers were captured.'}
+
+Rules:
+- Start the session yourself. The user should not have to start.
+- Respond like a sharp, warm, honest friend. Not a therapist. Not a coach.
+- One question at a time.
+- Do not repeat the original Weekly Pulse questions.
+- Keep each message short to medium. No bullet points.
+- Aim for 2 to 4 exchanges total, then help them land the week with one clear focus.
+
+${buildUserContextSection(null, boardData)}`
 }
 
 function getTodayKey(date = new Date()) {
@@ -1121,6 +1201,9 @@ function getPanelPosition(position, panelWidth = QUICK_WIDTH, panelHeight = QUIC
 
 function QuickSagePanel({ task, open, onClose, position, boardData, voicePreference, avatarUrl }) {
   const [messages, setMessages] = useState(() => safeRead(QUICK_SESSION_KEY, []))
+  const [weeklySessionEntryId, setWeeklySessionEntryId] = useState(null)
+  const [weeklySessionMessages, setWeeklySessionMessages] = useState([])
+  const [weeklySessionCompletedAt, setWeeklySessionCompletedAt] = useState(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -1128,14 +1211,44 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
   const mediaRecorder = useRef(null)
   const mediaStreamRef = useRef(null)
   const recognitionRef = useRef(null)
+  const sessionMode = Boolean(weeklySessionEntryId)
 
   useEffect(() => {
+    if (sessionMode) return
     safeWrite(QUICK_SESSION_KEY, messages.slice(-30))
-  }, [messages])
+  }, [messages, sessionMode])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleStart = event => {
+      const entryId = event?.detail?.entryId
+      if (!entryId) return
+      const entry = getWeeklyPulseEntry(entryId)
+      const existingSession = entry?.weeklyPulseSession || null
+      setWeeklySessionEntryId(entryId)
+      setWeeklySessionMessages(normalizeWeeklySessionMessages(existingSession?.messages || []))
+      setWeeklySessionCompletedAt(existingSession?.completedAt || null)
+      setInput('')
+    }
+
+    const handleEnd = () => {
+      setWeeklySessionEntryId(null)
+      setWeeklySessionMessages([])
+      setWeeklySessionCompletedAt(null)
+    }
+
+    window.addEventListener(WEEKLY_SESSION_EVENT, handleStart)
+    window.addEventListener(WEEKLY_SESSION_END_EVENT, handleEnd)
+    return () => {
+      window.removeEventListener(WEEKLY_SESSION_EVENT, handleStart)
+      window.removeEventListener(WEEKLY_SESSION_END_EVENT, handleEnd)
+    }
+  }, [])
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight
-  }, [messages, loading])
+  }, [messages, weeklySessionMessages, loading])
 
   useEffect(() => {
     return () => {
@@ -1144,6 +1257,67 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
       mediaStreamRef.current?.getTracks().forEach(track => track.stop())
     }
   }, [])
+
+  useEffect(() => {
+    if (!sessionMode) return
+    if (!weeklySessionEntryId) return
+    if (weeklySessionCompletedAt) return
+    if (weeklySessionMessages.length) return
+    if (loading) return
+
+    const entry = getWeeklyPulseEntry(weeklySessionEntryId)
+    if (!entry) return
+
+    void (async () => {
+      setLoading(true)
+      try {
+        const firstMessage = await requestSageReply({
+          system: buildWeeklySessionSystemPrompt(entry, boardData),
+          messages: [{ role: 'user', content: 'Start the weekly reflection session now. Send your first follow-up.' }],
+          mode: 'chat',
+        })
+        const nextMessages = [{ role: 'sage', text: firstMessage }]
+        setWeeklySessionMessages(nextMessages)
+        updateWeeklySessionEntry(weeklySessionEntryId, current => ({
+          ...current,
+          weeklyPulseSession: {
+            status: 'in_progress',
+            completedAt: null,
+            messages: nextMessages,
+          },
+        }))
+      } catch {
+        const fallback = 'Alright. I read what you wrote. Let’s talk it through. What felt hardest to actually follow through on this week?'
+        const nextMessages = [{ role: 'sage', text: fallback }]
+        setWeeklySessionMessages(nextMessages)
+        updateWeeklySessionEntry(weeklySessionEntryId, current => ({
+          ...current,
+          weeklyPulseSession: {
+            status: 'in_progress',
+            completedAt: null,
+            messages: nextMessages,
+          },
+        }))
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [sessionMode, weeklySessionEntryId, weeklySessionCompletedAt, weeklySessionMessages.length, loading, boardData])
+
+  function endWeeklySession() {
+    if (!weeklySessionEntryId) return
+    if (weeklySessionCompletedAt) return
+    const completedAt = new Date().toISOString()
+    setWeeklySessionCompletedAt(completedAt)
+    updateWeeklySessionEntry(weeklySessionEntryId, current => ({
+      ...current,
+      weeklyPulseSession: {
+        status: 'completed',
+        completedAt,
+        messages: weeklySessionMessages,
+      },
+    }))
+  }
 
   async function sendQuickMessage() {
     const content = input.trim()
@@ -1169,6 +1343,56 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           content: buildFallbackReply({ mode: 'quick', task, input: content, boardData }),
         },
       ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function sendWeeklySessionMessage() {
+    const content = input.trim()
+    if (!content || loading || weeklySessionCompletedAt) return
+    if (!weeklySessionEntryId) return
+    if (weeklySessionMessages.filter(item => item?.role === 'user').length >= sessionTurnLimit) return
+
+    const nextMessages = [...weeklySessionMessages, { role: 'user', text: content }]
+    setWeeklySessionMessages(nextMessages)
+    setInput('')
+    setLoading(true)
+
+    const entry = getWeeklyPulseEntry(weeklySessionEntryId)
+    const system = entry ? buildWeeklySessionSystemPrompt(entry, boardData) : buildQuickSystemPrompt(task, boardData)
+    const chatMessages = nextMessages.map(item => ({
+      role: item.role === 'sage' ? 'assistant' : 'user',
+      content: item.text,
+    }))
+
+    try {
+      const reply = await requestSageReply({
+        system,
+        messages: chatMessages,
+        mode: 'chat',
+      })
+      const updated = [...nextMessages, { role: 'sage', text: reply }]
+      setWeeklySessionMessages(updated)
+      updateWeeklySessionEntry(weeklySessionEntryId, current => ({
+        ...current,
+        weeklyPulseSession: {
+          status: 'in_progress',
+          completedAt: null,
+          messages: updated,
+        },
+      }))
+    } catch {
+      const updated = [...nextMessages, { role: 'sage', text: buildFallbackReply({ mode: 'quick', task, input: content, boardData }) }]
+      setWeeklySessionMessages(updated)
+      updateWeeklySessionEntry(weeklySessionEntryId, current => ({
+        ...current,
+        weeklyPulseSession: {
+          status: 'in_progress',
+          completedAt: null,
+          messages: updated,
+        },
+      }))
     } finally {
       setLoading(false)
     }
@@ -1222,9 +1446,25 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
   const panelWidth = isMobile ? Math.min(320, window.innerWidth - 48) : QUICK_WIDTH
   const panelHeight = isMobile ? Math.min(430, Math.max(300, Math.round(window.innerHeight * 0.52))) : QUICK_HEIGHT
   const panelPosition = getPanelPosition(position, panelWidth, panelHeight)
+  const displayMessages = sessionMode ? weeklySessionMessages : messages
+  const inputPlaceholder = sessionMode ? 'Keep it honest. This stays with you.' : ''
+  const sessionUserTurns = sessionMode ? weeklySessionMessages.filter(item => item?.role === 'user').length : 0
+  const sessionTurnLimit = 3
+  const sessionLimitReached = sessionMode && !weeklySessionCompletedAt && sessionUserTurns >= sessionTurnLimit
 
   return (
-    <div
+    <>
+      {sessionMode ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(23,12,18,0.28)',
+            zIndex: 9996,
+          }}
+        />
+      ) : null}
+      <div
         style={{
           position: 'fixed',
           right: panelPosition.right,
@@ -1264,8 +1504,13 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
               color: 'var(--app-text)',
             }}
           >
-            Think with Sage
+            {sessionMode ? 'Sage session' : 'Think with Sage'}
           </p>
+          {sessionMode ? (
+            <p style={{ margin: '0.12rem 0 0', fontSize: '0.72rem', color: '#7a5a66' }}>
+              Weekly reflection
+            </p>
+          ) : null}
         </div>
         <button
           onClick={onClose}
@@ -1298,23 +1543,27 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           msOverflowStyle: 'none',
         }}
       >
-          {!messages.length && !loading && (
+          {!displayMessages.length && !loading && !sessionMode && (
             <ChatBubble role="assistant" onSpeak={() => speakText('Ask about the blocker, the next step, or how to finish this task.', voicePreference)}>
               Ask about the blocker, the next step, or how to finish this task.
             </ChatBubble>
           )}
-          {messages.map((message, index) => (
-            <ChatBubble
-              key={`${message.role}-${index}`}
-              role={message.role}
-              onSpeak={message.role === 'assistant' ? () => speakText(message.content, voicePreference) : undefined}
-              onCopy={() => copyText(message.content)}
-              onEdit={() => editQuickMessage(message.content)}
-              onRerun={message.role === 'assistant' ? () => rerunQuickAssistant(index) : undefined}
-            >
-              <MessageContent text={message.content} role={message.role} />
-            </ChatBubble>
-          ))}
+          {displayMessages.map((message, index) => {
+            const role = sessionMode ? (message.role === 'sage' ? 'assistant' : 'user') : message.role
+            const text = sessionMode ? message.text : message.content
+            return (
+              <ChatBubble
+                key={`${role}-${index}`}
+                role={role}
+                onSpeak={!sessionMode && message.role === 'assistant' ? () => speakText(message.content, voicePreference) : undefined}
+                onCopy={() => copyText(text)}
+                onEdit={!sessionMode && message.role === 'user' ? () => editQuickMessage(message.content) : undefined}
+                onRerun={!sessionMode && message.role === 'assistant' ? () => rerunQuickAssistant(index) : undefined}
+              >
+                <MessageContent text={text} role={role} />
+              </ChatBubble>
+            )
+          })}
           {loading && (
             <ChatBubble role="assistant">
               <TypingDots />
@@ -1348,11 +1597,15 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           onKeyDown={event => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault()
-              sendQuickMessage()
+              if (sessionMode) {
+                sendWeeklySessionMessage()
+              } else {
+                sendQuickMessage()
+              }
             }
           }}
           rows={1}
-              placeholder=""
+          placeholder={inputPlaceholder}
           style={{
             flex: 1,
             resize: 'none',
@@ -1378,8 +1631,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             disabled={!getSpeechRecognition()}
           />
         <button
-          onClick={sendQuickMessage}
-          disabled={!input.trim() || loading}
+          onClick={sessionMode ? sendWeeklySessionMessage : sendQuickMessage}
+          disabled={!input.trim() || loading || (sessionMode && (Boolean(weeklySessionCompletedAt) || sessionLimitReached))}
           style={{
             minWidth: 42,
             height: 42,
@@ -1396,7 +1649,38 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           →
         </button>
       </div>
+
+      {sessionMode ? (
+        <div style={{ padding: '0.5rem 0.8rem 0.85rem', borderTop: '1px solid rgba(242,196,208,0.55)', background: '#fffafc' }}>
+          {sessionLimitReached ? (
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: '#7a5a66', lineHeight: 1.5 }}>
+              Session limit reached. End it when you are ready.
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              if (!weeklySessionCompletedAt) endWeeklySession()
+              window.dispatchEvent(new CustomEvent(WEEKLY_SESSION_END_EVENT))
+              onClose?.()
+            }}
+            style={{
+              width: '100%',
+              border: '1px solid #f2c4d0',
+              background: '#fff',
+              borderRadius: 14,
+              padding: '0.78rem 0.9rem',
+              fontWeight: 800,
+              color: '#7a5a66',
+              cursor: 'pointer',
+            }}
+          >
+            {weeklySessionCompletedAt ? 'Close session' : 'End session'}
+          </button>
+        </div>
+      ) : null}
     </div>
+    </>
   )
 }
 

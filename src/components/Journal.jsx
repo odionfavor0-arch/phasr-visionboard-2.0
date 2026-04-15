@@ -765,6 +765,9 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
   const detailBody = entry.content || getTemplateSummary(entry) || ''
   const isWeeklyPulse = String(entry?.prompt || '').toLowerCase() === 'weekly pulse'
+  const weeklySession = entry?.weeklyPulseSession || null
+  const sessionMessages = Array.isArray(weeklySession?.messages) ? weeklySession.messages : []
+  const sessionCompleted = Boolean(weeklySession?.completedAt || weeklySession?.status === 'completed')
 
   function speakResponse() {
     if (!window.speechSynthesis || !entry?.sageResponse) return
@@ -772,6 +775,12 @@ function EntryDetail({ entry, onBack, onEdit }) {
     utterance.rate = 0.95
     window.speechSynthesis.cancel()
     window.speechSynthesis.speak(utterance)
+  }
+
+  function openWeeklySession() {
+    if (!entry?.id) return
+    window.dispatchEvent(new CustomEvent('phasr-weekly-session-start', { detail: { entryId: entry.id } }))
+    window.dispatchEvent(new Event('phasr-open-sage-float'))
   }
 
   return (
@@ -794,6 +803,23 @@ function EntryDetail({ entry, onBack, onEdit }) {
                 <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
               </div>
               <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
+              <button
+                type="button"
+                onClick={openWeeklySession}
+                style={{
+                  justifySelf: 'start',
+                  border: '1px solid #f2c4d0',
+                  background: '#fff',
+                  borderRadius: 999,
+                  padding: '0.55rem 0.85rem',
+                  fontWeight: 800,
+                  color: 'var(--app-accent)',
+                  cursor: 'pointer',
+                  fontSize: '0.84rem',
+                }}
+              >
+                {sessionCompleted ? 'View session with Sage' : 'Talk it through with Sage'}
+              </button>
             </div>
             <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
               <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
@@ -805,6 +831,39 @@ function EntryDetail({ entry, onBack, onEdit }) {
                 </button>
               ) : null}
             </div>
+            {sessionMessages.length ? (
+              <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
+                <p style={sectionLabelStyle}>Session with Sage</p>
+                <div style={{ display: 'grid', gap: '0.55rem' }}>
+                  {sessionMessages.map((message, index) => {
+                    const roleRaw = String(message?.role || '').toLowerCase()
+                    const role = roleRaw === 'user' ? 'user' : 'sage'
+                    const text = String(message?.text || message?.content || '').trim()
+                    if (!text) return null
+                    return (
+                      <div key={`${role}-${index}`} style={{ display: 'flex', justifyContent: role === 'user' ? 'flex-end' : 'flex-start' }}>
+                        <div
+                          style={{
+                            maxWidth: '88%',
+                            padding: '0.72rem 0.9rem',
+                            borderRadius: role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                            background: role === 'user' ? 'linear-gradient(135deg, #e8407a, #f472a8)' : '#fff',
+                            border: role === 'user' ? 'none' : '1px solid var(--app-border)',
+                            color: role === 'user' ? '#fff' : 'var(--app-text)',
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontSize: '0.84rem',
+                            lineHeight: 1.65,
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          {text}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
               <p style={sectionLabelStyle}>Clarity Score</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
