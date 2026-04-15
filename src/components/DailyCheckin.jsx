@@ -231,6 +231,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
     return !hiddenUntil || hiddenUntil <= getTodayIso()
   })
+  const [unlockHovering, setUnlockHovering] = useState(false)
   const previousStreakRef = useRef(0)
 
   useEffect(() => {
@@ -340,6 +341,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const stageLevel = getStageLevel(currentStreak)
   const nextUnlock = UNLOCK_PATH.find(item => item.day > currentStreak) || null
   const reachedMilestone = UNLOCK_PATH.find(item => item.day === currentStreak) || null
+  const latestUnlockedMilestone = [...UNLOCK_PATH].reverse().find(item => item.day <= currentStreak) || null
   const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || nextUnlock || UNLOCK_PATH[UNLOCK_PATH.length - 1]
   const progress = displayedMilestone ? Math.max(0, Math.min(1, currentStreak / displayedMilestone.day)) : 1
   const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - currentStreak) : 0
@@ -671,40 +673,39 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{ height: 18 }} />
 
-        {unlockCardVisible && displayedMilestone ? (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid #f2c8d6',
-              borderRadius: 22,
-              padding: isMobile ? 14 : 18,
-              position: 'relative',
-              overflow: 'hidden',
-              opacity: unlockCardState === 'transition' ? 0 : 1,
-              transform: unlockCardState === 'unlock'
-                ? 'translateY(-2px) scale(1.02)'
-                : unlockCardState === 'transition'
-                  ? 'translateY(8px) scale(0.98)'
-                  : 'translateY(0) scale(1)',
-              boxShadow: unlockCardState === 'unlock'
-                ? '0 18px 34px rgba(232,64,122,0.16)'
-                : '0 8px 18px rgba(232,64,122,0.04)',
-              transition: unlockCardState === 'active'
-                ? 'opacity 320ms ease, transform 320ms ease, box-shadow 220ms ease'
-                : unlockCardState === 'unlock'
-                  ? 'opacity 220ms ease, transform 220ms ease, box-shadow 220ms ease'
-                  : 'opacity 250ms ease, transform 250ms ease',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: accent, marginBottom: 8 }}>
-                  Next unlock
-                </div>
-                <div style={{ fontSize: '0.76rem', color: '#8c6f7a', lineHeight: 1.5 }}>
-                  You are closer than you think.
-                </div>
-              </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          {!unlockCardVisible ? (
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem(UNLOCK_CARD_HIDE_KEY)
+                setUnlockCardVisible(true)
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #ef5d90, #f4a3bf)', boxShadow: '0 0 0 4px rgba(239,93,144,0.12)' }} />
+              <span style={{ fontSize: '0.76rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: accent }}>
+                Unlock Path
+              </span>
+            </button>
+          ) : (
+            <div
+              onMouseEnter={() => setUnlockHovering(true)}
+              onMouseLeave={() => setUnlockHovering(false)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            >
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #ef5d90, #f4a3bf)', boxShadow: '0 0 0 4px rgba(239,93,144,0.12)' }} />
+              <span style={{ fontSize: '0.76rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: accent }}>
+                Unlock Path
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -715,33 +716,79 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   border: 'none',
                   background: 'transparent',
                   color: '#b08090',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
                   cursor: 'pointer',
                   padding: 0,
+                  lineHeight: 1,
+                  opacity: unlockHovering ? 1 : 0,
+                  transition: 'opacity 180ms ease',
                 }}
               >
-                Hide for now
+                ×
               </button>
             </div>
+          )}
+        </div>
 
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e8407a', marginBottom: 8 }}>
-              {`Day ${displayedMilestone.day}`}
-            </div>
+        {unlockCardVisible && displayedMilestone ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {latestUnlockedMilestone && latestUnlockedMilestone.day < displayedMilestone.day ? (
+              <div
+                style={{
+                  background: '#fffafc',
+                  border: '1.5px solid #ef7ea7',
+                  borderRadius: 22,
+                  padding: isMobile ? 14 : 18,
+                  boxShadow: unlockCardState === 'unlock' ? '0 18px 34px rgba(232,64,122,0.16)' : '0 8px 18px rgba(232,64,122,0.04)',
+                  transform: unlockCardState === 'unlock' ? 'scale(1.02)' : 'scale(1)',
+                  transition: 'transform 220ms ease, box-shadow 220ms ease',
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e8407a', marginBottom: 8 }}>
+                  {`Day ${latestUnlockedMilestone.day} — Unlocked`}
+                </div>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? '1.05rem' : '1.22rem', lineHeight: 1.2, color: '#3d1f2b', marginBottom: 8 }}>
+                  {latestUnlockedMilestone.description}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#7a5a65', lineHeight: 1.6, marginBottom: 14 }}>
+                  {latestUnlockedMilestone.detail}
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0.75rem', borderRadius: 999, background: '#ef5d90', color: '#fff', fontSize: '0.75rem', fontWeight: 700 }}>
+                  ✓ Active
+                </div>
+              </div>
+            ) : null}
 
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? '1.05rem' : '1.22rem', lineHeight: 1.2, color: '#3d1f2b', marginBottom: 8 }}>
-              {unlockCardState === 'unlock' ? 'Unlocked' : displayedMilestone.description}
-            </div>
+            <div
+              style={{
+                background: '#fffafc',
+                border: '1.5px solid #ef7ea7',
+                borderRadius: 22,
+                padding: isMobile ? '14px 14px 12px' : '16px 16px 14px',
+                opacity: unlockCardState === 'transition' ? 0 : 1,
+                transform: unlockCardState === 'transition' ? 'translateY(8px)' : 'translateY(0)',
+                transition: 'opacity 250ms ease, transform 320ms ease',
+              }}
+            >
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e8407a', marginBottom: 8 }}>
+                {displayedMilestone.day === 7 ? 'Day 7 — Week 1 Complete' : displayedMilestone.day === 14 ? 'Day 14 — Consistency Confirmed' : displayedMilestone.day === 30 ? 'Day 30 — One Month In' : displayedMilestone.day === 60 ? 'Day 60 — Depth Unlocked' : displayedMilestone.day === 90 ? 'Day 90 — Identity' : displayedMilestone.day === 120 ? 'Day 120 — Mastery' : `Day ${displayedMilestone.day}`}
+              </div>
 
-            <div style={{ fontSize: '0.82rem', color: '#7a5a65', lineHeight: 1.6, marginBottom: 16 }}>
-              {unlockCardState === 'unlock'
-                ? `${displayedMilestone.description} is now active. Sage has opened a new layer for you.`
-                : displayedMilestone.detail}
-            </div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: isMobile ? '1.05rem' : '1.22rem', lineHeight: 1.2, color: '#3d1f2b', marginBottom: 8 }}>
+                {displayedMilestone.description}
+              </div>
 
-            {unlockCardState !== 'unlock' ? (
-              <>
-                <div style={{ height: 6, borderRadius: 999, background: '#f8d8e3', overflow: 'hidden', marginBottom: 10 }}>
+              <div style={{ fontSize: '0.82rem', color: '#7a5a65', lineHeight: 1.6, marginBottom: 14 }}>
+                {displayedMilestone.detail}
+              </div>
+
+              <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.36rem 0.7rem', borderRadius: 999, border: '1px solid #ef7ea7', color: '#e8407a', fontSize: '0.75rem', fontWeight: 700, marginBottom: 12 }}>
+                Next unlock · {daysLeft} day{daysLeft === 1 ? '' : 's'} away
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#f8d8e3', overflow: 'hidden' }}>
                   <div
                     style={{
                       width: `${progress * 100}%`,
@@ -752,41 +799,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                     }}
                   />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div style={{ fontSize: '0.76rem', color: '#7a5a65' }}>
-                    {Math.min(currentStreak, displayedMilestone.day)} / {displayedMilestone.day} days
-                  </div>
-                  <div style={{ fontSize: '0.74rem', color: '#b08090' }}>
-                    Next unlock in {daysLeft} day{daysLeft === 1 ? '' : 's'}
-                  </div>
+                <div style={{ fontSize: '0.75rem', color: '#8f6f7a', whiteSpace: 'nowrap' }}>
+                  {Math.min(currentStreak, displayedMilestone.day)} / {displayedMilestone.day} days
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenBoard?.()}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 36,
-                    padding: '0.52rem 0.85rem',
-                    borderRadius: 999,
-                    border: '1px solid #ef7ea7',
-                    background: '#fff1f6',
-                    color: '#e8407a',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Keep going
-                </button>
-              </>
-            ) : (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0.75rem', borderRadius: 999, background: '#fff1f6', color: '#e8407a', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #f2c8d6' }}>
-                ✓ Unlocked
               </div>
-            )}
+            </div>
           </div>
         ) : null}
 
