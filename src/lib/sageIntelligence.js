@@ -328,6 +328,65 @@ longTermOutcome`
   return normalizePlanJson(text)
 }
 
+function normalizeGroqJson(rawText) {
+  const trimmed = String(rawText || '').trim()
+  const fenced = trimmed
+    .replace(/^```json/i, '')
+    .replace(/^```/i, '')
+    .replace(/```$/i, '')
+    .trim()
+  return fenced
+}
+
+export async function fetchPillarPlanWithGroq({ pillarName, beforeState, beforeDesc, afterState, afterDesc }) {
+  const apiKey = import.meta.env.VITE_GROQ_KEY
+  if (!apiKey) throw new Error('missing_groq_key')
+  const model = 'llama-3.3-70b-versatile'
+
+  const systemPrompt = 'You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.'
+  const userPrompt = `Pillar: ${String(pillarName || '').trim()}. Before: ${String(beforeState || '').trim()} — ${String(beforeDesc || '').trim()}. After: ${String(afterState || '').trim()} — ${String(afterDesc || '').trim()}. Generate: 3 to 4 specific resources they will need, 3 to 4 specific weekly activities, 3 to 4 weekly non-negotiables as short actionable tasks, and one outcome statement describing what they will have achieved by the end of the phase. Return as JSON with keys: resources as array, activities as array, weeklyNonNegotiables as array, outcome as string.`
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      max_tokens: 1200,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  })
+
+  if (!res.ok) throw new Error('groq_error')
+  const data = await res.json()
+  const text = data?.choices?.[0]?.message?.content || ''
+  const normalized = normalizeGroqJson(text)
+
+  let parsed = null
+  try {
+    parsed = JSON.parse(normalized)
+  } catch {
+    throw new Error('invalid_json')
+  }
+
+  const resources = Array.isArray(parsed?.resources) ? parsed.resources.map(item => String(item || '').trim()).filter(Boolean) : []
+  const activities = Array.isArray(parsed?.activities) ? parsed.activities.map(item => String(item || '').trim()).filter(Boolean) : []
+  const weeklyNonNegotiables = Array.isArray(parsed?.weeklyNonNegotiables) ? parsed.weeklyNonNegotiables.map(item => String(item || '').trim()).filter(Boolean) : []
+  const outcome = String(parsed?.outcome || '').trim()
+
+  if (!resources.length && !activities.length && !weeklyNonNegotiables.length && !outcome) {
+    throw new Error('invalid_json')
+  }
+
+  return { resources, activities, weeklyNonNegotiables, outcome }
+}
+
 export function loadSagePlans() {
   return safeRead(SAGE_PLANS_KEY, {})
 }

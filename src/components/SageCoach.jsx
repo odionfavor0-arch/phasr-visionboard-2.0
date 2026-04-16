@@ -1282,8 +1282,28 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
   }, [])
 
   useEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight
+    const scroll = () => {
+      const node = bodyRef.current
+      if (!node) return
+      node.scrollTop = node.scrollHeight
+    }
+    requestAnimationFrame(() => {
+      scroll()
+      setTimeout(scroll, 60)
+    })
   }, [messages, weeklySessionMessages, loading])
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return undefined
+    const handleResize = () => {
+      const node = bodyRef.current
+      if (!node) return
+      node.scrollTop = node.scrollHeight
+    }
+    viewport.addEventListener('resize', handleResize)
+    return () => viewport.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -2123,8 +2143,28 @@ export default function SageCoach({ onLockInChange, user }) {
   }, [usage])
 
   useEffect(() => {
-    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight
+    const scroll = () => {
+      const node = bodyRef.current
+      if (!node) return
+      node.scrollTop = node.scrollHeight
+    }
+    requestAnimationFrame(() => {
+      scroll()
+      setTimeout(scroll, 60)
+    })
   }, [session, loading])
+
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return undefined
+    const handleResize = () => {
+      const node = bodyRef.current
+      if (!node) return
+      node.scrollTop = node.scrollHeight
+    }
+    viewport.addEventListener('resize', handleResize)
+    return () => viewport.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     const handleAvatarUpdate = () => setAvatarUrl(getSageAvatarUrl())

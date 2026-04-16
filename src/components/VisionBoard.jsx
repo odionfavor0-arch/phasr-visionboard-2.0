@@ -7,9 +7,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
-import { buildWeeklyCalendarEvents, downloadCalendarICS, loadCalendarEvents, openCalendarApp, saveCalendarEvents } from '../lib/calendarNotifications'
+import { loadCalendarEvents } from '../lib/calendarNotifications'
 import { getDailyTaskPlan } from '../lib/lockIn'
-import { fetchRealWorldPlan, getSagePlan, saveSagePlan } from '../lib/sageIntelligence'
+import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
 import phasrMark from '../assets/phasr-mark.png'
 
@@ -1051,66 +1051,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     onQuarterlyReviewOpened?.()
   }, [autoOpenQuarterlyReviewPhaseId, data.phases, isMobile, onQuarterlyReviewOpened])
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function syncSagePlans() {
-      for (const ph of data.phases || []) {
-        for (const pillar of ph.pillars || []) {
-          const goalText = [pillar.name, pillar.afterState, pillar.afterDesc].map(cleanText).filter(Boolean).join(' - ')
-          if (!goalText || getSagePlan(pillar.id)) continue
-
-          try {
-            const plan = isPro
-              ? await fetchRealWorldPlan(goalText)
-              : {
-                  resources: buildGeneratedPlan(pillar, false).resources,
-                  activities: buildGeneratedPlan(pillar, false).activities.map((description, index) => ({ week: index + 1, description })),
-                  weeklyNonNegotiables: buildGeneratedPlan(pillar, false).weeklyActions.slice(0, 4),
-                  outputs: buildGeneratedPlan(pillar, false).outputs,
-                  shortTermOutcome: buildGeneratedPlan(pillar, false).shortOutcome,
-                  longTermOutcome: buildGeneratedPlan(pillar, false).longOutcome,
-                  locked: true,
-                }
-
-            saveSagePlan(pillar.id, {
-              ...plan,
-              generatedAt: new Date().toISOString(),
-              generatedBySage: true,
-              locked: !isPro,
-            })
-
-            if (!cancelled && isPro) {
-              upd(d => {
-                const target = d.phases.flatMap(item => item.pillars || []).find(item => item.id === pillar.id)
-                if (!target) return d
-                target.resources = plan.resources?.length ? plan.resources : ['']
-                target.activities = plan.activities?.length ? plan.activities.map(item => item.description || item) : ['']
-                target.weeklyActions = plan.weeklyNonNegotiables?.length ? plan.weeklyNonNegotiables.map(item => item.description || item) : ['']
-                target.outputs = plan.outputs?.length ? plan.outputs : ['']
-                target.shortOutcome = plan.shortTermOutcome || target.shortOutcome
-                target.longOutcome = plan.longTermOutcome || target.longOutcome
-                target.planGeneratedFrom = getPlanSignature(target)
-                target.planGenerationTier = 'pro'
-                target.planWasEdited = false
-                return d
-              })
-            }
-          } catch {
-            // Keep local fallback behavior if API generation fails.
-          }
-        }
-      }
-
-      if (!cancelled) setSagePlanRefresh(value => value + 1)
-    }
-
-    syncSagePlans()
-    return () => {
-      cancelled = true
-    }
-  }, [data, isPro])
-
   function upd(fn) {
     setData(prev => {
       const next = normalizeBoardData(fn(JSON.parse(JSON.stringify(prev))))
@@ -1187,21 +1127,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     if (pl) {
       pl[key] = val
       if (PLAN_EDIT_KEYS.has(key)) pl.planWasEdited = true
-      if (['beforeState', 'afterState', 'beforeDesc', 'afterDesc', 'beforeImage', 'afterImage'].includes(key)) {
-        const signature = getPlanSignature(pl)
-        if (hasVisualPlanInputs(pl) && pl.planGeneratedFrom !== signature && (!pl.planWasEdited || isPlanBlank(pl))) {
-          const generated = buildGeneratedPlan(pl, isPro)
-          pl.resources = generated.resources.length ? generated.resources : ['']
-          pl.activities = generated.activities.length ? generated.activities : ['']
-          pl.weeklyActions = generated.weeklyActions.length ? generated.weeklyActions : ['']
-          pl.outputs = generated.outputs.length ? generated.outputs : ['']
-          pl.shortOutcome = generated.shortOutcome
-          pl.longOutcome = generated.longOutcome
-          pl.planGeneratedFrom = signature
-          pl.planGenerationTier = isPro ? 'pro' : 'free'
-          pl.planWasEdited = false
-        }
-      }
     }
     return d
   })
@@ -1249,105 +1174,50 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.pillars.push(freshPillar()); return d })
   }
   const delPillar  = (plId) => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph && ph.pillars.length > 1) ph.pillars = ph.pillars.filter(p => p.id !== plId); return d })
-  const maybeGeneratePlan = plId => upd(d => {
-    const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
-    if (!pl) return d
-
-    const signature = getPlanSignature(pl)
-    const hasRequiredInputs = hasVisualPlanInputs(pl)
-    if (!hasRequiredInputs) return d
-
-    if (pl.planGeneratedFrom === signature && !isPlanBlank(pl)) return d
-    if (pl.planWasEdited && !isPlanBlank(pl)) return d
-
-    const generated = buildGeneratedPlan(pl, isPro)
-    pl.resources = generated.resources.length ? generated.resources : ['']
-    pl.activities = generated.activities.length ? generated.activities : ['']
-    pl.weeklyActions = generated.weeklyActions.length ? generated.weeklyActions : ['']
-    pl.outputs = generated.outputs.length ? generated.outputs : ['']
-    pl.shortOutcome = generated.shortOutcome
-    pl.longOutcome = generated.longOutcome
-    pl.planGeneratedFrom = signature
-    pl.planGenerationTier = isPro ? 'pro' : 'free'
-    pl.planWasEdited = false
-    return d
-  })
   const forceGeneratePlan = async plId => {
     const targetPhase = data.phases.find(p => p.id === phaseId)
     const targetPillar = targetPhase?.pillars.find(p => p.id === plId)
     if (!targetPillar) return
-    if (!hasVisualPlanInputs(targetPillar)) {
-      setUploadMessage('Add before and after states plus at least one image to generate your plan.')
+    const beforeOk = cleanText(targetPillar.beforeState) || cleanText(targetPillar.beforeDesc)
+    const afterOk = cleanText(targetPillar.afterState) || cleanText(targetPillar.afterDesc)
+    if (!beforeOk || !afterOk) {
+      setUploadMessage('Add your Before and After details first, then generate your plan.')
       return
     }
 
-    const goalText = [targetPillar.name, targetPillar.afterState, targetPillar.afterDesc]
-      .map(cleanText)
-      .filter(Boolean)
-      .join(' - ')
+    setUploadMessage('Sage is generating your plan...')
+    try {
+      const plan = await fetchPillarPlanWithGroq({
+        pillarName: targetPillar.name,
+        beforeState: targetPillar.beforeState,
+        beforeDesc: targetPillar.beforeDesc,
+        afterState: targetPillar.afterState,
+        afterDesc: targetPillar.afterDesc,
+      })
 
-    let generated = null
-    let usedAiPlan = false
-    if (isPro) {
-      try {
-        setUploadMessage('Sage is generating your plan...')
-        const plan = await fetchRealWorldPlan(goalText)
-        generated = {
-          resources: plan.resources || [],
-          activities: plan.activities || [],
-          weeklyActions: plan.weeklyNonNegotiables || [],
-          outputs: plan.outputs || [],
-          shortOutcome: plan.shortTermOutcome || '',
-          longOutcome: plan.longTermOutcome || '',
-        }
-        usedAiPlan = true
-      } catch {
-        setUploadMessage('Sage plan unavailable. Using a quick plan instead.')
-      }
+      upd(d => {
+        const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
+        if (!pl) return d
+        pl.planGenerationCount = Number(pl.planGenerationCount || 0) + 1
+        pl.resources = plan.resources?.length ? plan.resources : ['']
+        pl.activities = plan.activities?.length ? plan.activities : ['']
+        pl.weeklyActions = plan.weeklyNonNegotiables?.length ? plan.weeklyNonNegotiables : ['']
+        pl.outputs = ['']
+        pl.shortOutcome = plan.outcome || ''
+        pl.longOutcome = plan.outcome || ''
+        pl.planGeneratedFrom = getPlanSignature(pl)
+        pl.planGenerationTier = 'groq'
+        pl.planWasEdited = false
+        return d
+      })
+
+      setUploadMessage('')
+    } catch (error) {
+      console.error(error)
+      setUploadMessage('Sage plan error. Please try again.')
     }
-
-    if (!generated) {
-      generated = buildGeneratedPlan(targetPillar, isPro)
-    }
-
-    upd(d => {
-      const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
-      if (!pl) return d
-      pl.planGenerationCount = Number(pl.planGenerationCount || 0) + 1
-      pl.resources = generated.resources.length ? generated.resources : ['']
-      pl.activities = generated.activities.length ? generated.activities : ['']
-      pl.weeklyActions = generated.weeklyActions.length ? generated.weeklyActions : ['']
-      pl.outputs = generated.outputs.length ? generated.outputs : ['']
-      pl.shortOutcome = generated.shortOutcome
-      pl.longOutcome = generated.longOutcome
-      pl.planGeneratedFrom = getPlanSignature(pl)
-      pl.planGenerationTier = usedAiPlan ? 'pro' : 'free'
-      pl.planWasEdited = false
-      return d
-    })
-
-    setUploadMessage('')
   }
   const toggleReviewCollapse = () => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.reviewCollapsed = !ph.reviewCollapsed; return d })
-  const finalizeGeneratedPlans = () => upd(d => {
-    const ph = d.phases.find(p => p.id === phaseId)
-    if (!ph) return d
-    ph.pillars.forEach(pl => {
-      const hasRequiredInputs = hasVisualPlanInputs(pl)
-      if (!hasRequiredInputs) return
-      const generated = buildGeneratedPlan(pl, isPro)
-      pl.resources = generated.resources.length ? generated.resources : ['']
-      pl.activities = generated.activities.length ? generated.activities : ['']
-      pl.weeklyActions = generated.weeklyActions.length ? generated.weeklyActions : ['']
-      pl.outputs = generated.outputs.length ? generated.outputs : ['']
-      pl.shortOutcome = generated.shortOutcome
-      pl.longOutcome = generated.longOutcome
-      pl.planGeneratedFrom = getPlanSignature(pl)
-      pl.planGenerationTier = isPro ? 'pro' : 'free'
-      pl.planWasEdited = false
-    })
-    return d
-  })
   function loadTodoState() {
     try {
       return JSON.parse(localStorage.getItem(TODO_STATE_KEY) || '{}')
@@ -1401,7 +1271,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
   function handleEditingToggle() {
     if (editing) {
-      finalizeGeneratedPlans()
       setCalendarPromptArmed(true)
       setEditing(false)
       return
@@ -1444,10 +1313,77 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     }
   }
 
+  function formatGoogleDate(date) {
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    return `${yyyy}${mm}${dd}`
+  }
+
+  function buildWeeklyTaskLines(tasks) {
+    return (tasks || [])
+      .map(item => ({
+        pillar: String(item?.pillar || '').trim(),
+        task: String(item?.task || '').trim(),
+      }))
+      .filter(item => item.task)
+      .map(item => item.pillar ? `${item.pillar}: ${item.task}` : item.task)
+  }
+
+  function downloadWeeklyTasksIcs(tasks) {
+    const lines = buildWeeklyTaskLines(tasks)
+    const details = lines.length
+      ? `Your Phasr weekly non-negotiables\\n\\n${lines.map(item => `- ${item}`).join('\\n')}`
+      : 'Your Phasr weekly non-negotiables'
+
+    const today = new Date()
+    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0)
+    const startStamp = `${formatGoogleDate(startDate)}T090000`
+    const endStamp = `${formatGoogleDate(startDate)}T091500`
+    const uid = `phasr-weekly-${Date.now()}@phasr`
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Phasr//Weekly Tasks//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${formatGoogleDate(new Date())}T000000Z`,
+      `SUMMARY:Phasr Weekly Tasks`,
+      `DESCRIPTION:${details.replace(/\n/g, '\\n')}`,
+      `DTSTART:${startStamp}`,
+      `DTEND:${endStamp}`,
+      'RRULE:FREQ=DAILY;COUNT=7',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT0M',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:Phasr Weekly Tasks Reminder',
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n')
+
+    try {
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'phasr-weekly-tasks.ics'
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch {
+      // ignore download failures
+    }
+  }
+
   async function addToCalendarPlan() {
     if (calendarBusy) return
-    const next = buildWeeklyCalendarEvents({ ...data, activePhaseId: phaseId })
-    if (!next.length) {
+    const tasks = weeklyPlan
+    if (!tasks.length) {
       window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
         detail: {
           title: 'No tasks to sync',
@@ -1456,44 +1392,38 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       }))
       return
     }
-    let result = { method: 'unsupported' }
+
     setCalendarBusy(true)
     try {
-      saveCalendarEvents(next)
-      setCalendarEvents(next)
-      result = await openCalendarApp(next)
+      const today = new Date()
+      const end = new Date(today)
+      end.setDate(end.getDate() + 7)
+      const startKey = formatGoogleDate(today)
+      const endKey = formatGoogleDate(end)
+      const taskLines = buildWeeklyTaskLines(tasks)
+      const details = taskLines.length
+        ? `Your Phasr weekly non-negotiables\n\n${taskLines.map(item => `- ${item}`).join('\n')}`
+        : 'Your Phasr weekly non-negotiables'
+
+      const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Phasr Weekly Tasks')}&dates=${startKey}/${endKey}&details=${encodeURIComponent(details)}&sf=true&output=xml`
+      window.open(url, '_blank')
+      downloadWeeklyTasksIcs(tasks)
+
+      window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
+        detail: {
+          title: 'Calendar opened',
+          message: 'Google Calendar opened. An .ics file was also downloaded for Apple Calendar.',
+        },
+      }))
+      logCalendarIntegration('integrated')
     } finally {
       setCalendarBusy(false)
     }
-    window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
-      detail: {
-        title: result.method === 'share' ? 'Calendar ready' : result.method === 'cancelled' ? 'Calendar not added yet' : 'Calendar handoff unavailable',
-        message: result.method === 'share'
-          ? 'Your phone can now hand this plan to Calendar with reminders.'
-          : result.method === 'cancelled'
-            ? 'The add flow was cancelled. You can try again or download the calendar file instead.'
-            : 'This browser cannot hand the plan directly to your calendar app. Use Download if you want the calendar file.',
-      },
-    }))
-    logCalendarIntegration(result.method === 'share' ? 'integrated' : 'skipped')
+
     window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
       detail: {
         title: 'Weekly check in',
         message: 'Every week Sage will check in with you. Your weekly reflection is part of your phase.',
-      },
-    }))
-  }
-
-  function downloadCalendarPlan() {
-    const next = buildWeeklyCalendarEvents({ ...data, activePhaseId: phaseId })
-    if (!next.length) return
-    saveCalendarEvents(next)
-    downloadCalendarICS(next)
-    setCalendarEvents(next)
-    window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
-      detail: {
-        title: 'Calendar downloaded',
-        message: 'Your current plan was downloaded as a calendar file.',
       },
     }))
   }
@@ -1825,9 +1755,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
                 <button onClick={addToCalendarPlan} disabled={calendarBusy} style={{ minHeight: 40, padding: '0.68rem 0.95rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 700, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: calendarBusy ? 0.75 : 1 }}>
                   {calendarBusy ? 'Opening...' : 'Add to calendar'}
-                </button>
-                <button onClick={downloadCalendarPlan} style={{ minHeight: 40, padding: '0.68rem 0.95rem', borderRadius: 999, border: '1px solid #efc3d1', background: '#fff', color: '#8a5568', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                  Download
                 </button>
               </div>
             </div>
@@ -2594,32 +2521,34 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#c0445a' },
               { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#f4fbf5', bc: '#b9dfc0', lc: '#3a7d4d' },
             ].map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
-              <div key={slot} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.7rem' }}>
-                <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, marginBottom: '0.4rem' }}>{lbl}</p>
-                <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: isMobile ? '1/1' : '4/3', borderRadius: 10, background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
-                  {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload' : 'add photo'}</p>}
-                  {editing && src && (
-                    <button
-                      type="button"
-                      onClick={event => {
-                        event.stopPropagation()
-                        if (window.confirm('Remove this image?')) onUpdate(slot, null)
-                      }}
-                      aria-label={`Remove ${lbl} image`}
-                      style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', border: '1px solid #f2c7d4', background: 'rgba(255,255,255,0.96)', color: '#d05d86', display: 'grid', placeItems: 'center', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
-                    >
-                      ×
-                    </button>
-                  )}
+              <div key={slot} style={{ display: 'grid', gap: 8 }}>
+                <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, margin: 0 }}>{lbl}</p>
+                <div style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.7rem' }}>
+                  <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
+                    {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload' : 'add photo'}</p>}
+                    {editing && src && (
+                      <button
+                        type="button"
+                        onClick={event => {
+                          event.stopPropagation()
+                          if (window.confirm('Remove this image?')) onUpdate(slot, null)
+                        }}
+                        aria-label={`Remove ${lbl} image`}
+                        style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', border: '1px solid #f2c7d4', background: 'rgba(255,255,255,0.96)', color: '#d05d86', display: 'grid', placeItems: 'center', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  {editing
+                    ? <><input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
+                       <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
+                      {!isMobile ? (
+                        <input value={linkDrafts[slot] || ''} onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))} onBlur={e => onImageLinkUpdate(slot, e.target.value)} placeholder="Paste image link" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} />
+                      ) : null}</>
+                    : <><p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5 }}>{sv}</p><p style={{ fontSize: '0.72rem', color: 'var(--app-muted)', marginTop: 2 }}>{dv}</p></>
+                  }
                 </div>
-                {editing
-                  ? <><input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
-                     <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
-                    {!isMobile ? (
-                      <input value={linkDrafts[slot] || ''} onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))} onBlur={e => onImageLinkUpdate(slot, e.target.value)} placeholder="Paste image link" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} />
-                    ) : null}</>
-                  : <><p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5 }}>{sv}</p><p style={{ fontSize: '0.72rem', color: 'var(--app-muted)', marginTop: 2 }}>{dv}</p></>
-                }
               </div>
             ))}
           </div>

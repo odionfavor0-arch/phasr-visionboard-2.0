@@ -86,6 +86,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const [boardEditing, setBoardEditing] = useState(false)
   const [lockInSummary, setLockInSummary] = useState(() => getLockInSummary(loadLockInState()))
   const [calendarBanner, setCalendarBanner] = useState(null)
+  const [calendarBannerVisible, setCalendarBannerVisible] = useState(false)
   const [isMobileView, setIsMobileView] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
   const contentRef = useRef(null)
   const bannerTouchX = useRef(null)
@@ -139,6 +140,15 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     window.addEventListener('phasr-calendar-feedback', handleCalendarFeedback)
     return () => window.removeEventListener('phasr-calendar-feedback', handleCalendarFeedback)
   }, [])
+
+  useEffect(() => {
+    if (!calendarBanner) {
+      setCalendarBannerVisible(false)
+      return
+    }
+    setCalendarBannerVisible(false)
+    requestAnimationFrame(() => setCalendarBannerVisible(true))
+  }, [calendarBanner?.message, calendarBanner?.title])
 
   useEffect(() => {
     const handleOpenJournal = event => {
@@ -457,19 +467,51 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         </header>
 
         {calendarBanner && (
-          <div style={{ position: 'fixed', right: 20, top: 84, zIndex: 140 }}>
-            <div style={{ maxWidth: 320 }}>
-              <div
-                onTouchStart={handleBannerTouchStart}
-                onTouchEnd={handleBannerTouchEnd}
-                style={{ position: 'relative', background: '#fff1f6', border: '1px solid #f2c8d6', color: 'var(--app-text)', borderRadius: 16, padding: '0.85rem 2.4rem 0.85rem 0.9rem', display: 'flex', gap: '0.45rem', alignItems: 'flex-start', boxShadow: '0 14px 32px rgba(185,87,122,0.16)' }}
-              >
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>{calendarBanner.title || 'Reminder'}</p>
-                  <p style={{ margin: '0.18rem 0 0', fontSize: '0.82rem', lineHeight: 1.5 }}>{calendarBanner.message}</p>
-                </div>
-                <button onClick={() => setCalendarBanner(null)} aria-label="Close reminder" style={{ position: 'absolute', top: 10, right: 10, width: 24, height: 24, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+          <div
+            onTouchStart={handleBannerTouchStart}
+            onTouchEnd={handleBannerTouchEnd}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 500,
+              transform: calendarBannerVisible ? 'translateY(0)' : 'translateY(-100%)',
+              transition: 'transform 0.4s ease-out',
+              padding: 'max(0.65rem, env(safe-area-inset-top)) 0.9rem 0.65rem',
+            }}
+          >
+            <div
+              style={{
+                position: 'relative',
+                width: 'min(980px, calc(100vw - 1.8rem))',
+                margin: '0 auto',
+                background: '#fff1f6',
+                border: '1px solid #f2c8d6',
+                color: 'var(--app-text)',
+                borderRadius: 18,
+                padding: '0.85rem 2.6rem 0.85rem 0.95rem',
+                display: 'flex',
+                gap: '0.55rem',
+                alignItems: 'flex-start',
+                boxShadow: '0 14px 32px rgba(185,87,122,0.16)',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
+                  {calendarBanner.title || 'Reminder'}
+                </p>
+                <p style={{ margin: '0.18rem 0 0', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                  {calendarBanner.message}
+                </p>
               </div>
+              <button
+                onClick={() => setCalendarBanner(null)}
+                aria-label="Close reminder"
+                style={{ position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, lineHeight: 1, fontSize: '1.05rem', fontWeight: 800, display: 'grid', placeItems: 'center' }}
+              >
+                ×
+              </button>
             </div>
           </div>
         )}
