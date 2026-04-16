@@ -5,6 +5,7 @@ import { getLockInSummary, getTodayTask, loadBoardData, loadLockInState } from '
 import { getUserAccess } from '../lib/access'
 import { getSageAvatarUrl, getVoicePreference } from '../lib/userPreferences'
 
+const ACTIVE_USER_KEY = 'phasr_active_user'
 const QUICK_SESSION_KEY = 'phasr_sage_float'
 const WEEKLY_SESSION_EVENT = 'phasr-weekly-session-start'
 const WEEKLY_SESSION_END_EVENT = 'phasr-weekly-session-end'
@@ -32,22 +33,34 @@ const RESEARCH_TRIGGER_RE = /\b(how|why|what is required|what do i need|steps|pr
 let activeSageAudio = null
 let activeSageSpeechRequest = false
 
+function getScopedKey(base) {
+  const id = localStorage.getItem(ACTIVE_USER_KEY) || ''
+  return id ? `${base}:${id}` : base
+}
+
 function safeRead(key, fallback) {
   try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
+    const scopedKey = getScopedKey(key)
+    const scopedValue = localStorage.getItem(scopedKey)
+    if (scopedValue) return JSON.parse(scopedValue)
+    const legacyValue = localStorage.getItem(key)
+    if (legacyValue) {
+      localStorage.setItem(scopedKey, legacyValue)
+      return JSON.parse(legacyValue)
+    }
+    return fallback
   } catch {
     return fallback
   }
 }
 
 function safeWrite(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+  localStorage.setItem(getScopedKey(key), JSON.stringify(value))
 }
 
 function readJournalEntries() {
   try {
-    const raw = localStorage.getItem(JOURNAL_STORAGE_KEY)
+    const raw = localStorage.getItem(getScopedKey(JOURNAL_STORAGE_KEY))
     const parsed = raw ? JSON.parse(raw) : []
     return Array.isArray(parsed) ? parsed : []
   } catch {
@@ -56,7 +69,7 @@ function readJournalEntries() {
 }
 
 function writeJournalEntries(entries) {
-  localStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(entries))
+  localStorage.setItem(getScopedKey(JOURNAL_STORAGE_KEY), JSON.stringify(entries))
 }
 
 function updateWeeklySessionEntry(entryId, updater) {
@@ -1469,7 +1482,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
   const panelHeight = isMobile ? Math.min(430, Math.max(300, Math.round(window.innerHeight * 0.52))) : QUICK_HEIGHT
   const panelPosition = getPanelPosition(position, panelWidth, panelHeight)
   const displayMessages = sessionMode ? weeklySessionMessages : messages
-  const inputPlaceholder = sessionMode ? 'Write what actually happened this week...' : ''
+  const inputPlaceholder = sessionMode ? 'Write...' : ''
   const sessionUserTurns = sessionMode ? weeklySessionMessages.filter(item => item?.role === 'user').length : 0
   const sessionTurnLimit = 3
   const sessionLimitReached = sessionMode && !weeklySessionCompletedAt && sessionUserTurns >= sessionTurnLimit
@@ -2046,18 +2059,14 @@ function VoiceRecorderButton({ recording, onClick, disabled = false }) {
 export default function SageCoach({ onLockInChange, user }) {
   const isPro = getUserAccess(user).isPro
   const boardData = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('phasr_vb') || '{}')
-    } catch {
-      return {}
-    }
+    return safeRead('phasr_vb', {})
   }, [])
   const todayTask = useMemo(() => getTodayTask(boardData), [boardData])
   const [voicePreference, setVoicePreferenceState] = useState(() => getVoicePreference())
   const [avatarUrl, setAvatarUrl] = useState(() => getSageAvatarUrl())
   const [threads, setThreads] = useState(() => migrateThreads())
   const [activeThreadId, setActiveThreadId] = useState(() => {
-    const savedActive = localStorage.getItem(FULL_ACTIVE_THREAD_KEY)
+    const savedActive = localStorage.getItem(getScopedKey(FULL_ACTIVE_THREAD_KEY))
     const migratedThreads = migrateThreads()
     return savedActive && migratedThreads.some(thread => thread.id === savedActive)
       ? savedActive
@@ -2092,7 +2101,7 @@ export default function SageCoach({ onLockInChange, user }) {
       })),
     )
     if (activeThreadId) {
-      localStorage.setItem(FULL_ACTIVE_THREAD_KEY, activeThreadId)
+      localStorage.setItem(getScopedKey(FULL_ACTIVE_THREAD_KEY), activeThreadId)
     }
   }, [threads, activeThreadId])
 
@@ -2307,7 +2316,7 @@ Action Steps
     const shouldDelete = window.confirm('Are you sure you want to delete this chat?')
     if (!shouldDelete) return
     setThreads(current => current.filter(thread => thread.id !== activeThreadId))
-    localStorage.removeItem(FULL_SESSION_KEY)
+    localStorage.removeItem(getScopedKey(FULL_SESSION_KEY))
   }
 
   async function toggleRecording() {

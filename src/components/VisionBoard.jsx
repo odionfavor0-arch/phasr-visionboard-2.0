@@ -935,7 +935,7 @@ function formatCalendarSpot(dateKey) {
   })
 }
 
-export default function VisionBoard({ user, lockInSummary, editing: editingProp, onEditingChange, onOpenDailyStreak }) {
+export default function VisionBoard({ user, lockInSummary, editing: editingProp, onEditingChange, onOpenDailyStreak, autoOpenQuarterlyReviewPhaseId = null, onQuarterlyReviewOpened }) {
   const isPro = getUserAccess(user).isPro
 
   const [data, setData] = useState(() =>
@@ -1021,6 +1021,35 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   useEffect(() => {
     if (!isMobile) setShowReview(false)
   }, [isMobile])
+
+  useEffect(() => {
+    if (!autoOpenQuarterlyReviewPhaseId) return
+
+    const targetPhase = data.phases?.find(item => item.id === autoOpenQuarterlyReviewPhaseId)
+    if (!targetPhase) {
+      onQuarterlyReviewOpened?.()
+      return
+    }
+
+    setPhaseId(autoOpenQuarterlyReviewPhaseId)
+    upd(next => {
+      next.activePhaseId = autoOpenQuarterlyReviewPhaseId
+      const phase = next.phases.find(item => item.id === autoOpenQuarterlyReviewPhaseId)
+      if (phase) phase.reviewCollapsed = false
+      return next
+    })
+
+    if (isMobile) {
+      setShowReview(true)
+    } else {
+      requestAnimationFrame(() => {
+        const reviewNode = document.querySelector('[data-quarterly-review="true"]')
+        reviewNode?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+
+    onQuarterlyReviewOpened?.()
+  }, [autoOpenQuarterlyReviewPhaseId, data.phases, isMobile, onQuarterlyReviewOpened])
 
   useEffect(() => {
     let cancelled = false
@@ -2186,7 +2215,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
         {/* â”€â”€ Quarterly Review â”€â”€ */}
         {!isMobile && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: 'var(--sh)', overflow: 'hidden', marginBottom: '1.5rem' }}>
+          <div data-quarterly-review="true" style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: 'var(--sh)', overflow: 'hidden', marginBottom: '1.5rem' }}>
             <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', flexShrink: 0 }}>Q</div>
@@ -2511,6 +2540,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
 /* â”€â”€ Pillar Card â”€â”€ */
   function PillarCard({ pl, editing, checked, phaseId, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, onCalendarOpen, calendarEvents = [], isPro }) {
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const beforeReady = cleanText(pl.beforeState) || cleanText(pl.beforeDesc)
     const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
     const hasImageContext = Boolean(pl.beforeImage || pl.afterImage)
@@ -2559,14 +2589,14 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       {!pl.collapsed && (
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           {/* Before / After */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.85rem' : '0.6rem' }}>
             {[
               { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#c0445a' },
               { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#f4fbf5', bc: '#b9dfc0', lc: '#3a7d4d' },
             ].map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
               <div key={slot} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.7rem' }}>
                 <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, marginBottom: '0.4rem' }}>{lbl}</p>
-                <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
+                <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: isMobile ? '1/1' : '4/3', borderRadius: 10, background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
                   {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload' : 'add photo'}</p>}
                   {editing && src && (
                     <button
@@ -2585,7 +2615,9 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                 {editing
                   ? <><input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
                      <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
-                    <input value={linkDrafts[slot] || ''} onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))} onBlur={e => onImageLinkUpdate(slot, e.target.value)} placeholder="Paste image link" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} /></>
+                    {!isMobile ? (
+                      <input value={linkDrafts[slot] || ''} onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))} onBlur={e => onImageLinkUpdate(slot, e.target.value)} placeholder="Paste image link" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} />
+                    ) : null}</>
                   : <><p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5 }}>{sv}</p><p style={{ fontSize: '0.72rem', color: 'var(--app-muted)', marginTop: 2 }}>{dv}</p></>
                 }
               </div>

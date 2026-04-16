@@ -17,6 +17,7 @@ import {
   Volume2,
 } from 'lucide-react'
 
+const ACTIVE_USER_KEY = 'phasr_active_user'
 const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
@@ -178,9 +179,27 @@ const FONTS = [
   { id: 'georgia', name: 'Georgia', family: 'Georgia, serif' },
 ]
 
+function getScopedKey(base) {
+  const id = localStorage.getItem(ACTIVE_USER_KEY) || ''
+  return id ? `${base}:${id}` : base
+}
+
+function scopedGetItem(base) {
+  const scopedKey = getScopedKey(base)
+  const scopedValue = localStorage.getItem(scopedKey)
+  if (scopedValue != null) return scopedValue
+  const legacyValue = localStorage.getItem(base)
+  if (legacyValue != null) localStorage.setItem(scopedKey, legacyValue)
+  return legacyValue
+}
+
+function scopedSetItem(base, value) {
+  localStorage.setItem(getScopedKey(base), value)
+}
+
 function safeRead() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = scopedGetItem(STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : []
     return Array.isArray(parsed) ? parsed : []
   } catch {
@@ -189,7 +208,7 @@ function safeRead() {
 }
 
 function safeWrite(entries) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
+  scopedSetItem(STORAGE_KEY, JSON.stringify(entries))
 }
 
 function getToday() {
@@ -198,7 +217,7 @@ function getToday() {
 
 function markWeeklyPulseDoneIfWeekOne(weekNumber) {
   if (Number(weekNumber) !== 1) return
-  localStorage.setItem(WEEKLY_PULSE_W1_DONE_KEY, 'true')
+  scopedSetItem(WEEKLY_PULSE_W1_DONE_KEY, 'true')
 }
 
 function formatDate(dateString) {
@@ -270,7 +289,7 @@ function removeDashPunctuation(text) {
 
 function readVisionBoardData() {
   try {
-    const direct = localStorage.getItem('phasr_vb')
+    const direct = scopedGetItem('phasr_vb')
     if (direct) return JSON.parse(direct)
   } catch {
     // ignore
@@ -765,6 +784,7 @@ function WeeklyPulseWriter({
 
 function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
+  const hideSessionCtaTapRef = useRef(0)
   const detailBody = entry.content || getTemplateSummary(entry) || ''
   const isWeeklyPulse = String(entry?.prompt || '').toLowerCase() === 'weekly pulse'
   const weeklySession = entry?.weeklyPulseSession || null
@@ -779,7 +799,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const sessionCtaHideKey = entry?.id ? `phasr_weekly_session_cta_hidden_until_${entry.id}` : ''
   const [sessionCtaHidden, setSessionCtaHidden] = useState(() => {
     if (!sessionCtaHideKey) return false
-    const hiddenUntil = localStorage.getItem(sessionCtaHideKey)
+    const hiddenUntil = scopedGetItem(sessionCtaHideKey)
     return Boolean(hiddenUntil && hiddenUntil > todayIso)
   })
 
@@ -799,8 +819,16 @@ function EntryDetail({ entry, onBack, onEdit }) {
 
   function hideWeeklySessionCtaForToday() {
     if (!sessionCtaHideKey) return
-    localStorage.setItem(sessionCtaHideKey, tomorrowIso)
+    scopedSetItem(sessionCtaHideKey, tomorrowIso)
     setSessionCtaHidden(true)
+  }
+
+  function handleWeeklySessionCtaPointerUp(event) {
+    if (!sessionCtaHideKey) return
+    if (event.pointerType && event.pointerType !== 'touch') return
+    const now = Date.now()
+    if (now - hideSessionCtaTapRef.current < 320) hideWeeklySessionCtaForToday()
+    hideSessionCtaTapRef.current = now
   }
 
   return (
@@ -824,7 +852,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
               </div>
                <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
               {!sessionCtaHidden ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }} onPointerUp={handleWeeklySessionCtaPointerUp}>
                   <button
                     type="button"
                     onClick={openWeeklySession}
@@ -847,18 +875,24 @@ function EntryDetail({ entry, onBack, onEdit }) {
                     type="button"
                     onClick={hideWeeklySessionCtaForToday}
                     style={{
-                      border: 'none',
-                      background: 'transparent',
+                      width: 26,
+                      height: 26,
+                      borderRadius: 999,
+                      border: '1px solid #f2c4d0',
+                      background: 'rgba(255,255,255,0.96)',
                       color: '#b08090',
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
+                      fontSize: '1rem',
+                      fontWeight: 800,
                       cursor: 'pointer',
                       padding: 0,
-                      textDecoration: 'underline',
-                      textUnderlineOffset: 3,
+                      lineHeight: 1,
+                      display: 'grid',
+                      placeItems: 'center',
                     }}
+                    aria-label="Hide for now"
+                    title="Hide for now"
                   >
-                    Hide for now
+                    ×
                   </button>
                 </div>
               ) : (
@@ -1367,7 +1401,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   const [editingEntryId, setEditingEntryId] = useState(null)
   const [entryActionId, setEntryActionId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [weeklyPulseDate, setWeeklyPulseDate] = useState(() => localStorage.getItem(WEEKLY_PULSE_DATE_KEY) || '')
+  const [weeklyPulseDate, setWeeklyPulseDate] = useState(() => scopedGetItem(WEEKLY_PULSE_DATE_KEY) || '')
   const [weeklyPulseState, setWeeklyPulseState] = useState(() => ({
     phaseName: 'Phase 1',
     weekNumber: 1,
@@ -1384,7 +1418,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
   useEffect(() => {
     if (weeklyPulseDate) {
-      localStorage.setItem(WEEKLY_PULSE_DATE_KEY, weeklyPulseDate)
+      scopedSetItem(WEEKLY_PULSE_DATE_KEY, weeklyPulseDate)
     }
   }, [weeklyPulseDate])
 
@@ -1539,14 +1573,14 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       setEntries(current => [entry, ...current])
       setSelectedEntry(entry)
       const completionStore = (() => {
-        try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+        try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
       })()
       const phaseKey = normalizeLabel(weeklyDraft.weeklyPulsePhaseName || 'phase 1')
       completionStore[phaseKey] = completionStore[phaseKey] || {}
       completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
-      localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+      scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
-      localStorage.setItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
+      scopedSetItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
       markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
       onWeeklyPulseSaved?.()
       setScreen('detail')
@@ -1578,14 +1612,14 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       setEntries(current => [fallback, ...current])
       setSelectedEntry(fallback)
       const completionStore = (() => {
-        try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+        try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
       })()
       const phaseKey = normalizeLabel(weeklyDraft.weeklyPulsePhaseName || 'phase 1')
       completionStore[phaseKey] = completionStore[phaseKey] || {}
       completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
-      localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+      scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
       setWeeklyPulseDate(getToday())
-      localStorage.setItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
+      scopedSetItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
       markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
       onWeeklyPulseSaved?.()
       setScreen('detail')
@@ -1638,13 +1672,13 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       if (isWeeklyPulse) {
         setWeeklyPulseDate(getToday())
         const completionStore = (() => {
-          try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+          try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
         })()
         const phaseKey = normalizeLabel(draft.weeklyPulsePhaseName || 'phase 1')
         completionStore[phaseKey] = completionStore[phaseKey] || {}
         completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
-        localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
-        localStorage.setItem(`phasr_weekly_pulse_w${draft.weeklyPulseWeekNumber || 1}_done`, 'true')
+        scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+        scopedSetItem(`phasr_weekly_pulse_w${draft.weeklyPulseWeekNumber || 1}_done`, 'true')
         markWeeklyPulseDoneIfWeekOne(draft.weeklyPulseWeekNumber || 1)
         onWeeklyPulseSaved?.()
       }
@@ -1683,13 +1717,13 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       if (String(draft.prompt || '').toLowerCase() === 'weekly pulse') {
         setWeeklyPulseDate(getToday())
         const completionStore = (() => {
-          try { return JSON.parse(localStorage.getItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+          try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
         })()
         const phaseKey = normalizeLabel(draft.weeklyPulsePhaseName || 'phase 1')
         completionStore[phaseKey] = completionStore[phaseKey] || {}
         completionStore[phaseKey][String(draft.weeklyPulseWeekNumber || 1)] = getToday()
-        localStorage.setItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
-        localStorage.setItem(`phasr_weekly_pulse_w${draft.weeklyPulseWeekNumber || 1}_done`, 'true')
+        scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+        scopedSetItem(`phasr_weekly_pulse_w${draft.weeklyPulseWeekNumber || 1}_done`, 'true')
         markWeeklyPulseDoneIfWeekOne(draft.weeklyPulseWeekNumber || 1)
         onWeeklyPulseSaved?.()
       }

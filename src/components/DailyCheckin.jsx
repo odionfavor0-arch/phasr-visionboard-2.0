@@ -251,6 +251,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   })
   const [unlockHovering, setUnlockHovering] = useState(false)
   const unlockTimersRef = useRef({ transition: null, enter: null })
+  const unlockHideTapRef = useRef(0)
 
   useEffect(() => {
     const sync = () => {
@@ -355,6 +356,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
+
+  function hideUnlockPathForToday() {
+    localStorage.setItem(UNLOCK_CARD_HIDE_KEY, getTomorrowIso())
+    setUnlockCardVisible(false)
+  }
+
+  function handleUnlockPathPointerUp(event) {
+    if (!isMobile) return
+    if (event.pointerType && event.pointerType !== 'touch') return
+    const now = Date.now()
+    if (now - unlockHideTapRef.current < 320) {
+      hideUnlockPathForToday()
+    }
+    unlockHideTapRef.current = now
+  }
   const currentStreak = summary.currentStreak || 0
   const overallDaysDone = useMemo(() => weekStatuses.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0), [weekStatuses])
   const rankMood = getRankMood(currentStreak)
@@ -795,6 +811,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <div
               onMouseEnter={() => setUnlockHovering(true)}
               onMouseLeave={() => setUnlockHovering(false)}
+              onPointerUp={handleUnlockPathPointerUp}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
             >
               <span style={{ width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #ef5d90, #f4a3bf)', boxShadow: '0 0 0 4px rgba(239,93,144,0.12)' }} />
@@ -803,24 +820,28 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  localStorage.setItem(UNLOCK_CARD_HIDE_KEY, getTomorrowIso())
-                  setUnlockCardVisible(false)
-                }}
+                aria-label="Hide for now"
+                title="Hide for now"
+                onClick={hideUnlockPathForToday}
                 style={{
-                  border: 'none',
-                  background: 'transparent',
+                  width: 26,
+                  height: 26,
+                  borderRadius: 999,
+                  border: '1px solid #f2c4d0',
+                  background: 'rgba(255,255,255,0.9)',
                   color: '#b08090',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
+                  fontSize: '1rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
                   padding: 0,
                   lineHeight: 1,
-                  opacity: unlockHovering ? 1 : 0,
+                  opacity: (isMobile || unlockHovering) ? 1 : 0,
                   transition: 'opacity 180ms ease',
+                  display: 'grid',
+                  placeItems: 'center',
                 }}
               >
-                Hide for now
+                ×
               </button>
             </div>
           )}

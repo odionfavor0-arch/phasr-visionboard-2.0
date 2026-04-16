@@ -138,6 +138,7 @@ function HamburgerButton({ open, onClick, mobile }) {
 export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const [activeView, setActiveView] = useState('board')
   const [autoOpenWeeklyPulse, setAutoOpenWeeklyPulse] = useState(false)
+  const [autoOpenQuarterlyReviewPhaseId, setAutoOpenQuarterlyReviewPhaseId] = useState(null)
   const view = activeView
   const setView = setActiveView
   const [isMobile, setIsMobile] = useState(() => {
@@ -220,6 +221,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       user={user}
       lockInSummary={lockSummary}
       onOpenDailyStreak={() => setView('checkin')}
+      autoOpenQuarterlyReviewPhaseId={autoOpenQuarterlyReviewPhaseId}
+      onQuarterlyReviewOpened={() => setAutoOpenQuarterlyReviewPhaseId(null)}
     />
   )
 
@@ -241,6 +244,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         onOpenWeeklyPulse={() => {
           setAutoOpenWeeklyPulse(true)
           setActiveView('journal')
+        }}
+        onOpenQuarterlyReview={phase => {
+          setView('board')
+          if (phase?.id) setAutoOpenQuarterlyReviewPhaseId(phase.id)
         }}
       />
     )

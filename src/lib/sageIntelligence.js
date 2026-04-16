@@ -1,3 +1,4 @@
+const ACTIVE_USER_KEY = 'phasr_active_user'
 const NEXT_WEEK_PLAN_KEY = 'phasr_next_week_plan'
 const SAGE_PLANS_KEY = 'phasr_sage_plans'
 const BRIEFING_DISMISS_KEY = 'phasr_sage_briefing_dismissed'
@@ -6,17 +7,29 @@ const LEGACY_JOURNAL_KEY = 'phasr_journal'
 const COMPLETIONS_KEY = 'phasr_completions'
 const WEEKLY_GOALS_KEY = 'phasr_weekly_goals'
 
+function getScopedKey(base) {
+  const id = localStorage.getItem(ACTIVE_USER_KEY) || ''
+  return id ? `${base}:${id}` : base
+}
+
 function safeRead(key, fallback) {
   try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
+    const scopedKey = getScopedKey(key)
+    const scopedValue = localStorage.getItem(scopedKey)
+    if (scopedValue) return JSON.parse(scopedValue)
+    const legacyValue = localStorage.getItem(key)
+    if (legacyValue) {
+      localStorage.setItem(scopedKey, legacyValue)
+      return JSON.parse(legacyValue)
+    }
+    return fallback
   } catch {
     return fallback
   }
 }
 
 function safeWrite(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+  localStorage.setItem(getScopedKey(key), JSON.stringify(value))
 }
 
 function parseDate(value) {
