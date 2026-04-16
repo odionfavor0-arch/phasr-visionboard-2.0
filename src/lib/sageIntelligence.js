@@ -343,7 +343,7 @@ export async function fetchPillarPlanWithGroq({ planPrompt = '', pillarName, bef
   if (!apiKey) throw new Error('missing_groq_key')
   const model = 'llama-3.3-70b-versatile'
 
-  const systemPrompt = 'You are Sage, an AI life coach inside Phasr.'
+  const systemPrompt = 'You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.'
   const userPrompt = String(planPrompt || '').trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || '').trim()}\nTheir before state: ${String(beforeState || '').trim()}\nTheir before description: ${String(beforeDesc || '').trim()}\nTheir after goal: ${String(afterState || '').trim()}\nTheir after description: ${String(afterDesc || '').trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {

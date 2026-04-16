@@ -139,6 +139,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const [activeView, setActiveView] = useState('board')
   const [autoOpenWeeklyPulse, setAutoOpenWeeklyPulse] = useState(false)
   const [autoOpenQuarterlyReviewPhaseId, setAutoOpenQuarterlyReviewPhaseId] = useState(null)
+  const [openJournalTemplatesToken, setOpenJournalTemplatesToken] = useState(0)
   const view = activeView
   const setView = setActiveView
   const [isMobile, setIsMobile] = useState(() => {
@@ -205,6 +206,21 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     }
   }, [])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search || '')
+    const open = params.get('open') || ''
+    if (open !== 'journal-templates') return
+
+    setView('journal')
+    setOpenJournalTemplatesToken(value => value + 1)
+
+    params.delete('open')
+    const nextSearch = params.toString()
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash || ''}`
+    window.history.replaceState({}, '', nextUrl)
+  }, [])
+
   function handleToggleSidebar() {
     setSidebarOpen(current => !current)
   }
@@ -232,6 +248,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         user={user}
         autoOpenWeeklyPulse={autoOpenWeeklyPulse}
         onWeeklyPulseOpened={() => setAutoOpenWeeklyPulse(false)}
+        openTemplatesToken={openJournalTemplatesToken}
       />
     )
   } else if (view === 'entries') {

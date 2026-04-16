@@ -33,6 +33,18 @@ const RESEARCH_TRIGGER_RE = /\b(how|why|what is required|what do i need|steps|pr
 let activeSageAudio = null
 let activeSageSpeechRequest = false
 
+function getJournalTemplatesUrl() {
+  if (typeof window === 'undefined') return ''
+  const base = `${window.location.origin}${window.location.pathname}`
+  return `${base}?open=journal-templates`
+}
+
+function isJournalTemplatesLinkRequest(text) {
+  const lower = String(text || '').toLowerCase()
+  return (lower.includes('journal') && lower.includes('template') && (lower.includes('link') || lower.includes('where'))) ||
+    lower.includes('journal templates link')
+}
+
 function getScopedKey(base) {
   const id = localStorage.getItem(ACTIVE_USER_KEY) || ''
   return id ? `${base}:${id}` : base
@@ -1383,6 +1395,19 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
     setInput('')
     setLoading(true)
 
+    if (isJournalTemplatesLinkRequest(content)) {
+      const url = getJournalTemplatesUrl()
+      setMessages(current => [
+        ...current,
+        {
+          role: 'assistant',
+          content: url ? `Journal templates link:\n${url}` : 'Open Journal → tap + → Templates.',
+        },
+      ])
+      setLoading(false)
+      return
+    }
+
     try {
       const reply = await requestSageReply({
         system: buildQuickSystemPrompt(task, boardData),
@@ -1664,8 +1689,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           style={{
             flex: 1,
             resize: 'none',
-            maxHeight: 84,
-            overflowY: 'hidden',
+            maxHeight: isMobile ? 180 : 84,
+            overflowY: 'auto',
             border: '1.5px solid var(--app-border)',
             borderRadius: 14,
             padding: '0.55rem 0.75rem',
@@ -2235,6 +2260,21 @@ export default function SageCoach({ onLockInChange, user }) {
     const nextMessages = [...session, { role: 'user', content }]
     updateActiveThreadMessages(nextMessages)
     setInput('')
+
+    if (isJournalTemplatesLinkRequest(content)) {
+      const url = getJournalTemplatesUrl()
+      updateActiveThreadMessages(current => [
+        ...current,
+        {
+          role: 'assistant',
+          content: url
+            ? `Journal templates link:\n${url}\n\nIf it opens the app, tap the emoji at the top to switch mood, then choose Templates.`
+            : 'Open Journal → tap + → Templates.',
+        },
+      ])
+      return
+    }
+
     setLoading(true)
     setResearching(useDeepResearch)
     setForceResearchNext(false)
@@ -2644,8 +2684,8 @@ Action Steps
               style={{
                 flex: 1,
                 resize: 'none',
-                maxHeight: 120,
-                overflowY: 'hidden',
+                maxHeight: isMobile ? 200 : 120,
+                overflowY: 'auto',
                 border: '1.5px solid var(--app-border)',
                 borderRadius: 16,
                 padding: '0.78rem 0.9rem',

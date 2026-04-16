@@ -1390,7 +1390,7 @@ const ghostMiniActionStyle = {
   placeItems: 'center',
 }
 
-export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpened = () => {}, onWeeklyPulseSaved = () => {} }) {
+export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpened = () => {}, onWeeklyPulseSaved = () => {}, openTemplatesToken = 0 }) {
   const [entries, setEntries] = useState(() => safeRead())
   const [screen, setScreen] = useState('list')
   const [search, setSearch] = useState('')
@@ -1460,6 +1460,16 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     openWeeklyPulse()
     onWeeklyPulseOpened?.()
   }, [autoOpenWeeklyPulse])
+
+  useEffect(() => {
+    if (!openTemplatesToken) return
+    setSelectedTemplate(null)
+    setTemplateAnswers({})
+    setEditingEntryId(null)
+    setDraft(blankDraft())
+    setShowMoodPicker(false)
+    setScreen('templates')
+  }, [openTemplatesToken])
 
   function startNewEntry() {
     setDraft(blankDraft())

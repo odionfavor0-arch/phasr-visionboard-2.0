@@ -373,8 +373,6 @@ function cleanText(value) {
 
 function getWeekStartDate(date = new Date()) {
   const next = new Date(date)
-  const diff = (next.getDay() + 6) % 7
-  next.setDate(next.getDate() - diff)
   next.setHours(0, 0, 0, 0)
   return next
 }
@@ -2782,7 +2780,7 @@ Return JSON only:
               {pl.weeklyActions.map((item, i) => {
                 const ck = `${phaseId}-${pl.id}-wk-${i}`
                 const safeTask = String(item || '').trim()
-                const dayIndex = Math.min(i, 3)
+                const dayIndex = Math.min(i, 6)
                 const calendarUrl = safeTask ? getCalendarUrl(safeTask, currentWeekStartDate, dayIndex) : ''
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.48rem', padding: '0.26rem 0.33rem', borderRadius: 7, cursor: 'pointer' }} onClick={() => !editing && onCheck(ck)}>
