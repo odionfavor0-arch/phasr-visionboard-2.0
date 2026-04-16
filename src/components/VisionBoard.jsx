@@ -392,6 +392,90 @@ function getCalendarUrl(taskText, weekStartDate, dayIndex) {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${nextDayStr}&details=${details}`
 }
 
+function getActiveUserId(user) {
+  return user?.id || user?.email || user?.user_metadata?.email || localStorage.getItem('phasr_active_user') || ''
+}
+
+function getTodayKey(date = new Date()) {
+  return date.toISOString().slice(0, 10)
+}
+
+function safeJsonParse(raw, fallback) {
+  try {
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function getHistoryStorageKey(userId, pillarName) {
+  const cleanUser = String(userId || '').trim()
+  const cleanPillar = String(pillarName || '').trim()
+  return `phasr_pillar_history:${cleanUser || 'guest'}:${cleanPillar || 'pillar'}`
+}
+
+function loadPillarHistory(userId, pillarName) {
+  const key = getHistoryStorageKey(userId, pillarName)
+  return safeJsonParse(localStorage.getItem(key), [])
+}
+
+function savePillarHistory(userId, pillarName, entries) {
+  const key = getHistoryStorageKey(userId, pillarName)
+  localStorage.setItem(key, JSON.stringify(Array.isArray(entries) ? entries : []))
+}
+
+function formatPillarHistory(entries) {
+  const list = Array.isArray(entries) ? entries : []
+  return list
+    .slice(0, 6)
+    .map(week => {
+      const weekNumber = Number(week?.weekNumber || 0) || ''
+      const activities = Array.isArray(week?.activities) ? week.activities.filter(Boolean).join(', ') : ''
+      const nonNegotiables = Array.isArray(week?.nonNegotiables) ? week.nonNegotiables.filter(Boolean).join(', ') : ''
+      const reflections = Array.isArray(week?.reflections) ? week.reflections.filter(Boolean).join(' ') : String(week?.reflections || '').trim()
+      return `Week ${weekNumber || '?'}: Activities: ${activities} Non-negotiables: ${nonNegotiables} Reflections: ${reflections}`.trim()
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+function computeBehaviorHint(lockInSummary) {
+  const weeklyConsistency = Number(lockInSummary?.weeklyConsistency || 0) || 0
+  if (weeklyConsistency >= 75) return 'progress → slightly increase difficulty (one small stretch), keep it realistic'
+  if (weeklyConsistency >= 45) return 'mixed consistency → keep difficulty steady, remove friction'
+  return 'inconsistency → simplify hard, fewer moving parts, focus on showing up'
+}
+
+async function getWebContextFromRag(query) {
+  const ragUrl = import.meta.env.VITE_SAGE_RAG_URL || ''
+  if (!ragUrl) return ''
+  try {
+    const res = await fetch(`${ragUrl.replace(/\/$/, '')}/api/sage/rag`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: String(query || '').trim(),
+        system_prompt: 'Return only a compact list of 6-10 current real-world tool/app/resource suggestions relevant to the question. No filler. No disclaimers. One item per line.',
+        messages: [],
+        top_k: 6,
+      }),
+    })
+    if (!res.ok) return ''
+    const data = await res.json()
+    const fromMatches = Array.isArray(data?.matches)
+      ? data.matches
+          .map(hit => hit?.fields?.text || hit?.metadata?.text || '')
+          .filter(Boolean)
+          .slice(0, 6)
+          .join('\n')
+      : ''
+    const answer = String(data?.answer || '').trim()
+    return [answer, fromMatches].filter(Boolean).join('\n').trim()
+  } catch {
+    return ''
+  }
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -1345,19 +1429,37 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       const focusAreaKey = targetPillar.name
       const knowledge = FOCUS_AREA_KNOWLEDGE[focusAreaKey] || {}
 
+      const userId = getActiveUserId(user)
+      const behaviorHint = computeBehaviorHint(lockInSummary)
+      const history = loadPillarHistory(userId, targetPillar.name)
+      const pastWeeks = formatPillarHistory(history)
+
+      const location = user?.user_metadata?.location || user?.user_metadata?.country || user?.user_metadata?.city || 'global'
+      const query = `Best tools, apps, and resources for ${targetPillar.name}. Location: ${location || 'global'}. Focus: ${targetPillar.afterState || targetPillar.afterDesc || ''}`.trim()
+      const webContext = await getWebContextFromRag(query)
+
       const planPrompt = `
 You are generating a structured plan for a Phasr user.
 
 Their pillar: ${targetPillar.name}
-Their before state: ${targetPillar.beforeState}
-Their before description: ${targetPillar.beforeDesc}
-Their after goal: ${targetPillar.afterState}
-Their after description: ${targetPillar.afterDesc}
+Before state: ${targetPillar.beforeState}
+Before description: ${targetPillar.beforeDesc}
+After goal: ${targetPillar.afterState}
+After description: ${targetPillar.afterDesc}
+
+Internet-aware context:
+${webContext}
 
 Use this knowledge to inform the plan:
-Suggested resources: ${(knowledge.resources || []).join(', ')}
-Suggested activities: ${(knowledge.activities || []).join(', ')}
-Suggested non-negotiables: ${(knowledge.nonNegotiables || []).join(', ')}
+Resources: ${(knowledge.resources || []).join(', ')}
+Activities: ${(knowledge.activities || []).join(', ')}
+Non-negotiables: ${(knowledge.nonNegotiables || []).join(', ')}
+
+Previous behavior patterns:
+${pastWeeks}
+
+Behavior intelligence:
+${behaviorHint}
 
 Generate a personalised plan based on what this specific person wrote.
 Do not use the suggested items word for word.
@@ -1365,6 +1467,23 @@ Adapt them to fit what this person actually said about their before and after.
 If they said they want better character and to be more optimistic,
 the resources and activities should directly serve those specific goals.
 Make it feel like it was written for them, not copied from a template.
+
+Rules:
+	•	Do NOT copy suggestions directly
+	•	Adapt everything to the user’s exact words
+	•	Make recommendations realistic for THIS week
+	•	Use internet context to suggest real, current tools or options
+	•	If location is known, localize suggestions
+
+Behavior rules:
+	•	Activities must be doable this week
+	•	Non-negotiables must be strict and clear
+	•	Resources must remove friction
+
+Learning rules:
+	•	If user failed consistency before, simplify
+	•	If user was consistent, increase difficulty slightly
+	•	If user avoids something repeatedly, surface it
 
 Return JSON only:
 {
@@ -1375,7 +1494,42 @@ Return JSON only:
 }
 `
 
-      const plan = await fetchPillarPlanWithGroq({ planPrompt })
+      const validatePlan = (planValue) => {
+        const resources = Array.isArray(planValue?.resources) ? planValue.resources.filter(Boolean) : []
+        const activities = Array.isArray(planValue?.activities) ? planValue.activities.filter(Boolean) : []
+        const nonNeg = Array.isArray(planValue?.weeklyNonNegotiables) ? planValue.weeklyNonNegotiables.filter(Boolean) : []
+        const outcome = String(planValue?.outcome || '').trim()
+        if (!resources.length || !activities.length || !nonNeg.length || !outcome) return { ok: false, reason: 'missing_fields' }
+
+        const knowledgeText = new Set([
+          ...(knowledge.resources || []),
+          ...(knowledge.activities || []),
+          ...(knowledge.nonNegotiables || []),
+        ].map(item => String(item || '').trim()).filter(Boolean))
+        const combined = [...resources, ...activities, ...nonNeg].map(item => String(item || '').trim()).filter(Boolean)
+        const copied = combined.filter(item => knowledgeText.has(item)).length
+        if (copied >= 2) return { ok: false, reason: 'copied_knowledge' }
+
+        const genericHits = combined.filter(item => /\b(stay consistent|keep it simple|be consistent|try your best|take it one day at a time)\b/i.test(item)).length
+        if (genericHits >= 2) return { ok: false, reason: 'too_generic' }
+
+        const hasRealWorld = combined.some(item => /\b(app|tool|tracker|notion|trello|asana|myfitnesspal|cronometer|strava|ynab|copilot|insight timer)\b/i.test(item))
+        if (!hasRealWorld) return { ok: false, reason: 'no_real_world_resource' }
+
+        return { ok: true, reason: '' }
+      }
+
+      let plan = await fetchPillarPlanWithGroq({ planPrompt })
+      const firstCheck = validatePlan(plan)
+      if (!firstCheck.ok) {
+        const repairPrompt = `${planPrompt}\n\nValidation failed: ${firstCheck.reason}.\nFix it. Do not repeat the knowledge base items verbatim. Ensure at least one resource is a real-world app/tool. Return JSON only.`
+        plan = await fetchPillarPlanWithGroq({ planPrompt: repairPrompt })
+        const secondCheck = validatePlan(plan)
+        if (!secondCheck.ok) {
+          setUploadMessage('Sage plan error. Please try again.')
+          return
+        }
+      }
 
       upd(d => {
         const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
@@ -1392,6 +1546,22 @@ Return JSON only:
         pl.planWasEdited = false
         return d
       })
+
+      try {
+        const nextHistory = [
+          {
+            weekNumber: history.length + 1,
+            generatedAt: new Date().toISOString(),
+            activities: plan.activities || [],
+            nonNegotiables: plan.weeklyNonNegotiables || [],
+            reflections: [],
+          },
+          ...history,
+        ].slice(0, 12)
+        savePillarHistory(userId, targetPillar.name, nextHistory)
+      } catch {
+        // ignore history failures
+      }
 
       setUploadMessage('')
     } catch (error) {
