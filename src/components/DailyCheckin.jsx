@@ -519,13 +519,18 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, hasPillars, displayedMilestone?.day, progressDays, overallDaysDone, normalizedUnlocked.join('|')])
 
+  function getPhaseLabel(phaseId) {
+    const index = phases.findIndex(phase => phase.id === phaseId)
+    return `Phase ${Math.max(1, index + 1)}`
+  }
+
   function openPulse() {
     onOpenWeeklyPulse?.({
       weekNumber: activeWeek,
       completionPercent: weekPercent,
       tasksCompleted: completedTasksThisWeek,
       tasksTotal: totalTasksThisWeek,
-      phaseName: currentPhase?.name || 'Phase 1',
+      phaseName: getPhaseLabel(activePhaseId),
     })
   }
 
@@ -553,7 +558,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden', display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: 'min(100%, 1080px)', maxWidth: '100%', margin: '0 auto', padding: isMobile ? '14px 10px 96px' : '18px 20px 96px', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {phases.map(phase => (
+          {phases.map((phase, index) => (
             <button
               key={phase.id}
               type="button"
@@ -570,7 +575,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 cursor: 'pointer',
               }}
             >
-              {phases.length === 1 ? 'Phase 1' : phase.name}
+              {`Phase ${index + 1}`}
             </button>
           ))}
         </div>

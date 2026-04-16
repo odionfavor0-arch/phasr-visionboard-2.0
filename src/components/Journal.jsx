@@ -427,7 +427,7 @@ function blankDraft() {
     title: '',
     content: '',
     prompt: PROMPTS[0],
-    mood: null,
+    mood: MOODS[0],
     backgroundId: 'original',
     templateAccent: '',
     templateFields: null,
@@ -1150,7 +1150,10 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.16, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.85rem', color: currentBackground.id === 'dark-cute' ? '#fff' : '#d1588b' }}>{currentBackground.deco}</div>
           <button type="button" onClick={() => dateInputRef.current?.click()} style={{ border: 'none', background: 'transparent', padding: 0, color: '#7f6672', fontSize: '0.96rem' }}>{formatDate(draft.date)}</button>
           <input ref={dateInputRef} type="date" value={draft.date} onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
-            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || '😊'}</span>
+          <div style={{ flex: 1 }} />
+          <button type="button" onClick={() => setShowMoodPicker(true)} aria-label="Change emoji" title="Change emoji" style={{ border: 'none', background: 'transparent', padding: 0, color: '#4f9bff' }}>
+            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || MOODS[0]?.emoji || '😊'}</span>
+          </button>
         </div>
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
@@ -1460,7 +1463,11 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
   function startNewEntry() {
     setDraft(blankDraft())
-    setShowMoodPicker(true)
+    setSelectedTemplate(null)
+    setTemplateAnswers({})
+    setEditingEntryId(null)
+    setShowMoodPicker(false)
+    setScreen('write')
   }
 
   function pickMood(mood) {
