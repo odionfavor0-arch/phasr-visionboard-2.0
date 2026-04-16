@@ -387,19 +387,22 @@ function addDays(date, days) {
 
 const NON_NEGOTIABLE_DAY_OFFSETS = [0, 2, 4, 6] // Mon, Wed, Fri, Sun
 
-function getCalendarUrl(taskText, weekStartDate, dayIndex) {
-  const taskDate = new Date(weekStartDate)
-  taskDate.setDate(taskDate.getDate() + (Number(dayIndex) || 0))
+function formatCalendarYyyyMmDd(date) {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}${mm}${dd}`
+}
 
-  const dateStr = taskDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-  const nextDay = new Date(taskDate)
-  nextDay.setDate(nextDay.getDate() + 1)
-  const nextDayStr = nextDay.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+function getCalendarUrl(taskText, weekStartDate, dayOffset) {
+  const taskDate = addDays(weekStartDate, Number(dayOffset) || 0)
+  const startDate = formatCalendarYyyyMmDd(taskDate)
+  const endDate = formatCalendarYyyyMmDd(addDays(taskDate, 1)) // end is exclusive for all-day events
 
   const title = encodeURIComponent(`Phasr: ${taskText}`)
   const details = encodeURIComponent('Your weekly non-negotiable from Phasr. Tap once to complete in the app.')
 
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${nextDayStr}&details=${details}`
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&sf=true&output=xml`
 }
 
 function getActiveUserId(user) {
@@ -1234,6 +1237,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [calendarBusy, setCalendarBusy] = useState(false)
   const [calendarPromptState, setCalendarPromptState] = useState('hidden')
   const [calendarPromptArmed, setCalendarPromptArmed] = useState(false)
+  const [calendarBannerMounted, setCalendarBannerMounted] = useState(false)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   const [showReview, setShowReview] = useState(false)
   const [revealedDeleteTarget, setRevealedDeleteTarget] = useState(null)
@@ -1609,7 +1613,12 @@ Return JSON only:
       setUploadMessage('')
     } catch (error) {
       console.error(error)
-      setUploadMessage('Sage plan error. Please try again.')
+      const message = String(error?.message || '')
+      setUploadMessage(
+        message.includes('missing_groq_key')
+          ? 'Sage plan generation is not configured yet. Add `VITE_GROQ_KEY` and reload.'
+          : 'Sage plan error. Please try again.',
+      )
     }
   }
   const toggleReviewCollapse = () => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.reviewCollapsed = !ph.reviewCollapsed; return d })
@@ -2120,9 +2129,93 @@ Return JSON only:
     setCalendarPromptArmed(false)
   }, [calendarPromptArmed, editing, weeklyPlan.length])
 
+  useEffect(() => {
+    if (!showCalendarPrompt) return
+    setCalendarBannerMounted(false)
+    requestAnimationFrame(() => setCalendarBannerMounted(true))
+  }, [showCalendarPrompt])
+
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 4rem' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
+        {showCalendarPrompt && (
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 500,
+              padding: `calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px`,
+              transform: calendarBannerMounted ? 'translateY(0)' : 'translateY(-100%)',
+              transition: 'transform 0.4s ease-out',
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                pointerEvents: 'auto',
+                margin: '0 auto',
+                width: 'min(720px, 100%)',
+                background: 'linear-gradient(180deg,#fff5f8,#ffe8f0)',
+                border: '1px solid #f4c9d6',
+                borderRadius: 18,
+                boxShadow: '0 18px 44px rgba(185,87,122,0.18)',
+                padding: '0.85rem 0.95rem 0.85rem',
+                position: 'relative',
+              }}
+            >
+              <button
+                onClick={closeCalendarPrompt}
+                aria-label="Close calendar prompt"
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  border: '1px solid #efc3d1',
+                  background: 'rgba(255,255,255,0.92)',
+                  color: '#b85a82',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontSize: '1rem',
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+              <p style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f', margin: 0, marginBottom: '0.35rem' }}>
+                Calendar
+              </p>
+              <p style={{ color: '#5c3342', fontSize: isMobile ? '0.88rem' : '0.92rem', lineHeight: 1.5, margin: '0 1.6rem 0.7rem 0' }}>
+                Auto-schedule this week’s non-negotiables (Mon/Wed/Fri/Sun). Opens Google Calendar and downloads an `.ics` with all 4 tasks.
+              </p>
+              <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+                <button
+                  onClick={addToCalendarPlan}
+                  disabled={calendarBusy}
+                  style={{
+                    minHeight: 40,
+                    padding: '0.68rem 0.95rem',
+                    borderRadius: 999,
+                    border: 'none',
+                    background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: calendarBusy ? 'wait' : 'pointer',
+                    fontFamily: "'DM Sans', sans-serif",
+                    opacity: calendarBusy ? 0.75 : 1,
+                  }}
+                >
+                  {calendarBusy ? 'Opening...' : 'Schedule week'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {uploadMessage && (
           <div style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
             {uploadMessage}
@@ -2151,23 +2244,6 @@ Return JSON only:
               {isMobile ? 'Start' : 'Complete action'}
             </button>
           </div>
-
-          {showCalendarPrompt && (
-            <div style={{ position: 'absolute', right: 14, top: 'calc(100% - 10px)', width: 'min(88vw, 280px)', background: 'linear-gradient(180deg,#fff5f8,#ffe8f0)', border: '1px solid #f4c9d6', borderRadius: 18, boxShadow: '0 20px 44px rgba(185,87,122,0.18)', padding: '0.85rem 0.85rem 0.8rem', zIndex: 20 }}>
-              <button onClick={closeCalendarPrompt} aria-label="Close calendar prompt" style={{ position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: '50%', border: '1px solid #efc3d1', background: 'rgba(255,255,255,0.92)', color: '#b85a82', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}>
-                ×
-              </button>
-              <p style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f', marginBottom: '0.45rem' }}>Calendar</p>
-              <p style={{ color: '#5c3342', fontSize: '0.92rem', lineHeight: 1.5, margin: '0 1.5rem 0.8rem 0' }}>
-                Want this week’s non-negotiables auto-scheduled (Mon/Wed/Fri/Sun) with reminders?
-              </p>
-              <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
-                <button onClick={addToCalendarPlan} disabled={calendarBusy} style={{ minHeight: 40, padding: '0.68rem 0.95rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 700, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: calendarBusy ? 0.75 : 1 }}>
-                  {calendarBusy ? 'Opening...' : 'Schedule week'}
-                </button>
-              </div>
-            </div>
-          )}
 
           {showCalendarPromptChip && (
             <div style={{ position: 'absolute', right: -6, top: '50%', transform: 'translateY(-50%)', zIndex: 16 }}>
@@ -2869,6 +2945,7 @@ Return JSON only:
         @keyframes vbFoil{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
         @media(max-width:768px){ .phase-container{ grid-template-columns:1fr!important } }
         @media(max-width:640px){ [style*="repeat(3,1fr)"],[style*="repeat(4,1fr)"]{ grid-template-columns:1fr!important } }
+        @media(max-width:520px){ .vb-before-after-grid{ grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important } }
       `}</style>
     </div>
   )
@@ -2928,7 +3005,7 @@ Return JSON only:
       {!pl.collapsed && (
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
           {/* Before / After */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: isMobile ? '0.75rem' : '0.6rem' }}>
+          <div className="vb-before-after-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem' }}>
             {[
               { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#c0445a' },
               { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#f4fbf5', bc: '#b9dfc0', lc: '#3a7d4d' },

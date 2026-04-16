@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Copy, Pencil, RotateCcw, Trash2, Volume2 } from 'lucide-react'
 import { getLockInSummary, getTodayTask, loadBoardData, loadLockInState } from '../lib/lockIn'
@@ -743,7 +743,7 @@ async function requestSageReply({ system, messages, mode = 'chat' }) {
     return ragData?.answer || 'Something went wrong. Try again.'
   }
 
-  const groqKey = import.meta.env.VITE_GROQ_KEY
+  const groqKey = import.meta.env.VITE_GROQ_KEY || import.meta.env.GROQ_API_KEY
   const groqModel = system.includes('Deep Research Mode') ? GROQ_THINK_MODEL : GROQ_CHAT_MODEL
 
   if (!groqKey) throw new Error('missing_api_key')
@@ -1293,7 +1293,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!open) return
     const scroll = () => {
       const node = bodyRef.current
       if (!node) return
@@ -1303,7 +1304,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
       scroll()
       setTimeout(scroll, 60)
     })
-  }, [messages, weeklySessionMessages, loading])
+  }, [open, messages, weeklySessionMessages, loading])
 
   useEffect(() => {
     const viewport = window.visualViewport
@@ -1415,12 +1416,15 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
         mode: 'chat',
       })
       setMessages(current => [...current, { role: 'assistant', content: reply }])
-    } catch {
+    } catch (error) {
+      const message = String(error?.message || '')
       setMessages(current => [
         ...current,
         {
           role: 'assistant',
-          content: buildFallbackReply({ mode: 'quick', task, input: content, boardData }),
+          content: message.includes('missing_api_key')
+            ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` (or `GROQ_API_KEY`) and reload, then I can answer normally.'
+            : buildFallbackReply({ mode: 'quick', task, input: content, boardData }),
         },
       ])
     } finally {
@@ -1696,7 +1700,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             padding: '0.55rem 0.75rem',
             outline: 'none',
             fontFamily: "'DM Sans', sans-serif",
-            fontSize: '0.84rem',
+            fontSize: isMobile ? 16 : '0.84rem',
             background: '#fff',
             color: 'var(--app-text)',
             caretColor: 'var(--app-text)',
@@ -2167,7 +2171,8 @@ export default function SageCoach({ onLockInChange, user }) {
     safeWrite(THINK_USAGE_KEY, usage)
   }, [usage])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!open) return
     const scroll = () => {
       const node = bodyRef.current
       if (!node) return
@@ -2177,7 +2182,7 @@ export default function SageCoach({ onLockInChange, user }) {
       scroll()
       setTimeout(scroll, 60)
     })
-  }, [session, loading])
+  }, [open, session, loading])
 
   useEffect(() => {
     const viewport = window.visualViewport
@@ -2312,19 +2317,22 @@ Action Steps
         mode: useDeepResearch ? 'think' : 'chat',
       })
       updateActiveThreadMessages(current => [...current, { role: 'assistant', content: reply }])
-    } catch {
+    } catch (error) {
+      const message = String(error?.message || '')
       updateActiveThreadMessages(current => [
         ...current,
         {
           role: 'assistant',
-          content: useDeepResearch
-            ? buildResearchFallbackReply(content)
-            : buildFallbackReply({
-                mode: 'full',
-                task: todayTask.task,
-                input: content,
-                boardData,
-              }),
+          content: message.includes('missing_api_key')
+            ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` (or `GROQ_API_KEY`) and reload, then I can answer normally.'
+            : (useDeepResearch
+              ? buildResearchFallbackReply(content)
+              : buildFallbackReply({
+                  mode: 'full',
+                  task: todayTask.task,
+                  input: content,
+                  boardData,
+                })),
         },
       ])
     } finally {
@@ -2357,26 +2365,29 @@ Action Steps
           mode: useDeepResearch ? 'think' : 'chat',
         })
         updateActiveThreadMessages(current => [...current, { role: 'assistant', content: reply }])
-      } catch {
-        updateActiveThreadMessages(current => [
-          ...current,
-          {
-            role: 'assistant',
-            content: useDeepResearch
-              ? buildResearchFallbackReply(previousUserMessage)
-              : buildFallbackReply({
-                  mode: 'full',
-                  task: todayTask.task,
-                  input: previousUserMessage,
-                  boardData,
-                }),
-          },
-        ])
-      } finally {
-        setLoading(false)
-        setResearching(false)
-      }
-    })()
+       } catch (error) {
+         const message = String(error?.message || '')
+         updateActiveThreadMessages(current => [
+           ...current,
+           {
+             role: 'assistant',
+             content: message.includes('missing_api_key')
+               ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` (or `GROQ_API_KEY`) and reload, then I can answer normally.'
+               : (useDeepResearch
+                 ? buildResearchFallbackReply(previousUserMessage)
+                 : buildFallbackReply({
+                     mode: 'full',
+                     task: todayTask.task,
+                     input: previousUserMessage,
+                     boardData,
+                   })),
+           },
+         ])
+       } finally {
+         setLoading(false)
+         setResearching(false)
+       }
+     })()
   }
 
   function startNewChat() {
