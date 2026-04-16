@@ -1683,39 +1683,55 @@ Return JSON only:
   }
 
   function downloadWeeklyTasksIcs(tasks) {
-    const lines = buildWeeklyTaskLines(tasks)
-    const details = lines.length
-      ? `Your Phasr weekly non-negotiables\\n\\n${lines.map(item => `- ${item}`).join('\\n')}`
-      : 'Your Phasr weekly non-negotiables'
+    const items = (tasks || []).map(item => ({
+      pillar: String(item?.pillar || '').trim(),
+      task: String(item?.task || '').trim(),
+    })).filter(item => item.task).slice(0, 4)
 
     const today = new Date()
-    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0)
-    const startStamp = `${formatGoogleDate(startDate)}T090000`
-    const endStamp = `${formatGoogleDate(startDate)}T091500`
-    const uid = `phasr-weekly-${Date.now()}@phasr`
+    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0)
+    const dtstamp = `${formatGoogleDate(new Date())}T000000Z`
+    const uidBase = `phasr-weekly-${Date.now()}`
 
-    const ics = [
+    const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Phasr//Weekly Tasks//EN',
+      'PRODID:-//Phasr//Weekly Non-Negotiables//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${uid}`,
-      `DTSTAMP:${formatGoogleDate(new Date())}T000000Z`,
-      `SUMMARY:Phasr Weekly Tasks`,
-      `DESCRIPTION:${details.replace(/\n/g, '\\n')}`,
-      `DTSTART:${startStamp}`,
-      `DTEND:${endStamp}`,
-      'RRULE:FREQ=DAILY;COUNT=7',
-      'BEGIN:VALARM',
-      'TRIGGER:-PT0M',
-      'ACTION:DISPLAY',
-      'DESCRIPTION:Phasr Weekly Tasks Reminder',
-      'END:VALARM',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n')
+    ]
+
+    items.forEach((entry, index) => {
+      const startDate = new Date(base)
+      startDate.setDate(startDate.getDate() + index)
+      const endDate = new Date(startDate)
+      endDate.setMinutes(endDate.getMinutes() + 15)
+      const startStamp = `${formatGoogleDate(startDate)}T090000`
+      const endStamp = `${formatGoogleDate(endDate)}T091500`
+      const title = `Phasr: ${entry.task}`
+      const details = entry.pillar
+        ? `Weekly non-negotiable (Phasr)\\n\\nPillar: ${entry.pillar}\\nTask: ${entry.task}`
+        : `Weekly non-negotiable (Phasr)\\n\\nTask: ${entry.task}`
+
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${uidBase}-${index}@phasr`,
+        `DTSTAMP:${dtstamp}`,
+        `SUMMARY:${title.replace(/\n/g, ' ')}`,
+        `DESCRIPTION:${details.replace(/\n/g, '\\n')}`,
+        `DTSTART:${startStamp}`,
+        `DTEND:${endStamp}`,
+        'BEGIN:VALARM',
+        'TRIGGER:-PT0M',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:Phasr reminder',
+        'END:VALARM',
+        'END:VEVENT',
+      )
+    })
+
+    lines.push('END:VCALENDAR')
+    const ics = lines.join('\r\n')
 
     try {
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
@@ -1748,23 +1764,19 @@ Return JSON only:
     setCalendarBusy(true)
     try {
       const today = new Date()
-      const end = new Date(today)
-      end.setDate(end.getDate() + 7)
-      const startKey = formatGoogleDate(today)
-      const endKey = formatGoogleDate(end)
-      const taskLines = buildWeeklyTaskLines(tasks)
-      const details = taskLines.length
-        ? `Your Phasr weekly non-negotiables\n\n${taskLines.map(item => `- ${item}`).join('\n')}`
-        : 'Your Phasr weekly non-negotiables'
+      const base = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)
 
-      const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Phasr Weekly Tasks')}&dates=${startKey}/${endKey}&details=${encodeURIComponent(details)}&sf=true&output=xml`
-      window.open(url, '_blank')
+      const items = buildWeeklyTaskLines(tasks).slice(0, 4)
+      const urls = items.map((taskText, index) => getCalendarUrl(taskText, base, index))
+
+      // Open the first task in Google Calendar (mobile-friendly), and download an ICS containing all 4 tasks.
+      if (urls[0]) window.open(urls[0], '_blank')
       downloadWeeklyTasksIcs(tasks)
 
       window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
         detail: {
-          title: 'Calendar opened',
-          message: 'Google Calendar opened. An .ics file was also downloaded for Apple Calendar.',
+          title: 'Calendar events ready',
+          message: 'Opened the first non-negotiable in Google Calendar. An .ics file was also downloaded containing all 4 non-negotiables.',
         },
       }))
       logCalendarIntegration('integrated')
