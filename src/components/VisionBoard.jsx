@@ -7,7 +7,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
-import { loadCalendarEvents } from '../lib/calendarNotifications'
 import { getDailyTaskPlan } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
@@ -21,6 +20,151 @@ const PILLAR_PRESETS = [
   { emoji: 'IL', name: 'Inner Life', details: 'Spirituality, religion, mindfulness, mental health' },
   { emoji: 'PG', name: 'Personal Growth', details: 'Learning, creativity, self-development' },
 ]
+
+const FOCUS_AREA_KNOWLEDGE = {
+  'Health & Fitness': {
+    resources: [
+      'A training app or workout tracker like Strava or Nike Run Club',
+      'A nutrition tracking app like MyFitnessPal or Cronometer',
+      'A sleep tracker — phone or wearable',
+      'A gym membership or home equipment that removes friction',
+      'A workout partner or accountability buddy',
+    ],
+    activities: [
+      'Complete your planned workouts before the week closes',
+      'Prep your meals for the busiest three days of the week',
+      'Hit your daily step or movement target',
+      'Log what you eat for at least four days this week',
+      'Sleep seven to eight hours on at least five nights',
+      'Do one active recovery session — walk, stretch, or swim',
+    ],
+    nonNegotiables: [
+      'Train at least three times this week no matter what',
+      'Eat one home-cooked meal every day',
+      'Move your body for at least 20 minutes daily',
+      'Track your progress at least once this week',
+    ],
+    outcome: 'By the end of this phase you will have built a consistent movement and nutrition rhythm. Your energy will be different. Your relationship with your body will be different.',
+  },
+
+  'Career & Business': {
+    resources: [
+      'A project management tool — Notion, Trello, or Asana',
+      'A mentor or someone one level ahead of you in your field',
+      'Industry newsletters or podcasts relevant to your role',
+      'A portfolio or LinkedIn presence that reflects your current level',
+      'A income tracking spreadsheet',
+    ],
+    activities: [
+      'Do your most important career task before checking messages',
+      'Reach out to one person in your network this week',
+      'Spend 30 minutes learning something directly relevant to your goal',
+      'Review what you worked on this week and document one win',
+      'Identify and remove one thing wasting your professional time',
+    ],
+    nonNegotiables: [
+      'Complete your highest priority deliverable before Friday',
+      'Have one meaningful professional conversation this week',
+      'Spend at least two hours on deep work with no distractions',
+      'Review your career goal and adjust your plan if needed',
+    ],
+    outcome: 'By the end of this phase you will have moved from thinking about your career goal to actively building toward it with evidence you can point to.',
+  },
+
+  'Wealth & Finance': {
+    resources: [
+      'A budgeting app — YNAB, Copilot, or a simple spreadsheet',
+      'Your bank statements for the last three months',
+      'A savings account separate from your spending account',
+      'One book or course on personal finance or investing',
+      'A financial advisor or accountability partner',
+    ],
+    activities: [
+      'Review your spending from last week every Sunday',
+      'Transfer a fixed amount to savings before spending on anything else',
+      'Identify one recurring expense to cut or reduce',
+      'Research one investment or income stream you have been putting off',
+      'Track every purchase above a set threshold this week',
+    ],
+    nonNegotiables: [
+      'Do not spend outside your weekly budget',
+      'Move money to savings before the week ends',
+      'Review your financial goal and check your progress',
+      'Identify one financial decision you have been avoiding',
+    ],
+    outcome: 'By the end of this phase you will have real data on where your money goes and a savings habit that runs automatically.',
+  },
+
+  Relationships: {
+    resources: [
+      'A journal specifically for processing relationship patterns',
+      'A therapist or counsellor if deeper work is needed',
+      'Books on attachment, communication, or boundaries',
+      'Intentional time carved out for the people who matter most',
+    ],
+    activities: [
+      'Have one real conversation with someone you care about — no phones',
+      'Send one message to someone you have been meaning to reach out to',
+      'Do something for a person in your life with no expectation of return',
+      'Identify one relationship pattern you want to change',
+      'Spend one hour fully present with your most important person',
+    ],
+    nonNegotiables: [
+      'Show up for at least one important relationship intentionally this week',
+      'Say something true that you have been holding back',
+      'Protect time for connection — do not cancel on people who matter',
+      'Check in with yourself on how you are showing up in relationships',
+    ],
+    outcome: 'By the end of this phase your relationships will feel more intentional. You will have said things that needed saying and shown up in ways you were proud of.',
+  },
+
+  'Inner Life': {
+    resources: [
+      'A meditation app — Insight Timer is free and good',
+      'A journal for morning or evening reflection',
+      'A spiritual community, practice, or text that resonates with you',
+      'Time alone with no input — no podcast, no phone, no noise',
+    ],
+    activities: [
+      'Sit in silence for five minutes every morning before picking up your phone',
+      'Write one page in your journal three times this week',
+      'Spend time in a spiritual practice that is meaningful to you',
+      'Identify one belief you hold about yourself and examine if it is true',
+      'Do one thing this week that makes you feel deeply like yourself',
+    ],
+    nonNegotiables: [
+      'Protect at least 20 minutes of quiet time daily',
+      'Complete your journal entry at least three times this week',
+      'Engage with your spiritual practice at least once',
+      'Notice and write down one moment of real peace this week',
+    ],
+    outcome: 'By the end of this phase you will have built a relationship with your own inner life. The noise will be quieter. The clarity will come faster.',
+  },
+
+  'Personal Growth': {
+    resources: [
+      'One book directly relevant to the person you are trying to become',
+      'A course, mentor, or coach in your specific area of growth',
+      'A reflection practice — journaling, therapy, or honest conversation',
+      'An environment that pulls you toward who you want to be',
+      'A clear definition of what growth looks like for you specifically',
+    ],
+    activities: [
+      'Do the hardest 30-minute task related to your growth goal first each day',
+      'Read or learn something that challenges how you currently think',
+      'Remove one blocker from your environment this week',
+      'Have one honest conversation about where you are versus where you want to be',
+      'Track progress visibly and review what is working every Sunday',
+    ],
+    nonNegotiables: [
+      'Do one thing this week the old version of you would have avoided',
+      'Finish at least one measurable task that moves your goal forward',
+      'Review proof of your progress and reset the week',
+      'Identify and address one pattern that is holding you back',
+    ],
+    outcome: 'By the end of this phase you will have evidence that you are not the same person who started. Small but real. That proof is what changes the belief.',
+  },
+}
 
 const uid = () => Math.random().toString(36).slice(2, 9)
 
@@ -225,6 +369,29 @@ const PLAN_EDIT_KEYS = new Set(['resources', 'activities', 'weeklyActions', 'out
 
 function cleanText(value) {
   return String(value || '').trim().replace(/\s+/g, ' ')
+}
+
+function getWeekStartDate(date = new Date()) {
+  const next = new Date(date)
+  const diff = (next.getDay() + 6) % 7
+  next.setDate(next.getDate() - diff)
+  next.setHours(0, 0, 0, 0)
+  return next
+}
+
+function getCalendarUrl(taskText, weekStartDate, dayIndex) {
+  const taskDate = new Date(weekStartDate)
+  taskDate.setDate(taskDate.getDate() + (Number(dayIndex) || 0))
+
+  const dateStr = taskDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const nextDay = new Date(taskDate)
+  nextDay.setDate(nextDay.getDate() + 1)
+  const nextDayStr = nextDay.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+
+  const title = encodeURIComponent(`Phasr: ${taskText}`)
+  const details = encodeURIComponent('Your weekly non-negotiable from Phasr. Tap once to complete in the app.')
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${nextDayStr}&details=${details}`
 }
 
 function escapeHtml(value) {
@@ -927,14 +1094,6 @@ const ta = (extra = {}) => ({
 const focus = e => { e.target.style.borderColor = 'var(--app-accent)' }
 const blur  = e => { e.target.style.borderColor = 'var(--app-border)' }
 
-function formatCalendarSpot(dateKey) {
-  if (!dateKey) return ''
-  return new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
 export default function VisionBoard({ user, lockInSummary, editing: editingProp, onEditingChange, onOpenDailyStreak, autoOpenQuarterlyReviewPhaseId = null, onQuarterlyReviewOpened }) {
   const isPro = getUserAccess(user).isPro
 
@@ -947,13 +1106,11 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [presetOpen, setPresetOpen] = useState(null)
   const [timelineEditorPhaseId, setTimelineEditorPhaseId] = useState(null)
   const [timelineDrafts, setTimelineDrafts] = useState({})
-  const [calendarEvents, setCalendarEvents] = useState(() => loadCalendarEvents())
   const [calendarBusy, setCalendarBusy] = useState(false)
   const [calendarPromptState, setCalendarPromptState] = useState('hidden')
   const [calendarPromptArmed, setCalendarPromptArmed] = useState(false)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   const [showReview, setShowReview] = useState(false)
-  const [sagePlanRefresh, setSagePlanRefresh] = useState(0)
   const [revealedDeleteTarget, setRevealedDeleteTarget] = useState(null)
   const [uploadMessage, setUploadMessage] = useState('')
   const [selectedExportPillarId, setSelectedExportPillarId] = useState(null)
@@ -1187,13 +1344,40 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
     setUploadMessage('Sage is generating your plan...')
     try {
-      const plan = await fetchPillarPlanWithGroq({
-        pillarName: targetPillar.name,
-        beforeState: targetPillar.beforeState,
-        beforeDesc: targetPillar.beforeDesc,
-        afterState: targetPillar.afterState,
-        afterDesc: targetPillar.afterDesc,
-      })
+      const focusAreaKey = targetPillar.name
+      const knowledge = FOCUS_AREA_KNOWLEDGE[focusAreaKey] || {}
+
+      const planPrompt = `
+You are generating a structured plan for a Phasr user.
+
+Their pillar: ${targetPillar.name}
+Their before state: ${targetPillar.beforeState}
+Their before description: ${targetPillar.beforeDesc}
+Their after goal: ${targetPillar.afterState}
+Their after description: ${targetPillar.afterDesc}
+
+Use this knowledge to inform the plan:
+Suggested resources: ${(knowledge.resources || []).join(', ')}
+Suggested activities: ${(knowledge.activities || []).join(', ')}
+Suggested non-negotiables: ${(knowledge.nonNegotiables || []).join(', ')}
+
+Generate a personalised plan based on what this specific person wrote.
+Do not use the suggested items word for word.
+Adapt them to fit what this person actually said about their before and after.
+If they said they want better character and to be more optimistic,
+the resources and activities should directly serve those specific goals.
+Make it feel like it was written for them, not copied from a template.
+
+Return JSON only:
+{
+  "resources": ["...", "...", "...", "..."],
+  "activities": ["...", "...", "...", "..."],
+  "weeklyNonNegotiables": ["...", "...", "...", "..."],
+  "outcome": "..."
+}
+`
+
+      const plan = await fetchPillarPlanWithGroq({ planPrompt })
 
       upd(d => {
         const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
@@ -2083,8 +2267,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
               onDel={() => delPillar(pl.id)}
               onPreset={() => setPresetOpen(presetOpen === pl.id ? null : pl.id)}
               onGeneratePlan={() => forceGeneratePlan(pl.id)}
-              onCalendarOpen={addToCalendarPlan}
-              calendarEvents={calendarEvents}
               isPro={isPro}
             />
           ))}
@@ -2466,8 +2648,9 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 }
 
 /* â”€â”€ Pillar Card â”€â”€ */
-  function PillarCard({ pl, editing, checked, phaseId, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, onCalendarOpen, calendarEvents = [], isPro }) {
+  function PillarCard({ pl, editing, checked, phaseId, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+    const currentWeekStartDate = getWeekStartDate(new Date())
     const beforeReady = cleanText(pl.beforeState) || cleanText(pl.beforeDesc)
     const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
     const hasImageContext = Boolean(pl.beforeImage || pl.afterImage)
@@ -2598,7 +2781,9 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
               {pl.weeklyActions.map((item, i) => {
                 const ck = `${phaseId}-${pl.id}-wk-${i}`
-                const calendarEvent = calendarEvents.find(event => event.title === item && event.pillar === pl.name)
+                const safeTask = String(item || '').trim()
+                const dayIndex = Math.min(i, 3)
+                const calendarUrl = safeTask ? getCalendarUrl(safeTask, currentWeekStartDate, dayIndex) : ''
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.48rem', padding: '0.26rem 0.33rem', borderRadius: 7, cursor: 'pointer' }} onClick={() => !editing && onCheck(ck)}>
                     <input type="checkbox" checked={!!checked[ck]} onChange={() => onCheck(ck)} onClick={e => e.stopPropagation()} style={{ width: 14, height: 14, marginTop: 3, accentColor: 'var(--app-accent)', flexShrink: 0, cursor: 'pointer' }} />
@@ -2607,10 +2792,25 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
                          <button onClick={() => onDelArr('weeklyActions', i)} style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: '#fff0f4', border: '1px solid #f5c0cc', cursor: 'pointer', color: '#f06090', fontSize: '0.82rem', fontWeight: 800, lineHeight: 1, padding: 0, boxShadow: '0 6px 14px rgba(240,96,144,0.12)' }}>×</button></>
                       : <>
                           <span style={{ fontSize: '0.8rem', color: checked[ck] ? '#c4a0ac' : '#5a3d47', lineHeight: 1.5, flex: 1, textDecoration: checked[ck] ? 'line-through' : 'none' }}>{item}</span>
-                          <button type="button" onClick={event => { event.stopPropagation(); onCalendarOpen?.() }} title={calendarEvent ? `Open synced calendar plan for ${calendarEvent.date}` : 'Add this plan to your calendar'} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '0.28rem', padding: '0.28rem 0.5rem', borderRadius: 10, border: '1px solid #f1cfdb', background: '#fff1f6', color: '#9a6277', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
-                            <span>📅</span>
-                            {calendarEvent ? formatCalendarSpot(calendarEvent.date) : 'Add'}
-                          </button>
+                          {calendarUrl ? (
+                            <a
+                              href={calendarUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={event => event.stopPropagation()}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                padding: '4px 10px', borderRadius: 8,
+                                border: '1px solid #f2c4d0', background: '#fff',
+                                color: '#7a5a66', fontSize: '0.72rem', fontWeight: 600,
+                                textDecoration: 'none', whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                                fontFamily: "'DM Sans',sans-serif",
+                              }}
+                            >
+                              📅 Add
+                            </a>
+                          ) : null}
                         </>
                     }
                   </div>

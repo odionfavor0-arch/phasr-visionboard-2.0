@@ -338,13 +338,13 @@ function normalizeGroqJson(rawText) {
   return fenced
 }
 
-export async function fetchPillarPlanWithGroq({ pillarName, beforeState, beforeDesc, afterState, afterDesc }) {
+export async function fetchPillarPlanWithGroq({ planPrompt = '', pillarName, beforeState, beforeDesc, afterState, afterDesc } = {}) {
   const apiKey = import.meta.env.VITE_GROQ_KEY
   if (!apiKey) throw new Error('missing_groq_key')
   const model = 'llama-3.3-70b-versatile'
 
-  const systemPrompt = 'You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.'
-  const userPrompt = `Pillar: ${String(pillarName || '').trim()}. Before: ${String(beforeState || '').trim()} — ${String(beforeDesc || '').trim()}. After: ${String(afterState || '').trim()} — ${String(afterDesc || '').trim()}. Generate: 3 to 4 specific resources they will need, 3 to 4 specific weekly activities, 3 to 4 weekly non-negotiables as short actionable tasks, and one outcome statement describing what they will have achieved by the end of the phase. Return as JSON with keys: resources as array, activities as array, weeklyNonNegotiables as array, outcome as string.`
+  const systemPrompt = 'You are Sage, an AI life coach inside Phasr.'
+  const userPrompt = String(planPrompt || '').trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || '').trim()}\nTheir before state: ${String(beforeState || '').trim()}\nTheir before description: ${String(beforeDesc || '').trim()}\nTheir after goal: ${String(afterState || '').trim()}\nTheir after description: ${String(afterDesc || '').trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
