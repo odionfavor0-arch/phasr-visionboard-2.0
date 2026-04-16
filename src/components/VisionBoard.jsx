@@ -5,7 +5,7 @@
 // before/after upload, quarterly review, export
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
@@ -373,9 +373,19 @@ function cleanText(value) {
 
 function getWeekStartDate(date = new Date()) {
   const next = new Date(date)
+  const diff = (next.getDay() + 6) % 7
+  next.setDate(next.getDate() - diff)
   next.setHours(0, 0, 0, 0)
   return next
 }
+
+function addDays(date, days) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + (Number(days) || 0))
+  return next
+}
+
+const NON_NEGOTIABLE_DAY_OFFSETS = [0, 2, 4, 6] // Mon, Wed, Fri, Sun
 
 function getCalendarUrl(taskText, weekStartDate, dayIndex) {
   const taskDate = new Date(weekStartDate)
@@ -412,6 +422,37 @@ function getHistoryStorageKey(userId, pillarName) {
   const cleanUser = String(userId || '').trim()
   const cleanPillar = String(pillarName || '').trim()
   return `phasr_pillar_history:${cleanUser || 'guest'}:${cleanPillar || 'pillar'}`
+}
+
+function getScheduleStorageKey({ userId, phaseId, pillarId, weekStartKey }) {
+  const cleanUser = String(userId || '').trim() || 'guest'
+  const cleanPhase = String(phaseId || '').trim() || 'phase'
+  const cleanPillar = String(pillarId || '').trim() || 'pillar'
+  const cleanWeek = String(weekStartKey || '').trim() || 'week'
+  return `phasr_non_negotiable_schedule:${cleanUser}:${cleanPhase}:${cleanPillar}:${cleanWeek}`
+}
+
+function loadNonNegotiableSchedule({ userId, phaseId, pillarId, weekStartKey }) {
+  const key = getScheduleStorageKey({ userId, phaseId, pillarId, weekStartKey })
+  return safeJsonParse(localStorage.getItem(key), {})
+}
+
+function saveNonNegotiableSchedule({ userId, phaseId, pillarId, weekStartKey }, value) {
+  const key = getScheduleStorageKey({ userId, phaseId, pillarId, weekStartKey })
+  localStorage.setItem(key, JSON.stringify(value || {}))
+}
+
+function formatAssignedDateLabel(dateKey) {
+  if (!dateKey) return ''
+  try {
+    return new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return dateKey
+  }
 }
 
 function loadPillarHistory(userId, pillarName) {
@@ -1178,6 +1219,8 @@ const blur  = e => { e.target.style.borderColor = 'var(--app-border)' }
 
 export default function VisionBoard({ user, lockInSummary, editing: editingProp, onEditingChange, onOpenDailyStreak, autoOpenQuarterlyReviewPhaseId = null, onQuarterlyReviewOpened }) {
   const isPro = getUserAccess(user).isPro
+  const activeUserId = getActiveUserId(user)
+  const weekStartKey = useMemo(() => getTodayKey(getWeekStartDate(new Date())), [])
 
   const [data, setData] = useState(() =>
     normalizeBoardData(load(user) || { boardTitle: 'My Vision Board', phases: [freshPhase(1)] })
@@ -1689,7 +1732,8 @@ Return JSON only:
     })).filter(item => item.task).slice(0, 4)
 
     const today = new Date()
-    const base = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0, 0)
+    const weekStart = getWeekStartDate(today)
+    const base = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 9, 0, 0)
     const dtstamp = `${formatGoogleDate(new Date())}T000000Z`
     const uidBase = `phasr-weekly-${Date.now()}`
 
@@ -1702,8 +1746,9 @@ Return JSON only:
     ]
 
     items.forEach((entry, index) => {
+      const offset = NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0
       const startDate = new Date(base)
-      startDate.setDate(startDate.getDate() + index)
+      startDate.setDate(startDate.getDate() + offset)
       const endDate = new Date(startDate)
       endDate.setMinutes(endDate.getMinutes() + 15)
       const startStamp = `${formatGoogleDate(startDate)}T090000`
@@ -1764,10 +1809,10 @@ Return JSON only:
     setCalendarBusy(true)
     try {
       const today = new Date()
-      const base = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)
+      const weekStart = getWeekStartDate(today)
 
       const items = buildWeeklyTaskLines(tasks).slice(0, 4)
-      const urls = items.map((taskText, index) => getCalendarUrl(taskText, base, index))
+      const urls = items.map((taskText, index) => getCalendarUrl(taskText, weekStart, NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0))
 
       // Open the first task in Google Calendar (mobile-friendly), and download an ICS containing all 4 tasks.
       if (urls[0]) window.open(urls[0], '_blank')
@@ -1776,7 +1821,7 @@ Return JSON only:
       window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
         detail: {
           title: 'Calendar events ready',
-          message: 'Opened the first non-negotiable in Google Calendar. An .ics file was also downloaded containing all 4 non-negotiables.',
+          message: 'Opened the first scheduled non-negotiable in Google Calendar. An .ics file was also downloaded containing all 4 scheduled non-negotiables.',
         },
       }))
       logCalendarIntegration('integrated')
@@ -2114,11 +2159,11 @@ Return JSON only:
               </button>
               <p style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f', marginBottom: '0.45rem' }}>Calendar</p>
               <p style={{ color: '#5c3342', fontSize: '0.92rem', lineHeight: 1.5, margin: '0 1.5rem 0.8rem 0' }}>
-                Do you want to add your tasks to your calendar with reminders?
+                Want this week’s non-negotiables auto-scheduled (Mon/Wed/Fri/Sun) with reminders?
               </p>
               <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
                 <button onClick={addToCalendarPlan} disabled={calendarBusy} style={{ minHeight: 40, padding: '0.68rem 0.95rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 700, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: calendarBusy ? 0.75 : 1 }}>
-                  {calendarBusy ? 'Opening...' : 'Add to calendar'}
+                  {calendarBusy ? 'Opening...' : 'Schedule week'}
                 </button>
               </div>
             </div>
@@ -2435,6 +2480,8 @@ Return JSON only:
           {visiblePillars.map(pl => (
             <PillarCard
               key={pl.id} pl={pl} editing={editing} checked={checked} phaseId={phaseId}
+              userId={activeUserId}
+              weekStartKey={weekStartKey}
               presetOpen={presetOpen === pl.id}
               onCollapse={() => toggleCollapse(pl.id)}
               onUpdate={(k, v) => updatePillar(pl.id, k, v)}
@@ -2828,9 +2875,11 @@ Return JSON only:
 }
 
 /* â”€â”€ Pillar Card â”€â”€ */
-  function PillarCard({ pl, editing, checked, phaseId, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro }) {
+  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-    const currentWeekStartDate = getWeekStartDate(new Date())
+    const currentWeekStartDate = useMemo(() => getWeekStartDate(new Date()), [])
+    const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
+    const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
     const beforeReady = cleanText(pl.beforeState) || cleanText(pl.beforeDesc)
     const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
     const hasImageContext = Boolean(pl.beforeImage || pl.afterImage)
@@ -2962,8 +3011,11 @@ Return JSON only:
               {pl.weeklyActions.map((item, i) => {
                 const ck = `${phaseId}-${pl.id}-wk-${i}`
                 const safeTask = String(item || '').trim()
-                const dayIndex = Math.min(i, 6)
-                const calendarUrl = safeTask ? getCalendarUrl(safeTask, currentWeekStartDate, dayIndex) : ''
+                const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[i % NON_NEGOTIABLE_DAY_OFFSETS.length] ?? 0
+                const assignedDate = addDays(currentWeekStartDate, dayOffset)
+                const assignedDateKey = getTodayKey(assignedDate)
+                const calendarUrl = safeTask ? getCalendarUrl(safeTask, currentWeekStartDate, dayOffset) : ''
+                const scheduled = Boolean(scheduleState?.[String(i)]?.scheduled)
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.48rem', padding: '0.26rem 0.33rem', borderRadius: 7, cursor: 'pointer' }} onClick={() => !editing && onCheck(ck)}>
                     <input type="checkbox" checked={!!checked[ck]} onChange={() => onCheck(ck)} onClick={e => e.stopPropagation()} style={{ width: 14, height: 14, marginTop: 3, accentColor: 'var(--app-accent)', flexShrink: 0, cursor: 'pointer' }} />
@@ -2973,23 +3025,38 @@ Return JSON only:
                       : <>
                           <span style={{ fontSize: '0.8rem', color: checked[ck] ? '#c4a0ac' : '#5a3d47', lineHeight: 1.5, flex: 1, textDecoration: checked[ck] ? 'line-through' : 'none' }}>{item}</span>
                           {calendarUrl ? (
-                            <a
-                              href={calendarUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={event => event.stopPropagation()}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 4,
-                                padding: '4px 10px', borderRadius: 8,
-                                border: '1px solid #f2c4d0', background: '#fff',
-                                color: '#7a5a66', fontSize: '0.72rem', fontWeight: 600,
-                                textDecoration: 'none', whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                                fontFamily: "'DM Sans',sans-serif",
-                              }}
-                            >
-                              📅 Add
-                            </a>
+                            scheduled ? (
+                              <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #cbead6', background: '#f3fff7', color: '#2f6a43', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
+                                {formatAssignedDateLabel(assignedDateKey)} ✓ Scheduled
+                              </span>
+                            ) : (
+                              <a
+                                href={calendarUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={event => {
+                                  event.stopPropagation()
+                                  const next = {
+                                    ...(scheduleState || {}),
+                                    [String(i)]: { scheduled: true, assignedDate: assignedDateKey, scheduledAt: new Date().toISOString() },
+                                  }
+                                  setScheduleState(next)
+                                  if (userId && weekStartKey) saveNonNegotiableSchedule(scheduleStateKey, next)
+                                }}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 4,
+                                  padding: '4px 10px', borderRadius: 8,
+                                  border: '1px solid #f2c4d0', background: '#fff',
+                                  color: '#7a5a66', fontSize: '0.72rem', fontWeight: 700,
+                                  textDecoration: 'none', whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                  fontFamily: "'DM Sans',sans-serif",
+                                }}
+                                title={`Schedule for ${formatAssignedDateLabel(assignedDateKey)}`}
+                              >
+                                📅 Schedule
+                              </a>
+                            )
                           ) : null}
                         </>
                     }
