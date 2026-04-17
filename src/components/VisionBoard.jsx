@@ -471,6 +471,19 @@ function formatAssignedDateTooltip(dateKey) {
   }
 }
 
+function getGoogleCalendarDayViewUrl(dateKey) {
+  if (!dateKey) return 'https://calendar.google.com/calendar/u/0/r'
+  try {
+    const date = new Date(`${dateKey}T12:00:00`)
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    return `https://calendar.google.com/calendar/u/0/r/day/${yyyy}/${mm}/${dd}`
+  } catch {
+    return 'https://calendar.google.com/calendar/u/0/r'
+  }
+}
+
 function loadPillarHistory(userId, pillarName) {
   const key = getHistoryStorageKey(userId, pillarName)
   return safeJsonParse(localStorage.getItem(key), [])
@@ -1831,7 +1844,8 @@ Return JSON only:
     setCalendarBusy(true)
     try {
       const today = new Date()
-      const weekStart = getWeekStartDate(today)
+      const windowStart = new Date(today)
+      windowStart.setHours(0, 0, 0, 0)
 
       const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
       const userId = getActiveUserId(user)
@@ -1856,9 +1870,9 @@ Return JSON only:
 
       const scheduledEntries = scheduleTargets.map((entry, index) => {
         const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0
-        const assignedDate = addDays(weekStart, dayOffset)
+        const assignedDate = addDays(windowStart, dayOffset)
         const assignedDateKey = getTodayKey(assignedDate)
-        return { ...entry, assignedDateKey, dayOffset }
+        return { ...entry, assignedDateKey, dayOffset, calendarUrl: getCalendarUrl(entry.task, windowStart, dayOffset) }
       })
 
       // Persist scheduled state into each pillar card so the UI updates immediately (no waiting for Calendar confirmation).
@@ -1869,6 +1883,7 @@ Return JSON only:
         current[String(entry.actionIndex)] = {
           scheduled: true,
           assignedDate: entry.assignedDateKey,
+          calendarUrl: entry.calendarUrl,
           scheduledAt: new Date().toISOString(),
         }
         saveNonNegotiableSchedule(scheduleStateKey, current)
@@ -1879,20 +1894,23 @@ Return JSON only:
       }
 
       // Mobile-first: generate a single .ics containing all 4 events so iOS shows "Add All".
-      downloadWeeklyTasksIcs(scheduledEntries)
-
-      // Desktop fallback: also open Google Calendar for the first task (still requires Save in Google Calendar).
-      if (!isMobile && scheduledEntries.length) {
-        const first = scheduledEntries[0]
-        window.open(getCalendarUrl(first.task, weekStart, first.dayOffset), '_blank')
+      if (isMobile) {
+        downloadWeeklyTasksIcs(scheduledEntries)
+      } else {
+        // Desktop: open each Google Calendar prefilled event (no downloads).
+        scheduledEntries.forEach((entry, index) => {
+          const url = entry.calendarUrl
+          if (!url) return
+          window.setTimeout(() => window.open(url, '_blank'), index * 250)
+        })
       }
 
       window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
         detail: {
           title: 'Calendar events ready',
-          message: isIOS
-            ? 'Your iPhone will show “4 Events” → tap “Add All”.'
-            : 'An .ics was downloaded containing all 4 scheduled non-negotiables. Import it to add them to your calendar.',
+          message: isMobile
+            ? 'Add the 4 scheduled non-negotiables to your calendar.'
+            : 'Opened 4 pre-filled calendar events. Tap Save on each tab.',
         },
       }))
       logCalendarIntegration('integrated')
@@ -2252,8 +2270,8 @@ Return JSON only:
               <p style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f', margin: 0, marginBottom: '0.35rem' }}>
                 Calendar
               </p>
-              <p style={{ color: '#5c3342', fontSize: isMobile ? '0.82rem' : '0.9rem', lineHeight: 1.45, margin: '0 1.6rem 0.6rem 0' }}>
-                Add your 4 weekly non-negotiables to your calendar (Mon/Wed/Fri/Sun). On iPhone you’ll see “Add All”.
+              <p style={{ color: '#5c3342', fontSize: isMobile ? '0.8rem' : '0.9rem', lineHeight: 1.45, margin: '0 1.6rem 0.55rem 0' }}>
+                Schedule your 4 weekly non-negotiables across the next 7 days.
               </p>
               <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
                 <button
@@ -3017,13 +3035,16 @@ Return JSON only:
 /* â”€â”€ Pillar Card â”€â”€ */
   function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-    const currentWeekStartDate = useMemo(() => getWeekStartDate(new Date()), [])
+    const calendarWindowStart = useMemo(() => {
+      const base = new Date()
+      base.setHours(0, 0, 0, 0)
+      return base
+    }, [])
     const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
     const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
     const beforeReady = cleanText(pl.beforeState) || cleanText(pl.beforeDesc)
     const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
-    const hasImageContext = Boolean(pl.beforeImage || pl.afterImage)
-    const canGeneratePlan = Boolean(beforeReady && afterReady && hasImageContext)
+    const canGeneratePlan = Boolean(beforeReady && afterReady)
     const hasGeneratedPlan = Boolean(pl.planGeneratedFrom && !isPlanBlank(pl))
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
 
@@ -3120,7 +3141,7 @@ Return JSON only:
           {editing && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderRadius: 12, padding: '0.7rem 0.8rem', background: '#fff8fb', border: '1px dashed var(--app-border)' }}>
               <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                {canGeneratePlan ? 'Generate a Sage plan from this image plus your before and after details.' : 'Add a photo plus your before and after details to generate your plan.'}
+                {canGeneratePlan ? 'Generate a Sage plan from your before + after details.' : 'Add your before + after details to generate your plan.'}
               </p>
               <button
                 type="button"
@@ -3164,10 +3185,11 @@ Return JSON only:
                 const ck = `${phaseId}-${pl.id}-wk-${i}`
                 const safeTask = String(item || '').trim()
                 const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[i % NON_NEGOTIABLE_DAY_OFFSETS.length] ?? 0
-                const assignedDate = addDays(currentWeekStartDate, dayOffset)
+                const assignedDate = addDays(calendarWindowStart, dayOffset)
                 const assignedDateKey = getTodayKey(assignedDate)
-                const calendarUrl = safeTask ? getCalendarUrl(safeTask, currentWeekStartDate, dayOffset) : ''
+                const calendarUrl = safeTask ? getCalendarUrl(safeTask, calendarWindowStart, dayOffset) : ''
                 const scheduled = Boolean(scheduleState?.[String(i)]?.scheduled)
+                const calendarViewUrl = getGoogleCalendarDayViewUrl(assignedDateKey)
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.48rem', padding: '0.26rem 0.33rem', borderRadius: 7, cursor: 'pointer' }} onClick={() => !editing && onCheck(ck)}>
                     <input type="checkbox" checked={!!checked[ck]} onChange={() => onCheck(ck)} onClick={e => e.stopPropagation()} style={{ width: 14, height: 14, marginTop: 3, accentColor: 'var(--app-accent)', flexShrink: 0, cursor: 'pointer' }} />
@@ -3178,12 +3200,17 @@ Return JSON only:
                           <span style={{ fontSize: '0.8rem', color: checked[ck] ? '#c4a0ac' : '#5a3d47', lineHeight: 1.5, flex: 1, textDecoration: checked[ck] ? 'line-through' : 'none' }}>{item}</span>
                           {calendarUrl ? (
                             scheduled ? (
-                              <span
-                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #cbead6', background: '#f3fff7', color: '#2f6a43', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}
-                                title={formatAssignedDateTooltip(assignedDateKey)}
+                              <a
+                                href={calendarViewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={event => event.stopPropagation()}
+                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #cbead6', background: '#f3fff7', color: '#2f6a43', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none' }}
+                                title={`Open calendar • ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
+                                <span style={{ fontSize: '0.82rem', lineHeight: 1 }}>📅</span>
                                 {formatAssignedDateLabel(assignedDateKey)} ✓
-                              </span>
+                              </a>
                             ) : (
                               <a
                                 href={calendarUrl}
@@ -3191,13 +3218,13 @@ Return JSON only:
                                 rel="noopener noreferrer"
                                 onClick={event => {
                                   event.stopPropagation()
-                                  const next = {
-                                    ...(scheduleState || {}),
-                                    [String(i)]: { scheduled: true, assignedDate: assignedDateKey, scheduledAt: new Date().toISOString() },
-                                  }
-                                  setScheduleState(next)
-                                  if (userId && weekStartKey) saveNonNegotiableSchedule(scheduleStateKey, next)
-                                }}
+                                   const next = {
+                                     ...(scheduleState || {}),
+                                     [String(i)]: { scheduled: true, assignedDate: assignedDateKey, calendarUrl, scheduledAt: new Date().toISOString() },
+                                   }
+                                   setScheduleState(next)
+                                   if (userId && weekStartKey) saveNonNegotiableSchedule(scheduleStateKey, next)
+                                 }}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 4,
                                   padding: '4px 10px', borderRadius: 8,
