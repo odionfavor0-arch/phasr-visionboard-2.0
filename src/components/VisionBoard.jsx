@@ -1605,9 +1605,8 @@ User’s current state: ${targetPillar.beforeState} — ${targetPillar.beforeDes
 User’s goal state: ${targetPillar.afterState} — ${targetPillar.afterDesc}
 ${knowledgeBlock ? `Reference knowledge for this focus area:
 ${knowledgeBlock}
-Use this knowledge as supporting guidance, but make the plan specific to the user’s actual words.
+Use this knowledge as supporting guidance, but only when it matches this user’s actual description. Do not fall back to generic examples if the user’s words point somewhere more specific.
 ` : ''}Generate a plan that is specific to this focus area territory and this user’s personal description.`
-Generate a plan that is specific to this focus area territory and this user’s personal description.`
 
       const validatePlan = (planValue) => {
         const resources = Array.isArray(planValue?.resources) ? planValue.resources.filter(Boolean) : []
@@ -3201,7 +3200,7 @@ Generate a plan that is specific to this focus area territory and this user’s 
                 disabled={!canGeneratePlan}
                 style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
               >
-                Generate plan
+                {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
               </button>
             </div>
           )}
