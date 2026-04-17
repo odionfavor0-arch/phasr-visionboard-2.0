@@ -23,31 +23,31 @@ const PILLAR_PRESETS = [
 
 const FOCUS_AREA_TERRITORY = {
   'Health and Fitness': {
-    covers: 'body, food, sleep, gym, energy',
+    covers: 'body, food, sleep, gym, energy, physical habits, nutrition, movement, recovery',
     guidance: 'Plans should focus on physical habits, nutrition, movement, and recovery.',
   },
   'Career and Business': {
-    covers: 'job search, entrepreneurship, income streams, professional growth',
+    covers: 'job search, entrepreneurship, income streams, professional skills, career strategy, building a business',
     guidance: 'Plans should focus on skill building, application habits, income generation, and career strategy.',
   },
   Wealth: {
-    covers: 'savings, investing, debt, financial freedom',
+    covers: 'savings, investing, debt reduction, budgeting, financial habits, money systems',
     guidance: 'Plans should focus on budgeting, saving habits, debt reduction, and building financial systems.',
   },
   Relationships: {
-    covers: 'love, family, friendships, community',
+    covers: 'love, family, friendships, community, communication, connection, boundaries',
     guidance: 'Plans should focus on communication habits, quality time, boundaries, and building deeper connections.',
   },
   'Inner Life': {
-    covers: 'spirituality, religion, mindfulness, mental health',
+    covers: 'spirituality, religion, mindfulness, mental health, reflection, emotional regulation, peace',
     guidance: 'Plans should focus on reflection practices, prayer or meditation, emotional regulation, and peace-building habits.',
   },
   'Personal Growth': {
-    covers: 'learning, creativity, self-development',
+    covers: 'learning, reading, creativity, self-development, skill building, knowledge, creative output',
     guidance: 'Plans should focus on reading, skill acquisition, creative output, and building knowledge systems. Never suggest gym or fitness activities for this pillar.',
   },
   Travel: {
-    covers: 'planning, saving for travel, experiencing new places',
+    covers: 'trip planning, travel savings, destination research, booking, travel habits',
     guidance: 'Plans should focus on destination research, travel savings, booking habits, and trip preparation.',
   },
 }
@@ -1556,16 +1556,32 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       const focusAreaName = String(targetPillar.name || '').trim()
       const territory = getFocusAreaTerritory(focusAreaName)
       const covers = territory?.covers || ''
-      const guidance = territory?.guidance || ''
-
       const userId = getActiveUserId(user)
-      const systemPrompt = `You are Sage, an AI life coach. The user has selected the focus area: ${focusAreaName || 'Unknown'}.
-This focus area covers: ${covers || 'N/A'}.
-Generate a plan that is specific to this focus area only. Do not suggest activities from other focus areas.
-Read the user’s personal description carefully and generate advice that is specific to their actual situation, not a generic template.
-${guidance ? `\n${guidance}` : ''}`.trim()
+      const systemPrompt = `You are Sage, an AI life coach inside Phasr. Your job is to generate a specific, personalized plan for a user based on their chosen focus area and their personal description of where they are and where they want to go.
+CRITICAL RULE: You must stay strictly within the focus area provided. Never suggest activities, resources, or habits from a different focus area. If the focus area is Personal Growth, do not suggest gym workouts, meal plans, or physical fitness activities. If the focus area is Health and Fitness, do not suggest career advice or financial tips. Each focus area has defined territory and you must stay inside it.
+Focus area territories:
+	•	Health and Fitness: body, food, sleep, gym, energy, physical habits, nutrition, movement, recovery
+	•	Career and Business: job search, entrepreneurship, income streams, professional skills, career strategy, building a business
+	•	Wealth: savings, investing, debt reduction, budgeting, financial habits, money systems
+	•	Relationships: love, family, friendships, community, communication, connection, boundaries
+	•	Inner Life: spirituality, religion, mindfulness, mental health, reflection, emotional regulation, peace
+	•	Personal Growth: learning, reading, creativity, self-development, skill building, knowledge, creative output
+	•	Travel: trip planning, travel savings, destination research, booking, travel habits
+The pillar tells you which territory you are in. The user’s description tells you specifically what they are working on within that territory. Use both together. The description is the most important input — read it carefully and make the plan specific to what they actually wrote, not a generic version of the focus area.
+Generate:
+	•	3 specific resources they need to achieve this goal
+	•	3 to 4 daily activities that directly serve their goal and can be tracked as daily streaks
+	•	3 to 4 weekly non-negotiables that build momentum toward the goal each week
+	•	1 outcome statement describing what they will have achieved by the end of this phase
+The daily activities must be concrete and actionable. Not vague like ‘work on your goal.’ Specific like ‘Read 20 pages of a skill-building book’ or ‘Write 300 words toward your creative project.’ They should be things a person can check off as done each day.
+The weekly non-negotiables must be bigger than the daily activities but still achievable. They represent momentum markers — things that show the week moved the goal forward.
+Return only valid JSON with these exact keys: resources as array of strings, activities as array of strings, weeklyNonNegotiables as array of strings, outcome as string. No explanation. No preamble. Just the JSON.`
 
-      const userPrompt = `Focus area: ${focusAreaName}. Before: ${targetPillar.beforeState} — ${targetPillar.beforeDesc}. After: ${targetPillar.afterState} — ${targetPillar.afterDesc}. Generate 3 specific resources, 3 to 4 specific weekly activities that match this focus area, 3 to 4 weekly non-negotiables, and one outcome statement. Return as JSON with keys: resources, activities, weeklyNonNegotiables, outcome.`
+      const userPrompt = `Focus area: ${focusAreaName}
+Territory for this focus area: ${covers}
+User’s current state: ${targetPillar.beforeState} — ${targetPillar.beforeDesc}
+User’s goal state: ${targetPillar.afterState} — ${targetPillar.afterDesc}
+Generate a plan that is specific to this focus area territory and this user’s personal description.`
 
       const validatePlan = (planValue) => {
         const resources = Array.isArray(planValue?.resources) ? planValue.resources.filter(Boolean) : []
@@ -3075,7 +3091,7 @@ ${guidance ? `\n${guidance}` : ''}`.trim()
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: '0 4px 24px rgba(233,100,136,0.08)', overflow: 'hidden', alignSelf: 'start' }}>
       {/* Header */}
-      <div onClick={onCollapse} style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: pl.collapsed ? 'none' : '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+      <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: pl.collapsed ? 'none' : '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <div onClick={e => { e.stopPropagation(); editing && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
         {editing
           ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
@@ -3094,7 +3110,17 @@ ${guidance ? `\n${guidance}` : ''}`.trim()
               <Trash2 size={14} strokeWidth={2.1} />
             </button>
           )}
-          <span style={{ color: 'var(--app-accent2)', fontSize: '0.8rem' }}>{pl.collapsed ? '▼' : '▲'}</span>
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation()
+              onCollapse()
+            }}
+            aria-label={pl.collapsed ? `Open ${pl.name}` : `Close ${pl.name}`}
+            style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid var(--app-border)', background: '#fff', color: 'var(--app-accent2)', fontSize: '0.8rem', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
+          >
+            {pl.collapsed ? '▼' : '▲'}
+          </button>
         </div>
       </div>
 
@@ -3138,21 +3164,22 @@ ${guidance ? `\n${guidance}` : ''}`.trim()
             ))}
           </div>
 
-          {editing && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderRadius: 12, padding: '0.7rem 0.8rem', background: '#fff8fb', border: '1px dashed var(--app-border)' }}>
-              <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-                {canGeneratePlan ? 'Generate a Sage plan from your before + after details.' : 'Add your before + after details to generate your plan.'}
-              </p>
-              <button
-                type="button"
-                onClick={onGeneratePlan}
-                disabled={!canGeneratePlan}
-                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
-              >
-                {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
-              </button>
-            </div>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderRadius: 12, padding: '0.7rem 0.8rem', background: '#fff8fb', border: '1px dashed var(--app-border)' }}>
+            <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
+              {canGeneratePlan ? 'Generate a Sage plan from your before + after details.' : 'Add your before + after details to generate your plan.'}
+            </p>
+            <button
+              type="button"
+              onClick={event => {
+                event.stopPropagation()
+                onGeneratePlan()
+              }}
+              disabled={!canGeneratePlan}
+              style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
+            >
+              {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
+            </button>
+          </div>
 
           <div style={{ height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
