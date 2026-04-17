@@ -449,9 +449,22 @@ function formatAssignedDateLabel(dateKey) {
   if (!dateKey) return ''
   try {
     return new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return dateKey
+  }
+}
+
+function formatAssignedDateTooltip(dateKey) {
+  if (!dateKey) return ''
+  try {
+    return new Date(`${dateKey}T12:00:00`).toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
+      year: 'numeric',
     })
   } catch {
     return dateKey
@@ -1734,15 +1747,13 @@ Return JSON only:
       .map(item => item.pillar ? `${item.pillar}: ${item.task}` : item.task)
   }
 
-  function downloadWeeklyTasksIcs(tasks) {
-    const items = (tasks || []).map(item => ({
+  function downloadWeeklyTasksIcs(scheduledEntries) {
+    const items = (scheduledEntries || []).map(item => ({
       pillar: String(item?.pillar || '').trim(),
       task: String(item?.task || '').trim(),
+      assignedDateKey: String(item?.assignedDateKey || '').trim(),
     })).filter(item => item.task).slice(0, 4)
 
-    const today = new Date()
-    const weekStart = getWeekStartDate(today)
-    const base = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 9, 0, 0)
     const dtstamp = `${formatGoogleDate(new Date())}T000000Z`
     const uidBase = `phasr-weekly-${Date.now()}`
 
@@ -1755,13 +1766,15 @@ Return JSON only:
     ]
 
     items.forEach((entry, index) => {
-      const offset = NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0
-      const startDate = new Date(base)
-      startDate.setDate(startDate.getDate() + offset)
+      const startDate = entry.assignedDateKey
+        ? new Date(`${entry.assignedDateKey}T09:00:00`)
+        : new Date()
+      const startOffsetMinutes = index * 20
+      startDate.setMinutes(startDate.getMinutes() + startOffsetMinutes)
       const endDate = new Date(startDate)
       endDate.setMinutes(endDate.getMinutes() + 15)
-      const startStamp = `${formatGoogleDate(startDate)}T090000`
-      const endStamp = `${formatGoogleDate(endDate)}T091500`
+      const startStamp = `${formatGoogleDate(startDate)}T${String(startDate.getHours()).padStart(2, '0')}${String(startDate.getMinutes()).padStart(2, '0')}00`
+      const endStamp = `${formatGoogleDate(endDate)}T${String(endDate.getHours()).padStart(2, '0')}${String(endDate.getMinutes()).padStart(2, '0')}00`
       const title = `Phasr: ${entry.task}`
       const details = entry.pillar
         ? `Weekly non-negotiable (Phasr)\\n\\nPillar: ${entry.pillar}\\nTask: ${entry.task}`
@@ -1773,15 +1786,15 @@ Return JSON only:
         `DTSTAMP:${dtstamp}`,
         `SUMMARY:${title.replace(/\n/g, ' ')}`,
         `DESCRIPTION:${details.replace(/\n/g, '\\n')}`,
-        `DTSTART:${startStamp}`,
-        `DTEND:${endStamp}`,
-        'BEGIN:VALARM',
-        'TRIGGER:-PT0M',
-        'ACTION:DISPLAY',
-        'DESCRIPTION:Phasr reminder',
-        'END:VALARM',
-        'END:VEVENT',
-      )
+         `DTSTART:${startStamp}`,
+         `DTEND:${endStamp}`,
+         'BEGIN:VALARM',
+         'TRIGGER:-PT10M',
+         'ACTION:DISPLAY',
+         'DESCRIPTION:Phasr reminder',
+         'END:VALARM',
+         'END:VEVENT',
+       )
     })
 
     lines.push('END:VCALENDAR')
@@ -1820,20 +1833,70 @@ Return JSON only:
       const today = new Date()
       const weekStart = getWeekStartDate(today)
 
-      const items = buildWeeklyTaskLines(tasks).slice(0, 4)
-      const urls = items.map((taskText, index) => getCalendarUrl(taskText, weekStart, NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0))
+      const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
+      const userId = getActiveUserId(user)
 
-      // Open the first task in Google Calendar (mobile-friendly), and download an ICS containing all 4 tasks.
-      if (urls[0]) window.open(urls[0], '_blank')
-      downloadWeeklyTasksIcs(tasks)
+      const scheduleTargets = []
+      for (const pillar of (phase?.pillars || [])) {
+        const list = Array.isArray(pillar?.weeklyActions) ? pillar.weeklyActions : []
+        for (let actionIndex = 0; actionIndex < list.length; actionIndex += 1) {
+          const text = String(list[actionIndex] || '').trim()
+          if (!text) continue
+          scheduleTargets.push({
+            phaseId,
+            pillarId: pillar.id,
+            pillar: pillar.name,
+            task: text,
+            actionIndex,
+          })
+          if (scheduleTargets.length >= 4) break
+        }
+        if (scheduleTargets.length >= 4) break
+      }
+
+      const scheduledEntries = scheduleTargets.map((entry, index) => {
+        const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0
+        const assignedDate = addDays(weekStart, dayOffset)
+        const assignedDateKey = getTodayKey(assignedDate)
+        return { ...entry, assignedDateKey, dayOffset }
+      })
+
+      // Persist scheduled state into each pillar card so the UI updates immediately (no waiting for Calendar confirmation).
+      scheduledEntries.forEach(entry => {
+        if (!entry.pillarId || entry.actionIndex == null) return
+        const scheduleStateKey = { userId, phaseId: entry.phaseId, pillarId: entry.pillarId, weekStartKey }
+        const current = loadNonNegotiableSchedule(scheduleStateKey)
+        current[String(entry.actionIndex)] = {
+          scheduled: true,
+          assignedDate: entry.assignedDateKey,
+          scheduledAt: new Date().toISOString(),
+        }
+        saveNonNegotiableSchedule(scheduleStateKey, current)
+      })
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('phasr-nonnegotiable-schedule-updated', { detail: { phaseId, weekStartKey } }))
+      }
+
+      // Mobile-first: generate a single .ics containing all 4 events so iOS shows "Add All".
+      downloadWeeklyTasksIcs(scheduledEntries)
+
+      // Desktop fallback: also open Google Calendar for the first task (still requires Save in Google Calendar).
+      if (!isMobile && scheduledEntries.length) {
+        const first = scheduledEntries[0]
+        window.open(getCalendarUrl(first.task, weekStart, first.dayOffset), '_blank')
+      }
 
       window.dispatchEvent(new CustomEvent('phasr-calendar-feedback', {
         detail: {
           title: 'Calendar events ready',
-          message: 'Opened the first scheduled non-negotiable in Google Calendar. An .ics file was also downloaded containing all 4 scheduled non-negotiables.',
+          message: isIOS
+            ? 'Your iPhone will show “4 Events” → tap “Add All”.'
+            : 'An .ics was downloaded containing all 4 scheduled non-negotiables. Import it to add them to your calendar.',
         },
       }))
       logCalendarIntegration('integrated')
+      setCalendarPromptState('hidden')
     } finally {
       setCalendarBusy(false)
     }
@@ -2119,7 +2182,7 @@ Return JSON only:
     if (calendarPromptState !== 'open') return
     const timer = window.setTimeout(() => {
       setCalendarPromptState(current => current === 'open' ? 'collapsed' : current)
-    }, 420000)
+    }, isMobile ? 12000 : 420000)
     return () => window.clearTimeout(timer)
   }, [calendarPromptState, editing, weeklyPlan.length, phaseId])
 
@@ -2156,12 +2219,12 @@ Return JSON only:
               style={{
                 pointerEvents: 'auto',
                 margin: '0 auto',
-                width: 'min(720px, 100%)',
+                width: 'min(640px, 100%)',
                 background: 'linear-gradient(180deg,#fff5f8,#ffe8f0)',
                 border: '1px solid #f4c9d6',
-                borderRadius: 18,
+                borderRadius: 14,
                 boxShadow: '0 18px 44px rgba(185,87,122,0.18)',
-                padding: '0.85rem 0.95rem 0.85rem',
+                padding: isMobile ? '0.55rem 0.7rem 0.6rem' : '0.7rem 0.9rem 0.7rem',
                 position: 'relative',
               }}
             >
@@ -2170,8 +2233,8 @@ Return JSON only:
                 aria-label="Close calendar prompt"
                 style={{
                   position: 'absolute',
-                  top: 10,
-                  right: 10,
+                  top: 8,
+                  right: 8,
                   width: 28,
                   height: 28,
                   borderRadius: '50%',
@@ -2189,8 +2252,8 @@ Return JSON only:
               <p style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f', margin: 0, marginBottom: '0.35rem' }}>
                 Calendar
               </p>
-              <p style={{ color: '#5c3342', fontSize: isMobile ? '0.88rem' : '0.92rem', lineHeight: 1.5, margin: '0 1.6rem 0.7rem 0' }}>
-                Auto-schedule this week’s non-negotiables (Mon/Wed/Fri/Sun). Opens Google Calendar and downloads an `.ics` with all 4 tasks.
+              <p style={{ color: '#5c3342', fontSize: isMobile ? '0.82rem' : '0.9rem', lineHeight: 1.45, margin: '0 1.6rem 0.6rem 0' }}>
+                Add your 4 weekly non-negotiables to your calendar (Mon/Wed/Fri/Sun). On iPhone you’ll see “Add All”.
               </p>
               <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
                 <button
@@ -2971,6 +3034,18 @@ Return JSON only:
       })
     }, [pl.beforeImage, pl.afterImage])
 
+    useEffect(() => {
+      if (!userId || !weekStartKey) return undefined
+      const handleScheduleUpdate = event => {
+        const detail = event?.detail || {}
+        if (detail.phaseId && detail.phaseId !== phaseId) return
+        if (detail.weekStartKey && detail.weekStartKey !== weekStartKey) return
+        setScheduleState(loadNonNegotiableSchedule(scheduleStateKey))
+      }
+      window.addEventListener('phasr-nonnegotiable-schedule-updated', handleScheduleUpdate)
+      return () => window.removeEventListener('phasr-nonnegotiable-schedule-updated', handleScheduleUpdate)
+    }, [phaseId, scheduleStateKey, userId, weekStartKey])
+
   function handleImageTap(slot) {
     if (!editing) return
     onUpload(slot)
@@ -3103,8 +3178,11 @@ Return JSON only:
                           <span style={{ fontSize: '0.8rem', color: checked[ck] ? '#c4a0ac' : '#5a3d47', lineHeight: 1.5, flex: 1, textDecoration: checked[ck] ? 'line-through' : 'none' }}>{item}</span>
                           {calendarUrl ? (
                             scheduled ? (
-                              <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #cbead6', background: '#f3fff7', color: '#2f6a43', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}>
-                                {formatAssignedDateLabel(assignedDateKey)} ✓ Scheduled
+                              <span
+                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #cbead6', background: '#f3fff7', color: '#2f6a43', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif" }}
+                                title={formatAssignedDateTooltip(assignedDateKey)}
+                              >
+                                {formatAssignedDateLabel(assignedDateKey)} ✓
                               </span>
                             ) : (
                               <a
@@ -3129,7 +3207,7 @@ Return JSON only:
                                   flexShrink: 0,
                                   fontFamily: "'DM Sans',sans-serif",
                                 }}
-                                title={`Schedule for ${formatAssignedDateLabel(assignedDateKey)}`}
+                                title={`Schedule for ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
                                 📅 Schedule
                               </a>
