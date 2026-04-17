@@ -338,7 +338,16 @@ function normalizeGroqJson(rawText) {
   return fenced
 }
 
-export async function fetchPillarPlanWithGroq({ planPrompt = '', pillarName, beforeState, beforeDesc, afterState, afterDesc } = {}) {
+export async function fetchPillarPlanWithGroq({
+  planPrompt = '',
+  systemPrompt: systemPromptOverride = '',
+  userPrompt: userPromptOverride = '',
+  pillarName,
+  beforeState,
+  beforeDesc,
+  afterState,
+  afterDesc,
+} = {}) {
   const apiKey = import.meta.env.VITE_GROQ_KEY
   if (!apiKey) throw new Error('missing_groq_key')
   const model = 'llama-3.3-70b-versatile'
@@ -357,8 +366,8 @@ export async function fetchPillarPlanWithGroq({ planPrompt = '', pillarName, bef
       temperature: 0.2,
       max_tokens: 1200,
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
+        { role: 'system', content: String(systemPromptOverride || '').trim() || systemPrompt },
+        { role: 'user', content: String(userPromptOverride || '').trim() || userPrompt },
       ],
     }),
   })

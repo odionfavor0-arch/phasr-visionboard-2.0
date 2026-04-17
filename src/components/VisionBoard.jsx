@@ -21,6 +21,37 @@ const PILLAR_PRESETS = [
   { emoji: 'PG', name: 'Personal Growth', details: 'Learning, creativity, self-development' },
 ]
 
+const FOCUS_AREA_TERRITORY = {
+  'Health and Fitness': {
+    covers: 'body, food, sleep, gym, energy',
+    guidance: 'Plans should focus on physical habits, nutrition, movement, and recovery.',
+  },
+  'Career and Business': {
+    covers: 'job search, entrepreneurship, income streams, professional growth',
+    guidance: 'Plans should focus on skill building, application habits, income generation, and career strategy.',
+  },
+  Wealth: {
+    covers: 'savings, investing, debt, financial freedom',
+    guidance: 'Plans should focus on budgeting, saving habits, debt reduction, and building financial systems.',
+  },
+  Relationships: {
+    covers: 'love, family, friendships, community',
+    guidance: 'Plans should focus on communication habits, quality time, boundaries, and building deeper connections.',
+  },
+  'Inner Life': {
+    covers: 'spirituality, religion, mindfulness, mental health',
+    guidance: 'Plans should focus on reflection practices, prayer or meditation, emotional regulation, and peace-building habits.',
+  },
+  'Personal Growth': {
+    covers: 'learning, creativity, self-development',
+    guidance: 'Plans should focus on reading, skill acquisition, creative output, and building knowledge systems. Never suggest gym or fitness activities for this pillar.',
+  },
+  Travel: {
+    covers: 'planning, saving for travel, experiencing new places',
+    guidance: 'Plans should focus on destination research, travel savings, booking habits, and trip preparation.',
+  },
+}
+
 const FOCUS_AREA_KNOWLEDGE = {
   'Health & Fitness': {
     resources: [
@@ -369,6 +400,29 @@ const PLAN_EDIT_KEYS = new Set(['resources', 'activities', 'weeklyActions', 'out
 
 function cleanText(value) {
   return String(value || '').trim().replace(/\s+/g, ' ')
+}
+
+function normalizeFocusAreaName(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getFocusAreaTerritory(name) {
+  const normalized = normalizeFocusAreaName(name)
+  const map = {
+    'health and fitness': FOCUS_AREA_TERRITORY['Health and Fitness'],
+    'career and business': FOCUS_AREA_TERRITORY['Career and Business'],
+    wealth: FOCUS_AREA_TERRITORY.Wealth,
+    relationships: FOCUS_AREA_TERRITORY.Relationships,
+    'inner life': FOCUS_AREA_TERRITORY['Inner Life'],
+    'personal growth': FOCUS_AREA_TERRITORY['Personal Growth'],
+    travel: FOCUS_AREA_TERRITORY.Travel,
+  }
+  return map[normalized] || null
 }
 
 function getWeekStartDate(date = new Date()) {
@@ -1499,73 +1553,19 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
 
     setUploadMessage('Sage is generating your plan...')
     try {
-      const focusAreaKey = targetPillar.name
-      const knowledge = FOCUS_AREA_KNOWLEDGE[focusAreaKey] || {}
+      const focusAreaName = String(targetPillar.name || '').trim()
+      const territory = getFocusAreaTerritory(focusAreaName)
+      const covers = territory?.covers || ''
+      const guidance = territory?.guidance || ''
 
       const userId = getActiveUserId(user)
-      const behaviorHint = computeBehaviorHint(lockInSummary)
-      const history = loadPillarHistory(userId, targetPillar.name)
-      const pastWeeks = formatPillarHistory(history)
+      const systemPrompt = `You are Sage, an AI life coach. The user has selected the focus area: ${focusAreaName || 'Unknown'}.
+This focus area covers: ${covers || 'N/A'}.
+Generate a plan that is specific to this focus area only. Do not suggest activities from other focus areas.
+Read the user’s personal description carefully and generate advice that is specific to their actual situation, not a generic template.
+${guidance ? `\n${guidance}` : ''}`.trim()
 
-      const location = user?.user_metadata?.location || user?.user_metadata?.country || user?.user_metadata?.city || 'global'
-      const query = `Best tools, apps, and resources for ${targetPillar.name}. Location: ${location || 'global'}. Focus: ${targetPillar.afterState || targetPillar.afterDesc || ''}`.trim()
-      const webContext = await getWebContextFromRag(query)
-
-      const planPrompt = `
-You are generating a structured plan for a Phasr user.
-
-Their pillar: ${targetPillar.name}
-Before state: ${targetPillar.beforeState}
-Before description: ${targetPillar.beforeDesc}
-After goal: ${targetPillar.afterState}
-After description: ${targetPillar.afterDesc}
-
-Internet-aware context:
-${webContext}
-
-Use this knowledge to inform the plan:
-Resources: ${(knowledge.resources || []).join(', ')}
-Activities: ${(knowledge.activities || []).join(', ')}
-Non-negotiables: ${(knowledge.nonNegotiables || []).join(', ')}
-
-Previous behavior patterns:
-${pastWeeks}
-
-Behavior intelligence:
-${behaviorHint}
-
-Generate a personalised plan based on what this specific person wrote.
-Do not use the suggested items word for word.
-Adapt them to fit what this person actually said about their before and after.
-If they said they want better character and to be more optimistic,
-the resources and activities should directly serve those specific goals.
-Make it feel like it was written for them, not copied from a template.
-
-Rules:
-	•	Do NOT copy suggestions directly
-	•	Adapt everything to the user’s exact words
-	•	Make recommendations realistic for THIS week
-	•	Use internet context to suggest real, current tools or options
-	•	If location is known, localize suggestions
-
-Behavior rules:
-	•	Activities must be doable this week
-	•	Non-negotiables must be strict and clear
-	•	Resources must remove friction
-
-Learning rules:
-	•	If user failed consistency before, simplify
-	•	If user was consistent, increase difficulty slightly
-	•	If user avoids something repeatedly, surface it
-
-Return JSON only:
-{
-  "resources": ["...", "...", "...", "..."],
-  "activities": ["...", "...", "...", "..."],
-  "weeklyNonNegotiables": ["...", "...", "...", "..."],
-  "outcome": "..."
-}
-`
+      const userPrompt = `Focus area: ${focusAreaName}. Before: ${targetPillar.beforeState} — ${targetPillar.beforeDesc}. After: ${targetPillar.afterState} — ${targetPillar.afterDesc}. Generate 3 specific resources, 3 to 4 specific weekly activities that match this focus area, 3 to 4 weekly non-negotiables, and one outcome statement. Return as JSON with keys: resources, activities, weeklyNonNegotiables, outcome.`
 
       const validatePlan = (planValue) => {
         const resources = Array.isArray(planValue?.resources) ? planValue.resources.filter(Boolean) : []
@@ -1574,14 +1574,7 @@ Return JSON only:
         const outcome = String(planValue?.outcome || '').trim()
         if (!resources.length || !activities.length || !nonNeg.length || !outcome) return { ok: false, reason: 'missing_fields' }
 
-        const knowledgeText = new Set([
-          ...(knowledge.resources || []),
-          ...(knowledge.activities || []),
-          ...(knowledge.nonNegotiables || []),
-        ].map(item => String(item || '').trim()).filter(Boolean))
         const combined = [...resources, ...activities, ...nonNeg].map(item => String(item || '').trim()).filter(Boolean)
-        const copied = combined.filter(item => knowledgeText.has(item)).length
-        if (copied >= 2) return { ok: false, reason: 'copied_knowledge' }
 
         const genericHits = combined.filter(item => /\b(stay consistent|keep it simple|be consistent|try your best|take it one day at a time)\b/i.test(item)).length
         if (genericHits >= 2) return { ok: false, reason: 'too_generic' }
@@ -1589,14 +1582,20 @@ Return JSON only:
         const hasRealWorld = combined.some(item => /\b(app|tool|tracker|notion|trello|asana|myfitnesspal|cronometer|strava|ynab|copilot|insight timer)\b/i.test(item))
         if (!hasRealWorld) return { ok: false, reason: 'no_real_world_resource' }
 
+        const normalizedFocus = normalizeFocusAreaName(focusAreaName)
+        if (normalizedFocus === 'personal growth') {
+          const hasFitnessLeak = combined.some(item => /\b(gym|workout|cardio|protein|calorie|lift|lifting|run|running|strength training)\b/i.test(item))
+          if (hasFitnessLeak) return { ok: false, reason: 'cross_focus_fitness' }
+        }
+
         return { ok: true, reason: '' }
       }
 
-      let plan = await fetchPillarPlanWithGroq({ planPrompt })
+      let plan = await fetchPillarPlanWithGroq({ systemPrompt, userPrompt })
       const firstCheck = validatePlan(plan)
       if (!firstCheck.ok) {
-        const repairPrompt = `${planPrompt}\n\nValidation failed: ${firstCheck.reason}.\nFix it. Do not repeat the knowledge base items verbatim. Ensure at least one resource is a real-world app/tool. Return JSON only.`
-        plan = await fetchPillarPlanWithGroq({ planPrompt: repairPrompt })
+        const repairSystem = `${systemPrompt}\n\nValidation failed: ${firstCheck.reason}. Fix it. Return JSON only.`
+        plan = await fetchPillarPlanWithGroq({ systemPrompt: repairSystem, userPrompt })
         const secondCheck = validatePlan(plan)
         if (!secondCheck.ok) {
           setUploadMessage('Sage plan error. Please try again.')
@@ -1621,6 +1620,7 @@ Return JSON only:
       })
 
       try {
+        const history = loadPillarHistory(userId, targetPillar.name)
         const nextHistory = [
           {
             weekNumber: history.length + 1,
@@ -3209,7 +3209,7 @@ Return JSON only:
                                 title={`Open calendar • ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
                                 <span style={{ fontSize: '0.82rem', lineHeight: 1 }}>📅</span>
-                                {formatAssignedDateLabel(assignedDateKey)} ✓
+                                {formatAssignedDateLabel(assignedDateKey)}
                               </a>
                             ) : (
                               <a
