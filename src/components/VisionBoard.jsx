@@ -425,6 +425,19 @@ function getFocusAreaTerritory(name) {
   return map[normalized] || null
 }
 
+function getFocusAreaKnowledge(name) {
+  const normalized = normalizeFocusAreaName(name)
+  const map = {
+    'health and fitness': FOCUS_AREA_KNOWLEDGE['Health & Fitness'],
+    'career and business': FOCUS_AREA_KNOWLEDGE['Career & Business'],
+    wealth: FOCUS_AREA_KNOWLEDGE['Wealth & Finance'],
+    relationships: FOCUS_AREA_KNOWLEDGE.Relationships,
+    'inner life': FOCUS_AREA_KNOWLEDGE['Inner Life'],
+    'personal growth': FOCUS_AREA_KNOWLEDGE['Personal Growth'],
+  }
+  return map[normalized] || null
+}
+
 function getWeekStartDate(date = new Date()) {
   const next = new Date(date)
   const diff = (next.getDay() + 6) % 7
@@ -1556,6 +1569,15 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       const focusAreaName = String(targetPillar.name || '').trim()
       const territory = getFocusAreaTerritory(focusAreaName)
       const covers = territory?.covers || ''
+      const knowledge = getFocusAreaKnowledge(focusAreaName)
+      const knowledgeBlock = knowledge
+        ? [
+            knowledge.resources?.length ? `Knowledge resources examples:\n- ${knowledge.resources.join('\n- ')}` : '',
+            knowledge.activities?.length ? `Knowledge daily activity examples:\n- ${knowledge.activities.join('\n- ')}` : '',
+            knowledge.nonNegotiables?.length ? `Knowledge weekly non-negotiable examples:\n- ${knowledge.nonNegotiables.join('\n- ')}` : '',
+            knowledge.outcome ? `Knowledge outcome example:\n${knowledge.outcome}` : '',
+          ].filter(Boolean).join('\n\n')
+        : ''
       const userId = getActiveUserId(user)
       const systemPrompt = `You are Sage, an AI life coach inside Phasr. Your job is to generate a specific, personalized plan for a user based on their chosen focus area and their personal description of where they are and where they want to go.
 CRITICAL RULE: You must stay strictly within the focus area provided. Never suggest activities, resources, or habits from a different focus area. If the focus area is Personal Growth, do not suggest gym workouts, meal plans, or physical fitness activities. If the focus area is Health and Fitness, do not suggest career advice or financial tips. Each focus area has defined territory and you must stay inside it.
@@ -1581,6 +1603,10 @@ Return only valid JSON with these exact keys: resources as array of strings, act
 Territory for this focus area: ${covers}
 User’s current state: ${targetPillar.beforeState} — ${targetPillar.beforeDesc}
 User’s goal state: ${targetPillar.afterState} — ${targetPillar.afterDesc}
+${knowledgeBlock ? `Reference knowledge for this focus area:
+${knowledgeBlock}
+Use this knowledge as supporting guidance, but make the plan specific to the user’s actual words.
+` : ''}Generate a plan that is specific to this focus area territory and this user’s personal description.`
 Generate a plan that is specific to this focus area territory and this user’s personal description.`
 
       const validatePlan = (planValue) => {
@@ -3164,22 +3190,21 @@ Generate a plan that is specific to this focus area territory and this user’s 
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', borderRadius: 12, padding: '0.7rem 0.8rem', background: '#fff8fb', border: '1px dashed var(--app-border)' }}>
-            <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--app-muted)', lineHeight: 1.6 }}>
-              {canGeneratePlan ? 'Generate a Sage plan from your before + after details.' : 'Add your before + after details to generate your plan.'}
-            </p>
-            <button
-              type="button"
-              onClick={event => {
-                event.stopPropagation()
-                onGeneratePlan()
-              }}
-              disabled={!canGeneratePlan}
-              style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
-            >
-              {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
-            </button>
-          </div>
+          {editing && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={event => {
+                  event.stopPropagation()
+                  onGeneratePlan()
+                }}
+                disabled={!canGeneratePlan}
+                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
+              >
+                Generate plan
+              </button>
+            </div>
+          )}
 
           <div style={{ height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
