@@ -50,6 +50,8 @@ const UNLOCK_CARD_HIDE_KEY = 'phasr_unlock_card_hidden_until'
 const UNLOCKED_MILESTONES_KEY = 'phasr_unlocked_milestones'
 const UNLOCK_MILESTONE_INDEX_KEY = 'phasr_unlock_milestone_index'
 const UNLOCK_BASELINE_DAYS_KEY = 'phasr_unlock_baseline_days'
+const STREAK_STORAGE_KEY = 'phasr_streak'
+const WEEK_PROGRESS_STORAGE_KEY = 'phasr_week_progress'
 
 function getTodayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -244,6 +246,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [unlockMilestoneIndex, setUnlockMilestoneIndex] = useState(() => Number(localStorage.getItem(UNLOCK_MILESTONE_INDEX_KEY) || 0) || 0)
   const [unlockBaselineDays, setUnlockBaselineDays] = useState(() => Number(localStorage.getItem(UNLOCK_BASELINE_DAYS_KEY) || 0) || 0)
   const [recentlyUnlockedDay, setRecentlyUnlockedDay] = useState(null)
+  const [unlockNotice, setUnlockNotice] = useState('')
   const [unlockCardVisible, setUnlockCardVisible] = useState(() => {
     if (typeof window === 'undefined') return true
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
@@ -308,6 +311,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       }
     })
   }, [weeklyData.weeks, hasPillars, phaseScope, currentPhase, tasks, refresh])
+  const storedStreakState = useMemo(() => safeRead(STREAK_STORAGE_KEY, {}), [refresh, tasks, lockInState])
+  const storedWeekProgress = useMemo(() => safeRead(WEEK_PROGRESS_STORAGE_KEY, {}), [refresh, tasks, lockInState])
 
   const currentWeek = useMemo(() => {
     if (!weekStatuses.length) return 1
@@ -371,11 +376,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     unlockHideTapRef.current = now
   }
-  const currentStreak = summary.currentStreak || 0
-  const overallDaysDone = useMemo(() => weekStatuses.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0), [weekStatuses])
+  const currentStreak = Number(storedStreakState?.current ?? summary.currentStreak ?? 0) || 0
+  const overallDaysDone = useMemo(() => {
+    const values = Object.values(storedWeekProgress || {}).filter(Boolean)
+    const fromStorage = values.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0)
+    return fromStorage || weekStatuses.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0)
+  }, [storedWeekProgress, weekStatuses])
   const rankMood = getRankMood(currentStreak)
   const stageLevel = getStageLevel(currentStreak)
-  const progressStreak = isNewUser ? 0 : Math.max(currentStreak, ((currentWeek - 1) * 7) + currentDisplayedDay)
+  const progressStreak = isNewUser ? 0 : currentStreak
   const normalizedUnlocked = Array.isArray(unlockedMilestones) ? unlockedMilestones.filter(Number.isFinite) : []
   const latestUnlocked = [...UNLOCK_PATH].reverse().find(item => normalizedUnlocked.includes(item.day)) || null
   const inferredBaselineDays = useMemo(() => normalizedUnlocked.reduce((sum, day) => sum + day, 0), [normalizedUnlocked])
@@ -385,11 +394,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     if (baseline > overallDaysDone && inferredBaselineDays <= overallDaysDone) return inferredBaselineDays
     return baseline
   }, [unlockBaselineDays, overallDaysDone, inferredBaselineDays])
-  const progressDays = Math.max(0, overallDaysDone - safeBaselineDays)
+  const progressDays = currentStreak
   const upcomingMilestone = UNLOCK_PATH[Math.min(Math.max(0, unlockMilestoneIndex), UNLOCK_PATH.length - 1)] || UNLOCK_PATH[0]
   const displayedMilestone = UNLOCK_PATH.find(item => item.day === displayMilestoneDay) || upcomingMilestone
-  const progress = displayedMilestone ? Math.max(0, Math.min(1, progressDays / displayedMilestone.day)) : 1
-  const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - progressDays) : 0
+  const progress = displayedMilestone ? Math.max(0, Math.min(1, currentStreak / displayedMilestone.day)) : 1
+  const progressPercent = displayedMilestone ? Math.max(0, Math.min(100, Math.round((currentStreak / displayedMilestone.day) * 100))) : 100
+  const daysLeft = displayedMilestone ? Math.max(0, displayedMilestone.day - currentStreak) : 0
   const milestoneActivated = Boolean(displayedMilestone && (normalizedUnlocked.includes(displayedMilestone.day) || recentlyUnlockedDay === displayedMilestone.day))
 
   useEffect(() => {
@@ -412,6 +422,24 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   useEffect(() => {
     localStorage.setItem(UNLOCK_BASELINE_DAYS_KEY, String(Math.max(0, safeBaselineDays)))
   }, [safeBaselineDays])
+
+  useEffect(() => {
+    const nextWeekProgress = weekStatuses.reduce((acc, item) => {
+      const weekMeta = weeklyData.weeks.find(weekItem => weekItem.index === item.week)
+      const assignedTasks = Array.isArray(weekMeta?.goals) && weekMeta.goals.length
+        ? weekMeta.goals.reduce((sum, goal) => sum + (Number(goal?.target) || 0), 0)
+        : activities.length * 7
+      acc[`week_${item.week}`] = {
+        week: item.week,
+        daysDone: Number(item.daysDone) || 0,
+        completedTasks: item.week === activeWeek ? completedTasksThisWeek : countWeekTasksDone(phaseScope, item.week),
+        assignedTasks,
+        pulseDone: Boolean(item.pulseDone),
+      }
+      return acc
+    }, {})
+    safeWrite(WEEK_PROGRESS_STORAGE_KEY, nextWeekProgress)
+  }, [weekStatuses, weeklyData.weeks, activities.length, activeWeek, completedTasksThisWeek, phaseScope])
 
   useEffect(() => {
     const unlockState = {
@@ -470,9 +498,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const allDoneToday = updated.length > 0 && updated.every(item => item.done)
     const dayJustCompleted = allDoneToday && !allDoneBefore
     const projectedOverallDaysDone = overallDaysDone + (dayJustCompleted ? 1 : 0)
-    const projectedProgressDays = Math.max(0, projectedOverallDaysDone - safeBaselineDays)
+    const projectedStreak = dayJustCompleted ? Math.max(currentStreak, currentStreak + 1) : currentStreak
 
-    if (milestone && allDoneToday && projectedProgressDays >= milestone.day) {
+    if (milestone && allDoneToday && projectedStreak >= milestone.day) {
       unlockMilestoneNow(milestone.day, projectedOverallDaysDone)
     }
   }
@@ -490,6 +518,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
     setUnlockCardState('unlock')
     setDisplayMilestoneDay(milestoneDay)
+    const milestone = UNLOCK_PATH.find(item => item.day === milestoneDay)
+    if (milestone) {
+      setUnlockNotice(`${milestone.title} is now available.`)
+    }
     if (Number.isFinite(nextBaselineDays)) setUnlockBaselineDays(Math.max(0, Number(nextBaselineDays)))
 
     if (unlockTimersRef.current.transition) window.clearTimeout(unlockTimersRef.current.transition)
@@ -514,10 +546,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     if (normalizedUnlocked.includes(milestone.day)) return
     const allDoneToday = tasks.length > 0 && tasks.every(item => item.done)
     if (!allDoneToday) return
-    if (progressDays < milestone.day) return
+    if (currentStreak < milestone.day) return
     unlockMilestoneNow(milestone.day, overallDaysDone)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, hasPillars, displayedMilestone?.day, progressDays, overallDaysDone, normalizedUnlocked.join('|')])
+  }, [tasks, hasPillars, displayedMilestone?.day, currentStreak, overallDaysDone, normalizedUnlocked.join('|')])
 
   function getPhaseLabel(phaseId) {
     const index = phases.findIndex(phase => phase.id === phaseId)
@@ -904,6 +936,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 {displayedMilestone.detail}
               </div>
 
+              {unlockNotice && milestoneActivated ? (
+                <div style={{ fontSize: '0.75rem', color: '#e8407a', fontWeight: 700, marginBottom: 12 }}>
+                  {unlockNotice}
+                </div>
+              ) : null}
+
               <div style={{ display: 'inline-flex', alignItems: 'center', padding: '0.36rem 0.7rem', borderRadius: 999, border: '1px solid #ef7ea7', color: '#e8407a', fontSize: '0.75rem', fontWeight: 700, marginBottom: 12 }}>
                 {milestoneActivated ? 'Active' : `Next unlock - ${daysLeft} day${daysLeft === 1 ? '' : 's'} away`}
               </div>
@@ -921,7 +959,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   />
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#8f6f7a', whiteSpace: 'nowrap' }}>
-                  {Math.min(progressStreak, displayedMilestone.day)} / {displayedMilestone.day} days
+                  {progressPercent}% - {Math.min(progressStreak, displayedMilestone.day)} / {displayedMilestone.day} days
                 </div>
               </div>
             </div>

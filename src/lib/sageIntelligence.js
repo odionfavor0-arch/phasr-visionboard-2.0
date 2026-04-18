@@ -286,9 +286,9 @@ function normalizePlanJson(rawText) {
 }
 
 export async function fetchRealWorldPlan(goalText) {
-  const apiKey = import.meta.env.VITE_GROQ_KEY || import.meta.env.GROQ_API_KEY
+  const apiKey = import.meta.env.VITE_GROQ_KEY
   if (!apiKey) throw new Error('missing_groq_key')
-  const model = import.meta.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+  const model = 'llama-3.3-70b-versatile'
 
   const systemPrompt = `You are Sage, an AI life coach. The user has set the following goal from their vision board: ${goalText}. Generate a structured plan that includes: recommended resources they will need, a 12-week activity breakdown with progressive weekly targets, weekly non-negotiables for the first 4 weeks, measurable outputs to track, and short-term and long-term outcomes. Base this on proven real-world frameworks for this goal type. Be specific with numbers. Do not be generic.
 
@@ -300,6 +300,7 @@ outputs
 shortTermOutcome
 longTermOutcome`
 
+  console.log('Groq key before fetchRealWorldPlan fetch:', import.meta.env.VITE_GROQ_KEY)
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -355,6 +356,7 @@ export async function fetchPillarPlanWithGroq({
   const systemPrompt = 'You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.'
   const userPrompt = String(planPrompt || '').trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || '').trim()}\nTheir before state: ${String(beforeState || '').trim()}\nTheir before description: ${String(beforeDesc || '').trim()}\nTheir after goal: ${String(afterState || '').trim()}\nTheir after description: ${String(afterDesc || '').trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
 
+  console.log('Groq key before fetchPillarPlanWithGroq fetch:', import.meta.env.VITE_GROQ_KEY)
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {

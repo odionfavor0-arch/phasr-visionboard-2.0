@@ -454,12 +454,13 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
     }),
   }
 
-  const apiKey = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.VITE_GROQ_KEY || ''
+  const apiKey = import.meta.env.VITE_GROQ_KEY || ''
   if (!apiKey) {
     return localFallback
   }
 
   try {
+    console.log('Groq key before Journal fetch:', import.meta.env.VITE_GROQ_KEY)
     const response = await fetch(GROQ_URL, {
       method: 'POST',
       headers: {

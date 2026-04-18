@@ -743,11 +743,12 @@ async function requestSageReply({ system, messages, mode = 'chat' }) {
     return ragData?.answer || 'Something went wrong. Try again.'
   }
 
-  const groqKey = import.meta.env.VITE_GROQ_KEY || import.meta.env.GROQ_API_KEY
+  const groqKey = import.meta.env.VITE_GROQ_KEY
   const groqModel = system.includes('Deep Research Mode') ? GROQ_THINK_MODEL : GROQ_CHAT_MODEL
 
   if (!groqKey) throw new Error('missing_api_key')
 
+  console.log('Groq key before SageCoach fetch:', import.meta.env.VITE_GROQ_KEY)
   const res = await fetch(GROQ_URL, {
     method: 'POST',
     headers: {
@@ -1423,7 +1424,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
         {
           role: 'assistant',
           content: message.includes('missing_api_key')
-            ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` (or `GROQ_API_KEY`) and reload, then I can answer normally.'
+      ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` and reload, then I can answer normally.'
             : buildFallbackReply({ mode: 'quick', task, input: content, boardData }),
         },
       ])
@@ -2324,7 +2325,7 @@ Action Steps
         {
           role: 'assistant',
           content: message.includes('missing_api_key')
-            ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` (or `GROQ_API_KEY`) and reload, then I can answer normally.'
+      ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` and reload, then I can answer normally.'
             : (useDeepResearch
               ? buildResearchFallbackReply(content)
               : buildFallbackReply({
@@ -2372,7 +2373,7 @@ Action Steps
            {
              role: 'assistant',
              content: message.includes('missing_api_key')
-               ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` (or `GROQ_API_KEY`) and reload, then I can answer normally.'
+      ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` and reload, then I can answer normally.'
                : (useDeepResearch
                  ? buildResearchFallbackReply(previousUserMessage)
                  : buildFallbackReply({

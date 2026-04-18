@@ -1554,6 +1554,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }
   const delPillar  = (plId) => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph && ph.pillars.length > 1) ph.pillars = ph.pillars.filter(p => p.id !== plId); return d })
   const forceGeneratePlan = async plId => {
+    console.log('Generate plan triggered.')
     const targetPhase = data.phases.find(p => p.id === phaseId)
     const targetPillar = targetPhase?.pillars.find(p => p.id === plId)
     if (!targetPillar) return
@@ -1633,10 +1634,12 @@ Use this knowledge as supporting guidance, but only when it matches this user’
       }
 
       let plan = await fetchPillarPlanWithGroq({ systemPrompt, userPrompt })
+      console.log('Generate plan Groq response:', plan)
       const firstCheck = validatePlan(plan)
       if (!firstCheck.ok) {
         const repairSystem = `${systemPrompt}\n\nValidation failed: ${firstCheck.reason}. Fix it. Return JSON only.`
         plan = await fetchPillarPlanWithGroq({ systemPrompt: repairSystem, userPrompt })
+        console.log('Generate plan Groq repair response:', plan)
         const secondCheck = validatePlan(plan)
         if (!secondCheck.ok) {
           setUploadMessage('Sage plan error. Please try again.')
