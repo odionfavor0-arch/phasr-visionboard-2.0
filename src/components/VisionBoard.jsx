@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
-import { getDailyTaskPlan } from '../lib/lockIn'
+import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
 import phasrMark from '../assets/phasr-mark.png'
@@ -510,6 +510,32 @@ function loadNonNegotiableSchedule({ userId, phaseId, pillarId, weekStartKey }) 
 function saveNonNegotiableSchedule({ userId, phaseId, pillarId, weekStartKey }, value) {
   const key = getScheduleStorageKey({ userId, phaseId, pillarId, weekStartKey })
   localStorage.setItem(key, JSON.stringify(value || {}))
+}
+
+function buildCheckinScope(phase) {
+  const text = [
+    phase?.id || '',
+    phase?.name || '',
+    phase?.startDate || '',
+    phase?.endDate || '',
+    ...(Array.isArray(phase?.pillars) ? phase.pillars.flatMap((pillar, index) => [
+      pillar?.id || index,
+      pillar?.name || '',
+    ]) : []),
+  ].join('|')
+  let hash = 0
+  for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0
+  return `${phase?.id || 'phase'}_${Math.abs(hash)}`
+}
+
+function getCurrentPhaseWeekIndex(phase, today = new Date()) {
+  const weeks = getPhaseWeeks(phase)
+  if (!weeks.length) return 1
+  const todayKey = getTodayKey(today)
+  const activeWeek = weeks.find(week => todayKey >= week.startDate && todayKey <= week.endDate)
+  if (activeWeek) return activeWeek.index
+  if (todayKey < weeks[0].startDate) return 1
+  return weeks[weeks.length - 1]?.index || 1
 }
 
 function formatAssignedDateLabel(dateKey) {
@@ -1662,6 +1688,7 @@ Use this knowledge as supporting guidance, but only when it matches this user’
         pl.planWasEdited = false
         return d
       })
+      clearPlanDependentProgress(targetPhase, plId)
 
       try {
         const history = loadPillarHistory(userId, targetPillar.name)
@@ -1680,7 +1707,7 @@ Use this knowledge as supporting guidance, but only when it matches this user’
         // ignore history failures
       }
 
-      setUploadMessage('')
+      setUploadMessage('Plan updated. Your progress stays.')
     } catch (error) {
       console.error(error)
       const message = String(error?.message || '')
@@ -1768,6 +1795,45 @@ Use this knowledge as supporting guidance, but only when it matches this user’
   }
 
   const toggleCheck = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }))
+
+  function clearPlanDependentProgress(targetPhase, pillarId) {
+    if (typeof window === 'undefined' || !targetPhase?.id || !pillarId) return
+
+    const scope = buildCheckinScope(targetPhase)
+    const currentWeekIndex = getCurrentPhaseWeekIndex(targetPhase)
+    const taskPrefix = `phasr_tasks_${scope}_w`
+    const weekStartPrefix = `phasr_week_start_${scope}_w`
+
+    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+      const key = localStorage.key(index)
+      if (!key) continue
+      if (key.startsWith(taskPrefix) || key.startsWith(weekStartPrefix)) {
+        const match = key.match(/_w(\d+)(?:_d\d+)?$/)
+        const weekNumber = Number(match?.[1] || 0)
+        if (weekNumber >= currentWeekIndex) localStorage.removeItem(key)
+      }
+    }
+
+    try {
+      const weekProgress = safeJsonParse(localStorage.getItem('phasr_week_progress'), {})
+      const nextWeekProgress = Object.fromEntries(
+        Object.entries(weekProgress || {}).filter(([, value]) => Number(value?.week || 0) < currentWeekIndex),
+      )
+      localStorage.setItem('phasr_week_progress', JSON.stringify(nextWeekProgress))
+    } catch {
+      // ignore progress reset failures
+    }
+
+    setChecked(prev => Object.fromEntries(
+      Object.entries(prev || {}).filter(([key]) => !key.startsWith(`${targetPhase.id}-${pillarId}-wk-`)),
+    ))
+
+    if (activeUserId && weekStartKey) {
+      const scheduleKey = getScheduleStorageKey({ userId: activeUserId, phaseId: targetPhase.id, pillarId, weekStartKey })
+      localStorage.removeItem(scheduleKey)
+      window.dispatchEvent(new CustomEvent('phasr-nonnegotiable-schedule-updated', { detail: { phaseId: targetPhase.id, weekStartKey } }))
+    }
+  }
 
   function logCalendarIntegration(status) {
     try {
@@ -3192,21 +3258,19 @@ Use this knowledge as supporting guidance, but only when it matches this user’
             ))}
           </div>
 
-          {editing && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={event => {
-                  event.stopPropagation()
-                  onGeneratePlan()
-                }}
-                disabled={!canGeneratePlan}
-                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
-              >
-                {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
-              </button>
-            </div>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={event => {
+                event.stopPropagation()
+                onGeneratePlan()
+              }}
+              disabled={!canGeneratePlan}
+              style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
+            >
+              {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
+            </button>
+          </div>
 
           <div style={{ height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 

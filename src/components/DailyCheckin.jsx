@@ -107,7 +107,6 @@ function buildFingerprint(phase) {
     ...(Array.isArray(phase?.pillars) ? phase.pillars.flatMap((pillar, index) => [
       pillar?.id || index,
       pillar?.name || '',
-      ...(Array.isArray(pillar?.activities) ? pillar.activities.map(item => String(item || '').trim()) : []),
     ]) : []),
   ].join('|')
   let hash = 0
@@ -211,8 +210,10 @@ function sameTasks(saved, base) {
   return saved.map(item => item.id).sort().join('|') === base.map(item => item.id).sort().join('|')
 }
 
-function loadTasks(scope, week, day, base) {
+function loadTasks(scope, week, day, base, options = {}) {
+  const { preserveSaved = false } = options
   const saved = safeRead(taskKey(scope, week, day), null)
+  if (preserveSaved && Array.isArray(saved) && saved.length > 0) return saved
   if (sameTasks(saved, base)) return saved
   safeWrite(taskKey(scope, week, day), base)
   return base
@@ -344,8 +345,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       return
     }
     const base = buildBaseTasks(week, activities, displayedDay)
-    setTasks(loadTasks(phaseScope, activeWeek, displayedDay, base))
-  }, [hasPillars, week, activities, displayedDay, phaseScope, activeWeek])
+    setTasks(loadTasks(phaseScope, activeWeek, displayedDay, base, { preserveSaved: activeWeek < currentWeek }))
+  }, [hasPillars, week, activities, displayedDay, phaseScope, activeWeek, currentWeek])
 
   const completedToday = tasks.filter(item => item.done).length
   const totalToday = tasks.length
@@ -775,16 +776,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   alignItems: 'flex-start',
                   gap: 12,
                   padding: '14px 16px',
-                  background: '#fff6f9',
-                  border: `1px solid ${task.done ? 'rgba(74,222,128,0.25)' : '#f2c8d6'}`,
+                  background: task.done ? '#ffe4ee' : '#fff6f9',
+                  border: `1px solid ${task.done ? '#ef5d90' : '#f2c8d6'}`,
                   borderRadius: 14,
                   cursor: 'pointer',
                   textAlign: 'left',
-                  opacity: task.done ? 0.72 : 1,
+                  opacity: 1,
                 }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${task.done ? '#22c55e' : '#f2c8d6'}`, background: task.done ? '#22c55e' : 'transparent', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 700 }}>
-                  {task.done ? 'v' : ''}
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${task.done ? '#ef5d90' : '#f2c8d6'}`, background: task.done ? '#ef5d90' : '#fff', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 800, lineHeight: 1 }}>
+                  {task.done ? '✓' : ''}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, lineHeight: 1.45, color: task.done ? '#7e5d68' : 'var(--app-text)', textDecoration: task.done ? 'line-through' : 'none' }}>
