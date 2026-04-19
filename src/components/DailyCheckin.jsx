@@ -279,20 +279,45 @@ function getScheduleKey(weekNumber, nonNegIndex) {
   return `phasr_schedule_w${weekNumber}_nn${nonNegIndex}`
 }
 
-function getTodaysTasks(nonNegotiables, weekNumber, dayNumber) {
-  const cacheKey = taskKey(weekNumber, dayNumber)
-  const cached = safeRead(cacheKey, null)
-  if (cached) return cached
-
-  const tasks = nonNegotiables.map((activity, activityIndex) => ({
+function buildDayTasks(activities, weekNumber, dayNumber) {
+  return activities.map((activity, activityIndex) => ({
     id: `act${activityIndex}_w${weekNumber}_d${dayNumber}`,
     description: activity.description,
     pillar: activity.pillar,
     done: false,
   }))
+}
 
-  safeWrite(cacheKey, tasks)
-  return tasks
+function sameTaskShape(savedTasks, nextTasks) {
+  if (!Array.isArray(savedTasks) || savedTasks.length !== nextTasks.length) return false
+  return savedTasks.every((task, index) =>
+    task?.id === nextTasks[index]?.id &&
+    task?.description === nextTasks[index]?.description &&
+    task?.pillar === nextTasks[index]?.pillar
+  )
+}
+
+function mergeTaskProgress(savedTasks, nextTasks) {
+  const savedMap = new Map((savedTasks || []).map(task => [task.id, task]))
+  return nextTasks.map(task => ({
+    ...task,
+    done: Boolean(savedMap.get(task.id)?.done),
+  }))
+}
+
+function getTodaysTasks(activities, weekNumber, dayNumber) {
+  const cacheKey = taskKey(weekNumber, dayNumber)
+  const cached = safeRead(cacheKey, null)
+  const baseTasks = buildDayTasks(activities, weekNumber, dayNumber)
+
+  if (sameTaskShape(cached, baseTasks)) return cached
+
+  const nextTasks = Array.isArray(cached)
+    ? mergeTaskProgress(cached, baseTasks)
+    : baseTasks
+
+  safeWrite(cacheKey, nextTasks)
+  return nextTasks
 }
 
 function checkNonNegComplete(nonNegIndex, weekNumber) {
