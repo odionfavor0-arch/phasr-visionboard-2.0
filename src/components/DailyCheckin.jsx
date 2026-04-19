@@ -118,11 +118,19 @@ function hasConfiguredPillars(phase) {
   const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
   return pillars.some(pillar => {
     const activities = Array.isArray(pillar?.activities) ? pillar.activities.filter(Boolean) : []
-    return activities.length > 0 || pillar?.beforeImage || pillar?.afterImage || pillar?.beforeState || pillar?.afterState
+    const weeklyActions = Array.isArray(pillar?.weeklyActions) ? pillar.weeklyActions.filter(Boolean) : []
+    return activities.length > 0 || weeklyActions.length > 0 || pillar?.beforeImage || pillar?.afterImage || pillar?.beforeState || pillar?.afterState
   })
 }
 
-function buildActivities(phase) {
+function buildActivities(phase, weekNumber) {
+  const progressionSuffix = {
+    1: '',
+    2: ' — increase your target by 10% this week',
+    3: ' — aim to complete this without reminders',
+    4: ' — this should feel automatic by now. Push the intensity.',
+  }
+  const suffix = progressionSuffix[weekNumber] || progressionSuffix[4]
   const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
   return pillars.flatMap((pillar, pillarIndex) =>
     (Array.isArray(pillar?.activities) ? pillar.activities : [])
@@ -131,9 +139,26 @@ function buildActivities(phase) {
         if (!description) return null
         return {
           id: `${pillar?.id || `pillar-${pillarIndex}`}_${activityIndex}_${description}`,
-          description,
+          description: `${description}${weekNumber > 1 ? suffix : ''}`,
           pillar: String(pillar?.name || `Pillar ${pillarIndex + 1}`).trim(),
           done: false,
+        }
+      })
+      .filter(Boolean)
+  )
+}
+
+function buildNonNegotiables(phase) {
+  const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
+  return pillars.flatMap((pillar, pillarIndex) =>
+    (Array.isArray(pillar?.weeklyActions) ? pillar.weeklyActions : [])
+      .map((item, nonNegIndex) => {
+        const description = String(item || '').trim()
+        if (!description) return null
+        return {
+          id: `${pillar?.id || `pillar-${pillarIndex}`}_nn${nonNegIndex}`,
+          description,
+          pillar: String(pillar?.name || `Pillar ${pillarIndex + 1}`).trim(),
         }
       })
       .filter(Boolean)
@@ -163,8 +188,8 @@ function isQuarterlyReviewComplete(phase) {
   return fields.every(value => String(value || '').trim().length > 0)
 }
 
-function taskKey(scope, week, day) {
-  return `phasr_tasks_${scope}_w${week}_d${day}`
+function taskKey(week, day) {
+  return `phasr_tasks_w${week}_d${day}`
 }
 
 function weekStartKey(scope, week) {
@@ -180,61 +205,164 @@ function getWeekStartDate(scope, week) {
   return today
 }
 
-function dayLabel(day) {
-  return ({
-    3: ' - push for one extra rep today',
-    5: ' - match your best day this week',
-    7: ' - finish strong. Last day of the week.',
-  })[day] || ''
+function nonNegCompleteKey(week, nonNegIndex) {
+  return `phasr_nn_complete_w${week}_nn${nonNegIndex}`
 }
 
-function buildBaseTasks(week, activities, day) {
-  const goals = Array.isArray(week?.goals) ? week.goals : []
-  if (goals.length) {
-    return goals.map((goal, index) => ({
-      id: goal.activityId || `${goal.pillar || 'pillar'}_${index}_${goal.activity}`,
-      description: `${goal.activity}${goal.target ? ` (${goal.target}x this week)` : ''}${dayLabel(day)}`,
-      pillar: goal.pillar || 'Pillar',
-      done: false,
-    }))
+function parseNonNegotiable(text) {
+  const numericMatch = text.match(/(\d[\d,]*)\s*(steps?|calories?|reps?|minutes?|hours?|pages?|words?)/i)
+  if (numericMatch) {
+    return {
+      type: 'numeric',
+      target: parseInt(numericMatch[1].replace(/,/g, ''), 10),
+      unit: numericMatch[2].toLowerCase(),
+      text,
+    }
   }
-  return activities.map(activity => ({
-    ...activity,
-    description: `${activity.description}${dayLabel(day)}`,
-    done: false,
-  }))
+
+  const freqMatch = text.match(/(\d+)\s*times?\s*(a\s*)?(week|weekly)/i)
+  if (freqMatch) {
+    return {
+      type: 'frequency',
+      timesPerWeek: parseInt(freqMatch[1], 10),
+      text,
+    }
+  }
+
+  return { type: 'habit', text }
 }
 
-function sameTasks(saved, base) {
-  if (!Array.isArray(saved) || saved.length !== base.length) return false
-  return saved.map(item => item.id).sort().join('|') === base.map(item => item.id).sort().join('|')
+function generateWeekSchedule(nonNeg) {
+  const parsed = parseNonNegotiable(nonNeg.description)
+  const schedule = {}
+
+  if (parsed.type === 'numeric') {
+    const avg = parsed.target / 7
+    const dailyAmounts = [
+      Math.round(avg * 0.7),
+      Math.round(avg * 0.8),
+      Math.round(avg * 0.9),
+      Math.round(avg * 1.0),
+      Math.round(avg * 1.1),
+      Math.round(avg * 1.2),
+      Math.round(avg * 1.3),
+    ]
+    const total = dailyAmounts.reduce((sum, amount) => sum + amount, 0)
+    const scale = total ? parsed.target / total : 1
+    const scaled = dailyAmounts.map(amount => Math.round(amount * scale))
+    const diff = parsed.target - scaled.reduce((sum, amount) => sum + amount, 0)
+    if (scaled.length) scaled[scaled.length - 1] += diff
+
+    for (let day = 1; day <= 7; day += 1) {
+      schedule[day] = `${Math.max(0, scaled[day - 1]).toLocaleString()} ${parsed.unit} today`
+    }
+  }
+
+  if (parsed.type === 'frequency') {
+    const frequencyDayMap = {
+      7: [1, 2, 3, 4, 5, 6, 7],
+      6: [1, 2, 3, 4, 5, 6],
+      5: [1, 2, 3, 5, 6],
+      4: [1, 2, 4, 6],
+      3: [1, 3, 5],
+      2: [2, 5],
+      1: [3],
+    }
+    const activeDays = frequencyDayMap[parsed.timesPerWeek] || frequencyDayMap[3]
+    for (let day = 1; day <= 7; day += 1) {
+      schedule[day] = activeDays.includes(day)
+        ? nonNeg.description.replace(/\d+\s*times?\s*(a\s*)?(week|weekly)/i, 'today')
+        : null
+    }
+  }
+
+  if (parsed.type === 'habit') {
+    const isDaily = /daily|every day|each day/i.test(nonNeg.description)
+    for (let day = 1; day <= 7; day += 1) {
+      schedule[day] = isDaily ? nonNeg.description : (day === 3 ? nonNeg.description : null)
+    }
+  }
+
+  return schedule
 }
 
-function loadTasks(scope, week, day, base, options = {}) {
-  const { preserveSaved = false } = options
-  const saved = safeRead(taskKey(scope, week, day), null)
-  if (preserveSaved && Array.isArray(saved) && saved.length > 0) return saved
-  if (sameTasks(saved, base)) return saved
-  safeWrite(taskKey(scope, week, day), base)
-  return base
+function getScheduleKey(weekNumber, nonNegIndex) {
+  return `phasr_schedule_w${weekNumber}_nn${nonNegIndex}`
 }
 
-function countDaysDone(scope, week) {
+function getTodaysTasks(nonNegotiables, weekNumber, dayNumber) {
+  const cacheKey = taskKey(weekNumber, dayNumber)
+  const cached = safeRead(cacheKey, null)
+  if (cached) return cached
+
+  const tasks = []
+  nonNegotiables.forEach((nonNeg, nonNegIndex) => {
+    const scheduleKey = getScheduleKey(weekNumber, nonNegIndex)
+    let schedule = safeRead(scheduleKey, null)
+    if (!schedule) {
+      schedule = generateWeekSchedule(nonNeg)
+      safeWrite(scheduleKey, schedule)
+    }
+    const taskForToday = schedule[dayNumber]
+    if (taskForToday) {
+      tasks.push({
+        id: `nn${nonNegIndex}_d${dayNumber}`,
+        description: taskForToday,
+        pillar: nonNeg.pillar,
+        nonNegIndex,
+        done: false,
+      })
+    }
+  })
+
+  safeWrite(cacheKey, tasks)
+  return tasks
+}
+
+function checkNonNegComplete(nonNegIndex, weekNumber) {
+  let allDone = true
+  let foundTask = false
+  for (let day = 1; day <= 7; day += 1) {
+    const tasks = safeRead(taskKey(weekNumber, day), [])
+    const nonNegTask = tasks.find(task => task.nonNegIndex === nonNegIndex)
+    if (nonNegTask) {
+      foundTask = true
+      if (!nonNegTask.done) {
+        allDone = false
+        break
+      }
+    }
+  }
+  if (foundTask && allDone) {
+    localStorage.setItem(nonNegCompleteKey(weekNumber, nonNegIndex), 'true')
+  }
+}
+
+function countDaysDone(week) {
   let done = 0
   for (let day = 1; day <= 7; day += 1) {
-    const tasks = safeRead(taskKey(scope, week, day), null)
+    const tasks = safeRead(taskKey(week, day), null)
     if (Array.isArray(tasks) && tasks.length > 0 && tasks.every(item => item.done)) done += 1
   }
   return done
 }
 
-function countWeekTasksDone(scope, week) {
+function countWeekTasksDone(week) {
   let done = 0
   for (let day = 1; day <= 7; day += 1) {
-    const tasks = safeRead(taskKey(scope, week, day), [])
+    const tasks = safeRead(taskKey(week, day), [])
     done += tasks.filter(item => item.done).length
   }
   return done
+}
+
+function countWeekTasksAssigned(week) {
+  let assigned = 0
+  for (let day = 1; day <= 7; day += 1) {
+    const tasks = safeRead(taskKey(week, day), [])
+    assigned += Array.isArray(tasks) ? tasks.length : 0
+  }
+  return assigned
 }
 
 export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview }) {
@@ -293,7 +421,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const currentPhase = phases.find(phase => phase.id === activePhaseId) || phases[0] || null
   const hasPillars = hasConfiguredPillars(currentPhase)
-  const activities = useMemo(() => buildActivities(currentPhase), [currentPhase])
+  const [storedWeekNumber, setStoredWeekNumber] = useState(() => parseInt(localStorage.getItem('phasr_current_week') || '1', 10))
+  const activities = useMemo(() => buildActivities(currentPhase, storedWeekNumber), [currentPhase, storedWeekNumber])
+  const nonNegotiables = useMemo(() => buildNonNegotiables(currentPhase), [currentPhase])
   const phaseScope = useMemo(() => buildFingerprint(currentPhase || {}), [currentPhase])
   const totalWeeks = Math.max(weeklyData.weeks?.length || 1, 1)
   const [activeWeek, setActiveWeek] = useState(1)
@@ -303,7 +433,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const weekStatuses = useMemo(() => {
     return (weeklyData.weeks || []).map(item => {
-      const daysDone = hasPillars ? countDaysDone(phaseScope, item.index) : 0
+      const daysDone = hasPillars ? countDaysDone(item.index) : 0
       const pulseDone = pulseDoneForWeek(currentPhase?.name, item.index) && daysDone === 7
       return {
         week: item.index,
@@ -311,7 +441,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         pulseDone,
       }
     })
-  }, [weeklyData.weeks, hasPillars, phaseScope, currentPhase, tasks, refresh])
+  }, [weeklyData.weeks, hasPillars, currentPhase, tasks, refresh])
   const storedStreakState = useMemo(() => safeRead(STREAK_STORAGE_KEY, {}), [refresh, tasks, lockInState])
   const storedWeekProgress = useMemo(() => safeRead(WEEK_PROGRESS_STORAGE_KEY, {}), [refresh, tasks, lockInState])
 
@@ -329,6 +459,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [currentWeek, activePhaseId])
 
   useEffect(() => {
+    localStorage.setItem('phasr_current_week', String(currentWeek))
+    setStoredWeekNumber(currentWeek)
+  }, [currentWeek])
+
+  useEffect(() => {
     if (!hasPillars) return
     getWeekStartDate(phaseScope, currentWeek)
   }, [hasPillars, phaseScope, currentWeek])
@@ -344,15 +479,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       setTasks([])
       return
     }
-    const base = buildBaseTasks(week, activities, displayedDay)
-    setTasks(loadTasks(phaseScope, activeWeek, displayedDay, base, { preserveSaved: activeWeek < currentWeek }))
-  }, [hasPillars, week, activities, displayedDay, phaseScope, activeWeek, currentWeek])
+    setTasks(getTodaysTasks(nonNegotiables, activeWeek, displayedDay))
+  }, [hasPillars, week, nonNegotiables, displayedDay, activeWeek])
 
   const completedToday = tasks.filter(item => item.done).length
   const totalToday = tasks.length
-  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(phaseScope, activeWeek) : 0, [hasPillars, phaseScope, activeWeek, tasks])
-  const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(phaseScope, activeWeek) : 0, [hasPillars, phaseScope, activeWeek, tasks])
-  const totalTasksThisWeek = hasPillars ? activities.length * 7 : 0
+  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek) : 0, [hasPillars, activeWeek, tasks])
+  const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek) : 0, [hasPillars, activeWeek, tasks])
+  const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek) : 0, [hasPillars, activeWeek, tasks])
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
   const currentPulseDone = weekStatuses.find(item => item.week === activeWeek)?.pulseDone || false
   const previousPulseDone = activeWeek === 1 ? true : (weekStatuses.find(item => item.week === activeWeek - 1)?.pulseDone || false)
@@ -426,21 +560,18 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   useEffect(() => {
     const nextWeekProgress = weekStatuses.reduce((acc, item) => {
-      const weekMeta = weeklyData.weeks.find(weekItem => weekItem.index === item.week)
-      const assignedTasks = Array.isArray(weekMeta?.goals) && weekMeta.goals.length
-        ? weekMeta.goals.reduce((sum, goal) => sum + (Number(goal?.target) || 0), 0)
-        : activities.length * 7
+      const assignedTasks = countWeekTasksAssigned(item.week)
       acc[`week_${item.week}`] = {
         week: item.week,
         daysDone: Number(item.daysDone) || 0,
-        completedTasks: item.week === activeWeek ? completedTasksThisWeek : countWeekTasksDone(phaseScope, item.week),
+        completedTasks: item.week === activeWeek ? completedTasksThisWeek : countWeekTasksDone(item.week),
         assignedTasks,
         pulseDone: Boolean(item.pulseDone),
       }
       return acc
     }, {})
     safeWrite(WEEK_PROGRESS_STORAGE_KEY, nextWeekProgress)
-  }, [weekStatuses, weeklyData.weeks, activities.length, activeWeek, completedTasksThisWeek, phaseScope])
+  }, [weekStatuses, activeWeek, completedTasksThisWeek])
 
   useEffect(() => {
     const unlockState = {
@@ -490,13 +621,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   function toggleTask(taskId) {
     const allDoneBefore = tasks.length > 0 && tasks.every(item => item.done)
     const updated = tasks.map(item => item.id === taskId ? { ...item, done: !item.done } : item)
-    safeWrite(taskKey(phaseScope, activeWeek, displayedDay), updated)
+    safeWrite(taskKey(activeWeek, displayedDay), updated)
     setTasks(updated)
     setLockInState(loadLockInState())
     onLockInChange?.()
 
     const milestone = displayedMilestone
     const allDoneToday = updated.length > 0 && updated.every(item => item.done)
+    if (allDoneToday) {
+      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
+    }
+    const task = updated.find(item => item.id === taskId)
+    if (task) checkNonNegComplete(task.nonNegIndex, activeWeek)
+
     const dayJustCompleted = allDoneToday && !allDoneBefore
     const projectedOverallDaysDone = overallDaysDone + (dayJustCompleted ? 1 : 0)
     const projectedStreak = dayJustCompleted ? Math.max(currentStreak, currentStreak + 1) : currentStreak
@@ -628,7 +765,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
           {!sageCardExpanded && (
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              {hasPillars ? `Day ${displayedDay} of 7. ${weekPercent >= 50 ? 'You are on track.' : 'Stay consistent.'}` : 'Add pillar activities to activate your streak.'}
+              {hasPillars ? `Day ${displayedDay} of 7. ${weekPercent >= 50 ? 'You are on track.' : 'Stay consistent.'}` : 'Add weekly non-negotiables in Vision Board to activate your streak.'}
             </p>
           )}
 
@@ -636,7 +773,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <>
           {!hasPillars && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              Add your pillar activities in Vision Board and Sage will turn them into your daily streak plan.
+              Add your weekly non-negotiables in Vision Board and Sage will turn them into daily tasks automatically.
             </p>
           )}
           {hasPillars && isNewUser && (
@@ -679,7 +816,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 16, background: '#fff6f9', marginBottom: '1rem' }}>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>Set up your Vision Board first</p>
             <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
-              Your daily tasks come from your pillars and activities. Add them to your Vision Board to activate your streak.
+              Your daily tasks come from your weekly non-negotiables. Add them to your Vision Board to activate your streak.
             </p>
             <button type="button" onClick={onOpenBoard} style={{ borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
               Go to Vision Board
@@ -756,13 +893,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
 
           <div style={{ fontSize: 11, color: '#7e5d68', marginBottom: 14 }}>
-            {hasPillars ? 'These tasks come directly from your current pillar activities and get sharper week by week.' : 'Set up your activities first to activate your daily streak plan.'}
+            {hasPillars ? `These tasks are generated from your weekly non-negotiables and only show what matters today.${activities.length ? ' Your supporting activities keep progressing week by week in the background.' : ''}` : 'Set up your weekly non-negotiables first to activate your daily streak plan.'}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tasks.length === 0 && (
               <div style={{ padding: '18px 16px', borderRadius: 14, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#7e5d68', fontSize: 12 }}>
-                Set up your vision board first to activate your daily tasks.
+                {hasPillars ? 'No task is scheduled for today. Show up again tomorrow and the next step will be ready.' : 'Set up your vision board first to activate your daily tasks.'}
               </div>
             )}
             {tasks.map(task => (

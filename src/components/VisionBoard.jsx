@@ -452,24 +452,34 @@ function addDays(date, days) {
   return next
 }
 
-const NON_NEGOTIABLE_DAY_OFFSETS = [0, 2, 4, 6] // Mon, Wed, Fri, Sun
+const NON_NEGOTIABLE_DAY_OFFSETS = [0, 1, 2, 3] // Mon, Tue, Wed, Thu
 
-function formatCalendarYyyyMmDd(date) {
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  return `${yyyy}${mm}${dd}`
-}
+function getCalendarUrl(taskText, pillarName, weekStartDate, dayIndex) {
+  const taskDate = new Date(weekStartDate)
+  taskDate.setDate(taskDate.getDate() + dayIndex)
 
-function getCalendarUrl(taskText, weekStartDate, dayOffset) {
-  const taskDate = addDays(weekStartDate, Number(dayOffset) || 0)
-  const startDate = formatCalendarYyyyMmDd(taskDate)
-  const endDate = formatCalendarYyyyMmDd(addDays(taskDate, 1)) // end is exclusive for all-day events
+  // Set event time to 9am on that day
+  taskDate.setHours(9, 0, 0, 0)
+  const endDate = new Date(taskDate)
+  endDate.setHours(10, 0, 0, 0)
+
+  // Format for Google Calendar: YYYYMMDDTHHmmss
+  function fmt(date) {
+    return date.getFullYear().toString()
+      + String(date.getMonth() + 1).padStart(2, '0')
+      + String(date.getDate()).padStart(2, '0') + 'T'
+      + String(date.getHours()).padStart(2, '0')
+      + String(date.getMinutes()).padStart(2, '0') + '00'
+  }
 
   const title = encodeURIComponent(`Phasr: ${taskText}`)
-  const details = encodeURIComponent('Your weekly non-negotiable from Phasr. Tap once to complete in the app.')
+  const details = encodeURIComponent(
+    `Your weekly non-negotiable from Phasr.\n\nPillar: ${pillarName}\n\nOpen Phasr to log your completion.`
+  )
+  const dates = `${fmt(taskDate)}/${fmt(endDate)}`
 
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&sf=true&output=xml`
+  // Add reminder via crm parameter (30 min before)
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&crm=ALERT`
 }
 
 function getActiveUserId(user) {
@@ -1579,7 +1589,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.pillars.push(freshPillar()); return d })
   }
   const delPillar  = (plId) => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph && ph.pillars.length > 1) ph.pillars = ph.pillars.filter(p => p.id !== plId); return d })
-  const forceGeneratePlan = async plId => {
+  const forceGeneratePlan = async (plId, options = {}) => {
     console.log('Generate plan triggered.')
     const targetPhase = data.phases.find(p => p.id === phaseId)
     const targetPillar = targetPhase?.pillars.find(p => p.id === plId)
@@ -1626,7 +1636,7 @@ The daily activities must be concrete and actionable. Not vague like ‘work on 
 The weekly non-negotiables must be bigger than the daily activities but still achievable. They represent momentum markers — things that show the week moved the goal forward.
 Return only valid JSON with these exact keys: resources as array of strings, activities as array of strings, weeklyNonNegotiables as array of strings, outcome as string. No explanation. No preamble. Just the JSON.`
 
-      const userPrompt = `Focus area: ${focusAreaName}
+      const originalGenerationPrompt = `Focus area: ${focusAreaName}
 Territory for this focus area: ${covers}
 User’s current state: ${targetPillar.beforeState} — ${targetPillar.beforeDesc}
 User’s goal state: ${targetPillar.afterState} — ${targetPillar.afterDesc}
@@ -1634,6 +1644,32 @@ ${knowledgeBlock ? `Reference knowledge for this focus area:
 ${knowledgeBlock}
 Use this knowledge as supporting guidance, but only when it matches this user’s actual description. Do not fall back to generic examples if the user’s words point somewhere more specific.
 ` : ''}Generate a plan that is specific to this focus area territory and this user’s personal description.`
+      const isRegenerate = options?.forceNewApproach
+      const userPrompt = isRegenerate
+        ? `
+You previously generated a plan for this user. They were not satisfied and want a completely different approach.
+
+Their pillar: ${targetPillar.name}
+Their before: ${targetPillar.beforeDesc}
+Their after goal: ${targetPillar.afterDesc}
+Attempt number: ${options.attempt}
+
+DO NOT repeat anything from a previous plan.
+Find a different route to the same goal.
+If the previous plan was structured and habitual, make this one project-based.
+If the previous plan focused on learning, make this one focused on action and output.
+If the previous plan was intensive, make this one minimal and sustainable.
+Vary the approach completely. Same goal, different path.
+
+Return JSON only:
+{
+  "resources": ["...", "...", "..."],
+  "activities": ["...", "...", "...", "..."],
+  "weeklyNonNegotiables": ["...", "...", "...", "..."],
+  "outcome": "..."
+}
+`
+        : originalGenerationPrompt
 
       const validatePlan = (planValue) => {
         const resources = Array.isArray(planValue?.resources) ? planValue.resources.filter(Boolean) : []
@@ -1982,7 +2018,7 @@ Use this knowledge as supporting guidance, but only when it matches this user’
         const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[index] ?? 0
         const assignedDate = addDays(windowStart, dayOffset)
         const assignedDateKey = getTodayKey(assignedDate)
-        return { ...entry, assignedDateKey, dayOffset, calendarUrl: getCalendarUrl(entry.task, windowStart, dayOffset) }
+        return { ...entry, assignedDateKey, dayOffset, calendarUrl: getCalendarUrl(entry.task, entry.pillar, windowStart, index) }
       })
 
       // Persist scheduled state into each pillar card so the UI updates immediately (no waiting for Calendar confirmation).
@@ -2760,7 +2796,7 @@ Use this knowledge as supporting guidance, but only when it matches this user’
               onImageLinkUpdate={(slot, value) => updateImageLink(pl.id, slot, value)}
               onDel={() => delPillar(pl.id)}
               onPreset={() => setPresetOpen(presetOpen === pl.id ? null : pl.id)}
-              onGeneratePlan={() => forceGeneratePlan(pl.id)}
+                onGeneratePlan={(options) => forceGeneratePlan(pl.id, options)}
               isPro={isPro}
             />
           ))}
@@ -3156,6 +3192,7 @@ Use this knowledge as supporting guidance, but only when it matches this user’
     const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
     const canGeneratePlan = Boolean(beforeReady && afterReady)
     const hasGeneratedPlan = Boolean(pl.planGeneratedFrom && !isPlanBlank(pl))
+    const [regenerateCount, setRegenerateCount] = useState(0)
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
 
     useEffect(() => {
@@ -3180,6 +3217,11 @@ Use this knowledge as supporting guidance, but only when it matches this user’
   function handleImageTap(slot) {
     if (!editing) return
     onUpload(slot)
+  }
+
+  const regeneratePlan = () => {
+    setRegenerateCount(prev => prev + 1)
+    onGeneratePlan({ forceNewApproach: true, attempt: regenerateCount + 1 })
   }
 
   return (
@@ -3263,6 +3305,10 @@ Use this knowledge as supporting guidance, but only when it matches this user’
               type="button"
               onClick={event => {
                 event.stopPropagation()
+                if (hasGeneratedPlan) {
+                  regeneratePlan()
+                  return
+                }
                 onGeneratePlan()
               }}
               disabled={!canGeneratePlan}
@@ -3305,7 +3351,7 @@ Use this knowledge as supporting guidance, but only when it matches this user’
                 const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[i % NON_NEGOTIABLE_DAY_OFFSETS.length] ?? 0
                 const assignedDate = addDays(calendarWindowStart, dayOffset)
                 const assignedDateKey = getTodayKey(assignedDate)
-                const calendarUrl = safeTask ? getCalendarUrl(safeTask, calendarWindowStart, dayOffset) : ''
+                const calendarUrl = safeTask ? getCalendarUrl(safeTask, pl.name, calendarWindowStart, i) : ''
                 const scheduled = Boolean(scheduleState?.[String(i)]?.scheduled)
                 const calendarViewUrl = getGoogleCalendarDayViewUrl(assignedDateKey)
                 return (
