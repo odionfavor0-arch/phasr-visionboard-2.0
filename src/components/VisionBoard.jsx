@@ -1645,21 +1645,29 @@ ${knowledgeBlock}
 Use this knowledge as supporting guidance, but only when it matches this user’s actual description. Do not fall back to generic examples if the user’s words point somewhere more specific.
 ` : ''}Generate a plan that is specific to this focus area territory and this user’s personal description.`
       const isRegenerate = options?.forceNewApproach
+      const previousPlan = options?.previousPlan
       const userPrompt = isRegenerate
         ? `
-You previously generated a plan for this user. They were not satisfied and want a completely different approach.
+You previously generated this plan for the user and they were not satisfied with it.
 
-Their pillar: ${targetPillar.name}
-Their before: ${targetPillar.beforeDesc}
-Their after goal: ${targetPillar.afterDesc}
-Attempt number: ${options.attempt}
+PREVIOUS PLAN THEY REJECTED:
+Resources: ${Array.isArray(previousPlan?.resources) ? previousPlan.resources.join(', ') : ''}
+Activities: ${Array.isArray(previousPlan?.activities) ? previousPlan.activities.join(', ') : ''}
+Non-negotiables: ${Array.isArray(previousPlan?.weeklyNonNegotiables) ? previousPlan.weeklyNonNegotiables.join(', ') : ''}
 
-DO NOT repeat anything from a previous plan.
-Find a different route to the same goal.
-If the previous plan was structured and habitual, make this one project-based.
-If the previous plan focused on learning, make this one focused on action and output.
-If the previous plan was intensive, make this one minimal and sustainable.
-Vary the approach completely. Same goal, different path.
+DO NOT use any of the above. Do not reword them. Do not reorder them.
+Find a completely different approach to the same goal.
+
+User's pillar: ${targetPillar.name}
+Their current state: ${targetPillar.beforeDesc}
+Their goal: ${targetPillar.afterDesc}
+Attempt number: ${options.attempt} — each attempt must be more different than the last.
+
+Think about a completely different angle:
+- If the last plan was routine-based, make this one milestone-based
+- If the last plan was physical, make this one mental or environmental
+- If the last plan was intensive, make this one minimal and sustainable
+- If the last plan was solo, make this one community or accountability based
 
 Return JSON only:
 {
@@ -1709,16 +1717,28 @@ Return JSON only:
         }
       }
 
+      const result = {
+        resources: plan.resources?.length ? plan.resources : [''],
+        activities: plan.activities?.length ? plan.activities : [''],
+        weeklyNonNegotiables: plan.weeklyNonNegotiables?.length ? plan.weeklyNonNegotiables : [''],
+        outcome: plan.outcome || '',
+      }
+
+      localStorage.setItem(
+        `phasr_last_plan_${targetPillar.id}`,
+        JSON.stringify(result)
+      )
+
       upd(d => {
         const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
         if (!pl) return d
         pl.planGenerationCount = Number(pl.planGenerationCount || 0) + 1
-        pl.resources = plan.resources?.length ? plan.resources : ['']
-        pl.activities = plan.activities?.length ? plan.activities : ['']
-        pl.weeklyActions = plan.weeklyNonNegotiables?.length ? plan.weeklyNonNegotiables : ['']
+        pl.resources = result.resources
+        pl.activities = result.activities
+        pl.weeklyActions = result.weeklyNonNegotiables
         pl.outputs = ['']
-        pl.shortOutcome = plan.outcome || ''
-        pl.longOutcome = plan.outcome || ''
+        pl.shortOutcome = result.outcome
+        pl.longOutcome = result.outcome
         pl.planGeneratedFrom = getPlanSignature(pl)
         pl.planGenerationTier = 'groq'
         pl.planWasEdited = false
@@ -1806,9 +1826,19 @@ Return JSON only:
     setTimelineEditorPhaseId(null)
   }
 
-  function handleEditingToggle() {
+  async function handleEditingToggle() {
     if (editing) {
       setCalendarPromptArmed(true)
+      const pillarsToGenerate = (phase?.pillars || []).filter(pillar => {
+        const hasBeforeAndAfter = Boolean(cleanText(pillar?.beforeDesc) && cleanText(pillar?.afterDesc))
+        const hasPlan = Array.isArray(pillar?.activities) && pillar.activities.filter(Boolean).length > 0
+        return hasBeforeAndAfter && !hasPlan
+      })
+      for (const pillar of pillarsToGenerate) {
+        // Trigger the initial plan immediately once personalize data is saved.
+        // eslint-disable-next-line no-await-in-loop
+        await forceGeneratePlan(pillar.id, { forceNewApproach: false, attempt: 0 })
+      }
       setEditing(false)
       return
     }
@@ -3188,10 +3218,13 @@ Return JSON only:
     }, [])
     const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
     const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
-    const beforeReady = cleanText(pl.beforeState) || cleanText(pl.beforeDesc)
-    const afterReady = cleanText(pl.afterState) || cleanText(pl.afterDesc)
-    const canGeneratePlan = Boolean(beforeReady && afterReady)
-    const hasGeneratedPlan = Boolean(pl.planGeneratedFrom && !isPlanBlank(pl))
+    const hasBeforeAndAfter = Boolean(cleanText(pl.beforeDesc) && cleanText(pl.afterDesc))
+    const hasPlan = Array.isArray(pl.activities) && pl.activities.filter(Boolean).length > 0
+    const buttonLabel = !hasBeforeAndAfter
+      ? null
+      : !hasPlan
+        ? 'Generate plan'
+        : 'Regenerate plan'
     const [regenerateCount, setRegenerateCount] = useState(0)
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
 
@@ -3220,8 +3253,15 @@ Return JSON only:
   }
 
   const regeneratePlan = () => {
+    const lastPlan = JSON.parse(
+      localStorage.getItem(`phasr_last_plan_${pl.id}`) || 'null'
+    )
     setRegenerateCount(prev => prev + 1)
-    onGeneratePlan({ forceNewApproach: true, attempt: regenerateCount + 1 })
+    onGeneratePlan({
+      forceNewApproach: true,
+      attempt: regenerateCount + 1,
+      previousPlan: lastPlan,
+    })
   }
 
   return (
@@ -3300,22 +3340,21 @@ Return JSON only:
             ))}
           </div>
 
-          {editing && (
+          {editing && buttonLabel && (
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={event => {
                   event.stopPropagation()
-                  if (hasGeneratedPlan) {
+                  if (hasPlan) {
                     regeneratePlan()
                     return
                   }
                   onGeneratePlan()
                 }}
-                disabled={!canGeneratePlan}
-                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
+                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
               >
-                Generate plan
+                {buttonLabel}
               </button>
             </div>
           )}

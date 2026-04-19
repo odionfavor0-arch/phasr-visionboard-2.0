@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { buildWeeklyGoals, getLockInSummary, loadBoardData, loadLockInState } from '../lib/lockIn'
+import { buildWeeklyGoals, loadBoardData, loadLockInState } from '../lib/lockIn'
 
 const UNLOCK_PATH = [
   {
@@ -50,9 +50,6 @@ const UNLOCK_CARD_HIDE_KEY = 'phasr_unlock_card_hidden_until'
 const UNLOCKED_MILESTONES_KEY = 'phasr_unlocked_milestones'
 const UNLOCK_MILESTONE_INDEX_KEY = 'phasr_unlock_milestone_index'
 const UNLOCK_BASELINE_DAYS_KEY = 'phasr_unlock_baseline_days'
-const STREAK_STORAGE_KEY = 'phasr_streak'
-const WEEK_PROGRESS_STORAGE_KEY = 'phasr_week_progress'
-
 function getTodayIso() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -313,11 +310,11 @@ function checkNonNegComplete(nonNegIndex, weekNumber) {
   }
 }
 
-function countDaysDone(week) {
+function countDaysDone(week, dayLimit = 7) {
   let done = 0
-  for (let day = 1; day <= 7; day += 1) {
-    const tasks = safeRead(taskKey(week, day), null)
-    if (Array.isArray(tasks) && tasks.length > 0 && tasks.every(item => item.done)) done += 1
+  for (let day = 1; day <= dayLimit; day += 1) {
+    const isDone = localStorage.getItem(`phasr_streak_w${week}_d${day}`) === 'true'
+    if (isDone) done += 1
   }
   return done
 }
@@ -393,7 +390,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const phaseBoard = useMemo(() => ({ ...(boardData || {}), activePhaseId }), [boardData, activePhaseId])
   const weeklyData = useMemo(() => buildWeeklyGoals(phaseBoard, lockInState), [phaseBoard, lockInState])
-  const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const currentPhase = phases.find(phase => phase.id === activePhaseId) || phases[0] || null
   const hasPillars = hasConfiguredPillars(currentPhase)
   const nonNegotiables = useMemo(() => buildNonNegotiables(currentPhase), [currentPhase])
@@ -415,17 +411,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       }
     })
   }, [weeklyData.weeks, hasPillars, currentPhase, tasks, refresh])
-  const storedStreakState = useMemo(() => safeRead(STREAK_STORAGE_KEY, {}), [refresh, tasks, lockInState])
-  const storedWeekProgress = useMemo(() => safeRead(WEEK_PROGRESS_STORAGE_KEY, {}), [refresh, tasks, lockInState])
-
-  const currentWeek = useMemo(() => {
-    if (!weekStatuses.length) return 1
-    for (const item of weekStatuses) {
-      if (!(item.daysDone === 7 && item.pulseDone)) return item.week
-    }
-    return Math.min(totalWeeks, weekStatuses[weekStatuses.length - 1].week)
-  }, [weekStatuses, totalWeeks])
-  const now = new Date()
+  const phaseStart = useMemo(() => {
+    const stored = localStorage.getItem('phasr_phase1_start_date')
+    if (stored) return stored
+    const fallback = currentPhase?.startDate || new Date().toISOString().slice(0, 10)
+    localStorage.setItem('phasr_phase1_start_date', fallback)
+    return fallback
+  }, [currentPhase?.startDate])
+  const elapsedPhaseDays = useMemo(() => {
+    const startMs = new Date(phaseStart).getTime()
+    if (!Number.isFinite(startMs)) return 0
+    return Math.max(0, Math.floor((Date.now() - startMs) / 86400000))
+  }, [phaseStart])
+  const currentWeek = useMemo(() => Math.min(totalWeeks, Math.floor(elapsedPhaseDays / 7) + 1), [elapsedPhaseDays, totalWeeks])
+  const currentDayNumber = useMemo(() => Math.min((elapsedPhaseDays % 7) + 1, 7), [elapsedPhaseDays])
 
   useEffect(() => {
     setActiveWeek(currentWeek)
@@ -435,16 +434,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     localStorage.setItem('phasr_current_week', String(currentWeek))
   }, [currentWeek])
 
-  useEffect(() => {
-    if (!hasPillars) return
-    getWeekStartDate(phaseScope, currentWeek)
-  }, [hasPillars, phaseScope, currentWeek])
-
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
-  const currentWeekStart = getWeekStartDate(phaseScope, currentWeek)
-  const elapsedCurrentWeekDays = Math.max(0, Math.floor((now - new Date(`${currentWeekStart}T12:00:00`)) / 86400000))
-  const currentDisplayedDay = Math.min(7, elapsedCurrentWeekDays + 1)
-  const displayedDay = activeWeek < currentWeek ? 7 : activeWeek > currentWeek ? 1 : Math.min(7, elapsedCurrentWeekDays + 1)
+  const displayedDay = activeWeek < currentWeek ? 7 : activeWeek > currentWeek ? 1 : currentDayNumber
 
   useEffect(() => {
     if (!hasPillars || !week) {
@@ -454,9 +445,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setTasks(getTodaysTasks(nonNegotiables, activeWeek, displayedDay))
   }, [hasPillars, week, nonNegotiables, displayedDay, activeWeek])
 
-  const completedToday = tasks.filter(item => item.done).length
-  const totalToday = tasks.length
-  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek) : 0, [hasPillars, activeWeek, tasks])
+  const todaysTasks = useMemo(() => safeRead(taskKey(activeWeek, displayedDay), []), [activeWeek, displayedDay, tasks, refresh])
+  const completedToday = todaysTasks.filter(task => task.done).length
+  const totalToday = todaysTasks.length
+  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay) : 0, [hasPillars, activeWeek, displayedDay, tasks])
   const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek) : 0, [hasPillars, activeWeek, tasks])
   const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek) : 0, [hasPillars, activeWeek, tasks])
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
@@ -483,12 +475,22 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     unlockHideTapRef.current = now
   }
-  const currentStreak = Number(storedStreakState?.current ?? summary.currentStreak ?? 0) || 0
+  const currentStreak = useMemo(() => {
+    let streak = 0
+    for (let weekNumber = 1; weekNumber <= currentWeek; weekNumber += 1) {
+      const limit = weekNumber === currentWeek ? currentDayNumber : 7
+      streak += countDaysDone(weekNumber, limit)
+    }
+    return streak
+  }, [currentWeek, currentDayNumber, tasks, refresh])
   const overallDaysDone = useMemo(() => {
-    const values = Object.values(storedWeekProgress || {}).filter(Boolean)
-    const fromStorage = values.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0)
-    return fromStorage || weekStatuses.reduce((sum, item) => sum + (Number(item?.daysDone) || 0), 0)
-  }, [storedWeekProgress, weekStatuses])
+    let total = 0
+    for (let weekNumber = 1; weekNumber <= currentWeek; weekNumber += 1) {
+      const limit = weekNumber === currentWeek ? currentDayNumber : 7
+      total += countDaysDone(weekNumber, limit)
+    }
+    return total
+  }, [currentWeek, currentDayNumber, tasks, refresh])
   const rankMood = getRankMood(currentStreak)
   const stageLevel = getStageLevel(currentStreak)
   const progressStreak = isNewUser ? 0 : currentStreak
@@ -529,21 +531,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   useEffect(() => {
     localStorage.setItem(UNLOCK_BASELINE_DAYS_KEY, String(Math.max(0, safeBaselineDays)))
   }, [safeBaselineDays])
-
-  useEffect(() => {
-    const nextWeekProgress = weekStatuses.reduce((acc, item) => {
-      const assignedTasks = countWeekTasksAssigned(item.week)
-      acc[`week_${item.week}`] = {
-        week: item.week,
-        daysDone: Number(item.daysDone) || 0,
-        completedTasks: item.week === activeWeek ? completedTasksThisWeek : countWeekTasksDone(item.week),
-        assignedTasks,
-        pulseDone: Boolean(item.pulseDone),
-      }
-      return acc
-    }, {})
-    safeWrite(WEEK_PROGRESS_STORAGE_KEY, nextWeekProgress)
-  }, [weekStatuses, activeWeek, completedTasksThisWeek])
 
   useEffect(() => {
     const unlockState = {
@@ -600,8 +587,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
     const milestone = displayedMilestone
     const allDoneToday = updated.length > 0 && updated.every(item => item.done)
-    if (allDoneToday) {
+    if (allDoneToday && updated.length > 0) {
       localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
+    } else {
+      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
     }
     const task = updated.find(item => item.id === taskId)
     if (task) checkNonNegComplete(task.nonNegIndex, activeWeek)
