@@ -1744,7 +1744,9 @@ Return JSON only:
         pl.planWasEdited = false
         return d
       })
-      clearPlanDependentProgress(targetPhase, plId)
+      if (options?.forceNewApproach) {
+        clearPlanDependentProgress(targetPhase, plId)
+      }
 
       try {
         const history = loadPillarHistory(userId, targetPillar.name)
@@ -1865,30 +1867,23 @@ Return JSON only:
   function clearPlanDependentProgress(targetPhase, pillarId) {
     if (typeof window === 'undefined' || !targetPhase?.id || !pillarId) return
 
-    const scope = buildCheckinScope(targetPhase)
-    const currentWeekIndex = getCurrentPhaseWeekIndex(targetPhase)
-    const taskPrefix = `phasr_tasks_${scope}_w`
-    const weekStartPrefix = `phasr_week_start_${scope}_w`
-
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index)
       if (!key) continue
-      if (key.startsWith(taskPrefix) || key.startsWith(weekStartPrefix)) {
-        const match = key.match(/_w(\d+)(?:_d\d+)?$/)
-        const weekNumber = Number(match?.[1] || 0)
-        if (weekNumber >= currentWeekIndex) localStorage.removeItem(key)
+      if (
+        key.startsWith('phasr_tasks_w') ||
+        key.startsWith('phasr_streak_w') ||
+        key.startsWith('phasr_schedule_w') ||
+        key.startsWith('phasr_nn_complete_w') ||
+        key.startsWith('phasr_weekly_pulse_w')
+      ) {
+        localStorage.removeItem(key)
       }
     }
 
-    try {
-      const weekProgress = safeJsonParse(localStorage.getItem('phasr_week_progress'), {})
-      const nextWeekProgress = Object.fromEntries(
-        Object.entries(weekProgress || {}).filter(([, value]) => Number(value?.week || 0) < currentWeekIndex),
-      )
-      localStorage.setItem('phasr_week_progress', JSON.stringify(nextWeekProgress))
-    } catch {
-      // ignore progress reset failures
-    }
+    const restartDate = new Date().toISOString().slice(0, 10)
+    localStorage.setItem('phasr_phase1_start_date', restartDate)
+    localStorage.setItem('phasr_current_week', '1')
 
     setChecked(prev => Object.fromEntries(
       Object.entries(prev || {}).filter(([key]) => !key.startsWith(`${targetPhase.id}-${pillarId}-wk-`)),
@@ -1899,6 +1894,15 @@ Return JSON only:
       localStorage.removeItem(scheduleKey)
       window.dispatchEvent(new CustomEvent('phasr-nonnegotiable-schedule-updated', { detail: { phaseId: targetPhase.id, weekStartKey } }))
     }
+
+    window.dispatchEvent(new CustomEvent('phasr-progress-reset', {
+      detail: {
+        reason: 'pillar_regenerated',
+        phaseId: targetPhase.id,
+        pillarId,
+        restartDate,
+      },
+    }))
   }
 
   function logCalendarIntegration(status) {

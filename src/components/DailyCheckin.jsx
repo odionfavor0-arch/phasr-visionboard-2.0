@@ -364,9 +364,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     window.addEventListener('focus', sync)
     window.addEventListener('storage', sync)
+    window.addEventListener('phasr-progress-reset', sync)
     return () => {
       window.removeEventListener('focus', sync)
       window.removeEventListener('storage', sync)
+      window.removeEventListener('phasr-progress-reset', sync)
     }
   }, [])
 
