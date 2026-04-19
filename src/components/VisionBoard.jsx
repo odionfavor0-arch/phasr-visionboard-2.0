@@ -3300,23 +3300,25 @@ Return JSON only:
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={event => {
-                event.stopPropagation()
-                if (hasGeneratedPlan) {
-                  regeneratePlan()
-                  return
-                }
-                onGeneratePlan()
-              }}
-              disabled={!canGeneratePlan}
-              style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
-            >
-              {hasGeneratedPlan ? 'Regenerate plan' : 'Generate plan'}
-            </button>
-          </div>
+          {editing && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={event => {
+                  event.stopPropagation()
+                  if (hasGeneratedPlan) {
+                    regeneratePlan()
+                    return
+                  }
+                  onGeneratePlan()
+                }}
+                disabled={!canGeneratePlan}
+                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: canGeneratePlan ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff', color: canGeneratePlan ? '#fff' : 'var(--app-muted)', fontWeight: 800, cursor: canGeneratePlan ? 'pointer' : 'not-allowed', fontFamily: "'DM Sans',sans-serif" }}
+              >
+                Generate plan
+              </button>
+            </div>
+          )}
 
           <div style={{ height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 

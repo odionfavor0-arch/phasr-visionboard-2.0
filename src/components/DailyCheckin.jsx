@@ -123,31 +123,6 @@ function hasConfiguredPillars(phase) {
   })
 }
 
-function buildActivities(phase, weekNumber) {
-  const progressionSuffix = {
-    1: '',
-    2: ' — increase your target by 10% this week',
-    3: ' — aim to complete this without reminders',
-    4: ' — this should feel automatic by now. Push the intensity.',
-  }
-  const suffix = progressionSuffix[weekNumber] || progressionSuffix[4]
-  const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
-  return pillars.flatMap((pillar, pillarIndex) =>
-    (Array.isArray(pillar?.activities) ? pillar.activities : [])
-      .map((activity, activityIndex) => {
-        const description = String(activity || '').trim()
-        if (!description) return null
-        return {
-          id: `${pillar?.id || `pillar-${pillarIndex}`}_${activityIndex}_${description}`,
-          description: `${description}${weekNumber > 1 ? suffix : ''}`,
-          pillar: String(pillar?.name || `Pillar ${pillarIndex + 1}`).trim(),
-          done: false,
-        }
-      })
-      .filter(Boolean)
-  )
-}
-
 function buildNonNegotiables(phase) {
   const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
   return pillars.flatMap((pillar, pillarIndex) =>
@@ -421,8 +396,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const currentPhase = phases.find(phase => phase.id === activePhaseId) || phases[0] || null
   const hasPillars = hasConfiguredPillars(currentPhase)
-  const [storedWeekNumber, setStoredWeekNumber] = useState(() => parseInt(localStorage.getItem('phasr_current_week') || '1', 10))
-  const activities = useMemo(() => buildActivities(currentPhase, storedWeekNumber), [currentPhase, storedWeekNumber])
   const nonNegotiables = useMemo(() => buildNonNegotiables(currentPhase), [currentPhase])
   const phaseScope = useMemo(() => buildFingerprint(currentPhase || {}), [currentPhase])
   const totalWeeks = Math.max(weeklyData.weeks?.length || 1, 1)
@@ -460,7 +433,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   useEffect(() => {
     localStorage.setItem('phasr_current_week', String(currentWeek))
-    setStoredWeekNumber(currentWeek)
   }, [currentWeek])
 
   useEffect(() => {
@@ -893,7 +865,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
 
           <div style={{ fontSize: 11, color: '#7e5d68', marginBottom: 14 }}>
-            {hasPillars ? `These tasks are generated from your weekly non-negotiables and only show what matters today.${activities.length ? ' Your supporting activities keep progressing week by week in the background.' : ''}` : 'Set up your weekly non-negotiables first to activate your daily streak plan.'}
+            {hasPillars ? 'These tasks are generated from your weekly non-negotiables and only show what matters today.' : 'Set up your weekly non-negotiables first to activate your daily streak plan.'}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
