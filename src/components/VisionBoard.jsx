@@ -1744,19 +1744,17 @@ Return JSON only:
         pl.planWasEdited = false
         return d
       })
-      if (options?.forceNewApproach) {
-        clearPlanDependentProgress(targetPhase, plId)
-      }
-
       try {
         const history = loadPillarHistory(userId, targetPillar.name)
         const nextHistory = [
           {
             weekNumber: history.length + 1,
             generatedAt: new Date().toISOString(),
+            regenerated: Boolean(options?.forceNewApproach),
             activities: plan.activities || [],
             nonNegotiables: plan.weeklyNonNegotiables || [],
             reflections: [],
+            previousPlan: options?.previousPlan || null,
           },
           ...history,
         ].slice(0, 12)
@@ -1863,47 +1861,6 @@ Return JSON only:
   }
 
   const toggleCheck = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }))
-
-  function clearPlanDependentProgress(targetPhase, pillarId) {
-    if (typeof window === 'undefined' || !targetPhase?.id || !pillarId) return
-
-    for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-      const key = localStorage.key(index)
-      if (!key) continue
-      if (
-        key.startsWith('phasr_tasks_w') ||
-        key.startsWith('phasr_streak_w') ||
-        key.startsWith('phasr_schedule_w') ||
-        key.startsWith('phasr_nn_complete_w') ||
-        key.startsWith('phasr_weekly_pulse_w')
-      ) {
-        localStorage.removeItem(key)
-      }
-    }
-
-    const restartDate = new Date().toISOString().slice(0, 10)
-    localStorage.setItem('phasr_phase1_start_date', restartDate)
-    localStorage.setItem('phasr_current_week', '1')
-
-    setChecked(prev => Object.fromEntries(
-      Object.entries(prev || {}).filter(([key]) => !key.startsWith(`${targetPhase.id}-${pillarId}-wk-`)),
-    ))
-
-    if (activeUserId && weekStartKey) {
-      const scheduleKey = getScheduleStorageKey({ userId: activeUserId, phaseId: targetPhase.id, pillarId, weekStartKey })
-      localStorage.removeItem(scheduleKey)
-      window.dispatchEvent(new CustomEvent('phasr-nonnegotiable-schedule-updated', { detail: { phaseId: targetPhase.id, weekStartKey } }))
-    }
-
-    window.dispatchEvent(new CustomEvent('phasr-progress-reset', {
-      detail: {
-        reason: 'pillar_regenerated',
-        phaseId: targetPhase.id,
-        pillarId,
-        restartDate,
-      },
-    }))
-  }
 
   function logCalendarIntegration(status) {
     try {

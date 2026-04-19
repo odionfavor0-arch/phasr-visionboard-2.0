@@ -120,6 +120,23 @@ function hasConfiguredPillars(phase) {
   })
 }
 
+function buildActivities(phase) {
+  const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
+  return pillars.flatMap((pillar, pillarIndex) =>
+    (Array.isArray(pillar?.activities) ? pillar.activities : [])
+      .map((item, activityIndex) => {
+        const description = String(item || '').trim()
+        if (!description) return null
+        return {
+          id: `${pillar?.id || `pillar-${pillarIndex}`}_act${activityIndex}`,
+          description,
+          pillar: String(pillar?.name || `Pillar ${pillarIndex + 1}`).trim(),
+        }
+      })
+      .filter(Boolean)
+  )
+}
+
 function buildNonNegotiables(phase) {
   const pillars = Array.isArray(phase?.pillars) ? phase.pillars : []
   return pillars.flatMap((pillar, pillarIndex) =>
@@ -267,25 +284,12 @@ function getTodaysTasks(nonNegotiables, weekNumber, dayNumber) {
   const cached = safeRead(cacheKey, null)
   if (cached) return cached
 
-  const tasks = []
-  nonNegotiables.forEach((nonNeg, nonNegIndex) => {
-    const scheduleKey = getScheduleKey(weekNumber, nonNegIndex)
-    let schedule = safeRead(scheduleKey, null)
-    if (!schedule) {
-      schedule = generateWeekSchedule(nonNeg)
-      safeWrite(scheduleKey, schedule)
-    }
-    const taskForToday = schedule[dayNumber]
-    if (taskForToday) {
-      tasks.push({
-        id: `nn${nonNegIndex}_d${dayNumber}`,
-        description: taskForToday,
-        pillar: nonNeg.pillar,
-        nonNegIndex,
-        done: false,
-      })
-    }
-  })
+  const tasks = nonNegotiables.map((activity, activityIndex) => ({
+    id: `act${activityIndex}_w${weekNumber}_d${dayNumber}`,
+    description: activity.description,
+    pillar: activity.pillar,
+    done: false,
+  }))
 
   safeWrite(cacheKey, tasks)
   return tasks
@@ -364,11 +368,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     window.addEventListener('focus', sync)
     window.addEventListener('storage', sync)
-    window.addEventListener('phasr-progress-reset', sync)
     return () => {
       window.removeEventListener('focus', sync)
       window.removeEventListener('storage', sync)
-      window.removeEventListener('phasr-progress-reset', sync)
     }
   }, [])
 
@@ -394,6 +396,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const weeklyData = useMemo(() => buildWeeklyGoals(phaseBoard, lockInState), [phaseBoard, lockInState])
   const currentPhase = phases.find(phase => phase.id === activePhaseId) || phases[0] || null
   const hasPillars = hasConfiguredPillars(currentPhase)
+  const activities = useMemo(() => buildActivities(currentPhase), [currentPhase])
   const nonNegotiables = useMemo(() => buildNonNegotiables(currentPhase), [currentPhase])
   const phaseScope = useMemo(() => buildFingerprint(currentPhase || {}), [currentPhase])
   const totalWeeks = Math.max(weeklyData.weeks?.length || 1, 1)
@@ -444,8 +447,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       setTasks([])
       return
     }
-    setTasks(getTodaysTasks(nonNegotiables, activeWeek, displayedDay))
-  }, [hasPillars, week, nonNegotiables, displayedDay, activeWeek])
+    setTasks(getTodaysTasks(activities, activeWeek, displayedDay))
+  }, [hasPillars, week, activities, displayedDay, activeWeek])
 
   const todaysTasks = useMemo(() => safeRead(taskKey(activeWeek, displayedDay), []), [activeWeek, displayedDay, tasks, refresh])
   const completedToday = todaysTasks.filter(task => task.done).length
@@ -728,7 +731,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
           {!sageCardExpanded && (
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              {hasPillars ? `Day ${displayedDay} of 7. ${weekPercent >= 50 ? 'You are on track.' : 'Stay consistent.'}` : 'Add weekly non-negotiables in Vision Board to activate your streak.'}
+              {hasPillars ? `Day ${displayedDay} of 7. ${weekPercent >= 50 ? 'You are on track.' : 'Stay consistent.'}` : 'Add pillar activities in Vision Board to activate your streak.'}
             </p>
           )}
 
@@ -736,7 +739,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <>
           {!hasPillars && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              Add your weekly non-negotiables in Vision Board and Sage will turn them into daily tasks automatically.
+              Add your pillar activities in Vision Board and they will appear in your daily to-do automatically.
             </p>
           )}
           {hasPillars && isNewUser && (
@@ -779,7 +782,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 16, background: '#fff6f9', marginBottom: '1rem' }}>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>Set up your Vision Board first</p>
             <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
-              Your daily tasks come from your weekly non-negotiables. Add them to your Vision Board to activate your streak.
+              Your daily tasks come from your pillar activities. Add them to your Vision Board to activate your streak.
             </p>
             <button type="button" onClick={onOpenBoard} style={{ borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
               Go to Vision Board
@@ -856,13 +859,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
 
           <div style={{ fontSize: 11, color: '#7e5d68', marginBottom: 14 }}>
-            {hasPillars ? 'These tasks are generated from your weekly non-negotiables and only show what matters today.' : 'Set up your weekly non-negotiables first to activate your daily streak plan.'}
+            {hasPillars ? 'These tasks are generated from your pillar activities and update with your daily streak progress.' : 'Set up your pillar activities first to activate your daily streak plan.'}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tasks.length === 0 && (
               <div style={{ padding: '18px 16px', borderRadius: 14, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#7e5d68', fontSize: 12 }}>
-                {hasPillars ? 'No task is scheduled for today. Show up again tomorrow and the next step will be ready.' : 'Set up your vision board first to activate your daily tasks.'}
+                {hasPillars ? 'Add activities to your pillar so your daily to-do can load.' : 'Set up your vision board first to activate your daily tasks.'}
               </div>
             )}
             {tasks.map(task => (
