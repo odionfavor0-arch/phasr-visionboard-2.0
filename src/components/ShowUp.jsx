@@ -15,6 +15,7 @@ const ROOM_DEFINITIONS = [
 const CUSTOM_ROOMS_KEY = 'phasr_show_up_custom_rooms'
 const ROOM_STATE_KEY = 'phasr_show_up_room_state'
 const MAX_CARRIES_PER_PHASE = 2
+const MAX_ROOM_SPOTS = 12
 
 function getInitials(value) {
   return String(value || '')
@@ -362,18 +363,18 @@ function FeedContent({ members }) {
         const isCompleted = member.dailyStatus === 'completed'
         const isCarried = member.dailyStatus === 'carried'
         const isMissed = member.dailyStatus === 'missed'
-        const accent = isCompleted ? '#e8407a' : isCarried ? '#8b5cf6' : isMissed ? '#9ca3af' : '#b08090'
+        const accent = isCompleted ? '#e8407a' : isCarried ? '#7a58b0' : isMissed ? '#9ca3af' : '#b08090'
         const title = isCompleted
           ? (member.isYou ? 'You showed up.' : `${member.displayName} showed up.`)
           : isCarried
-            ? `${member.displayName} was carried today. Show up tomorrow.`
+            ? `${member.displayName} was protected today. Show up tomorrow.`
             : isMissed
               ? `${member.displayName} did not show up.`
               : `${member.displayName} has not checked in yet today.`
         const detail = isCompleted
           ? 'Showed up.'
           : isCarried
-            ? '\uD83E\uDD1D Was carried today - owes tomorrow.'
+            ? 'Protection used today - needs tomorrow\'s check-in.'
             : isMissed
               ? '\u25CB Did not show up.'
               : 'Waiting on today\'s check-in.'
@@ -471,6 +472,117 @@ function LeaderboardContent({ members }) {
   )
 }
 
+function MemberTiles({ members, onSelectMember }) {
+  if (!members.length) {
+    return (
+      <div style={{ background: '#fff8fb', border: '1px solid #f2c4d0', borderRadius: 18, padding: '20px 16px', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#3d1f2b' }}>No one is in this room yet</p>
+        <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: '#7a5a66' }}>
+          Check in to become the first visible person here.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+      {members.map(member => (
+        <button
+          key={member.user_id}
+          type="button"
+          onClick={() => onSelectMember(member)}
+          style={{
+            minWidth: 92,
+            border: '1px solid #f2c4d0',
+            borderRadius: 18,
+            background: '#fff',
+            padding: '12px 10px',
+            cursor: member.isYou ? 'default' : 'pointer',
+            display: 'grid',
+            gap: 6,
+            justifyItems: 'center',
+          }}
+        >
+          <div style={{ position: 'relative' }}>
+            <div style={{
+              minWidth: 44,
+              height: 34,
+              borderRadius: 999,
+              background: '#fff1f6',
+              display: 'grid',
+              placeItems: 'center',
+              padding: '0 12px',
+              fontWeight: 800,
+              color: '#4a2032',
+            }}>
+              {member.initials}
+            </div>
+            {member.checked_in ? (
+              <span style={{
+                position: 'absolute',
+                right: -2,
+                bottom: -2,
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: '#ff5f9d',
+                border: '2px solid #fff',
+              }} />
+            ) : null}
+          </div>
+          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>
+            {member.displayName}
+          </span>
+          <span style={{ fontSize: '0.58rem', color: '#b08090' }}>
+            {member.isYou ? 'You' : member.checked_in ? 'Tap to nudge' : 'Tap to nudge'}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function LiveStatusContent({ members }) {
+  const completed = members.filter(member => member.dailyStatus === 'completed')
+  const active = members.filter(member => !member.dailyStatus || member.dailyStatus === 'pending')
+  const inactive = members.filter(member => member.dailyStatus === 'missed' || member.dailyStatus === 'carried')
+
+  function renderNames(items) {
+    if (!items.length) return 'None'
+    return items.map(member => member.displayName).join(', ')
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ textAlign: 'center', padding: '12px 8px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#3d1f2b', lineHeight: 1 }}>{completed.length}</div>
+          <div style={{ marginTop: 6, fontSize: '0.82rem', fontWeight: 700, color: '#7a5a66' }}>Completed today</div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '12px 8px' }}>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#3d1f2b', lineHeight: 1 }}>{active.length}</div>
+          <div style={{ marginTop: 6, fontSize: '0.82rem', fontWeight: 700, color: '#7a5a66' }}>Active today</div>
+        </div>
+      </div>
+
+      {[
+        { title: 'Completed', body: renderNames(completed) },
+        { title: 'Active', body: renderNames(active) },
+        { title: 'Inactive', body: renderNames(inactive) },
+      ].map(section => (
+        <div key={section.title} style={{ background: '#fff8fb', border: '1px solid #f2c4d0', borderRadius: 18, padding: 16 }}>
+          <div style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8c6170' }}>
+            {section.title}
+          </div>
+          <div style={{ marginTop: 10, background: '#fff', borderRadius: 999, padding: '10px 14px', fontSize: '0.88rem', fontWeight: 700, color: '#3d1f2b' }}>
+            {section.body}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [lockInState] = useState(() => loadLockInState())
   const [roomState, setRoomState] = useState(() => readRoomState())
@@ -489,6 +601,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [debtClearedVisible, setDebtClearedVisible] = useState(false)
+  const [selectedMember, setSelectedMember] = useState(null)
+  const [nudgeNotice, setNudgeNotice] = useState('')
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
 
   const rooms = useMemo(() => {
@@ -632,6 +746,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const timer = window.setTimeout(() => setDebtClearedVisible(false), 2200)
     return () => window.clearTimeout(timer)
   }, [debtClearedVisible])
+
+  useEffect(() => {
+    if (!nudgeNotice) return undefined
+    const timer = window.setTimeout(() => setNudgeNotice(''), 2200)
+    return () => window.clearTimeout(timer)
+  }, [nudgeNotice])
 
   function ensureJoinedLocally(roomName) {
     if (!roomName || !user?.id) return readRoomState()
@@ -809,6 +929,31 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
   }
 
+  function handleSelectMember(member) {
+    if (!member || member.isYou) return
+    setSelectedMember(member)
+  }
+
+  async function handleSendNudge() {
+    if (!selectedMember) return
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('Show Up nudge', {
+          body: `${getDisplayName(user)} is here and waiting for you in ${activeRoom?.name || 'your room'}.`,
+        })
+      }
+      await logActivity(user?.id, 'room_nudge', {
+        room: activeRoom?.name,
+        nudgedUserId: selectedMember.user_id,
+      })
+    } catch (nextError) {
+      console.error('Show Up nudge failed', nextError)
+    } finally {
+      setNudgeNotice(`Nudge sent to ${selectedMember.displayName}.`)
+      setSelectedMember(null)
+    }
+  }
+
   if (!activeRoom) {
     return (
       <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', paddingBottom: 12, fontFamily: "'DM Sans', sans-serif" }}>
@@ -821,12 +966,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             <p style={{ margin: 0, fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#e8407a' }}>
               Join Challenge
             </p>
-            <h2 style={{ margin: 0, fontSize: '1.5rem', lineHeight: 1.1, color: '#2f1a24' }}>
+            <h2 style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.4, color: '#8c8c93', fontWeight: 500 }}>
               Pick your room. Show up daily.
             </h2>
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#7a5a66' }}>
-              Six rooms. One focus. Daily accountability.
-            </p>
           </div>
 
           <button
@@ -921,27 +1063,34 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 <p style={{ margin: 0, fontSize: '0.72rem', color: '#7a5a66', lineHeight: 1.55, flex: 1 }}>
                   {room.description}
                 </p>
-                <p style={{ margin: 0, fontSize: '0.62rem', color: '#b08090' }}>
-                  {memberCount} joined
-                </p>
-                <button
-                  type="button"
-                  onClick={() => joinRoom(room.id)}
-                  style={{
-                    alignSelf: 'flex-start',
-                    border: 'none',
-                    borderRadius: 999,
-                    padding: '8px 12px',
-                    background: 'rgba(232,64,122,0.1)',
-                    color: room.color,
-                    fontWeight: 800,
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}
-                >
-                  Join
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 8 }}>
+                  <div style={{ display: 'grid', gap: 4 }}>
+                    <p style={{ margin: 0, fontSize: '0.62rem', color: '#b08090' }}>
+                      {memberCount} joined
+                    </p>
+                    <p style={{ margin: 0, fontSize: '0.62rem', color: '#b08090' }}>
+                      {Math.max(0, MAX_ROOM_SPOTS - memberCount)} spots left
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => joinRoom(room.id)}
+                    style={{
+                      alignSelf: 'flex-start',
+                      border: 'none',
+                      borderRadius: 999,
+                      padding: '8px 12px',
+                      background: 'rgba(232,64,122,0.1)',
+                      color: room.color,
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Join
+                  </button>
+                </div>
               </div>
             )
           })}
@@ -1008,7 +1157,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             fontSize: '0.76rem',
             fontWeight: 700,
           }}>
-            {debtClearedVisible ? 'Debt cleared' : 'Clear your carry - complete today to protect your streak.'}
+            {debtClearedVisible ? 'Protection cleared' : 'Clear your protection - complete today to protect your streak.'}
+          </div>
+        </div>
+      ) : null}
+
+      {nudgeNotice ? (
+        <div style={{ padding: '10px 12px 0' }}>
+          <div style={{ background: '#fff5f7', border: '1px solid #f2c4d0', borderRadius: 14, padding: '10px 12px', color: '#7a5a66', fontSize: '0.74rem', fontWeight: 700 }}>
+            {nudgeNotice}
           </div>
         </div>
       ) : null}
@@ -1020,7 +1177,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               {activeRoom.name}
             </p>
             <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: '#b08090' }}>
-              {roomMemberCount} {roomMemberCount === 1 ? 'person' : 'people'} in this room
+              {roomMemberCount} {roomMemberCount === 1 ? 'person' : 'people'}. Daily check-ins.
             </p>
           </div>
           <button onClick={goBackToRooms} style={{
@@ -1033,7 +1190,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             fontWeight: 600,
             cursor: 'pointer',
             fontFamily: "'DM Sans', sans-serif",
-          }}>Back to Rooms</button>
+          }}>Rooms →</button>
+        </div>
+
+        <div style={{ marginTop: 6, fontSize: '0.82rem', fontWeight: 700, color: '#7a5a66' }}>
+          Join the room and let people see you.
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
@@ -1079,6 +1240,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         )}
       </div>
 
+      <div style={{ padding: '14px 12px 10px', background: '#fff' }}>
+        <MemberTiles members={members} onSelectMember={handleSelectMember} />
+      </div>
+
       <div style={{ display: 'flex', borderBottom: '1px solid #f2c4d0', background: '#fff' }}>
         {['Feed', 'Live Status', 'Leaders Today'].map(tab => (
           <button
@@ -1104,9 +1269,38 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       <div style={{ background: '#fffbfc', flex: 1, overflowY: 'auto', padding: 12 }}>
         {loading ? <p style={{ margin: 0, fontSize: '0.76rem', color: '#7a5a66' }}>Loading room...</p> : null}
         {!loading && activeTab === 'Feed' && <FeedContent members={members} />}
-        {!loading && activeTab === 'Live Status' && <PresenceGrid members={members} />}
+        {!loading && activeTab === 'Live Status' && <LiveStatusContent members={members} />}
         {!loading && activeTab === 'Leaders Today' && <LeaderboardContent members={members} />}
       </div>
+
+      {selectedMember ? (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(30, 18, 25, 0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 1200 }}>
+          <div style={{ width: 'min(360px, 100%)', background: '#fff', borderRadius: 20, border: '1px solid #f2c4d0', padding: 18, boxShadow: '0 18px 40px rgba(61,31,43,0.16)' }}>
+            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#3d1f2b' }}>
+              Nudge {selectedMember.displayName}?
+            </p>
+            <p style={{ margin: '10px 0 0', fontSize: '0.8rem', color: '#7a5a66', lineHeight: 1.6 }}>
+              Send a reminder that the room is active and waiting for them.
+            </p>
+            <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSendNudge}
+                style={{ border: 'none', borderRadius: 14, padding: '12px 14px', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Send nudge
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedMember(null)}
+                style={{ borderRadius: 14, border: '1.5px solid #f2c4d0', padding: '12px 14px', background: '#fff', color: '#7a5a66', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
