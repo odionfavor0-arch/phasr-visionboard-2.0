@@ -12,6 +12,8 @@ const ROOM_DEFINITIONS = [
   { id: 'personal-growth', name: 'Personal Growth', description: 'Learning, creativity, self-development', color: '#5e8f64' },
 ]
 
+const MAX_ROOM_SIZE = 12
+
 function formatTime(value) {
   if (!value) return ''
   return new Date(value).toLocaleTimeString('en-US', {
@@ -235,6 +237,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [currentUserId, setCurrentUserId] = useState('')
   const [currentUserName, setCurrentUserName] = useState('')
   const [showGateModal, setShowGateModal] = useState(false)
+  const [showLeaveModal, setShowLeaveModal] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [createRoomName, setCreateRoomName] = useState('')
   const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
@@ -295,6 +298,32 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setCheckInTime(myRow?.check_in_time ? formatTime(myRow.check_in_time) : '')
   }
 
+  async function ensureRoomMembership(roomName) {
+    if (!roomName) return
+
+    const { data: { user: authUser } } = await supabase.auth.getUser()
+    if (!authUser?.id) return
+
+    const displayName =
+      authUser?.user_metadata?.full_name ||
+      authUser?.email?.split('@')[0] ||
+      currentUserName ||
+      'User'
+    const initials = displayName.slice(0, 2).toUpperCase()
+
+    const { error: joinError } = await supabase.from('show_up_checkins').upsert({
+      room_name: roomName,
+      user_id: authUser.id,
+      display_name: displayName,
+      initials,
+      checked_in: false,
+      task_done: false,
+      streak_count: 1,
+    }, { onConflict: 'room_name,user_id' })
+
+    if (joinError) throw joinError
+  }
+
   useEffect(() => {
     let alive = true
     async function bootstrap() {
@@ -307,7 +336,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         if (alive) setError('')
       } catch (nextError) {
         console.error('Show Up bootstrap failed', nextError)
-        if (alive) setError('Show Up is syncing in the background.')
+        if (alive) setError('')
       } finally {
         if (alive) setLoading(false)
       }
@@ -399,6 +428,46 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setTaskDone(true)
   }
 
+  async function handleJoinRoom(roomName) {
+    setLoading(true)
+    try {
+      await ensureRoomMembership(roomName)
+      setSelectedRoom(roomName)
+      setActiveTab('Feed')
+      setError('')
+    } catch (nextError) {
+      console.error('Failed to join room', nextError)
+      setError('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleExitRoom() {
+    if (!selectedRoom) return
+
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser?.id) return
+
+      await supabase
+        .from('show_up_checkins')
+        .delete()
+        .eq('room_name', selectedRoom)
+        .eq('user_id', authUser.id)
+
+      setMembers(current => current.filter(member => member.user_id !== authUser.id))
+      setCheckedIn(false)
+      setTaskDone(false)
+      setCheckInTime('')
+      setShowLeaveModal(false)
+      setSelectedRoom(null)
+      await loadRoomCounts()
+    } catch (nextError) {
+      console.error('Failed to exit room', nextError)
+    }
+  }
+
   function handleCreateRoomPress() {
     const latestLevel = getStoredUserLevel() || calculateUserPoints()
     if ((latestLevel?.level || 1) < 4) {
@@ -428,10 +497,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   if (!selectedRoom) {
     return (
       <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', paddingBottom: 12, fontFamily: "'DM Sans', sans-serif" }}>
-        {error ? (
-          <div style={{ padding: '12px 20px 0', color: '#7a5a66', fontSize: '0.76rem' }}>{error}</div>
-        ) : null}
-
         <div style={{ padding: 20, display: 'grid', gap: 10 }}>
           <div style={{ display: 'grid', gap: 6 }}>
             <p style={{ margin: 0, fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#e8407a' }}>
@@ -512,6 +577,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           gap: 10,
         }}>
           {ROOM_DEFINITIONS.map(room => {
+            const joinedCount = roomCounts[room.name] || 0
+            const spotsLeft = Math.max(0, MAX_ROOM_SIZE - joinedCount)
             return (
               <div key={room.id} style={{
                 background: '#fff',
@@ -531,14 +598,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 8 }}>
                   <p style={{ fontSize: '0.62rem', color: '#b08090', margin: 0 }}>
-                    {roomCounts[room.name] || 0} checked in today
+                    {spotsLeft} spots left
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedRoom(room.name)
-                      setActiveTab('Feed')
-                    }}
+                    onClick={() => handleJoinRoom(room.name)}
                     style={{
                       alignSelf: 'flex-start',
                       border: 'none',
@@ -597,10 +661,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', fontFamily: "'DM Sans', sans-serif", display: 'flex', flexDirection: 'column' }}>
-      {error ? (
-        <div style={{ padding: '10px 12px 0', color: '#7a5a66', fontSize: '0.76rem' }}>{error}</div>
-      ) : null}
-
       <div style={{ padding: '12px 14px', borderBottom: '1px solid #f2c4d0', background: '#fffbfc' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
@@ -621,7 +681,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             fontWeight: 600,
             cursor: 'pointer',
             fontFamily: "'DM Sans', sans-serif",
-          }}>Rooms -&gt;</button>
+          }} onClick={() => setShowLeaveModal(true)}>Rooms -&gt;</button>
         </div>
 
         <div style={{ marginTop: 6, fontSize: '0.82rem', fontWeight: 700, color: '#7a5a66' }}>
@@ -704,6 +764,64 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         {!loading && activeTab === 'Live Status' && <LiveStatusContent members={members} />}
         {!loading && activeTab === 'Leaders Today' && <LeadersToday members={members} currentUserName={currentUserName} />}
       </div>
+
+      {showLeaveModal ? (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(30, 18, 25, 0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 1200 }}>
+          <div style={{ width: 'min(420px, 100%)', background: '#fff', borderRadius: 28, border: '1px solid #f2c4d0', padding: 20, boxShadow: '0 22px 50px rgba(61,31,43,0.18)' }}>
+            <p style={{ margin: '0 0 16px', fontSize: '1.05rem', fontWeight: 800, color: '#3d1f2b' }}>
+              Leave room?
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowLeaveModal(false)
+                setSelectedRoom(null)
+              }}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                background: '#fff',
+                border: '1.5px solid #f2c4d0',
+                borderRadius: 22,
+                padding: '18px 16px',
+                marginBottom: 14,
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <p style={{ margin: '0 0 6px', fontSize: '0.95rem', fontWeight: 800, color: '#3d1f2b' }}>
+                Leave for now
+              </p>
+              <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.45, color: '#7a5a66' }}>
+                Stay in this room and come back anytime
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExitRoom}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                background: '#fff7f9',
+                border: '1.5px solid #f2c4d0',
+                borderRadius: 22,
+                padding: '18px 16px',
+                cursor: 'pointer',
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              <p style={{ margin: '0 0 6px', fontSize: '0.95rem', fontWeight: 800, color: '#3d1f2b' }}>
+                Exit room
+              </p>
+              <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.45, color: '#7a5a66' }}>
+                You will lose your spot in this room
+              </p>
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
