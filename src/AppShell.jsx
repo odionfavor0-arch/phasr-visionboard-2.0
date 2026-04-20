@@ -269,7 +269,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       />
     )
   } else if (view === 'showup') {
-    content = <ShowUp user={user} />
+    content = <ShowUp user={user} onGoToDailyStreaks={() => setView('checkin')} />
   } else if (view === 'analytics') {
     content = <Analytics />
   } else if (view === 'settings') {

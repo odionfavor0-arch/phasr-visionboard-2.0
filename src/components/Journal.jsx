@@ -16,6 +16,7 @@ import {
   Type,
   Volume2,
 } from 'lucide-react'
+import { calculateUserPoints } from '../lib/userLevel'
 
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const STORAGE_KEY = 'phasr_journal_v2'
@@ -1418,6 +1419,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
   useEffect(() => {
     safeWrite(entries)
+    calculateUserPoints()
   }, [entries])
 
   useEffect(() => {

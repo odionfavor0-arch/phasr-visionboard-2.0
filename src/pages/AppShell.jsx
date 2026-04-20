@@ -532,7 +532,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           />
         )}
         {view === 'analytics' && <Analytics />}
-        {view === 'showup' && <ShowUp user={user} onLockInChange={refreshLockIn} />}
+        {view === 'showup' && <ShowUp user={user} onLockInChange={refreshLockIn} onGoToDailyStreaks={() => setView('checkin')} />}
         {view === 'settings' && <SettingsPanel user={user} theme={theme} onThemeChange={onThemeChange} onSignOut={onSignOut} />}
 
         <style>{`

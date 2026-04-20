@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildWeeklyGoals, loadBoardData, loadLockInState } from '../lib/lockIn'
+import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 
 const UNLOCK_PATH = [
   {
@@ -368,6 +369,7 @@ function countWeekTasksAssigned(week) {
 
 export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview }) {
   const [lockInState, setLockInState] = useState(() => loadLockInState())
+  const [userLevel, setUserLevel] = useState(() => getStoredUserLevel() || calculateUserPoints())
   const [refresh, setRefresh] = useState(0)
   const [sageCardExpanded, setSageCardExpanded] = useState(true)
   const [unlockCardState, setUnlockCardState] = useState('active')
@@ -389,13 +391,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   useEffect(() => {
     const sync = () => {
       setLockInState(loadLockInState())
+      setUserLevel(getStoredUserLevel() || calculateUserPoints())
       setRefresh(value => value + 1)
     }
     window.addEventListener('focus', sync)
     window.addEventListener('storage', sync)
+    window.addEventListener('phasr-user-level-updated', sync)
     return () => {
       window.removeEventListener('focus', sync)
       window.removeEventListener('storage', sync)
+      window.removeEventListener('phasr-user-level-updated', sync)
     }
   }, [])
 
@@ -624,6 +629,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     const task = updated.find(item => item.id === taskId)
     if (task) checkNonNegComplete(task.nonNegIndex, activeWeek)
+    setUserLevel(calculateUserPoints())
 
     const dayJustCompleted = allDoneToday && !allDoneBefore
     const projectedOverallDaysDone = overallDaysDone + (dayJustCompleted ? 1 : 0)
@@ -929,7 +935,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ height: 18 }} />
 
         <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 12 : 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
             <div style={{ background: '#fff8fa', border: '1px solid #f2c8d6', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions</div>
               <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 28, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
@@ -944,6 +950,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a8cb7', marginBottom: 10 }}>Sage Level</div>
               <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{`Level ${stageLevel.level}`}</div>
               <div style={{ fontSize: 11, color: '#9a8cb7' }}>{stageLevel.label}</div>
+            </div>
+            <div style={{ background: '#f7fbff', border: '1px solid #cdddf0', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7b93ae', marginBottom: 10 }}>Points</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{userLevel?.points || 0}</div>
+              <div style={{ fontSize: 11, color: '#7b93ae' }}>{`Level ${userLevel?.level || 1} ${userLevel?.levelName || 'Starter'}`}</div>
             </div>
           </div>
         </div>
