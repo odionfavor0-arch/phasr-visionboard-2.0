@@ -526,8 +526,36 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
     return total
   }, [currentWeek, currentDayNumber, tasks, refresh])
-  const rankMood = getRankMood(currentStreak)
-  const stageLevel = getStageLevel(currentStreak)
+  const currentLevel =
+    currentStreak >= 90 ? 5
+      : currentStreak >= 61 ? 4
+        : currentStreak >= 31 ? 3
+          : currentStreak >= 15 ? 2 : 1
+  const levelLabels = {
+    1: 'Just starting',
+    2: 'Building',
+    3: 'Consistent',
+    4: 'Locked in',
+    5: 'Unstoppable',
+  }
+  const unlocks = [
+    { day: 3, label: 'Sage remembers you' },
+    { day: 7, label: 'Weekly pulse' },
+    { day: 14, label: 'Statistics' },
+    { day: 30, label: 'Monthly report' },
+    { day: 60, label: 'Deep templates' },
+    { day: 90, label: 'Legacy card' },
+  ]
+  const nextUnlock = unlocks.find(item => item.day > currentStreak)
+  const daysToNextUnlock = nextUnlock ? nextUnlock.day - currentStreak : 0
+  const phaseStartDate = new Date(localStorage.getItem('phasr_phase1_start_date'))
+  const phaseEndDate = new Date(currentPhase?.endDate)
+  const today = new Date()
+  const totalPhaseDaysRaw = Math.ceil((phaseEndDate - phaseStartDate) / 86400000)
+  const daysIntoPhaseRaw = Math.ceil((today - phaseStartDate) / 86400000)
+  const totalPhaseDays = Number.isFinite(totalPhaseDaysRaw) && totalPhaseDaysRaw > 0 ? totalPhaseDaysRaw : 1
+  const daysIntoPhase = Number.isFinite(daysIntoPhaseRaw) && daysIntoPhaseRaw > 0 ? daysIntoPhaseRaw : 0
+  const phasePercent = Math.min(Math.round((daysIntoPhase / totalPhaseDays) * 100), 100)
   const progressStreak = isNewUser ? 0 : currentStreak
   const normalizedUnlocked = Array.isArray(unlockedMilestones) ? unlockedMilestones.filter(Number.isFinite) : []
   const latestUnlocked = [...UNLOCK_PATH].reverse().find(item => normalizedUnlocked.includes(item.day)) || null
@@ -571,10 +599,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const unlockState = {
       streakDays: currentStreak,
       completedActionsThisWeek: completedTasksThisWeek,
-      rank: rankMood.label,
-      rankSubtitle: rankMood.sublabel,
-      stageLevel: stageLevel.level,
-      stageLabel: stageLevel.label,
+      rank: levelLabels[currentLevel],
+      rankSubtitle: `${currentStreak} ${currentStreak === 1 ? 'day' : 'days'} in a row`,
+      stageLevel: currentLevel,
+      stageLabel: levelLabels[currentLevel],
       personalizedSageMemory: normalizedUnlocked.includes(3),
       weeklyPulseUnlocked: normalizedUnlocked.includes(7),
       statisticsUnlocked: normalizedUnlocked.includes(14),
@@ -587,7 +615,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
     localStorage.setItem('phasr_unlock_state', JSON.stringify(unlockState))
     window.dispatchEvent(new CustomEvent('phasr-unlocks-updated', { detail: unlockState }))
-  }, [currentStreak, completedTasksThisWeek, normalizedUnlocked, rankMood.label, rankMood.sublabel, stageLevel.level, stageLevel.label])
+  }, [currentStreak, completedTasksThisWeek, normalizedUnlocked, currentLevel])
 
   useEffect(() => {
     const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
@@ -934,23 +962,107 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{ height: 18 }} />
 
-        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 12 : 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
-            <div style={{ background: '#fff8fa', border: '1px solid #f2c8d6', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions This Week</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 28, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
-              <div style={{ fontSize: 11, color: '#8f6f7a' }}>done this week</div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '8px',
+          margin: '1rem 0',
+        }}>
+          <div style={{
+            background: '#fff5f7',
+            border: '1px solid #f2c4d0',
+            borderRadius: '14px',
+            padding: '12px 8px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '0.52rem', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: '#e8407a', marginBottom: '6px',
+            }}>Streak</p>
+            <p style={{
+              fontSize: '1.6rem', fontWeight: 800,
+              color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+            }}>{currentStreak}</p>
+            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
+              {currentStreak === 1 ? 'day' : 'days'} in a row
+            </p>
+            <p style={{
+              fontSize: '0.58rem', fontWeight: 700,
+              color: '#e8407a', marginTop: '4px',
+            }}>
+              {levelLabels[currentLevel]}
+            </p>
+          </div>
+
+          <div style={{
+            background: '#f0fff4',
+            border: '1px solid #b9dfc0',
+            borderRadius: '14px',
+            padding: '12px 8px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '0.52rem', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: '#059669', marginBottom: '6px',
+            }}>Phase</p>
+            <p style={{
+              fontSize: '1.6rem', fontWeight: 800,
+              color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+            }}>{phasePercent}%</p>
+            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
+              day {daysIntoPhase} of {totalPhaseDays}
+            </p>
+            <div style={{
+              height: 3, background: '#d1fae5',
+              borderRadius: 99, marginTop: 6, overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${phasePercent}%`,
+                background: 'linear-gradient(90deg, #34d399, #059669)',
+                borderRadius: 99,
+              }} />
             </div>
-            <div style={{ background: '#f7fff8', border: '1px solid #cfe7d5', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8aa596', marginBottom: 10 }}>Daily Streak</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{currentStreak}</div>
-              <div style={{ fontSize: 11, color: '#7f9388' }}>{currentStreak === 1 ? 'day of consistency' : 'days of consistency'}</div>
-            </div>
-            <div style={{ background: '#faf7ff', border: '1px solid #d9cdee', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a8cb7', marginBottom: 10 }}>Level</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{`Level ${userLevel?.level || 1}`}</div>
-              <div style={{ fontSize: 11, color: '#9a8cb7' }}>Long-term growth</div>
-            </div>
+          </div>
+
+          <div style={{
+            background: '#f5f0ff',
+            border: '1px solid #d0b9f0',
+            borderRadius: '14px',
+            padding: '12px 8px',
+            textAlign: 'center',
+          }}>
+            <p style={{
+              fontSize: '0.52rem', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: '#7c3aed', marginBottom: '6px',
+            }}>Next unlock</p>
+            {nextUnlock ? (
+              <>
+                <p style={{
+                  fontSize: '1.6rem', fontWeight: 800,
+                  color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+                }}>{daysToNextUnlock}</p>
+                <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
+                  {daysToNextUnlock === 1 ? 'day' : 'days'} away
+                </p>
+                <p style={{
+                  fontSize: '0.55rem', fontWeight: 600,
+                  color: '#7c3aed', marginTop: '4px',
+                  lineHeight: 1.3,
+                }}>{nextUnlock.label}</p>
+              </>
+            ) : (
+              <>
+                <p style={{
+                  fontSize: '1.2rem', fontWeight: 800,
+                  color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+                }}>All</p>
+                <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>unlocked</p>
+              </>
+            )}
           </div>
         </div>
 
