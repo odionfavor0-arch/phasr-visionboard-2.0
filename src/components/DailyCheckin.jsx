@@ -367,7 +367,7 @@ function countWeekTasksAssigned(week) {
   return assigned
 }
 
-export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview }) {
+export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview, ...props }) {
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [userLevel, setUserLevel] = useState(() => getStoredUserLevel() || calculateUserPoints())
   const [refresh, setRefresh] = useState(0)
@@ -379,7 +379,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [unlockBaselineDays, setUnlockBaselineDays] = useState(() => Number(localStorage.getItem(UNLOCK_BASELINE_DAYS_KEY) || 0) || 0)
   const [recentlyUnlockedDay, setRecentlyUnlockedDay] = useState(null)
   const [unlockNotice, setUnlockNotice] = useState('')
-  const [showUnlockDetails, setShowUnlockDetails] = useState(false)
+  const [unlockExpanded, setUnlockExpanded] = useState(false)
   const unlockTimersRef = useRef({ transition: null, enter: null })
 
   useEffect(() => {
@@ -536,6 +536,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     4: 'Locked in',
     5: 'Unstoppable',
   }
+  const levelLabel = levelLabels[currentLevel]
   const unlocks = [
     { day: 3, label: 'Sage remembers you' },
     { day: 7, label: 'Weekly pulse' },
@@ -544,16 +545,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     { day: 60, label: 'Deep templates' },
     { day: 90, label: 'Legacy card' },
   ]
-  const nextLevel = [
-    { min: 15, label: 'Building' },
-    { min: 31, label: 'Consistent' },
-    { min: 61, label: 'Locked in' },
-    { min: 90, label: 'Unstoppable' },
-  ].find(item => item.min > currentStreak)
-  const daysToNextLevel = nextLevel ? nextLevel.min - currentStreak : 0
+  const currentUnlock = unlocks.filter(item => item.day <= currentStreak).slice(-1)[0]
   const nextUnlock = unlocks.find(item => item.day > currentStreak)
-  const currentUnlock = [...unlocks].reverse().find(item => item.day <= currentStreak) || null
-  const daysToNextUnlock = nextUnlock ? nextUnlock.day - currentStreak : 0
+  const progressToNext = nextUnlock
+    ? Math.round((currentStreak / nextUnlock.day) * 100)
+    : 100
   const phaseStartDate = new Date(localStorage.getItem('phasr_phase1_start_date'))
   const phaseEndDate = new Date(currentPhase?.endDate)
   const today = new Date()
@@ -986,23 +982,27 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
             }}>{currentStreak}</p>
             <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
-              {currentStreak} day{currentStreak === 1 ? '' : 's'} streak
+              {currentStreak === 1 ? 'day' : 'days'}
             </p>
             <p style={{
               fontSize: '0.58rem', fontWeight: 700,
               color: '#e8407a', marginTop: '4px',
             }}>
-              {nextLevel ? `${daysToNextLevel} day${daysToNextLevel === 1 ? '' : 's'} until ${nextLevel.label}` : levelLabels[currentLevel]}
+              {levelLabel}
             </p>
           </div>
 
-          <div style={{
-            background: '#f0fff4',
-            border: '1px solid #b9dfc0',
-            borderRadius: '14px',
-            padding: '12px 8px',
-            textAlign: 'center',
-          }}>
+          <div
+            onClick={() => {
+              if (props.setActiveView) props.setActiveView('board')
+              else onOpenBoard?.()
+            }}
+            style={{
+              background: '#f0fff4', border: '1px solid #b9dfc0',
+              borderRadius: '14px', padding: '12px 8px', textAlign: 'center',
+              cursor: 'pointer',
+            }}
+          >
             <p style={{
               fontSize: '0.52rem', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -1012,64 +1012,70 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               fontSize: '1.6rem', fontWeight: 800,
               color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
             }}>{phasePercent}%</p>
-            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
-              day {daysIntoPhase} of {totalPhaseDays}
-            </p>
-            <div style={{
-              height: 3, background: '#d1fae5',
-              borderRadius: 99, marginTop: 6, overflow: 'hidden',
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${phasePercent}%`,
-                background: 'linear-gradient(90deg, #34d399, #059669)',
-                borderRadius: 99,
-              }} />
+            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>tap to view board</p>
+            <div style={{ height: 3, background: '#d1fae5', borderRadius: 99, marginTop: 6, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${phasePercent}%`, background: 'linear-gradient(90deg, #34d399, #059669)', borderRadius: 99 }} />
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowUnlockDetails(value => !value)}
+          <div
+            onClick={() => setUnlockExpanded(!unlockExpanded)}
             style={{
-            background: '#f5f0ff',
-            border: '1px solid #d0b9f0',
-            borderRadius: '14px',
-            padding: '12px 8px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}>
-            <p style={{
-              fontSize: '0.52rem', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: '#7c3aed', marginBottom: '6px',
-            }}>Next unlock</p>
-            {nextUnlock ? (
+              background: '#f5f0ff', border: '1px solid #d0b9f0',
+              borderRadius: '14px', padding: '12px 8px', textAlign: 'center',
+              cursor: 'pointer', transition: 'all 0.2s',
+            }}
+          >
+            <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: '6px' }}>
+              Next unlock {unlockExpanded ? '▲' : '▼'}
+            </p>
+
+            {!unlockExpanded ? (
               <>
-                <p style={{
-                  fontSize: '1.6rem', fontWeight: 800,
-                  color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
-                }}>{daysToNextUnlock}</p>
-                <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
-                  {daysToNextUnlock === 1 ? 'day' : 'days'} away
+                <p style={{ fontSize: '1.4rem', fontWeight: 800, color: '#3d1f2b', lineHeight: 1, marginBottom: '4px' }}>
+                  {nextUnlock ? `${nextUnlock.day - currentStreak}` : '✓'}
                 </p>
-                <p style={{
-                  fontSize: '0.55rem', fontWeight: 600,
-                  color: '#7c3aed', marginTop: '4px',
-                  lineHeight: 1.3,
-                }}>{nextUnlock.label}</p>
+                <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
+                  {nextUnlock ? 'days away' : 'all unlocked'}
+                </p>
+                <p style={{ fontSize: '0.58rem', fontWeight: 600, color: '#7c3aed', marginTop: '4px' }}>
+                  {nextUnlock?.label}
+                </p>
+                <div style={{ height: 3, background: '#ede9fe', borderRadius: 99, marginTop: 6, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${progressToNext}%`, background: 'linear-gradient(90deg, #a78bfa, #7c3aed)', borderRadius: 99 }} />
+                </div>
               </>
             ) : (
-              <>
-                <p style={{
-                  fontSize: '1.2rem', fontWeight: 800,
-                  color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
-                }}>All</p>
-                <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>unlocked</p>
-              </>
+              <div style={{ textAlign: 'left', marginTop: 8 }}>
+                {currentUnlock && (
+                  <div style={{ marginBottom: 8, padding: '8px', background: '#fff', borderRadius: 8, border: '1px solid #d0b9f0' }}>
+                    <p style={{ fontSize: '0.55rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
+                      Current unlock
+                    </p>
+                    <p style={{ fontSize: '0.78rem', fontWeight: 600, color: '#3d1f2b' }}>
+                      {currentUnlock.label}
+                    </p>
+                  </div>
+                )}
+                {nextUnlock && (
+                  <div style={{ padding: '8px', background: '#fff', borderRadius: 8, border: '1px solid #d0b9f0' }}>
+                    <p style={{ fontSize: '0.55rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
+                      Next
+                    </p>
+                    <p style={{ fontSize: '0.78rem', fontWeight: 600, color: '#3d1f2b' }}>
+                      {nextUnlock.label}
+                    </p>
+                    <p style={{ fontSize: '0.65rem', color: '#b08090', marginTop: 2 }}>
+                      {nextUnlock.day - currentStreak} days away
+                    </p>
+                    <div style={{ height: 3, background: '#ede9fe', borderRadius: 99, marginTop: 6, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${progressToNext}%`, background: 'linear-gradient(90deg, #a78bfa, #7c3aed)', borderRadius: 99 }} />
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
-          </button>
+          </div>
         </div>
 
         <div style={{ height: 18 }} />
@@ -1219,7 +1225,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
         ) : null}
 
-        {showUnlockDetails ? (
+        {false && unlockExpanded ? (
           <div style={{
             background: '#fff',
             border: '1px solid #d0b9f0',
