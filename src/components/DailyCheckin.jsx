@@ -935,26 +935,21 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ height: 18 }} />
 
         <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 12 : 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 10 : 12 }}>
             <div style={{ background: '#fff8fa', border: '1px solid #f2c8d6', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#b07a8e', marginBottom: 10 }}>Actions This Week</div>
               <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 28, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{completedTasksThisWeek}</div>
               <div style={{ fontSize: 11, color: '#8f6f7a' }}>done this week</div>
             </div>
             <div style={{ background: '#f7fff8', border: '1px solid #cfe7d5', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8aa596', marginBottom: 10 }}>Rank</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{rankMood.label}</div>
-              <div style={{ fontSize: 11, color: '#7f9388' }}>{rankMood.sublabel}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8aa596', marginBottom: 10 }}>Daily Streak</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{currentStreak}</div>
+              <div style={{ fontSize: 11, color: '#7f9388' }}>{currentStreak === 1 ? 'day of consistency' : 'days of consistency'}</div>
             </div>
             <div style={{ background: '#faf7ff', border: '1px solid #d9cdee', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a8cb7', marginBottom: 10 }}>Sage Level</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{`Level ${stageLevel.level}`}</div>
-              <div style={{ fontSize: 11, color: '#9a8cb7' }}>{stageLevel.label}</div>
-            </div>
-            <div style={{ background: '#f7fbff', border: '1px solid #cdddf0', borderRadius: 16, padding: isMobile ? '14px 10px' : '16px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7b93ae', marginBottom: 10 }}>Points</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{userLevel?.points || 0}</div>
-              <div style={{ fontSize: 11, color: '#7b93ae' }}>{`Level ${userLevel?.level || 1} ${userLevel?.levelName || 'Starter'}`}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a8cb7', marginBottom: 10 }}>Level</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: isMobile ? 16 : 18, fontWeight: 800, color: '#24131f', marginBottom: 4 }}>{`Level ${userLevel?.level || 1}`}</div>
+              <div style={{ fontSize: 11, color: '#9a8cb7' }}>Long-term growth</div>
             </div>
           </div>
         </div>
