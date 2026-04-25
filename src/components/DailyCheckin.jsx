@@ -379,14 +379,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [unlockBaselineDays, setUnlockBaselineDays] = useState(() => Number(localStorage.getItem(UNLOCK_BASELINE_DAYS_KEY) || 0) || 0)
   const [recentlyUnlockedDay, setRecentlyUnlockedDay] = useState(null)
   const [unlockNotice, setUnlockNotice] = useState('')
-  const [unlockCardVisible, setUnlockCardVisible] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
-    return !hiddenUntil || hiddenUntil <= getTodayIso()
-  })
-  const [unlockHovering, setUnlockHovering] = useState(false)
+  const [showUnlockDetails, setShowUnlockDetails] = useState(false)
   const unlockTimersRef = useRef({ transition: null, enter: null })
-  const unlockHideTapRef = useRef(0)
 
   useEffect(() => {
     const sync = () => {
@@ -496,26 +490,30 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
 
-  function hideUnlockPathForToday() {
-    localStorage.setItem(UNLOCK_CARD_HIDE_KEY, getTomorrowIso())
-    setUnlockCardVisible(false)
-  }
-
-  function handleUnlockPathPointerUp(event) {
-    if (!isMobile) return
-    if (event.pointerType && event.pointerType !== 'touch') return
-    const now = Date.now()
-    if (now - unlockHideTapRef.current < 320) {
-      hideUnlockPathForToday()
-    }
-    unlockHideTapRef.current = now
-  }
   const currentStreak = useMemo(() => {
     let streak = 0
-    for (let weekNumber = 1; weekNumber <= currentWeek; weekNumber += 1) {
-      const limit = weekNumber === currentWeek ? currentDayNumber : 7
-      streak += countDaysDone(weekNumber, limit)
+    let weekNumber = currentWeek
+    let dayNumber = currentDayNumber
+
+    if (localStorage.getItem(`phasr_streak_w${weekNumber}_d${dayNumber}`) !== 'true') {
+      dayNumber -= 1
+      if (dayNumber < 1) {
+        weekNumber -= 1
+        dayNumber = 7
+      }
     }
+
+    while (weekNumber >= 1 && dayNumber >= 1) {
+      const isSuccessful = localStorage.getItem(`phasr_streak_w${weekNumber}_d${dayNumber}`) === 'true'
+      if (!isSuccessful) break
+      streak += 1
+      dayNumber -= 1
+      if (dayNumber < 1) {
+        weekNumber -= 1
+        dayNumber = 7
+      }
+    }
+
     return streak
   }, [currentWeek, currentDayNumber, tasks, refresh])
   const overallDaysDone = useMemo(() => {
@@ -546,7 +544,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     { day: 60, label: 'Deep templates' },
     { day: 90, label: 'Legacy card' },
   ]
+  const nextLevel = [
+    { min: 15, label: 'Building' },
+    { min: 31, label: 'Consistent' },
+    { min: 61, label: 'Locked in' },
+    { min: 90, label: 'Unstoppable' },
+  ].find(item => item.min > currentStreak)
+  const daysToNextLevel = nextLevel ? nextLevel.min - currentStreak : 0
   const nextUnlock = unlocks.find(item => item.day > currentStreak)
+  const currentUnlock = [...unlocks].reverse().find(item => item.day <= currentStreak) || null
   const daysToNextUnlock = nextUnlock ? nextUnlock.day - currentStreak : 0
   const phaseStartDate = new Date(localStorage.getItem('phasr_phase1_start_date'))
   const phaseEndDate = new Date(currentPhase?.endDate)
@@ -618,11 +624,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [currentStreak, completedTasksThisWeek, normalizedUnlocked, currentLevel])
 
   useEffect(() => {
-    const hiddenUntil = localStorage.getItem(UNLOCK_CARD_HIDE_KEY)
-    setUnlockCardVisible(!hiddenUntil || hiddenUntil <= getTodayIso())
-  }, [refresh, currentStreak])
-
-  useEffect(() => {
     // Unlocks are sequential; milestone index tracks the next interval milestone.
     const nextIndex = Math.min(normalizedUnlocked.length, UNLOCK_PATH.length - 1)
     if (nextIndex !== unlockMilestoneIndex) setUnlockMilestoneIndex(nextIndex)
@@ -641,7 +642,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   function toggleTask(taskId) {
-    const allDoneBefore = tasks.length > 0 && tasks.every(item => item.done)
+    const anyDoneBefore = tasks.some(item => item.done)
     const updated = tasks.map(item => item.id === taskId ? { ...item, done: !item.done } : item)
     safeWrite(taskKey(activeWeek, displayedDay), updated)
     setTasks(updated)
@@ -649,8 +650,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     onLockInChange?.()
 
     const milestone = displayedMilestone
-    const allDoneToday = updated.length > 0 && updated.every(item => item.done)
-    if (allDoneToday && updated.length > 0) {
+    const anyDoneToday = updated.some(item => item.done)
+    if (anyDoneToday) {
       localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
     } else {
       localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
@@ -659,11 +660,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     if (task) checkNonNegComplete(task.nonNegIndex, activeWeek)
     setUserLevel(calculateUserPoints())
 
-    const dayJustCompleted = allDoneToday && !allDoneBefore
+    const dayJustCompleted = anyDoneToday && !anyDoneBefore
     const projectedOverallDaysDone = overallDaysDone + (dayJustCompleted ? 1 : 0)
     const projectedStreak = dayJustCompleted ? Math.max(currentStreak, currentStreak + 1) : currentStreak
 
-    if (milestone && allDoneToday && projectedStreak >= milestone.day) {
+    if (milestone && anyDoneToday && projectedStreak >= milestone.day) {
       unlockMilestoneNow(milestone.day, projectedOverallDaysDone)
     }
   }
@@ -707,8 +708,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const milestone = displayedMilestone
     if (!hasPillars || !milestone) return
     if (normalizedUnlocked.includes(milestone.day)) return
-    const allDoneToday = tasks.length > 0 && tasks.every(item => item.done)
-    if (!allDoneToday) return
+    const anyDoneToday = tasks.some(item => item.done)
+    if (!anyDoneToday) return
     if (currentStreak < milestone.day) return
     unlockMilestoneNow(milestone.day, overallDaysDone)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -985,13 +986,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
             }}>{currentStreak}</p>
             <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
-              {currentStreak === 1 ? 'day' : 'days'} in a row
+              {currentStreak} day{currentStreak === 1 ? '' : 's'} streak
             </p>
             <p style={{
               fontSize: '0.58rem', fontWeight: 700,
               color: '#e8407a', marginTop: '4px',
             }}>
-              {levelLabels[currentLevel]}
+              {nextLevel ? `${daysToNextLevel} day${daysToNextLevel === 1 ? '' : 's'} until ${nextLevel.label}` : levelLabels[currentLevel]}
             </p>
           </div>
 
@@ -1027,12 +1028,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </div>
           </div>
 
-          <div style={{
+          <button
+            type="button"
+            onClick={() => setShowUnlockDetails(value => !value)}
+            style={{
             background: '#f5f0ff',
             border: '1px solid #d0b9f0',
             borderRadius: '14px',
             padding: '12px 8px',
             textAlign: 'center',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
           }}>
             <p style={{
               fontSize: '0.52rem', fontWeight: 700,
@@ -1063,12 +1069,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>unlocked</p>
               </>
             )}
-          </div>
+          </button>
         </div>
 
         <div style={{ height: 18 }} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        {false && <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           {!unlockCardVisible ? (
             <button
               type="button"
@@ -1129,9 +1135,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </button>
             </div>
           )}
-        </div>
+        </div>}
 
-        {unlockCardVisible && displayedMilestone ? (
+        {false && unlockCardVisible && displayedMilestone ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {latestUnlocked && latestUnlocked.day < displayedMilestone.day ? (
               <div
@@ -1209,6 +1215,79 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   {progressPercent}% - {Math.min(progressStreak, displayedMilestone.day)} / {displayedMilestone.day} days
                 </div>
               </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showUnlockDetails ? (
+          <div style={{
+            background: '#fff',
+            border: '1px solid #d0b9f0',
+            borderRadius: 22,
+            padding: isMobile ? '14px' : '16px',
+            display: 'grid',
+            gap: 12,
+            marginBottom: 18,
+          }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c3aed' }}>
+              Unlock details
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ background: '#faf7ff', border: '1px solid #e6dbfb', borderRadius: 16, padding: '12px 14px' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: 4 }}>
+                  Current unlock
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#3d1f2b' }}>
+                  {currentUnlock ? currentUnlock.label : 'Nothing unlocked yet'}
+                </div>
+              </div>
+              <div style={{ background: '#faf7ff', border: '1px solid #e6dbfb', borderRadius: 16, padding: '12px 14px' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: 4 }}>
+                  Next unlock
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#3d1f2b' }}>
+                  {nextUnlock ? nextUnlock.label : 'Everything unlocked'}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#ede9fe', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${progressPercent}%`,
+                  height: '100%',
+                  borderRadius: 999,
+                  background: 'linear-gradient(90deg, #8b5cf6, #7c3aed)',
+                }} />
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#8f6f7a', whiteSpace: 'nowrap' }}>
+                {progressPercent}% progress
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {unlocks.map(item => {
+                const unlocked = currentStreak >= item.day
+                const upcoming = nextUnlock?.day === item.day
+                return (
+                  <div key={item.day} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    padding: '10px 12px',
+                    borderRadius: 14,
+                    background: upcoming ? '#f5f0ff' : '#fff',
+                    border: upcoming ? '1px solid #d0b9f0' : '1px solid #eee5f8',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>{item.label}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#7a5a66' }}>Day {item.day}</div>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: unlocked ? '#059669' : upcoming ? '#7c3aed' : '#b08090' }}>
+                      {unlocked ? 'Unlocked' : upcoming ? `${daysToNextUnlock} day${daysToNextUnlock === 1 ? '' : 's'} away` : 'Locked'}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         ) : null}
