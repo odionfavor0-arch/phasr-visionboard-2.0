@@ -528,6 +528,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     borderRadius: 99,
     transition: 'width 0.5s ease',
   })
+  const statCardStyle = {
+    borderRadius: '14px',
+    padding: '12px 12px 14px',
+    textAlign: 'center',
+    minHeight: 110,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  }
 
   useEffect(() => {
     const unlockState = {
@@ -854,25 +864,25 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{
             background: '#fff5f7',
             border: '1px solid #f2c4d0',
-            borderRadius: '14px',
-            padding: '12px 8px',
-            textAlign: 'center',
+            ...statCardStyle,
           }}>
             <p style={{
               fontSize: '0.52rem', fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase',
               color: '#e8407a', marginBottom: '6px',
             }}>Streak</p>
-            <p style={{
-              fontSize: '1.6rem', fontWeight: 800,
-              color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
-            }}>{currentStreak}</p>
-            <p style={{
-              fontSize: '0.58rem', fontWeight: 700,
-              color: '#e8407a', marginTop: '4px',
-            }}>
-              {streakLabel}
-            </p>
+            <div style={{ display: 'grid', gap: 8, justifyItems: 'center' }}>
+              <p style={{
+                fontSize: '1.6rem', fontWeight: 800,
+                color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+              }}>{currentStreak}</p>
+              <p style={{
+                fontSize: '0.58rem', fontWeight: 700,
+                color: '#e8407a',
+              }}>
+                {streakLabel}
+              </p>
+            </div>
           </div>
 
           <div
@@ -882,7 +892,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             }}
             style={{
               background: '#f0fff4', border: '1px solid #b9dfc0',
-              borderRadius: '14px', padding: '12px 8px', textAlign: 'center',
+              ...statCardStyle,
               cursor: 'pointer',
             }}
           >
@@ -891,30 +901,44 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               letterSpacing: '0.1em', textTransform: 'uppercase',
               color: '#059669', marginBottom: '6px',
             }}>Phase</p>
-            <p style={{
-              fontSize: '1.6rem', fontWeight: 800,
-              color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
-            }}>{phasePercent}%</p>
-            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>tap to view board</p>
-            <div style={standardProgressTrackStyle}>
-              <div style={standardProgressFillStyle(phasePercent)} />
+            <div style={{ width: '100%', display: 'grid', gap: 8, justifyItems: 'center' }}>
+              <p style={{
+                fontSize: '1.6rem', fontWeight: 800,
+                color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+              }}>{phasePercent}%</p>
+              <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>tap to view board</p>
+              <div style={standardProgressTrackStyle}>
+                <div style={standardProgressFillStyle(phasePercent)} />
+              </div>
             </div>
           </div>
 
           <div
             style={{
               background: '#f5f0ff', border: '1px solid #d0b9f0',
-              borderRadius: '14px', padding: '12px 8px', textAlign: 'center',
+              ...statCardStyle,
             }}
           >
             <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: '6px' }}>
               Unlock Path
             </p>
-            <p style={{ fontSize: '0.58rem', fontWeight: 600, color: '#7c3aed', marginTop: '4px' }}>
-              {unlockPathLabel}
-            </p>
-            <div style={standardProgressTrackStyle}>
-              <div style={standardProgressFillStyle(progressToNext)} />
+            <div style={{ width: '100%', display: 'grid', gap: 10, justifyItems: 'center', alignContent: 'center', flex: 1 }}>
+              <p style={{
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                color: '#7c3aed',
+                lineHeight: 1.25,
+                minHeight: 18,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+              }}>
+                {unlockPathLabel}
+              </p>
+              <div style={standardProgressTrackStyle}>
+                <div style={standardProgressFillStyle(progressToNext)} />
+              </div>
             </div>
           </div>
         </div>
