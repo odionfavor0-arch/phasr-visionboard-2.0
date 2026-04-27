@@ -356,6 +356,13 @@ function countWeekTasksAssigned(week, scope = 'global') {
   return assigned
 }
 
+function formatPhasePercentLabel(value) {
+  if (!Number.isFinite(value) || value <= 0) return '0'
+  if (value < 1) return value.toFixed(2)
+  if (value < 10) return value.toFixed(1)
+  return String(Math.floor(value))
+}
+
 function loadVisionBoardForPhaseStats() {
   try {
     const raw = localStorage.getItem('phasr_vb')
@@ -623,8 +630,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const completedTasksThisPhase = phaseStats.completedTasks
   const totalTasksThisPhase = phaseStats.totalTasksInPhase
   const phasePercent = phaseStats.phasePercent
-  const displayPhasePercent = completedTasksThisPhase > 0 ? Math.max(phasePercent, 1) : 0
-  const phaseBarPercent = completedTasksThisPhase > 0 ? Math.max(displayPhasePercent, 4) : 0
+  const exactPhasePercent = totalTasksThisPhase > 0
+    ? Math.min(100, Math.max(0, (completedTasksThisPhase / totalTasksThisPhase) * 100))
+    : 0
+  const displayPhasePercent = formatPhasePercentLabel(exactPhasePercent)
   const progressToNext = nextMilestone
     ? Math.min(Math.round((currentStreak / nextMilestone.day) * 100), 100)
     : 100
@@ -647,7 +656,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const phaseProgressTrackStyle = buildProgressTrackStyle('rgba(0,0,0,0.08)')
   const phaseProgressFillStyle = {
     height: '100%',
-    width: `${phaseBarPercent}%`,
+    width: `${exactPhasePercent}%`,
+    minWidth: completedTasksThisPhase > 0 ? 6 : 0,
     background: 'linear-gradient(90deg, #059669, #34d399)',
     borderRadius: 99,
     transition: 'width 0.5s ease',
@@ -786,8 +796,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden', display: 'flex', justifyContent: 'center' }}>
-      <div style={{ width: 'min(100%, 1080px)', maxWidth: '100%', margin: '0 auto', padding: isMobile ? '14px 10px 96px' : '18px 20px 96px', boxSizing: 'border-box' }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden' }}>
+      <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: isMobile ? '14px 10px 96px' : '18px 24px 96px', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {phases.map((phase, index) => (
             <button
@@ -1036,7 +1046,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 {totalTasksThisPhase ? 'Progress moves with every task you finish.' : 'Set your phase dates to start tracking.'}
               </p>
               <div style={phaseProgressTrackStyle}>
-                <div style={{ ...phaseProgressFillStyle, width: `${phaseBarPercent}%` }} />
+                <div style={phaseProgressFillStyle} />
               </div>
             </div>
           </div>

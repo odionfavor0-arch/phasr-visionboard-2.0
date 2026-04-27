@@ -270,8 +270,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   const tabs = [
     { id: 'board', label: 'Vision Board', icon: 'board' },
-    { id: 'journal', label: 'Journal', icon: 'journal' },
     { id: 'checkin', label: 'Daily Streaks', icon: 'streaks' },
+    { id: 'journal', label: 'Journal', icon: 'journal' },
     { id: 'showup', label: 'Show Up', icon: 'showup' },
     { id: 'analytics', label: 'Statistics', icon: 'analytics' },
   ]

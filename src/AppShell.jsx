@@ -158,8 +158,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
   const navItems = useMemo(() => ([
     { id: 'board', label: 'Vision Board', title: 'Vision Board', icon: ImageIcon },
-    { id: 'journal', label: 'Journal', title: 'Journal', icon: BookText },
     { id: 'checkin', label: 'Daily Streaks', title: 'Daily Streaks', icon: Flame },
+    { id: 'journal', label: 'Journal', title: 'Journal', icon: BookText },
     { id: 'showup', label: 'Show Up', title: 'Show Up', icon: Users },
     { id: 'analytics', label: 'Statistics', title: 'Statistics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', title: 'Settings', icon: Settings },
