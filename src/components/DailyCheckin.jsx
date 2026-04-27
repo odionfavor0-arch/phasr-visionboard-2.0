@@ -623,6 +623,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const completedTasksThisPhase = phaseStats.completedTasks
   const totalTasksThisPhase = phaseStats.totalTasksInPhase
   const phasePercent = phaseStats.phasePercent
+  const displayPhasePercent = completedTasksThisPhase > 0 ? Math.max(phasePercent, 1) : 0
+  const phaseBarPercent = completedTasksThisPhase > 0 ? Math.max(displayPhasePercent, 4) : 0
   const progressToNext = nextMilestone
     ? Math.min(Math.round((currentStreak / nextMilestone.day) * 100), 100)
     : 100
@@ -645,7 +647,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const phaseProgressTrackStyle = buildProgressTrackStyle('rgba(0,0,0,0.08)')
   const phaseProgressFillStyle = {
     height: '100%',
-    width: `${phasePercent}%`,
+    width: `${phaseBarPercent}%`,
     background: 'linear-gradient(90deg, #059669, #34d399)',
     borderRadius: 99,
     transition: 'width 0.5s ease',
@@ -1029,12 +1031,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <p style={{
                 fontSize: '1.35rem', fontWeight: 800,
                 color: '#3d1f2b', lineHeight: 1, margin: 0,
-              }}>{phasePercent}%</p>
+              }}>{displayPhasePercent}%</p>
               <p style={{ fontSize: '0.6rem', color: '#7a5a66', margin: 0 }}>
                 {totalTasksThisPhase ? 'Progress moves with every task you finish.' : 'Set your phase dates to start tracking.'}
               </p>
               <div style={phaseProgressTrackStyle}>
-                <div style={{ ...phaseProgressFillStyle, width: `${phasePercent}%` }} />
+                <div style={{ ...phaseProgressFillStyle, width: `${phaseBarPercent}%` }} />
               </div>
             </div>
           </div>
