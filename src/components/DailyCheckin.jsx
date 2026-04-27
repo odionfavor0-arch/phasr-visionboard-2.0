@@ -58,6 +58,14 @@ function safeWrite(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
+function parseDateOnly(value) {
+  const text = String(value || '').trim().slice(0, 10)
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  const [, year, month, day] = match
+  return new Date(Number(year), Number(month) - 1, Number(day))
+}
+
 function normalizeLabel(value) {
   return String(value || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -397,22 +405,43 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     })
   }, [weeklyData.weeks, hasPillars, currentPhase, tasks, refresh])
   const phaseStart = useMemo(() => {
-    let stored = localStorage.getItem('phasr_phase1_start_date')
-    if (!stored) {
-      stored = new Date().toISOString().slice(0, 10)
-      localStorage.setItem('phasr_phase1_start_date', stored)
+    const todayKey = new Date().toISOString().slice(0, 10)
+    const stored = localStorage.getItem('phasr_phase1_start_date')
+    const storedScope = localStorage.getItem('phasr_phase1_start_scope')
+    const storedDate = parseDateOnly(stored)
+    const todayDate = parseDateOnly(todayKey)
+    const hasTrackedProgress = Object.keys(localStorage).some(key => {
+      if (key.startsWith('phasr_streak_w')) return localStorage.getItem(key) === 'true'
+      if (!key.startsWith('phasr_tasks_w')) return false
+      const entries = safeRead(key, [])
+      return Array.isArray(entries) && entries.some(item => item?.done)
+    })
+
+    const shouldResetStart =
+      !storedDate ||
+      storedScope !== phaseScope ||
+      (!hasTrackedProgress && storedDate.getTime() < todayDate.getTime())
+
+    const nextStart = shouldResetStart ? todayKey : stored
+
+    if (stored !== nextStart) {
+      localStorage.setItem('phasr_phase1_start_date', nextStart)
     }
-    return stored
-  }, [])
+    if (storedScope !== phaseScope) {
+      localStorage.setItem('phasr_phase1_start_scope', phaseScope)
+    }
+
+    return nextStart
+  }, [phaseScope])
   const dayOfPhase = useMemo(() => {
-    const start = new Date(phaseStart)
-    const today = new Date()
-    const startMs = start.getTime()
-    const todayMs = today.getTime()
+    const start = parseDateOnly(phaseStart)
+    const today = parseDateOnly(new Date().toISOString().slice(0, 10))
+    const startMs = start?.getTime()
+    const todayMs = today?.getTime()
     if (!Number.isFinite(startMs) || !Number.isFinite(todayMs)) return 1
     return Math.max(Math.floor((todayMs - startMs) / 86400000) + 1, 1)
   }, [phaseStart])
-  const currentWeek = useMemo(() => Math.max(Math.ceil(dayOfPhase / 7), 1), [dayOfPhase])
+  const currentWeek = useMemo(() => Math.max(Math.min(totalWeeks, Math.ceil(dayOfPhase / 7)), 1), [dayOfPhase, totalWeeks])
   const currentDayNumber = useMemo(() => ((dayOfPhase - 1) % 7) + 1, [dayOfPhase])
   const dayOfWeek = currentDayNumber
 
@@ -425,7 +454,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [currentWeek])
 
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
-  const displayedDay = activeWeek < currentWeek ? 7 : activeWeek > currentWeek ? 1 : currentDayNumber
+  const displayedDay = activeWeek === currentWeek ? dayOfWeek : 7
 
   useEffect(() => {
     if (!hasPillars || !week) {
@@ -496,14 +525,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const nextMilestone = milestones.find(item => item.day > currentStreak)
   const unlockPathLabel =
     currentStreak >= 90 ? 'Legacy active'
-      : currentStreak >= 60 ? 'Deeper reflection'
+      : currentStreak >= 60 ? 'Deep reflection'
         : currentStreak >= 30 ? 'Monthly insight'
           : currentStreak >= 14 ? 'Pattern visibility'
-            : currentStreak >= 7 ? 'Personalization active'
-              : 'Sage learning you'
-  const phaseStartDate = new Date(phaseStart)
-  const phaseEndDate = new Date(currentPhase?.endDate)
-  const today = new Date()
+            : currentStreak >= 7 ? 'Weekly rhythm active'
+              : currentStreak >= 3 ? 'Personalization building'
+                : 'Sage learning you'
+  const phaseStartDate = parseDateOnly(phaseStart) || new Date()
+  const phaseEndDate = parseDateOnly(currentPhase?.endDate) || phaseStartDate
   const totalPhaseDaysRaw = Math.ceil((phaseEndDate - phaseStartDate) / 86400000)
   const daysIntoPhaseRaw = dayOfPhase
   const totalPhaseDays = Number.isFinite(totalPhaseDaysRaw) && totalPhaseDaysRaw > 0 ? totalPhaseDaysRaw : 1
@@ -513,21 +542,25 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     ? Math.min(Math.round((currentStreak / nextMilestone.day) * 100), 100)
     : 100
 
-  const standardProgressTrackStyle = {
-    height: 4,
-    background: 'rgba(0,0,0,0.08)',
+  const buildProgressTrackStyle = background => ({
+    height: 3,
+    background,
     borderRadius: 99,
     marginTop: 8,
     overflow: 'hidden',
     width: '100%',
-  }
-  const standardProgressFillStyle = percent => ({
+  })
+  const buildProgressFillStyle = (percent, background) => ({
     height: '100%',
     width: `${percent}%`,
-    background: 'linear-gradient(90deg, #e8407a, #f472a8)',
+    background,
     borderRadius: 99,
     transition: 'width 0.5s ease',
   })
+  const phaseProgressTrackStyle = buildProgressTrackStyle('rgba(5,150,105,0.14)')
+  const phaseProgressFillStyle = buildProgressFillStyle(phasePercent, 'linear-gradient(90deg, #059669, #34d399)')
+  const unlockProgressTrackStyle = buildProgressTrackStyle('rgba(124,58,237,0.14)')
+  const unlockProgressFillStyle = buildProgressFillStyle(progressToNext, 'linear-gradient(90deg, #7c3aed, #a78bfa)')
   const statCardStyle = {
     borderRadius: '14px',
     padding: '12px 12px 14px',
@@ -907,8 +940,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
               }}>{phasePercent}%</p>
               <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>tap to view board</p>
-              <div style={standardProgressTrackStyle}>
-                <div style={standardProgressFillStyle(phasePercent)} />
+              <div style={phaseProgressTrackStyle}>
+                <div style={phaseProgressFillStyle} />
               </div>
             </div>
           </div>
@@ -936,8 +969,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               }}>
                 {unlockPathLabel}
               </p>
-              <div style={standardProgressTrackStyle}>
-                <div style={standardProgressFillStyle(progressToNext)} />
+              <div style={unlockProgressTrackStyle}>
+                <div style={unlockProgressFillStyle} />
               </div>
             </div>
           </div>
