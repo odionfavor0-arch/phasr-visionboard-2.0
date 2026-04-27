@@ -287,10 +287,11 @@ function sameTaskShape(savedTasks, nextTasks) {
 }
 
 function mergeTaskProgress(savedTasks, nextTasks) {
-  const savedMap = new Map((savedTasks || []).map(task => [task.id, task]))
+  const buildTaskMatchKey = task => [task?.id, task?.description, task?.pillar].join('::')
+  const savedMap = new Map((savedTasks || []).map(task => [buildTaskMatchKey(task), task]))
   return nextTasks.map(task => ({
     ...task,
-    done: Boolean(savedMap.get(task.id)?.done),
+    done: Boolean(savedMap.get(buildTaskMatchKey(task))?.done),
   }))
 }
 
@@ -369,9 +370,13 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
   const board = loadVisionBoardForPhaseStats()
   const phases = Array.isArray(board?.phases) ? board.phases : []
   const phase = phases.find(item => item.id === activePhaseId) || phases[0] || null
+  const phaseActivities = buildActivities(phase)
   const start = parseDateOnly(phase?.startDate)
   const end = parseDateOnly(phase?.endDate)
-  const safeTasksPerWeek = Number.isFinite(tasksPerWeek) && tasksPerWeek > 0 ? tasksPerWeek : 0
+  const derivedTasksPerWeek = phaseActivities.length * 7
+  const safeTasksPerWeek = Number.isFinite(tasksPerWeek) && tasksPerWeek > 0
+    ? tasksPerWeek
+    : derivedTasksPerWeek
 
   if (!phase || !start || !end || end < start || safeTasksPerWeek <= 0) {
     return {
@@ -384,14 +389,17 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
   const totalDaysInPhase = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1
   const totalWeeksInPhase = Math.max(Math.ceil(totalDaysInPhase / 7), 1)
   const totalTasksInPhase = totalWeeksInPhase * safeTasksPerWeek
+  const buildTaskMatchKey = task => [task?.id, task?.description, task?.pillar].join('::')
 
   let completedTasks = 0
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index)
-    if (!/^phasr_tasks_w\d+_d\d+$/.test(String(key || ''))) continue
-    const tasks = safeRead(key, [])
-    if (!Array.isArray(tasks)) continue
-    completedTasks += tasks.filter(task => task?.done).length
+  for (let week = 1; week <= totalWeeksInPhase; week += 1) {
+    for (let day = 1; day <= 7; day += 1) {
+      const storedTasks = safeRead(taskKey(week, day), [])
+      const expectedTasks = buildDayTasks(phaseActivities, week, day)
+      if (!Array.isArray(storedTasks) || !expectedTasks.length) continue
+      const storedMap = new Map(storedTasks.map(task => [buildTaskMatchKey(task), task]))
+      completedTasks += expectedTasks.filter(task => Boolean(storedMap.get(buildTaskMatchKey(task))?.done)).length
+    }
   }
 
   if (completedTasks <= 0 || totalTasksInPhase <= 0) {
@@ -610,6 +618,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             : currentStreak >= 7 ? 'Weekly rhythm active'
               : currentStreak >= 3 ? 'Personalization building'
                 : 'Sage learning you'
+  const unlockPathMessage = currentStreak <= 3 ? 'Sage is getting to know you' : unlockPathLabel
   const completedTasksThisPhase = phaseStats.completedTasks
   const totalTasksThisPhase = phaseStats.totalTasksInPhase
   const phasePercent = phaseStats.phasePercent
@@ -1008,19 +1017,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           >
             <div style={statCardInnerStyle}>
               <p style={{
-                fontSize: '1.6rem', fontWeight: 800,
-                color: '#3d1f2b', lineHeight: 1, margin: 0,
-              }}>{phasePercent}%</p>
-              <p style={{
-                fontSize: '0.52rem',
-                fontWeight: 700,
+                fontSize: '0.56rem',
+                fontWeight: 800,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: '#059669',
                 margin: 0,
               }}>Phase</p>
+              <p style={{
+                fontSize: '1.35rem', fontWeight: 800,
+                color: '#3d1f2b', lineHeight: 1, margin: 0,
+              }}>{phasePercent}%</p>
               <p style={{ fontSize: '0.6rem', color: '#7a5a66', margin: 0 }}>
-                {totalTasksThisPhase ? `${completedTasksThisPhase}/${totalTasksThisPhase} tasks done` : 'tap to view board'}
+                {totalTasksThisPhase ? 'Progress moves with every task you finish.' : 'Set your phase dates to start tracking.'}
               </p>
               <div style={phaseProgressTrackStyle}>
                 <div style={{ ...phaseProgressFillStyle, width: `${phasePercent}%` }} />
@@ -1035,20 +1044,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           }}>
             <div style={statCardInnerStyle}>
               <p style={{
-                fontSize: '1.6rem', fontWeight: 800,
-                color: '#3d1f2b', lineHeight: 1, margin: 0,
-              }}>{currentStreak}</p>
-              <p style={{
                 fontSize: '0.52rem', fontWeight: 700,
                 letterSpacing: '0.1em', textTransform: 'uppercase',
                 color: '#e8407a', margin: 0,
               }}>Streak</p>
               <p style={{
+                fontSize: '1.35rem', fontWeight: 800,
+                color: '#3d1f2b', lineHeight: 1, margin: 0,
+              }}>{currentStreak}</p>
+              <p style={{
                 fontSize: '0.58rem', fontWeight: 700,
                 color: '#e8407a',
                 margin: 0,
               }}>
-                {streakLabel}
+                {`Day ${currentStreak} in`}
               </p>
             </div>
           </div>
@@ -1075,7 +1084,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 textAlign: 'center',
                 margin: 0,
               }}>
-                {unlockPathLabel}
+                {unlockPathMessage}
               </p>
               <div style={unlockProgressTrackStyle}>
                 <div style={unlockProgressFillStyle} />
