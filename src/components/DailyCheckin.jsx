@@ -355,14 +355,25 @@ function countWeekTasksAssigned(week) {
   return assigned
 }
 
+function loadVisionBoardForPhaseStats() {
+  try {
+    const raw = localStorage.getItem('phasr_vb')
+    if (raw) return JSON.parse(raw)
+  } catch {
+    // Fall through to the existing board reader below.
+  }
+  return loadVisionBoardFromStorage()
+}
+
 function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
-  const board = loadVisionBoardFromStorage()
+  const board = loadVisionBoardForPhaseStats()
   const phases = Array.isArray(board?.phases) ? board.phases : []
   const phase = phases.find(item => item.id === activePhaseId) || phases[0] || null
   const start = parseDateOnly(phase?.startDate)
   const end = parseDateOnly(phase?.endDate)
+  const safeTasksPerWeek = Number.isFinite(tasksPerWeek) && tasksPerWeek > 0 ? tasksPerWeek : 0
 
-  if (!phase || !start || !end || end < start || !Number.isFinite(tasksPerWeek) || tasksPerWeek <= 0) {
+  if (!phase || !start || !end || end < start || safeTasksPerWeek <= 0) {
     return {
       completedTasks: 0,
       totalTasksInPhase: 0,
@@ -372,7 +383,7 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
 
   const totalDaysInPhase = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1
   const totalWeeksInPhase = Math.max(Math.ceil(totalDaysInPhase / 7), 1)
-  const totalTasksInPhase = totalWeeksInPhase * tasksPerWeek
+  const totalTasksInPhase = totalWeeksInPhase * safeTasksPerWeek
 
   let completedTasks = 0
   for (let index = 0; index < localStorage.length; index += 1) {
@@ -383,8 +394,17 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
     completedTasks += tasks.filter(task => task?.done).length
   }
 
-  const phasePercent = totalTasksInPhase > 0 && completedTasks > 0
-    ? Math.min(100, Math.max(0, Math.floor((completedTasks / totalTasksInPhase) * 100)))
+  if (completedTasks <= 0 || totalTasksInPhase <= 0) {
+    return {
+      completedTasks: 0,
+      totalTasksInPhase,
+      phasePercent: 0,
+    }
+  }
+
+  const rawPercent = Math.floor((completedTasks / totalTasksInPhase) * 100)
+  const phasePercent = Number.isFinite(rawPercent)
+    ? Math.min(100, Math.max(0, rawPercent))
     : 0
 
   return {
@@ -625,12 +645,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const statCardStyle = {
     borderRadius: '14px',
     padding: '12px 12px 14px',
-    textAlign: 'center',
     minHeight: 110,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
+    textAlign: 'center',
     gap: 8,
   }
   const statCardInnerStyle = {
@@ -702,7 +722,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   function toggleTask(taskId) {
     const updated = tasks.map(item => item.id === taskId ? { ...item, done: !item.done } : item)
     safeWrite(taskKey(activeWeek, displayedDay), updated)
-    recalculatePhaseStats()
     setTasks(updated)
     setLockInState(loadLockInState())
     onLockInChange?.()
@@ -713,6 +732,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     } else {
       localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
     }
+    setPhaseStats(calculatePhaseTaskStats(activePhaseId, tasksPerWeek))
     const task = updated.find(item => item.id === taskId)
     if (task) checkNonNegComplete(task.nonNegIndex, activeWeek)
   }
@@ -986,21 +1006,24 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               cursor: 'pointer',
             }}
           >
-            <p style={{
-              fontSize: '0.52rem', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: '#059669', marginBottom: '6px',
-            }}>Phase</p>
             <div style={statCardInnerStyle}>
               <p style={{
                 fontSize: '1.6rem', fontWeight: 800,
-                color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+                color: '#3d1f2b', lineHeight: 1, margin: 0,
               }}>{phasePercent}%</p>
-              <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
+              <p style={{
+                fontSize: '0.52rem',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: '#059669',
+                margin: 0,
+              }}>Phase</p>
+              <p style={{ fontSize: '0.6rem', color: '#7a5a66', margin: 0 }}>
                 {totalTasksThisPhase ? `${completedTasksThisPhase}/${totalTasksThisPhase} tasks done` : 'tap to view board'}
               </p>
               <div style={phaseProgressTrackStyle}>
-                <div style={phaseProgressFillStyle} />
+                <div style={{ ...phaseProgressFillStyle, width: `${phasePercent}%` }} />
               </div>
             </div>
           </div>
@@ -1010,19 +1033,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             border: '1px solid #f2c4d0',
             ...statCardStyle,
           }}>
-            <p style={{
-              fontSize: '0.52rem', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: '#e8407a', marginBottom: '6px',
-            }}>Streak</p>
             <div style={statCardInnerStyle}>
               <p style={{
                 fontSize: '1.6rem', fontWeight: 800,
-                color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
+                color: '#3d1f2b', lineHeight: 1, margin: 0,
               }}>{currentStreak}</p>
+              <p style={{
+                fontSize: '0.52rem', fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                color: '#e8407a', margin: 0,
+              }}>Streak</p>
               <p style={{
                 fontSize: '0.58rem', fontWeight: 700,
                 color: '#e8407a',
+                margin: 0,
               }}>
                 {streakLabel}
               </p>
@@ -1035,10 +1059,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               ...statCardStyle,
             }}
           >
-            <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: '6px' }}>
-              Unlock Path
-            </p>
             <div style={statCardInnerStyle}>
+              <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', margin: 0 }}>
+                Unlock Path
+              </p>
               <p style={{
                 fontSize: '0.74rem',
                 fontWeight: 700,
@@ -1049,6 +1073,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
+                margin: 0,
               }}>
                 {unlockPathLabel}
               </p>
