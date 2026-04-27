@@ -494,6 +494,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     : levelLabels[currentLevel]
   const currentMilestone = milestones.filter(item => item.day <= currentStreak).slice(-1)[0]
   const nextMilestone = milestones.find(item => item.day > currentStreak)
+  const unlockPathLabel =
+    currentStreak >= 90 ? 'Legacy active'
+      : currentStreak >= 60 ? 'Deeper reflection'
+        : currentStreak >= 30 ? 'Monthly insight'
+          : currentStreak >= 14 ? 'Pattern visibility'
+            : currentStreak >= 7 ? 'Personalization active'
+              : 'Sage learning you'
   const phaseStartDate = new Date(phaseStart)
   const phaseEndDate = new Date(currentPhase?.endDate)
   const today = new Date()
@@ -860,9 +867,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               fontSize: '1.6rem', fontWeight: 800,
               color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
             }}>{currentStreak}</p>
-            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
-              {currentStreak === 1 ? 'day' : 'days'}
-            </p>
             <p style={{
               fontSize: '0.58rem', fontWeight: 700,
               color: '#e8407a', marginTop: '4px',
@@ -904,158 +908,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             }}
           >
             <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', marginBottom: '6px' }}>
-              Coming Next
-            </p>
-
-            <p style={{ fontSize: '1.4rem', fontWeight: 800, color: '#3d1f2b', lineHeight: 1, marginBottom: '4px' }}>
-              {nextMilestone ? `${nextMilestone.day - currentStreak}` : 'All'}
-            </p>
-            <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
-              {nextMilestone ? 'days away' : 'milestones reached'}
+              Unlock Path
             </p>
             <p style={{ fontSize: '0.58rem', fontWeight: 600, color: '#7c3aed', marginTop: '4px' }}>
-              {nextMilestone ? nextMilestone.label : 'All milestones reached'}
+              {unlockPathLabel}
             </p>
             <div style={standardProgressTrackStyle}>
               <div style={standardProgressFillStyle(progressToNext)} />
             </div>
           </div>
-        </div>
-
-        <div style={{ height: 18 }} />
-
-        <div style={{ padding: '0 0 1rem' }}>
-          {milestones.map((milestone, i) => {
-            const state = getMilestoneState(milestone, currentStreak)
-            const daysAway = milestone.day - currentStreak
-            const progress = Math.min(Math.round((currentStreak / milestone.day) * 100), 100)
-
-            return (
-              <div key={milestone.day} style={{
-                display: 'flex',
-                gap: '12px',
-                marginBottom: '16px',
-                opacity: state === 'upcoming' ? 0.45 : 1,
-                transition: 'opacity 0.3s',
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                  <div style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1rem',
-                    background: state === 'achieved'
-                      ? 'linear-gradient(135deg, #e8407a, #f472a8)'
-                      : state === 'next'
-                        ? '#fff5f7'
-                        : '#f5f5f5',
-                    border: state === 'next'
-                      ? '2px solid #e8407a'
-                      : state === 'achieved'
-                        ? 'none'
-                        : '2px solid #e8e8e8',
-                    boxShadow: state === 'next'
-                      ? '0 0 0 4px rgba(232,64,122,0.15)'
-                      : 'none',
-                    animation: state === 'next' ? 'pulse 2s ease-in-out infinite' : 'none',
-                  }}>
-                    {state === 'achieved' ? '✓' : milestone.icon}
-                  </div>
-                  {i < milestones.length - 1 && (
-                    <div style={{
-                      width: 2,
-                      flex: 1,
-                      minHeight: 16,
-                      background: state === 'achieved'
-                        ? 'linear-gradient(to bottom, #f472a8, #f2c4d0)'
-                        : '#f2c4d0',
-                      marginTop: 4,
-                    }} />
-                  )}
-                </div>
-
-                <div style={{ flex: 1, paddingBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                    <p style={{
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      color: state === 'achieved' ? '#e8407a' : '#3d1f2b',
-                      lineHeight: 1.3,
-                    }}>
-                      {milestone.label}
-                    </p>
-                    {state === 'achieved' && (
-                      <span style={{
-                        fontSize: '0.55rem',
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #e8407a, #f472a8)',
-                        color: '#fff',
-                        padding: '2px 7px',
-                        borderRadius: 99,
-                        whiteSpace: 'nowrap',
-                        marginLeft: 6,
-                      }}>Day {milestone.day}</span>
-                    )}
-                    {state === 'next' && (
-                      <span style={{
-                        fontSize: '0.55rem',
-                        fontWeight: 700,
-                        background: '#fff5f7',
-                        color: '#e8407a',
-                        border: '1px solid #f2c4d0',
-                        padding: '2px 7px',
-                        borderRadius: 99,
-                        whiteSpace: 'nowrap',
-                        marginLeft: 6,
-                      }}>{daysAway} days away</span>
-                    )}
-                    {state === 'upcoming' && (
-                      <span style={{
-                        fontSize: '0.55rem',
-                        color: '#b08090',
-                        whiteSpace: 'nowrap',
-                        marginLeft: 6,
-                      }}>Day {milestone.day}</span>
-                    )}
-                  </div>
-
-                  <p style={{
-                    fontSize: '0.72rem',
-                    color: state === 'achieved' ? '#3d1f2b' : '#7a5a66',
-                    lineHeight: 1.55,
-                    marginBottom: state === 'next' ? 8 : 0,
-                  }}>
-                    {milestone.description}
-                  </p>
-
-                  {state === 'next' && (
-                    <div>
-                      <div style={standardProgressTrackStyle}>
-                        <div style={standardProgressFillStyle(progress)} />
-                      </div>
-                      <p style={{ fontSize: '0.6rem', color: '#b08090', marginTop: 4 }}>
-                        {currentStreak} of {milestone.day} days
-                      </p>
-                    </div>
-                  )}
-
-                  {state === 'achieved' && (
-                    <p style={{
-                      fontSize: '0.65rem',
-                      fontWeight: 600,
-                      color: '#e8407a',
-                      marginTop: 4,
-                    }}>
-                      Unlocked on day {milestone.day} ✓
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
         </div>
 
         {showPhaseModal ? (
