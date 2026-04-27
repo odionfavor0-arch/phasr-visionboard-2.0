@@ -470,6 +470,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay) : 0, [hasPillars, activeWeek, displayedDay, tasks])
   const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek) : 0, [hasPillars, activeWeek, tasks])
   const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek) : 0, [hasPillars, activeWeek, tasks])
+  const completedTasksThisPhase = useMemo(
+    () => hasPillars ? (weeklyData.weeks || []).reduce((sum, item) => sum + countWeekTasksDone(item.index), 0) : 0,
+    [hasPillars, weeklyData.weeks, tasks, refresh]
+  )
+  const totalTasksThisPhase = useMemo(
+    () => hasPillars ? (weeklyData.weeks || []).reduce((sum, item) => sum + countWeekTasksAssigned(item.index), 0) : 0,
+    [hasPillars, weeklyData.weeks, tasks, refresh]
+  )
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
   const currentPulseDone = weekStatuses.find(item => item.week === activeWeek)?.pulseDone || false
   const previousPulseDone = activeWeek === 1 ? true : (weekStatuses.find(item => item.week === activeWeek - 1)?.pulseDone || false)
@@ -531,13 +539,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             : currentStreak >= 7 ? 'Weekly rhythm active'
               : currentStreak >= 3 ? 'Personalization building'
                 : 'Sage learning you'
-  const phaseStartDate = parseDateOnly(phaseStart) || new Date()
-  const phaseEndDate = parseDateOnly(currentPhase?.endDate) || phaseStartDate
-  const totalPhaseDaysRaw = Math.ceil((phaseEndDate - phaseStartDate) / 86400000)
-  const daysIntoPhaseRaw = dayOfPhase
-  const totalPhaseDays = Number.isFinite(totalPhaseDaysRaw) && totalPhaseDaysRaw > 0 ? totalPhaseDaysRaw : 1
-  const daysIntoPhase = Number.isFinite(daysIntoPhaseRaw) && daysIntoPhaseRaw > 0 ? daysIntoPhaseRaw : 1
-  const phasePercent = Math.min(Math.round((daysIntoPhase / totalPhaseDays) * 100), 100)
+  const phasePercent = totalTasksThisPhase
+    ? Math.min(
+      100,
+      Math.max(
+        Math.round((completedTasksThisPhase / totalTasksThisPhase) * 100),
+        completedTasksThisPhase > 0 ? 1 : 0
+      )
+    )
+    : 0
   const progressToNext = nextMilestone
     ? Math.min(Math.round((currentStreak / nextMilestone.day) * 100), 100)
     : 100
@@ -939,7 +949,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 fontSize: '1.6rem', fontWeight: 800,
                 color: '#3d1f2b', lineHeight: 1, marginBottom: '4px',
               }}>{phasePercent}%</p>
-              <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>tap to view board</p>
+              <p style={{ fontSize: '0.6rem', color: '#7a5a66' }}>
+                {totalTasksThisPhase ? `${completedTasksThisPhase}/${totalTasksThisPhase} tasks done` : 'tap to view board'}
+              </p>
               <div style={phaseProgressTrackStyle}>
                 <div style={phaseProgressFillStyle} />
               </div>
