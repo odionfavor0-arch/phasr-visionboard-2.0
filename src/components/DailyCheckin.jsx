@@ -166,8 +166,8 @@ function isQuarterlyReviewComplete(phase) {
   return fields.every(value => String(value || '').trim().length > 0)
 }
 
-function taskKey(week, day) {
-  return `phasr_tasks_w${week}_d${day}`
+function taskKey(week, day, scope = 'global') {
+  return `phasr_tasks_${scope}_w${week}_d${day}`
 }
 
 function weekStartKey(scope, week) {
@@ -183,8 +183,8 @@ function getWeekStartDate(scope, week) {
   return today
 }
 
-function nonNegCompleteKey(week, nonNegIndex) {
-  return `phasr_nn_complete_w${week}_nn${nonNegIndex}`
+function nonNegCompleteKey(week, nonNegIndex, scope = 'global') {
+  return `phasr_nn_complete_${scope}_w${week}_nn${nonNegIndex}`
 }
 
 function parseNonNegotiable(text) {
@@ -295,8 +295,8 @@ function mergeTaskProgress(savedTasks, nextTasks) {
   }))
 }
 
-function getTodaysTasks(activities, weekNumber, dayNumber) {
-  const cacheKey = taskKey(weekNumber, dayNumber)
+function getTodaysTasks(activities, weekNumber, dayNumber, scope = 'global') {
+  const cacheKey = taskKey(weekNumber, dayNumber, scope)
   const cached = safeRead(cacheKey, null)
   const baseTasks = buildDayTasks(activities, weekNumber, dayNumber)
 
@@ -310,11 +310,11 @@ function getTodaysTasks(activities, weekNumber, dayNumber) {
   return nextTasks
 }
 
-function checkNonNegComplete(nonNegIndex, weekNumber) {
+function checkNonNegComplete(nonNegIndex, weekNumber, scope = 'global') {
   let allDone = true
   let foundTask = false
   for (let day = 1; day <= 7; day += 1) {
-    const tasks = safeRead(taskKey(weekNumber, day), [])
+    const tasks = safeRead(taskKey(weekNumber, day, scope), [])
     const nonNegTask = tasks.find(task => task.nonNegIndex === nonNegIndex)
     if (nonNegTask) {
       foundTask = true
@@ -325,32 +325,32 @@ function checkNonNegComplete(nonNegIndex, weekNumber) {
     }
   }
   if (foundTask && allDone) {
-    localStorage.setItem(nonNegCompleteKey(weekNumber, nonNegIndex), 'true')
+    localStorage.setItem(nonNegCompleteKey(weekNumber, nonNegIndex, scope), 'true')
   }
 }
 
-function countDaysDone(week, dayLimit = 7) {
+function countDaysDone(week, dayLimit = 7, scope = 'global') {
   let done = 0
   for (let day = 1; day <= dayLimit; day += 1) {
-    const isDone = localStorage.getItem(`phasr_streak_w${week}_d${day}`) === 'true'
+    const isDone = localStorage.getItem(`phasr_streak_${scope}_w${week}_d${day}`) === 'true'
     if (isDone) done += 1
   }
   return done
 }
 
-function countWeekTasksDone(week) {
+function countWeekTasksDone(week, scope = 'global') {
   let done = 0
   for (let day = 1; day <= 7; day += 1) {
-    const tasks = safeRead(taskKey(week, day), [])
+    const tasks = safeRead(taskKey(week, day, scope), [])
     done += tasks.filter(item => item.done).length
   }
   return done
 }
 
-function countWeekTasksAssigned(week) {
+function countWeekTasksAssigned(week, scope = 'global') {
   let assigned = 0
   for (let day = 1; day <= 7; day += 1) {
-    const tasks = safeRead(taskKey(week, day), [])
+    const tasks = safeRead(taskKey(week, day, scope), [])
     assigned += Array.isArray(tasks) ? tasks.length : 0
   }
   return assigned
@@ -370,6 +370,7 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
   const board = loadVisionBoardForPhaseStats()
   const phases = Array.isArray(board?.phases) ? board.phases : []
   const phase = phases.find(item => item.id === activePhaseId) || phases[0] || null
+  const phaseFingerprint = buildFingerprint(phase || {})
   const phaseActivities = buildActivities(phase)
   const start = parseDateOnly(phase?.startDate)
   const end = parseDateOnly(phase?.endDate)
@@ -394,7 +395,7 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
   let completedTasks = 0
   for (let week = 1; week <= totalWeeksInPhase; week += 1) {
     for (let day = 1; day <= 7; day += 1) {
-      const storedTasks = safeRead(taskKey(week, day), [])
+      const storedTasks = safeRead(taskKey(week, day, phaseFingerprint), [])
       const expectedTasks = buildDayTasks(phaseActivities, week, day)
       if (!Array.isArray(storedTasks) || !expectedTasks.length) continue
       const storedMap = new Map(storedTasks.map(task => [buildTaskMatchKey(task), task]))
@@ -481,7 +482,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const weekStatuses = useMemo(() => {
     return (weeklyData.weeks || []).map(item => {
-      const daysDone = hasPillars ? countDaysDone(item.index) : 0
+      const daysDone = hasPillars ? countDaysDone(item.index, 7, phaseScope) : 0
       const pulseDone = pulseDoneForWeek(currentPhase?.name, item.index) && daysDone === 7
       return {
         week: item.index,
@@ -497,8 +498,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const storedDate = parseDateOnly(stored)
     const todayDate = parseDateOnly(todayKey)
     const hasTrackedProgress = Object.keys(localStorage).some(key => {
-      if (key.startsWith('phasr_streak_w')) return localStorage.getItem(key) === 'true'
-      if (!key.startsWith('phasr_tasks_w')) return false
+      if (key.startsWith(`phasr_streak_${phaseScope}_w`)) return localStorage.getItem(key) === 'true'
+      if (!key.startsWith(`phasr_tasks_${phaseScope}_w`)) return false
       const entries = safeRead(key, [])
       return Array.isArray(entries) && entries.some(item => item?.done)
     })
@@ -547,15 +548,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       setTasks([])
       return
     }
-    setTasks(getTodaysTasks(activities, activeWeek, displayedDay))
-  }, [hasPillars, week, activities, displayedDay, activeWeek])
+    setTasks(getTodaysTasks(activities, activeWeek, displayedDay, phaseScope))
+  }, [hasPillars, week, activities, displayedDay, activeWeek, phaseScope])
 
-  const todaysTasks = useMemo(() => safeRead(taskKey(activeWeek, displayedDay), []), [activeWeek, displayedDay, tasks, refresh])
+  const todaysTasks = useMemo(() => safeRead(taskKey(activeWeek, displayedDay, phaseScope), []), [activeWeek, displayedDay, phaseScope, tasks, refresh])
   const completedToday = todaysTasks.filter(task => task.done).length
   const totalToday = todaysTasks.length
-  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay) : 0, [hasPillars, activeWeek, displayedDay, tasks])
-  const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek) : 0, [hasPillars, activeWeek, tasks])
-  const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek) : 0, [hasPillars, activeWeek, tasks])
+  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay, phaseScope) : 0, [hasPillars, activeWeek, displayedDay, phaseScope, tasks])
+  const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek, phaseScope) : 0, [hasPillars, activeWeek, phaseScope, tasks])
+  const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek, phaseScope) : 0, [hasPillars, activeWeek, phaseScope, tasks])
   const tasksPerWeek = activities.length * 7
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
   const currentPulseDone = weekStatuses.find(item => item.week === activeWeek)?.pulseDone || false
@@ -572,7 +573,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     let weekNumber = currentWeek
     let dayNumber = currentDayNumber
 
-    if (localStorage.getItem(`phasr_streak_w${weekNumber}_d${dayNumber}`) !== 'true') {
+    if (localStorage.getItem(`phasr_streak_${phaseScope}_w${weekNumber}_d${dayNumber}`) !== 'true') {
       dayNumber -= 1
       if (dayNumber < 1) {
         weekNumber -= 1
@@ -581,7 +582,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
 
     while (weekNumber >= 1 && dayNumber >= 1) {
-      const isSuccessful = localStorage.getItem(`phasr_streak_w${weekNumber}_d${dayNumber}`) === 'true'
+      const isSuccessful = localStorage.getItem(`phasr_streak_${phaseScope}_w${weekNumber}_d${dayNumber}`) === 'true'
       if (!isSuccessful) break
       streak += 1
       dayNumber -= 1
@@ -592,7 +593,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
 
     return streak
-  }, [currentWeek, currentDayNumber, tasks, refresh])
+  }, [currentWeek, currentDayNumber, phaseScope, tasks, refresh])
   const currentLevel =
     currentStreak >= 90 ? 5
       : currentStreak >= 61 ? 4
@@ -667,9 +668,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     textAlign: 'center',
-    gap: 8,
+    gap: 12,
+    paddingTop: 2,
     flex: 1,
   }
 
@@ -720,7 +722,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   useEffect(() => {
     recalculatePhaseStats()
-  }, [activePhaseId, tasksPerWeek, refresh, tasks])
+  }, [activePhaseId, phaseScope, tasksPerWeek, refresh, tasks])
 
   function canAccessWeek(weekNumber) {
     if (weekNumber === 1) return true
@@ -730,20 +732,20 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   function toggleTask(taskId) {
     const updated = tasks.map(item => item.id === taskId ? { ...item, done: !item.done } : item)
-    safeWrite(taskKey(activeWeek, displayedDay), updated)
+    safeWrite(taskKey(activeWeek, displayedDay, phaseScope), updated)
     setTasks(updated)
     setLockInState(loadLockInState())
     onLockInChange?.()
 
     const anyDoneToday = updated.some(item => item.done)
     if (anyDoneToday) {
-      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
+      localStorage.setItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
     } else {
-      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
+      localStorage.setItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'false')
     }
     setPhaseStats(calculatePhaseTaskStats(activePhaseId, tasksPerWeek))
     const task = updated.find(item => item.id === taskId)
-    if (task) checkNonNegComplete(task.nonNegIndex, activeWeek)
+    if (task) checkNonNegComplete(task.nonNegIndex, activeWeek, phaseScope)
   }
 
   function getPhaseLabel(phaseId) {
