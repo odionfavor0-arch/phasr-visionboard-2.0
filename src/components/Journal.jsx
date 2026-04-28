@@ -1429,12 +1429,15 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   }, [weeklyPulseDate])
 
   const filteredEntries = useMemo(() => sortEntries(entries, search, sortOrder), [entries, search, sortOrder])
+  const currentWeeklyPulsePayload = useMemo(() => buildWeeklyPulsePayload(), [weeklyPulseDate, entries])
   const weeklyPulseDue = useMemo(() => {
-    if (!weeklyPulseDate) return true
-    const last = new Date(`${weeklyPulseDate}T00:00:00`).getTime()
-    if (Number.isNaN(last)) return true
-    return (Date.now() - last) >= (7 * MS_IN_DAY)
-  }, [weeklyPulseDate])
+    const phaseKey = normalizeLabel(currentWeeklyPulsePayload?.phaseName || 'phase 1')
+    const currentWeekNumber = String(currentWeeklyPulsePayload?.weekNumber || 1)
+    const completionStore = (() => {
+      try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+    })()
+    return !Boolean(completionStore?.[phaseKey]?.[currentWeekNumber])
+  }, [currentWeeklyPulsePayload, weeklyPulseDate])
 
   function prepareWeeklyPulseState() {
     const payload = buildWeeklyPulsePayload()
@@ -1870,7 +1873,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   return (
     <>
       <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1rem 1rem 5.5rem' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
+        <div style={{ width: '100%', maxWidth: '100%', margin: 0, display: 'grid', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 22, padding: '0.8rem 0.85rem', boxShadow: '0 12px 28px rgba(86,53,66,0.05)' }}>
             <Search size={18} color="#8b6977" />
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', minWidth: 0 }} />
