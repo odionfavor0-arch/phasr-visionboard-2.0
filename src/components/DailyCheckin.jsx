@@ -332,7 +332,9 @@ function checkNonNegComplete(nonNegIndex, weekNumber, scope = 'global') {
 function countDaysDone(week, dayLimit = 7, scope = 'global') {
   let done = 0
   for (let day = 1; day <= dayLimit; day += 1) {
-    const isDone = localStorage.getItem(`phasr_streak_${scope}_w${week}_d${day}`) === 'true'
+    const scopedValue = localStorage.getItem(`phasr_streak_${scope}_w${week}_d${day}`)
+    const legacyValue = localStorage.getItem(`phasr_streak_w${week}_d${day}`)
+    const isDone = (scopedValue ?? legacyValue) === 'true'
     if (isDone) done += 1
   }
   return done
@@ -576,11 +578,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent2 = 'var(--app-accent2)'
 
   const currentStreak = useMemo(() => {
+    const readStreakValue = (weekNumber, dayNumber) => {
+      const scopedValue = localStorage.getItem(`phasr_streak_${phaseScope}_w${weekNumber}_d${dayNumber}`)
+      if (scopedValue != null) return scopedValue
+      return localStorage.getItem(`phasr_streak_w${weekNumber}_d${dayNumber}`)
+    }
+
     let streak = 0
     let weekNumber = currentWeek
     let dayNumber = currentDayNumber
 
-    if (localStorage.getItem(`phasr_streak_${phaseScope}_w${weekNumber}_d${dayNumber}`) !== 'true') {
+    if (readStreakValue(weekNumber, dayNumber) !== 'true') {
       dayNumber -= 1
       if (dayNumber < 1) {
         weekNumber -= 1
@@ -589,7 +597,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
 
     while (weekNumber >= 1 && dayNumber >= 1) {
-      const isSuccessful = localStorage.getItem(`phasr_streak_${phaseScope}_w${weekNumber}_d${dayNumber}`) === 'true'
+      const isSuccessful = readStreakValue(weekNumber, dayNumber) === 'true'
       if (!isSuccessful) break
       streak += 1
       dayNumber -= 1
@@ -752,8 +760,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const anyDoneToday = updated.some(item => item.done)
     if (anyDoneToday) {
       localStorage.setItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
+      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
     } else {
       localStorage.setItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'false')
+      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
     }
     setPhaseStats(calculatePhaseTaskStats(activePhaseId, tasksPerWeek))
     const task = updated.find(item => item.id === taskId)
