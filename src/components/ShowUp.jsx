@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, HeartHandshake, Plus, Sparkles, Sprout } from 'lucide-react'
 import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
@@ -6,42 +7,78 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 const SHOW_UP_STYLES = `
 .showup-root{
   min-height:calc(100vh - 56px);
-  background:#fff8f9;
+  background:linear-gradient(180deg,#2a2328 0%,#1f1a1d 100%);
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
   -webkit-tap-highlight-color:transparent;
 }
 .showup-shell{
   width:100%;
-  max-width:390px;
+  max-width:430px;
   margin:0 auto;
-  padding:14px 12px 110px;
+  padding:16px 14px 110px;
   box-sizing:border-box;
 }
 .showup-list-header{
-  display:grid;
-  gap:6px;
-  padding:6px 2px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 2px 18px;
 }
 .showup-list-kicker{
   margin:0;
-  font-size:11px;
-  letter-spacing:.14em;
+  font-size:12px;
+  letter-spacing:.22em;
   text-transform:uppercase;
+  color:rgba(255,255,255,0.72);
+  font-weight:600;
+}
+.showup-create-link{
+  border:none;
+  background:transparent;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
   color:#f95f85;
+  font-size:16px;
   font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+  padding:0;
 }
-.showup-list-title{
-  margin:0;
-  font-size:14px;
-  line-height:1.4;
-  color:#9a7088;
-  font-weight:500;
+.showup-list-panel{
+  border:1px solid rgba(232,64,122,0.14);
+  border-radius:30px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 18px 42px rgba(232,64,122,0.08);
 }
-.showup-list-grid{
+.showup-list-row{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
+  grid-template-columns:72px minmax(0,1fr) auto;
+  align-items:center;
+  gap:14px;
+  padding:22px 18px;
+  min-height:116px;
+}
+.showup-list-row + .showup-list-row{
+  border-top:1px solid rgba(77,49,66,0.08);
+}
+.showup-list-icon{
+  width:68px;
+  height:68px;
+  border-radius:20px;
+  display:grid;
+  place-items:center;
+  color:#f95f85;
+  border:1px solid rgba(249,95,133,0.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.showup-list-content{
+  min-width:0;
+  display:grid;
+  gap:6px;
 }
 .showup-list-card,
 .showup-create-form,
@@ -56,32 +93,60 @@ const SHOW_UP_STYLES = `
   border:1px solid rgba(249,95,133,0.25);
   border-radius:16px;
 }
-.showup-list-card{
-  min-height:164px;
-  padding:14px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
 .showup-list-name{
   margin:0;
   font-family:'Syne',sans-serif;
-  font-size:13px;
+  font-size:20px;
   font-weight:700;
   color:#4d3142;
-  line-height:1.3;
-}
-.showup-list-description{
-  margin:0;
-  font-size:12px;
-  line-height:1.55;
-  color:#9a7088;
-  flex:1;
+  line-height:1.15;
 }
 .showup-list-meta{
   margin:0;
-  font-size:11px;
+  font-size:14px;
+  color:#b29cab;
+}
+.showup-list-action{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  white-space:nowrap;
+}
+.showup-join-pill{
+  min-height:42px;
+  border-radius:999px;
+  min-width:104px;
+  padding:0 18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:13px;
+  font-weight:800;
+  border:1px solid rgba(249,95,133,0.14);
+  background:rgba(249,95,133,0.16);
+  color:#f95f85;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+  box-shadow:none;
+}
+.showup-join-pill.is-joined{
+  background:transparent;
+  border-color:transparent;
   color:#9a7088;
+  min-width:auto;
+  padding:0;
+}
+.showup-join-pill.is-joined svg{
+  color:#b5adb2;
+}
+.showup-list-arrow{
+  color:#b88da0;
+  flex-shrink:0;
+}
+.showup-list-state{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
 }
 .showup-create-btn,
 .showup-join-btn,
@@ -641,6 +706,15 @@ const ROOM_DEFINITIONS = [
   { id: 'personal-growth', name: 'Personal Growth', description: 'Learning, creativity, self-development', roomColor: '#5e8f64' },
 ]
 
+const ROOM_ICONS = {
+  'health-fitness': Dumbbell,
+  'career-business': BriefcaseBusiness,
+  wealth: HandCoins,
+  relationships: HeartHandshake,
+  'inner-life': Sparkles,
+  'personal-growth': Sprout,
+}
+
 const TEMPLATE_MESSAGES = [
   'We are waiting on you 👀',
   'Hey I haven’t seen you in a while. Hope you’re good 🤍',
@@ -841,6 +915,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       : []
     return [...ROOM_DEFINITIONS, ...mappedCustom]
   }, [customRooms])
+  const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
+  const joinedRoomNames = useMemo(() => {
+    const joined = new Set()
+    if (preferredRoomName) joined.add(preferredRoomName)
+    rooms.forEach(room => {
+      const stored = safeRead(getMockMemberStorageKey(room.name), [])
+      if (Array.isArray(stored) && stored.some(member => member?.user_id === profile.id)) {
+        joined.add(room.name)
+      }
+    })
+    return joined
+  }, [preferredRoomName, profile.id, rooms])
 
   useEffect(() => {
     if (!selectedRoom) return
@@ -1280,11 +1366,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <style>{SHOW_UP_STYLES}</style>
         <div className="showup-shell">
           <div className="showup-list-header">
-            <p className="showup-list-kicker">Join Challenge</p>
-            <p className="showup-list-title">Pick your room. Show up daily.</p>
+            <p className="showup-list-kicker">All Rooms</p>
+            <button type="button" className="showup-create-link" onClick={handleCreateRoomPress}>
+              <Plus size={16} strokeWidth={2.4} />
+              <span>Create room</span>
+            </button>
           </div>
-
-          <button type="button" className="showup-create-btn" onClick={handleCreateRoomPress}>Create Room</button>
 
           {showCreateForm ? (
             <form className="showup-create-form" onSubmit={handleCreateRoomSubmit}>
@@ -1317,20 +1404,39 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
           ) : null}
 
-          <div className="showup-list-grid">
+          <div className="showup-list-panel">
             {rooms.map(room => {
               const joined = roomCounts[room.name] || 0
               const spotsLeft = Math.max(0, MAX_ROOM_SIZE - joined)
+              const isJoined = joinedRoomNames.has(room.name)
+              const RoomIcon = ROOM_ICONS[room.id] || Sparkles
               return (
-                <div key={room.id} className="showup-list-card">
-                  <p className="showup-list-name" style={{ color: room.roomColor }}>{room.name}</p>
-                  <p className="showup-list-description">{room.description}</p>
-                  <div className="showup-join-footer">
-                    <div>
-                      <p className="showup-list-meta">{joined} checked in today</p>
-                      <p className="showup-list-meta">{spotsLeft} spots left</p>
-                    </div>
-                    <button type="button" className="showup-join-btn" onClick={() => handleJoinRoom(room.name)}>Join</button>
+                <div key={room.id} className="showup-list-row">
+                  <div className="showup-list-icon" style={{ background: `${room.roomColor}18`, color: room.roomColor }}>
+                    <RoomIcon size={24} strokeWidth={2.1} />
+                  </div>
+                  <div className="showup-list-content">
+                    <p className="showup-list-name">{room.name}</p>
+                    <p className="showup-list-meta">
+                      {isJoined ? `${joined} members` : `${spotsLeft} spots`} · {joined} checked in today
+                    </p>
+                  </div>
+                  <div className="showup-list-action">
+                    <button
+                      type="button"
+                      className={`showup-join-pill ${isJoined ? 'is-joined' : ''}`}
+                      onClick={() => handleJoinRoom(room.name)}
+                    >
+                      {isJoined ? (
+                        <span className="showup-list-state">
+                          <Check size={14} strokeWidth={2.5} />
+                          <span>Joined</span>
+                        </span>
+                      ) : (
+                        <span>Join</span>
+                      )}
+                    </button>
+                    <ChevronRight size={16} strokeWidth={2.3} className="showup-list-arrow" />
                   </div>
                 </div>
               )
