@@ -1362,12 +1362,63 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   if (!selectedRoom) {
     return (
-      <div className="showup-root">
+      <div
+        className="showup-root"
+        style={{
+          background: 'linear-gradient(180deg,#fff8fb 0%,#fff2f7 100%)',
+          color: '#4d3142',
+        }}
+      >
         <style>{SHOW_UP_STYLES}</style>
-        <div className="showup-shell">
-          <div className="showup-list-header">
-            <p className="showup-list-kicker">All Rooms</p>
-            <button type="button" className="showup-create-link" onClick={handleCreateRoomPress}>
+        <div
+          className="showup-shell"
+          style={{
+            maxWidth: 430,
+            paddingTop: 18,
+            paddingBottom: 28,
+          }}
+        >
+          <div
+            className="showup-list-header"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '8px 2px 18px',
+            }}
+          >
+            <p
+              className="showup-list-kicker"
+              style={{
+                margin: 0,
+                fontSize: 12,
+                letterSpacing: '.18em',
+                textTransform: 'uppercase',
+                color: '#b98097',
+                fontWeight: 700,
+              }}
+            >
+              All Rooms
+            </p>
+            <button
+              type="button"
+              className="showup-create-link"
+              onClick={handleCreateRoomPress}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color: '#f45f92',
+                fontSize: 15,
+                fontWeight: 800,
+                fontFamily: "'DM Sans',sans-serif",
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
               <Plus size={16} strokeWidth={2.4} />
               <span>Create room</span>
             </button>
@@ -1404,39 +1455,88 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
           ) : null}
 
-          <div className="showup-list-panel">
-            {rooms.map(room => {
+          <div
+            className="showup-list-panel"
+            style={{
+              border: '1px solid rgba(242,196,208,0.95)',
+              borderRadius: 30,
+              overflow: 'hidden',
+              background: '#fff',
+              boxShadow: '0 16px 42px rgba(244,95,146,0.08)',
+            }}
+          >
+            {rooms.map((room, index) => {
               const joined = roomCounts[room.name] || 0
               const spotsLeft = Math.max(0, MAX_ROOM_SIZE - joined)
               const isJoined = joinedRoomNames.has(room.name)
               const RoomIcon = ROOM_ICONS[room.id] || Sparkles
               return (
-                <div key={room.id} className="showup-list-row">
-                  <div className="showup-list-icon" style={{ background: `${room.roomColor}18`, color: room.roomColor }}>
+                <div
+                  key={room.id}
+                  className="showup-list-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '72px minmax(0,1fr) auto',
+                    alignItems: 'center',
+                    gap: 14,
+                    padding: '22px 18px',
+                    minHeight: 112,
+                    borderTop: index === 0 ? 'none' : '1px solid rgba(77,49,66,0.08)',
+                  }}
+                >
+                  <div
+                    className="showup-list-icon"
+                    style={{
+                      width: 68,
+                      height: 68,
+                      borderRadius: 20,
+                      display: 'grid',
+                      placeItems: 'center',
+                      background: `${room.roomColor}18`,
+                      color: room.roomColor,
+                      border: '1px solid rgba(249,95,133,0.08)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+                    }}
+                  >
                     <RoomIcon size={24} strokeWidth={2.1} />
                   </div>
-                  <div className="showup-list-content">
-                    <p className="showup-list-name">{room.name}</p>
-                    <p className="showup-list-meta">
+                  <div className="showup-list-content" style={{ minWidth: 0, display: 'grid', gap: 6 }}>
+                    <p className="showup-list-name" style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 19, fontWeight: 700, color: '#25151f', lineHeight: 1.12 }}>{room.name}</p>
+                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 14, color: '#b29cab' }}>
                       {isJoined ? `${joined} members` : `${spotsLeft} spots`} · {joined} checked in today
                     </p>
                   </div>
-                  <div className="showup-list-action">
+                  <div className="showup-list-action" style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
                     <button
                       type="button"
-                      className={`showup-join-pill ${isJoined ? 'is-joined' : ''}`}
                       onClick={() => handleJoinRoom(room.name)}
+                      style={{
+                        minHeight: 42,
+                        borderRadius: 999,
+                        minWidth: isJoined ? 96 : 104,
+                        padding: isJoined ? '0 10px' : '0 18px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 13,
+                        fontWeight: 800,
+                        border: isJoined ? '1px solid rgba(233,224,229,0.95)' : 'none',
+                        background: isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)',
+                        color: isJoined ? '#9a7088' : '#f45f92',
+                        fontFamily: "'DM Sans',sans-serif",
+                        cursor: 'pointer',
+                      }}
                     >
                       {isJoined ? (
-                        <span className="showup-list-state">
-                          <Check size={14} strokeWidth={2.5} />
+                        <span className="showup-list-state" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <Check size={14} strokeWidth={2.5} color="#b5adb2" />
                           <span>Joined</span>
                         </span>
                       ) : (
                         <span>Join</span>
                       )}
                     </button>
-                    <ChevronRight size={16} strokeWidth={2.3} className="showup-list-arrow" />
+                    <ChevronRight size={16} strokeWidth={2.3} color="#c89aab" />
                   </div>
                 </div>
               )
