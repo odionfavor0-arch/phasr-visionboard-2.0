@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
+import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
@@ -13,13 +15,190 @@ const SHOW_UP_STYLES = `
   width:100%;
   max-width:390px;
   margin:0 auto;
-  padding:12px 12px 104px;
+  padding:14px 12px 110px;
   box-sizing:border-box;
+}
+.showup-list-header{
+  display:grid;
+  gap:6px;
+  padding:6px 2px 12px;
+}
+.showup-list-kicker{
+  margin:0;
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#f95f85;
+  font-weight:800;
+}
+.showup-list-title{
+  margin:0;
+  font-size:14px;
+  line-height:1.4;
+  color:#9a7088;
+  font-weight:500;
+}
+.showup-list-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.showup-list-card,
+.showup-create-form,
+.showup-gate-card,
+.showup-member-card,
+.showup-compose-card,
+.showup-feed-card,
+.showup-rank-row,
+.showup-empty,
+.showup-comment-bubble{
+  background:transparent;
+  border:1px solid rgba(249,95,133,0.25);
+  border-radius:16px;
+}
+.showup-list-card{
+  min-height:164px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.showup-list-name{
+  margin:0;
+  font-family:'Syne',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  color:#4d3142;
+  line-height:1.3;
+}
+.showup-list-description{
+  margin:0;
+  font-size:12px;
+  line-height:1.55;
+  color:#9a7088;
+  flex:1;
+}
+.showup-list-meta{
+  margin:0;
+  font-size:11px;
+  color:#9a7088;
+}
+.showup-create-btn,
+.showup-join-btn,
+.showup-gate-btn,
+.showup-header-btn,
+.showup-live-pill,
+.showup-tab,
+.showup-done-btn,
+.showup-bell-btn,
+.showup-photo-btn,
+.showup-post-btn,
+.showup-comment-send,
+.showup-comment-toggle,
+.showup-reaction-chip,
+.showup-template-btn,
+.showup-sheet-send,
+.showup-sheet-cancel{
+  border:1px solid rgba(249,95,133,0.25);
+  background:transparent;
+  transition:all .24s ease;
+  font-family:'DM Sans',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+.showup-create-btn,
+.showup-join-btn,
+.showup-gate-btn,
+.showup-post-btn,
+.showup-sheet-send,
+.showup-tab.is-active,
+.showup-checkin-btn{
+  border:none;
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+}
+.showup-create-btn{
+  width:100%;
+  min-height:46px;
+  border-radius:14px;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+  margin-bottom:12px;
+}
+.showup-create-form,
+.showup-gate-card{
+  padding:14px;
+  display:grid;
+  gap:10px;
+  margin-bottom:12px;
+}
+.showup-field{
+  display:grid;
+  gap:6px;
+}
+.showup-field-label{
+  font-size:12px;
+  color:#9a7088;
+  font-weight:700;
+}
+.showup-input,
+.showup-select,
+.showup-compose-input,
+.showup-comment-input,
+.showup-sheet-textarea{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(249,95,133,0.25);
+  background:transparent;
+  border-radius:12px;
+  padding:12px 13px;
+  outline:none;
+  color:#4d3142;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+}
+.showup-join-footer{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:8px;
+}
+.showup-join-btn{
+  min-height:34px;
+  border-radius:999px;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.showup-gate-title{
+  margin:0;
+  font-size:16px;
+  font-weight:700;
+  color:#4d3142;
+}
+.showup-gate-copy{
+  margin:0;
+  font-size:12px;
+  line-height:1.6;
+  color:#9a7088;
+}
+.showup-gate-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.showup-gate-btn{
+  min-height:42px;
+  border-radius:12px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:700;
 }
 .showup-sticky-header{
   position:sticky;
   top:0;
-  z-index:12;
+  z-index:14;
   background:#fff8f9;
   padding-bottom:10px;
 }
@@ -29,25 +208,6 @@ const SHOW_UP_STYLES = `
   align-items:center;
   gap:10px;
   padding-bottom:12px;
-}
-.showup-header-btn,
-.showup-live-pill,
-.showup-tab,
-.showup-ghost-btn,
-.showup-template-btn,
-.showup-comment-send,
-.showup-comment-toggle,
-.showup-reaction-chip,
-.showup-sheet-cancel,
-.showup-bell-btn,
-.showup-photo-btn,
-.showup-post-btn,
-.showup-sheet-send{
-  border:1px solid rgba(249,95,133,0.25);
-  background:transparent;
-  -webkit-tap-highlight-color:transparent;
-  transition:all .24s ease;
-  font-family:'DM Sans',sans-serif;
 }
 .showup-header-btn{
   width:44px;
@@ -86,8 +246,8 @@ const SHOW_UP_STYLES = `
   animation:showup-blink 1.1s infinite;
 }
 @keyframes showup-blink{
-  0%,100%{ opacity:1; transform:scale(1); }
-  50%{ opacity:.35; transform:scale(.88); }
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:.35;transform:scale(.88)}
 }
 .showup-cta{
   display:grid;
@@ -95,9 +255,7 @@ const SHOW_UP_STYLES = `
   gap:10px;
   margin-bottom:12px;
 }
-.showup-cta.is-hidden{
-  display:none;
-}
+.showup-cta.is-hidden{display:none}
 .showup-checkin-btn,
 .showup-done-btn{
   min-height:48px;
@@ -105,11 +263,6 @@ const SHOW_UP_STYLES = `
   font-size:14px;
   font-weight:700;
   cursor:pointer;
-}
-.showup-checkin-btn{
-  border:none;
-  background:linear-gradient(135deg,#f95f85,#ff8ca8);
-  color:#fff;
 }
 .showup-done-btn{
   color:#f95f85;
@@ -138,42 +291,23 @@ const SHOW_UP_STYLES = `
   font-size:13px;
   font-weight:700;
   line-height:1.4;
-  transition:opacity .25s ease, transform .25s ease;
+  transition:opacity .24s ease,transform .24s ease;
 }
-.showup-banner.is-fading{
-  opacity:.15;
-  transform:translateY(4px);
-}
-.showup-banner.is-hidden{
-  display:none;
-}
-.showup-tab-view{
-  display:grid;
-  gap:12px;
-}
+.showup-banner.is-fading{opacity:.15;transform:translateY(4px)}
+.showup-banner.is-hidden{display:none}
 .showup-member-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:12px;
 }
-.showup-member-card,
-.showup-compose-card,
-.showup-feed-card,
-.showup-rank-row,
-.showup-empty,
-.showup-comment-bubble{
-  background:transparent;
-  border:1px solid rgba(249,95,133,0.25);
-  border-radius:16px;
-}
 .showup-member-card{
   position:relative;
+  min-height:158px;
   padding:14px 12px 12px;
   display:flex;
   flex-direction:column;
   align-items:center;
   gap:8px;
-  min-height:158px;
 }
 .showup-member-dot{
   position:absolute;
@@ -183,9 +317,9 @@ const SHOW_UP_STYLES = `
   height:10px;
   border-radius:50%;
 }
-.showup-member-dot.is-active{ background:#2fb66d; }
-.showup-member-dot.is-done{ background:#f95f85; }
-.showup-member-dot.is-idle{ background:#c9b2be; }
+.showup-member-dot.is-active{background:#2fb66d}
+.showup-member-dot.is-done{background:#f95f85}
+.showup-member-dot.is-idle{background:#c9b2be}
 .showup-avatar{
   width:52px;
   height:52px;
@@ -211,9 +345,9 @@ const SHOW_UP_STYLES = `
   font-size:12px;
   text-align:center;
 }
-.showup-member-status.is-active{ color:#2fb66d; }
-.showup-member-status.is-done{ color:#f95f85; }
-.showup-member-status.is-idle{ color:#9a7088; }
+.showup-member-status.is-active{color:#2fb66d}
+.showup-member-status.is-done{color:#f95f85}
+.showup-member-status.is-idle{color:#9a7088}
 .showup-bell-btn{
   width:30px;
   height:30px;
@@ -244,28 +378,10 @@ const SHOW_UP_STYLES = `
   gap:10px;
 }
 .showup-compose-input,
-.showup-comment-input,
-.showup-sheet-textarea{
-  width:100%;
-  border:1px solid rgba(249,95,133,0.25);
-  border-radius:14px;
-  background:transparent;
-  outline:none;
-  box-sizing:border-box;
-  font-family:'DM Sans',sans-serif;
-  color:#4d3142;
-}
-.showup-compose-input,
-.showup-comment-input{
-  min-height:44px;
-  padding:12px 14px;
-  font-size:13px;
-}
+.showup-comment-input{min-height:44px}
 .showup-sheet-textarea{
   min-height:96px;
-  padding:12px 14px;
   resize:vertical;
-  font-size:13px;
 }
 .showup-compose-actions,
 .showup-feed-actions{
@@ -287,20 +403,11 @@ const SHOW_UP_STYLES = `
   font-weight:700;
   cursor:pointer;
 }
-.showup-post-btn,
-.showup-sheet-send,
-.showup-tab.is-active{
-  border:none;
-  background:linear-gradient(135deg,#f95f85,#ff8ca8);
-  color:#fff;
-}
-.showup-feed-header{
-  justify-content:space-between;
-}
+.showup-feed-card.is-anonymous{border-style:dashed}
 .showup-feed-author{
   display:flex;
-  align-items:center;
   gap:10px;
+  align-items:center;
 }
 .showup-feed-name{
   margin:0;
@@ -328,9 +435,6 @@ const SHOW_UP_STYLES = `
   border-radius:14px;
   border:1px solid rgba(249,95,133,0.25);
   margin-top:12px;
-}
-.showup-feed-card.is-anonymous{
-  border-style:dashed;
 }
 .showup-feed-reactions{
   display:flex;
@@ -385,9 +489,6 @@ const SHOW_UP_STYLES = `
   display:flex;
   gap:8px;
 }
-.showup-ranks-view{
-  padding-bottom:4px;
-}
 .showup-rank-row{
   display:grid;
   grid-template-columns:34px 42px 1fr auto auto;
@@ -419,29 +520,15 @@ const SHOW_UP_STYLES = `
   padding:6px 10px;
   font-size:11px;
   font-weight:700;
-  white-space:nowrap;
   color:#9a7088;
+  white-space:nowrap;
 }
-.showup-rank-row.is-leader{
-  border-color:rgba(231,186,73,.55);
-}
-.showup-rank-row.is-rising{
-  border-color:rgba(189,189,195,.65);
-}
-.showup-rank-row.is-building{
-  border-color:rgba(249,95,133,.4);
-}
-.showup-rank-row.is-leader .showup-rank-badge{
-  color:#b68500;
-  border-color:rgba(231,186,73,.55);
-}
-.showup-rank-row.is-rising .showup-rank-badge{
-  color:#7d7d89;
-  border-color:rgba(189,189,195,.65);
-}
-.showup-rank-row.is-building .showup-rank-badge{
-  color:#f95f85;
-}
+.showup-rank-row.is-leader{border-color:rgba(231,186,73,.55)}
+.showup-rank-row.is-rising{border-color:rgba(189,189,195,.65)}
+.showup-rank-row.is-building{border-color:rgba(249,95,133,.4)}
+.showup-rank-row.is-leader .showup-rank-badge{border-color:rgba(231,186,73,.55);color:#b68500}
+.showup-rank-row.is-rising .showup-rank-badge{border-color:rgba(189,189,195,.65);color:#7d7d89}
+.showup-rank-row.is-building .showup-rank-badge{color:#f95f85}
 .showup-tabs{
   position:fixed;
   left:50%;
@@ -530,41 +617,28 @@ const SHOW_UP_STYLES = `
   font-size:12px;
   color:#9a7088;
 }
-.showup-anon input{
-  accent-color:#f95f85;
-}
+.showup-anon input{accent-color:#f95f85}
 .showup-sheet-actions{
   display:grid;
   gap:8px;
 }
-.showup-sheet-cancel{
-  color:#9a7088;
-}
-.showup-hidden-input{
-  display:none;
-}
+.showup-sheet-cancel{color:#9a7088}
+.showup-hidden-input{display:none}
 .showup-empty{
   text-align:center;
   color:#9a7088;
   font-size:13px;
   line-height:1.6;
 }
-@media (min-width: 768px){
-  .showup-shell,
-  .showup-tabs,
-  .showup-sheet{
-    max-width:390px;
-  }
-}
 `
 
 const ROOM_DEFINITIONS = [
-  { name: 'Health & Fitness', match: ['health', 'fitness'] },
-  { name: 'Career & Business', match: ['career', 'business'] },
-  { name: 'Wealth', match: ['wealth', 'finance', 'money'] },
-  { name: 'Relationships', match: ['relationship', 'love', 'family', 'community'] },
-  { name: 'Inner Life', match: ['inner life', 'spiritual', 'mindfulness', 'mental'] },
-  { name: 'Personal Growth', match: ['personal growth', 'learning', 'growth'] },
+  { id: 'health-fitness', name: 'Health & Fitness', description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
+  { id: 'career-business', name: 'Career & Business', description: 'Job, entrepreneurship, income streams', roomColor: '#7a58b0' },
+  { id: 'wealth', name: 'Wealth', description: 'Savings, investing, debt, financial freedom', roomColor: '#d4773a' },
+  { id: 'relationships', name: 'Relationships', description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
+  { id: 'inner-life', name: 'Inner Life', description: 'Spirituality, religion, mindfulness, mental health', roomColor: '#4a7fc1' },
+  { id: 'personal-growth', name: 'Personal Growth', description: 'Learning, creativity, self-development', roomColor: '#5e8f64' },
 ]
 
 const TEMPLATE_MESSAGES = [
@@ -580,6 +654,8 @@ const REACTION_KEYS = [
   { key: 'power', emoji: '💪' },
   { key: 'love', emoji: '❤️' },
 ]
+
+const MAX_ROOM_SIZE = 12
 
 function safeRead(key, fallback) {
   try {
@@ -636,38 +712,37 @@ function buildInitials(name) {
 }
 
 function getActiveBoard() {
-  const scoped = localStorage.getItem('phasr_vb')
-  if (scoped) {
-    try { return JSON.parse(scoped) } catch {}
+  const direct = localStorage.getItem('phasr_vb')
+  if (direct) {
+    try { return JSON.parse(direct) } catch {}
   }
   const activeUser = localStorage.getItem('phasr_active_user') || ''
   if (activeUser) {
     try {
-      const raw = localStorage.getItem(`phasr_vb:${activeUser}`)
-      if (raw) return JSON.parse(raw)
+      const scoped = localStorage.getItem(`phasr_vb:${activeUser}`)
+      if (scoped) return JSON.parse(scoped)
     } catch {}
   }
   return null
 }
 
-function detectRoomNameFromBoard() {
+function detectSuggestedRoom() {
   const board = getActiveBoard()
   const phases = Array.isArray(board?.phases) ? board.phases : []
-  const activePhase =
-    phases.find(phase => phase?.id === board?.activePhaseId) ||
+  const phase =
+    phases.find(item => item?.id === board?.activePhaseId) ||
     phases[board?.activePhaseIndex || 0] ||
     phases[0] ||
     null
-  const pillarName = String(activePhase?.pillars?.[0]?.name || '').trim()
-  const normalized = normalize(pillarName)
-  const matched = ROOM_DEFINITIONS.find(room => room.match.some(term => normalized.includes(normalize(term))))
-  return matched?.name || 'Personal Growth'
+  const pillarText = normalize(phase?.pillars?.[0]?.name || '')
+  const matched = ROOM_DEFINITIONS.find(room => pillarText.includes(normalize(room.name)))
+  return matched?.name || ROOM_DEFINITIONS[0].name
 }
 
 function getCurrentStreakCount() {
   const raw = safeRead('phasr_streak', {})
-  const current = Number(raw?.current || 0)
-  return Number.isFinite(current) ? current : 0
+  const next = Number(raw?.current || 0)
+  return Number.isFinite(next) ? next : 0
 }
 
 function setLastCompletedToday() {
@@ -686,7 +761,11 @@ function getMockMemberStorageKey(roomName) {
   return `phasr_showup_mock_members_${normalize(roomName)}`
 }
 
-function getUserProfile(user, authUser) {
+function getCreatedRoomsKey() {
+  return 'phasr_showup_created_rooms'
+}
+
+function getProfile(user, authUser) {
   const displayName =
     authUser?.user_metadata?.full_name ||
     authUser?.email?.split('@')[0] ||
@@ -720,31 +799,58 @@ function getMemberStatus(member) {
 }
 
 export default function ShowUp({ user, onGoToDailyStreaks }) {
-  const [roomName] = useState(() => detectRoomNameFromBoard())
+  const [lockInState] = useState(() => loadLockInState())
+  const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
+  const [selectedRoom, setSelectedRoom] = useState(null)
   const [activeTab, setActiveTab] = useState('live')
   const [members, setMembers] = useState([])
-  const [feedPosts, setFeedPosts] = useState(() => safeRead(getFeedStorageKey(detectRoomNameFromBoard()), []))
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
+  const [roomCounts, setRoomCounts] = useState({})
   const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
   const [statusLine, setStatusLine] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [feedPosts, setFeedPosts] = useState([])
+  const [postDraft, setPostDraft] = useState('')
+  const [postImage, setPostImage] = useState('')
+  const [expandedComments, setExpandedComments] = useState({})
+  const [commentDrafts, setCommentDrafts] = useState({})
   const [bannerIndex, setBannerIndex] = useState(0)
   const [bannerFading, setBannerFading] = useState(false)
   const [sheetState, setSheetState] = useState({ open: false, member: null })
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [notifyText, setNotifyText] = useState('')
   const [notifyAnonymous, setNotifyAnonymous] = useState(false)
-  const [postDraft, setPostDraft] = useState('')
-  const [postImage, setPostImage] = useState('')
-  const [expandedComments, setExpandedComments] = useState({})
-  const [commentDrafts, setCommentDrafts] = useState({})
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showGate, setShowGate] = useState(false)
+  const [createRoomName, setCreateRoomName] = useState('')
+  const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
   const fileInputRef = useRef(null)
 
+  const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
+  const daysStreak = Math.max(0, Number(summary.currentStreak || 0))
+  const customRooms = useMemo(() => safeRead(getCreatedRoomsKey(), []), [showCreateForm, selectedRoom])
+  const rooms = useMemo(() => {
+    const mappedCustom = Array.isArray(customRooms)
+      ? customRooms.map(room => ({
+        id: room.id,
+        name: room.name,
+        description: room.description || 'Custom accountability room',
+        roomColor: room.roomColor || '#f95f85',
+      }))
+      : []
+    return [...ROOM_DEFINITIONS, ...mappedCustom]
+  }, [customRooms])
+
   useEffect(() => {
-    safeWrite(getFeedStorageKey(roomName), feedPosts)
-  }, [feedPosts, roomName])
+    if (!selectedRoom) return
+    setFeedPosts(safeRead(getFeedStorageKey(selectedRoom), []))
+  }, [selectedRoom])
+
+  useEffect(() => {
+    if (!selectedRoom) return
+    safeWrite(getFeedStorageKey(selectedRoom), feedPosts)
+  }, [feedPosts, selectedRoom])
 
   useEffect(() => {
     let alive = true
@@ -753,16 +859,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       setLoading(true)
       try {
         const authResult = supabase ? await supabase.auth.getUser() : { data: { user: null } }
-        const nextProfile = getUserProfile(user, authResult?.data?.user)
+        const nextProfile = getProfile(user, authResult?.data?.user)
         if (!alive) return
         setProfile(nextProfile)
-        await loadMembers(nextProfile)
+        await loadRoomCounts(nextProfile)
+        if (selectedRoom) await loadMembers(selectedRoom, nextProfile)
       } catch (nextError) {
         console.error('Show Up bootstrap failed', nextError)
         if (alive) {
-          setProfile(getUserProfile(user, null))
-          loadMembersFromLocal(getUserProfile(user, null))
-          setError('')
+          const fallbackProfile = getProfile(user, null)
+          setProfile(fallbackProfile)
+          loadRoomCountsFromLocal(fallbackProfile)
+          if (selectedRoom) loadMembersFromLocal(selectedRoom, fallbackProfile)
         }
       } finally {
         if (alive) setLoading(false)
@@ -773,30 +881,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     return () => {
       alive = false
     }
-  }, [roomName, user])
+  }, [selectedRoom, user])
 
   useEffect(() => {
-    if (!supabase || !roomName) return undefined
+    if (!supabase) return undefined
 
     const channel = supabase
-      .channel(`show-up-${normalize(roomName)}`)
+      .channel('show-up-room-counts')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'show_up_checkins',
-        filter: `room_name=eq.${roomName}`,
       }, () => {
-        loadMembers(profile)
+        loadRoomCounts(profile)
+        if (selectedRoom) loadMembers(selectedRoom, profile)
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [profile, roomName])
+  }, [profile, selectedRoom])
 
   useEffect(() => {
-    if (activeTab !== 'live') return undefined
+    if (!selectedRoom || activeTab !== 'live') return undefined
 
     const interval = window.setInterval(() => {
       setBannerFading(true)
@@ -807,12 +915,48 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }, 3000)
 
     return () => window.clearInterval(interval)
-  }, [activeTab])
+  }, [activeTab, selectedRoom])
 
-  async function loadMembers(nextProfile = profile) {
+  async function loadRoomCounts(nextProfile = profile) {
     const today = getTodayKey()
     if (!supabase) {
-      loadMembersFromLocal(nextProfile)
+      loadRoomCountsFromLocal(nextProfile)
+      return
+    }
+
+    try {
+      const { data, error: countsError } = await supabase
+        .from('show_up_checkins')
+        .select('room_name')
+        .gte('created_at', `${today}T00:00:00`)
+
+      if (countsError) throw countsError
+
+      const counts = {}
+      ;(data || []).forEach(row => {
+        counts[row.room_name] = (counts[row.room_name] || 0) + 1
+      })
+      setRoomCounts(counts)
+    } catch (nextError) {
+      console.error('Show Up room counts failed', nextError)
+      loadRoomCountsFromLocal(nextProfile)
+    }
+  }
+
+  function loadRoomCountsFromLocal(nextProfile = profile) {
+    const counts = {}
+    rooms.forEach(room => {
+      const stored = safeRead(getMockMemberStorageKey(room.name), [])
+      const nextMembers = Array.isArray(stored) && stored.length ? stored : [buildMockMember(nextProfile, room.name)]
+      counts[room.name] = nextMembers.length
+    })
+    setRoomCounts(counts)
+  }
+
+  async function loadMembers(roomName, nextProfile = profile) {
+    const today = getTodayKey()
+    if (!supabase) {
+      loadMembersFromLocal(roomName, nextProfile)
       return
     }
 
@@ -836,30 +980,16 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       }
 
       setMembers(nextMembers)
-
-      const myMember = nextMembers.find(member => member.user_id === nextProfile.id)
-      const nextCheckedIn = Boolean(myMember?.checked_in)
-      const nextTaskDone = Boolean(myMember?.task_done)
-      setCheckedIn(nextCheckedIn)
-      setTaskDone(nextTaskDone)
-      setStatusLine(
-        nextTaskDone
-          ? `Done ✓ — marked at ${formatTime(myMember?.check_in_time)}`
-          : nextCheckedIn
-            ? `Checked in at ${formatTime(myMember?.check_in_time)}`
-            : ''
-      )
+      hydrateCurrentMember(nextMembers, nextProfile)
     } catch (nextError) {
-      console.error('Show Up member load failed', nextError)
-      loadMembersFromLocal(nextProfile)
+      console.error('Show Up members failed', nextError)
+      loadMembersFromLocal(roomName, nextProfile)
     }
   }
 
-  function loadMembersFromLocal(nextProfile = profile) {
+  function loadMembersFromLocal(roomName, nextProfile = profile) {
     const stored = safeRead(getMockMemberStorageKey(roomName), [])
-    const nextMembers = Array.isArray(stored) && stored.length
-      ? stored
-      : [buildMockMember(nextProfile, roomName)]
+    const nextMembers = Array.isArray(stored) && stored.length ? stored : [buildMockMember(nextProfile, roomName)]
     if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
       nextMembers.unshift(buildMockMember(nextProfile, roomName))
     }
@@ -869,7 +999,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }))
     safeWrite(getMockMemberStorageKey(roomName), withStreaks)
     setMembers(withStreaks)
-    const myMember = withStreaks.find(member => member.user_id === nextProfile.id)
+    hydrateCurrentMember(withStreaks, nextProfile)
+  }
+
+  function hydrateCurrentMember(nextMembers, nextProfile = profile) {
+    const myMember = nextMembers.find(member => member.user_id === nextProfile.id)
     const nextCheckedIn = Boolean(myMember?.checked_in)
     const nextTaskDone = Boolean(myMember?.task_done)
     setCheckedIn(nextCheckedIn)
@@ -883,20 +1017,50 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     )
   }
 
-  function upsertLocalMember(patch) {
+  function upsertLocalMember(roomName, patch) {
     const current = safeRead(getMockMemberStorageKey(roomName), [])
     const next = [...current]
     const index = next.findIndex(member => member.user_id === patch.user_id)
     if (index >= 0) next[index] = { ...next[index], ...patch }
     else next.unshift({ ...buildMockMember(profile, roomName), ...patch })
     safeWrite(getMockMemberStorageKey(roomName), next)
-    loadMembersFromLocal(profile)
+    loadMembersFromLocal(roomName, profile)
+    loadRoomCountsFromLocal(profile)
+  }
+
+  async function ensureRoomMembership(roomName) {
+    const payload = {
+      room_name: roomName,
+      user_id: profile.id,
+      display_name: profile.name,
+      initials: profile.initials,
+      checked_in: false,
+      task_done: false,
+      streak_count: getCurrentStreakCount(),
+    }
+
+    try {
+      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
+      await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
+    } catch (nextError) {
+      console.error('Show Up membership fallback', nextError)
+      upsertLocalMember(roomName, payload)
+    }
+  }
+
+  async function handleJoinRoom(roomName) {
+    setLoading(true)
+    await ensureRoomMembership(roomName)
+    setSelectedRoom(roomName)
+    setActiveTab('live')
+    setLoading(false)
   }
 
   async function handleCheckIn() {
+    if (!selectedRoom) return
     const nowIso = new Date().toISOString()
     const payload = {
-      room_name: roomName,
+      room_name: selectedRoom,
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
@@ -907,36 +1071,34 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
 
     try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase is unavailable.')
+      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
     } catch (nextError) {
       console.error('Show Up check-in failed', nextError)
-      upsertLocalMember(payload)
+      upsertLocalMember(selectedRoom, payload)
     }
 
     setCheckedIn(true)
     setTaskDone(false)
     setStatusLine(`Checked in at ${formatTime(nowIso)}`)
-    loadMembers({
-      ...profile,
-      initials: profile.initials,
-    })
+    loadMembers(selectedRoom, profile)
   }
 
   async function handleMarkDone() {
+    if (!selectedRoom) return
     const nowIso = new Date().toISOString()
 
     try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase is unavailable.')
+      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       await supabase
         .from('show_up_checkins')
-        .update({ task_done: true, checked_in: true, check_in_time: nowIso })
-        .eq('room_name', roomName)
+        .update({ checked_in: true, task_done: true, check_in_time: nowIso })
+        .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
     } catch (nextError) {
       console.error('Show Up mark done failed', nextError)
-      upsertLocalMember({
-        room_name: roomName,
+      upsertLocalMember(selectedRoom, {
+        room_name: selectedRoom,
         user_id: profile.id,
         display_name: profile.name,
         initials: profile.initials,
@@ -947,20 +1109,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       })
     }
 
+    setLastCompletedToday()
     setCheckedIn(true)
     setTaskDone(true)
-    setLastCompletedToday()
     setStatusLine(`Done ✓ — marked at ${formatTime(nowIso)}`)
-    loadMembers(profile)
+    loadMembers(selectedRoom, profile)
   }
 
   function handlePhotoPick(event) {
     const file = event.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => {
-      setPostImage(String(reader.result || ''))
-    }
+    reader.onload = () => setPostImage(String(reader.result || ''))
     reader.readAsDataURL(file)
   }
 
@@ -973,7 +1133,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!text && !postImage) return
     addFeedPost({
       id: uid(),
-      type: 'post',
       authorId: profile.id,
       authorName: profile.name,
       authorInitials: profile.initials,
@@ -1046,7 +1205,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!text || !sheetState.member) return
     addFeedPost({
       id: uid(),
-      type: 'nudge',
       authorId: notifyAnonymous ? `anon-${uid()}` : profile.id,
       authorName: notifyAnonymous ? 'Anonymous · Room' : profile.name,
       authorInitials: notifyAnonymous ? '👤' : profile.initials,
@@ -1056,12 +1214,42 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       createdAt: new Date().toISOString(),
       reactions: { fire: [], power: [], love: [] },
       comments: [],
-      targetName: sheetState.member.display_name,
     })
     setSheetState({ open: false, member: null })
     setSelectedTemplate('')
     setNotifyText('')
     setNotifyAnonymous(false)
+  }
+
+  function handleCreateRoomPress() {
+    const latestLevel = getStoredUserLevel() || calculateUserPoints()
+    if ((latestLevel?.level || 1) < 4) {
+      setShowGate(true)
+      setShowCreateForm(false)
+      return
+    }
+    setShowGate(false)
+    setShowCreateForm(current => !current)
+  }
+
+  function handleCreateRoomSubmit(event) {
+    event.preventDefault()
+    const room = createRoomName.trim()
+    if (!room) return
+    const focus = rooms.find(item => item.id === createFocusAreaId) || ROOM_DEFINITIONS[0]
+    const nextRooms = [
+      ...safeRead(getCreatedRoomsKey(), []),
+      {
+        id: uid(),
+        name: room,
+        description: focus.description,
+        roomColor: focus.roomColor,
+      },
+    ]
+    safeWrite(getCreatedRoomsKey(), nextRooms)
+    setCreateRoomName('')
+    setCreateFocusAreaId(ROOM_DEFINITIONS[0].id)
+    setShowCreateForm(false)
   }
 
   const activeCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'active').length, [members])
@@ -1070,14 +1258,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     () => members.reduce((max, member) => Math.max(max, member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0)), 0),
     [members, profile.id],
   )
-
   const bannerMessages = useMemo(() => ([
     'Your streak is at risk — mark done before midnight 🔥',
     `${members.length} people in this room today`,
     `Room streak: ${roomStreakDays} days strong 💪`,
     `${completedCount} members completed today ✓`,
   ]), [completedCount, members.length, roomStreakDays])
-
+  const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
   const rankedMembers = useMemo(() => {
     return [...members]
       .map(member => ({
@@ -1087,9 +1274,72 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       .sort((a, b) => b.streakValue - a.streakValue || String(a.display_name || '').localeCompare(String(b.display_name || '')))
   }, [members, profile.id])
 
-  const visiblePosts = useMemo(() => {
-    return [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [feedPosts])
+  if (!selectedRoom) {
+    return (
+      <div className="showup-root">
+        <style>{SHOW_UP_STYLES}</style>
+        <div className="showup-shell">
+          <div className="showup-list-header">
+            <p className="showup-list-kicker">Join Challenge</p>
+            <p className="showup-list-title">Pick your room. Show up daily.</p>
+          </div>
+
+          <button type="button" className="showup-create-btn" onClick={handleCreateRoomPress}>Create Room</button>
+
+          {showCreateForm ? (
+            <form className="showup-create-form" onSubmit={handleCreateRoomSubmit}>
+              <label className="showup-field">
+                <span className="showup-field-label">Room Name</span>
+                <input className="showup-input" value={createRoomName} onChange={event => setCreateRoomName(event.target.value)} placeholder="Enter room name" />
+              </label>
+              <label className="showup-field">
+                <span className="showup-field-label">Focus Area</span>
+                <select className="showup-select" value={createFocusAreaId} onChange={event => setCreateFocusAreaId(event.target.value)}>
+                  {ROOM_DEFINITIONS.map(room => (
+                    <option key={room.id} value={room.id}>{room.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit" className="showup-create-btn">Create</button>
+            </form>
+          ) : null}
+
+          {showGate ? (
+            <div className="showup-gate-card">
+              <p className="showup-gate-title">Keep going. Creating rooms unlocks at 90 days.</p>
+              <p className="showup-gate-copy">
+                You are {daysStreak} days in. The rooms you can join right now are where your people already are.
+              </p>
+              <div className="showup-gate-actions">
+                <button type="button" className="showup-gate-btn" onClick={() => onGoToDailyStreaks?.()}>Go to Daily Streaks</button>
+                <button type="button" className="showup-gate-btn" onClick={() => setShowGate(false)}>Close</button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="showup-list-grid">
+            {rooms.map(room => {
+              const joined = roomCounts[room.name] || 0
+              const spotsLeft = Math.max(0, MAX_ROOM_SIZE - joined)
+              return (
+                <div key={room.id} className="showup-list-card">
+                  <p className="showup-list-name" style={{ color: room.roomColor }}>{room.name}</p>
+                  <p className="showup-list-description">{room.description}</p>
+                  <div className="showup-join-footer">
+                    <div>
+                      <p className="showup-list-meta">{joined} checked in today</p>
+                      <p className="showup-list-meta">{spotsLeft} spots left</p>
+                    </div>
+                    <button type="button" className="showup-join-btn" onClick={() => handleJoinRoom(room.name)}>Join</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="showup-root">
@@ -1098,10 +1348,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       <div className="showup-shell">
         <div className="showup-sticky-header">
           <div className="showup-topbar">
-            <button type="button" className="showup-header-btn" onClick={() => onGoToDailyStreaks?.()}>
-              ←
-            </button>
-            <h1 className="showup-room-title">{roomName}</h1>
+            <button type="button" className="showup-header-btn" onClick={() => setSelectedRoom(null)}>←</button>
+            <h1 className="showup-room-title">{selectedRoom}</h1>
             <div className="showup-live-pill">
               <span className="showup-live-dot" />
               <span>{activeCount} active</span>
@@ -1133,28 +1381,26 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
 
         {activeTab === 'live' ? (
-          <div className="showup-tab-view">
-            <div className="showup-member-grid">
-              {members.map(member => {
-                const status = getMemberStatus(member)
-                const isSelf = member.user_id === profile.id
-                return (
-                  <div key={member.user_id} className="showup-member-card">
-                    <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
-                    <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
-                    <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                    <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'active' ? 'Active now' : status === 'done' ? 'Done ✓' : 'Not yet'}
-                    </p>
-                    {!isSelf ? (
-                      <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>🔔</button>
-                    ) : (
-                      <div className="showup-bell-btn" aria-hidden="true" />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+          <div className="showup-member-grid">
+            {members.map(member => {
+              const status = getMemberStatus(member)
+              const isSelf = member.user_id === profile.id
+              return (
+                <div key={member.user_id} className="showup-member-card">
+                  <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
+                  <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
+                  <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
+                  <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
+                    {status === 'active' ? 'Active now' : status === 'done' ? 'Done ✓' : 'Not yet'}
+                  </p>
+                  {!isSelf ? (
+                    <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>🔔</button>
+                  ) : (
+                    <div className="showup-bell-btn" aria-hidden="true" />
+                  )}
+                </div>
+              )
+            })}
           </div>
         ) : null}
 
@@ -1164,13 +1410,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>
                 <input
+                  className="showup-compose-input"
                   value={postDraft}
                   onChange={event => setPostDraft(event.target.value)}
-                  className="showup-compose-input"
                   placeholder="Share what you are working on..."
                 />
               </div>
-              {postImage ? <img src={postImage} alt="Post preview" className="showup-feed-image" /> : null}
+              {postImage ? <img className="showup-feed-image" src={postImage} alt="Upload preview" /> : null}
               <div className="showup-compose-actions">
                 <button type="button" className="showup-photo-btn" onClick={() => fileInputRef.current?.click()}>Photo</button>
                 <button type="button" className="showup-post-btn" onClick={handleCreatePost}>Post</button>
@@ -1179,7 +1425,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
 
             {visiblePosts.length === 0 ? (
-              <div className="showup-empty">No posts yet. Share what you are working on to get the room moving.</div>
+              <div className="showup-empty">No posts yet. Share what you are working on…</div>
             ) : (
               visiblePosts.map(post => (
                 <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
@@ -1193,7 +1439,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     </div>
                   </div>
                   <p className="showup-feed-text">{post.text}</p>
-                  {post.image ? <img src={post.image} alt="Feed upload" className="showup-feed-image" /> : null}
+                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" /> : null}
                   <div className="showup-feed-reactions">
                     <div className="showup-feed-chip-row">
                       {REACTION_KEYS.map(reaction => {
@@ -1232,9 +1478,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       ))}
                       <div className="showup-comment-compose">
                         <input
+                          className="showup-comment-input"
                           value={commentDrafts[post.id] || ''}
                           onChange={event => setCommentDrafts(current => ({ ...current, [post.id]: event.target.value }))}
-                          className="showup-comment-input"
                           placeholder="Add a comment..."
                         />
                         <button type="button" className="showup-comment-send" onClick={() => handleAddComment(post.id)}>Send</button>
@@ -1254,7 +1500,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 index === 0 ? '👑 Leader'
                   : index === 1 ? '🥈 Rising'
                     : index === 2 ? '🥉 Building'
-                      : (member.streakValue > 0 ? 'Starting' : 'Not yet')
+                      : member.streakValue > 0 ? 'Starting' : 'Not yet'
               const rowClass =
                 index === 0 ? 'is-leader'
                   : index === 1 ? 'is-rising'
@@ -1277,22 +1523,24 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ) : null}
       </div>
 
-      <div className="showup-tabs">
-        {[
-          { key: 'live', label: 'Live' },
-          { key: 'feed', label: 'Feed' },
-          { key: 'ranks', label: 'Ranks' },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`showup-tab ${activeTab === tab.key ? 'is-active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {selectedRoom ? (
+        <div className="showup-tabs">
+          {[
+            { key: 'live', label: 'Live' },
+            { key: 'feed', label: 'Feed' },
+            { key: 'ranks', label: 'Ranks' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`showup-tab ${activeTab === tab.key ? 'is-active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {sheetState.open && sheetState.member ? (
         <div className="showup-sheet-backdrop" onClick={() => setSheetState({ open: false, member: null })}>
@@ -1312,17 +1560,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
             <div className="showup-sheet-divider">or write your own</div>
             <textarea
+              className="showup-sheet-textarea"
               value={notifyText}
               onChange={event => setNotifyText(event.target.value)}
-              className="showup-sheet-textarea"
               placeholder="Write your message..."
             />
             <label className="showup-anon">
-              <input
-                type="checkbox"
-                checked={notifyAnonymous}
-                onChange={event => setNotifyAnonymous(event.target.checked)}
-              />
+              <input type="checkbox" checked={notifyAnonymous} onChange={event => setNotifyAnonymous(event.target.checked)} />
               <span>Send anonymously — shows in feed without your name</span>
             </label>
             <div className="showup-sheet-actions">
