@@ -71,7 +71,11 @@ function safeRead(key, fallback) {
     if (scopedValue) return JSON.parse(scopedValue)
     const legacyValue = localStorage.getItem(key)
     if (legacyValue) {
-      localStorage.setItem(scopedKey, legacyValue)
+      try {
+        localStorage.setItem(scopedKey, legacyValue)
+      } catch {
+        // Skip legacy migration if storage is full. The app can still read the legacy value.
+      }
       return JSON.parse(legacyValue)
     }
     return fallback
@@ -81,7 +85,12 @@ function safeRead(key, fallback) {
 }
 
 function safeWrite(key, value) {
-  localStorage.setItem(getScopedKey(key), JSON.stringify(value))
+  try {
+    localStorage.setItem(getScopedKey(key), JSON.stringify(value))
+  } catch {
+    // Weekly goals and other derived caches can be rebuilt, so storage pressure
+    // should not crash the app.
+  }
 }
 
 function appendLog(key, entry) {

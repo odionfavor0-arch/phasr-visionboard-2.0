@@ -19,7 +19,11 @@ function safeRead(key, fallback) {
     if (scopedValue) return JSON.parse(scopedValue)
     const legacyValue = localStorage.getItem(key)
     if (legacyValue) {
-      localStorage.setItem(scopedKey, legacyValue)
+      try {
+        localStorage.setItem(scopedKey, legacyValue)
+      } catch {
+        // If localStorage is full, keep using the legacy value without crashing.
+      }
       return JSON.parse(legacyValue)
     }
     return fallback
@@ -29,7 +33,11 @@ function safeRead(key, fallback) {
 }
 
 function safeWrite(key, value) {
-  localStorage.setItem(getScopedKey(key), JSON.stringify(value))
+  try {
+    localStorage.setItem(getScopedKey(key), JSON.stringify(value))
+  } catch {
+    // Derived Sage caches should never take the whole app down when storage is full.
+  }
 }
 
 function parseDate(value) {
