@@ -813,6 +813,10 @@ function detectSuggestedRoom() {
   return matched?.name || ROOM_DEFINITIONS[0].name
 }
 
+function detectRoomNameFromBoard() {
+  return detectSuggestedRoom()
+}
+
 function getCurrentStreakCount() {
   const raw = safeRead('phasr_streak', {})
   const next = Number(raw?.current || 0)
