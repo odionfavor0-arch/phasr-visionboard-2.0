@@ -915,7 +915,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       : []
     return [...ROOM_DEFINITIONS, ...mappedCustom]
   }, [customRooms])
-  const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
+  const preferredRoomName = useMemo(() => detectSuggestedRoom(), [])
   const joinedRoomNames = useMemo(() => {
     const joined = new Set()
     if (preferredRoomName) joined.add(preferredRoomName)
