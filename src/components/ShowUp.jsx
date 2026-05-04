@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, HeartHandshake, Plus, Sparkles, Sprout } from 'lucide-react'
+import { Bell, BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, HeartHandshake, Plus, Sparkles, Sprout } from 'lucide-react'
 import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
@@ -7,7 +7,7 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 const SHOW_UP_STYLES = `
 .showup-root{
   min-height:calc(100vh - 56px);
-  background:linear-gradient(180deg,#2a2328 0%,#1f1a1d 100%);
+  background:var(--bg, #fff8f9);
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
   -webkit-tap-highlight-color:transparent;
@@ -31,7 +31,7 @@ const SHOW_UP_STYLES = `
   font-size:12px;
   letter-spacing:.22em;
   text-transform:uppercase;
-  color:rgba(255,255,255,0.72);
+  color:#b98097;
   font-weight:600;
 }
 .showup-create-link{
@@ -49,36 +49,36 @@ const SHOW_UP_STYLES = `
 }
 .showup-list-panel{
   border:1px solid rgba(232,64,122,0.14);
-  border-radius:30px;
+  border-radius:16px;
   overflow:hidden;
   background:#fff;
-  box-shadow:0 18px 42px rgba(232,64,122,0.08);
+  box-shadow:none;
 }
 .showup-list-row{
   display:grid;
-  grid-template-columns:72px minmax(0,1fr) auto;
+  grid-template-columns:40px minmax(0,1fr) auto;
   align-items:center;
-  gap:14px;
-  padding:22px 18px;
-  min-height:116px;
+  gap:12px;
+  padding:12px 14px;
+  min-height:60px;
 }
 .showup-list-row + .showup-list-row{
   border-top:1px solid rgba(77,49,66,0.08);
 }
 .showup-list-icon{
-  width:68px;
-  height:68px;
-  border-radius:20px;
+  width:36px;
+  height:36px;
+  border-radius:10px;
   display:grid;
   place-items:center;
   color:#f95f85;
   border:1px solid rgba(249,95,133,0.08);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
+  box-shadow:none;
 }
 .showup-list-content{
   min-width:0;
   display:grid;
-  gap:6px;
+  gap:2px;
 }
 .showup-list-card,
 .showup-create-form,
@@ -96,31 +96,31 @@ const SHOW_UP_STYLES = `
 .showup-list-name{
   margin:0;
   font-family:'Syne',sans-serif;
-  font-size:20px;
+  font-size:14px;
   font-weight:700;
   color:#4d3142;
   line-height:1.15;
 }
 .showup-list-meta{
   margin:0;
-  font-size:14px;
+  font-size:11px;
   color:#b29cab;
 }
 .showup-list-action{
   display:flex;
   align-items:center;
-  gap:12px;
+  gap:8px;
   white-space:nowrap;
 }
 .showup-join-pill{
-  min-height:42px;
+  min-height:30px;
   border-radius:999px;
-  min-width:104px;
-  padding:0 18px;
+  min-width:auto;
+  padding:5px 14px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
+  font-size:12px;
   font-weight:800;
   border:1px solid rgba(249,95,133,0.14);
   background:rgba(249,95,133,0.16);
@@ -134,7 +134,7 @@ const SHOW_UP_STYLES = `
   border-color:transparent;
   color:#9a7088;
   min-width:auto;
-  padding:0;
+  padding:5px 0;
 }
 .showup-join-pill.is-joined svg{
   color:#b5adb2;
@@ -264,7 +264,7 @@ const SHOW_UP_STYLES = `
   position:sticky;
   top:0;
   z-index:14;
-  background:#fff8f9;
+  background:var(--bg, #fff8f9);
   padding-bottom:10px;
 }
 .showup-topbar{
@@ -342,45 +342,42 @@ const SHOW_UP_STYLES = `
   color:#f95f85;
   font-weight:700;
 }
-.showup-banner{
-  min-height:48px;
-  border-radius:14px;
-  background:#f95f85;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+.showup-live-meta{
+  margin:0 0 14px;
   text-align:center;
-  padding:12px 14px;
-  margin-bottom:14px;
-  font-size:13px;
-  font-weight:700;
-  line-height:1.4;
-  transition:opacity .24s ease,transform .24s ease;
+  font-size:12px;
+  color:#9a7088;
 }
-.showup-banner.is-fading{opacity:.15;transform:translateY(4px)}
-.showup-banner.is-hidden{display:none}
 .showup-member-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
+  display:block;
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:16px;
+  overflow:hidden;
+  background:var(--bg, #fff);
 }
 .showup-member-card{
   position:relative;
-  min-height:158px;
-  padding:14px 12px 12px;
-  display:flex;
-  flex-direction:column;
+  min-height:56px;
+  padding:9px 12px;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) auto;
   align-items:center;
-  gap:8px;
+  gap:10px;
+  background:var(--bg, #fff);
+  border:none;
+  border-radius:0;
+}
+.showup-member-card + .showup-member-card{
+  border-top:1px solid rgba(77,49,66,0.08);
 }
 .showup-member-dot{
   position:absolute;
-  top:12px;
-  right:12px;
+  right:-1px;
+  bottom:-1px;
   width:10px;
   height:10px;
   border-radius:50%;
+  border:2px solid #fff;
 }
 .showup-member-dot.is-active{background:#2fb66d}
 .showup-member-dot.is-done{background:#f95f85}
@@ -396,19 +393,21 @@ const SHOW_UP_STYLES = `
   font-size:15px;
   font-weight:700;
   color:#f95f85;
+  background:var(--bg, #fff);
+  position:relative;
 }
 .showup-member-name{
   margin:0;
   font-family:'Syne',sans-serif;
-  font-size:12px;
+  font-size:13px;
   font-weight:700;
-  text-align:center;
+  text-align:left;
   color:#4d3142;
 }
 .showup-member-status{
-  margin:0;
-  font-size:12px;
-  text-align:center;
+  margin:3px 0 0;
+  font-size:11px;
+  text-align:left;
 }
 .showup-member-status.is-active{color:#2fb66d}
 .showup-member-status.is-done{color:#f95f85}
@@ -421,19 +420,28 @@ const SHOW_UP_STYLES = `
   display:grid;
   place-items:center;
   cursor:pointer;
+  background:transparent;
 }
 .showup-feed-view,
 .showup-ranks-view{
   min-height:calc(100vh - 260px);
   display:grid;
-  gap:12px;
+  gap:0;
   align-content:start;
+  background:var(--bg, #fff8f9);
 }
 .showup-compose-card,
 .showup-feed-card,
 .showup-rank-row,
 .showup-empty{
   padding:14px;
+}
+.showup-compose-card{
+  padding:14px 0 14px;
+  border:none;
+  border-bottom:1px solid rgba(77,49,66,0.08);
+  border-radius:0;
+  background:transparent;
 }
 .showup-compose-top,
 .showup-feed-header,
@@ -444,6 +452,12 @@ const SHOW_UP_STYLES = `
 }
 .showup-compose-input,
 .showup-comment-input{min-height:44px}
+.showup-compose-input{
+  border:none;
+  border-radius:0;
+  padding:10px 0;
+  background:transparent;
+}
 .showup-sheet-textarea{
   min-height:96px;
   resize:vertical;
@@ -469,6 +483,13 @@ const SHOW_UP_STYLES = `
   cursor:pointer;
 }
 .showup-feed-card.is-anonymous{border-style:dashed}
+.showup-feed-card{
+  border:none;
+  border-top:1px solid rgba(77,49,66,0.08);
+  border-radius:0;
+  background:transparent;
+  padding:14px 0;
+}
 .showup-feed-author{
   display:flex;
   gap:10px;
@@ -694,6 +715,7 @@ const SHOW_UP_STYLES = `
   color:#9a7088;
   font-size:13px;
   line-height:1.6;
+  background:var(--bg, #fff8f9);
 }
 `
 
@@ -893,8 +915,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [postImage, setPostImage] = useState('')
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
-  const [bannerIndex, setBannerIndex] = useState(0)
-  const [bannerFading, setBannerFading] = useState(false)
   const [sheetState, setSheetState] = useState({ open: false, member: null })
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [notifyText, setNotifyText] = useState('')
@@ -992,20 +1012,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       supabase.removeChannel(channel)
     }
   }, [profile, selectedRoom])
-
-  useEffect(() => {
-    if (!selectedRoom || activeTab !== 'live') return undefined
-
-    const interval = window.setInterval(() => {
-      setBannerFading(true)
-      window.setTimeout(() => {
-        setBannerIndex(current => (current + 1) % 4)
-        setBannerFading(false)
-      }, 180)
-    }, 3000)
-
-    return () => window.clearInterval(interval)
-  }, [activeTab, selectedRoom])
 
   async function loadRoomCounts(nextProfile = profile) {
     const today = getTodayKey()
@@ -1344,16 +1350,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   const activeCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'active').length, [members])
   const completedCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'done').length, [members])
-  const roomStreakDays = useMemo(
-    () => members.reduce((max, member) => Math.max(max, member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0)), 0),
-    [members, profile.id],
-  )
-  const bannerMessages = useMemo(() => ([
-    'Your streak is at risk — mark done before midnight 🔥',
-    `${members.length} people in this room today`,
-    `Room streak: ${roomStreakDays} days strong 💪`,
-    `${completedCount} members completed today ✓`,
-  ]), [completedCount, members.length, roomStreakDays])
   const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
   const rankedMembers = useMemo(() => {
     return [...members]
@@ -1463,10 +1459,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             className="showup-list-panel"
             style={{
               border: '1px solid rgba(242,196,208,0.95)',
-              borderRadius: 30,
+              borderRadius: 16,
               overflow: 'hidden',
               background: '#fff',
-              boxShadow: '0 16px 42px rgba(244,95,146,0.08)',
+              boxShadow: 'none',
             }}
           >
             {rooms.map((room, index) => {
@@ -1480,49 +1476,50 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   className="showup-list-row"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '72px minmax(0,1fr) auto',
+                    gridTemplateColumns: '40px minmax(0,1fr) auto',
                     alignItems: 'center',
-                    gap: 14,
-                    padding: '22px 18px',
-                    minHeight: 112,
+                    gap: 12,
+                    padding: '12px 14px',
+                    minHeight: 60,
                     borderTop: index === 0 ? 'none' : '1px solid rgba(77,49,66,0.08)',
                   }}
                 >
                   <div
                     className="showup-list-icon"
                     style={{
-                      width: 68,
-                      height: 68,
-                      borderRadius: 20,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
                       display: 'grid',
                       placeItems: 'center',
                       background: `${room.roomColor}18`,
                       color: room.roomColor,
                       border: '1px solid rgba(249,95,133,0.08)',
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.6)',
+                      boxShadow: 'none',
                     }}
                   >
-                    <RoomIcon size={24} strokeWidth={2.1} />
+                    <RoomIcon size={18} strokeWidth={2.1} />
                   </div>
-                  <div className="showup-list-content" style={{ minWidth: 0, display: 'grid', gap: 6 }}>
-                    <p className="showup-list-name" style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 19, fontWeight: 700, color: '#25151f', lineHeight: 1.12 }}>{room.name}</p>
-                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 14, color: '#b29cab' }}>
-                      {isJoined ? `${joined} members` : `${spotsLeft} spots`} · {joined} checked in today
+                  <div className="showup-list-content" style={{ minWidth: 0, display: 'grid', gap: 2 }}>
+                    <p className="showup-list-name" style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 14, fontWeight: 700, color: '#25151f', lineHeight: 1.12 }}>{room.name}</p>
+                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b29cab' }}>
+                      {isJoined ? `${joined} members` : `${spotsLeft} spots`}
                     </p>
                   </div>
-                  <div className="showup-list-action" style={{ display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap' }}>
+                  <div className="showup-list-action" style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                     <button
                       type="button"
                       onClick={() => handleJoinRoom(room.name)}
+                      className={`showup-join-pill ${isJoined ? 'is-joined' : ''}`}
                       style={{
-                        minHeight: 42,
+                        minHeight: 30,
                         borderRadius: 999,
-                        minWidth: isJoined ? 96 : 104,
-                        padding: isJoined ? '0 10px' : '0 18px',
+                        minWidth: 'auto',
+                        padding: isJoined ? '5px 0' : '5px 14px',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: 800,
                         border: isJoined ? '1px solid rgba(233,224,229,0.95)' : 'none',
                         background: isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)',
@@ -1552,10 +1549,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   return (
-    <div className="showup-root">
+    <div className="showup-root" style={{ background: 'var(--bg, #fff8f9)' }}>
       <style>{SHOW_UP_STYLES}</style>
 
-      <div className="showup-shell">
+      <div className="showup-shell" style={{ background: 'var(--bg, #fff8f9)' }}>
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={() => setSelectedRoom(null)}>←</button>
@@ -1581,10 +1578,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           </div>
 
           <p className={`showup-status-line ${taskDone ? 'is-done' : ''}`}>{statusLine}</p>
-
-          <div className={`showup-banner ${bannerFading ? 'is-fading' : ''} ${activeTab !== 'live' ? 'is-hidden' : ''}`}>
-            {bannerMessages[bannerIndex]}
-          </div>
+          {activeTab === 'live' ? <p className="showup-live-meta">{members.length} in room · {completedCount} done today</p> : null}
         </div>
 
         {error ? <div className="showup-empty">{error}</div> : null}
@@ -1597,16 +1591,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               const isSelf = member.user_id === profile.id
               return (
                 <div key={member.user_id} className="showup-member-card">
-                  <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
-                  <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
-                  <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                  <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                    {status === 'active' ? 'Active now' : status === 'done' ? 'Done ✓' : 'Not yet'}
-                  </p>
+                  <div className="showup-avatar" style={{ width: 38, height: 38, fontSize: 13 }}>
+                    {member.initials || buildInitials(member.display_name)}
+                    <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
+                    <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
+                      {status === 'active' ? 'Active now' : status === 'done' ? 'Done today' : 'Not yet'}
+                    </p>
+                  </div>
                   {!isSelf ? (
-                    <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>🔔</button>
+                    <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
+                      <Bell size={15} strokeWidth={2.1} />
+                    </button>
                   ) : (
-                    <div className="showup-bell-btn" aria-hidden="true" />
+                    <div style={{ width: 30, height: 30 }} aria-hidden="true" />
                   )}
                 </div>
               )
