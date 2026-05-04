@@ -6,7 +6,9 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
 .showup-root{
-  min-height:calc(100vh - 56px);
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
   background:var(--bg, #fff8f9);
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
@@ -16,8 +18,11 @@ const SHOW_UP_STYLES = `
   width:100%;
   max-width:430px;
   margin:0 auto;
-  padding:16px 14px 110px;
+  padding:16px 14px 80px;
   box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  flex:1;
 }
 .showup-list-header{
   display:flex;
@@ -53,6 +58,7 @@ const SHOW_UP_STYLES = `
   overflow:hidden;
   background:#fff;
   box-shadow:none;
+  flex:1;
 }
 .showup-list-row{
   display:grid;
@@ -424,7 +430,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-view,
 .showup-ranks-view{
-  min-height:calc(100vh - 260px);
+  min-height:0;
   display:grid;
   gap:0;
   align-content:start;
@@ -1375,7 +1381,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           style={{
             maxWidth: 430,
             paddingTop: 18,
-            paddingBottom: 28,
+            paddingBottom: 80,
+            flex: 1,
           }}
         >
           <div

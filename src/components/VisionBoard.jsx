@@ -2357,7 +2357,7 @@ Return JSON only:
   }, [showCalendarPrompt])
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 4rem' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
         {showCalendarPrompt && (
           <div
@@ -2501,7 +2501,7 @@ Return JSON only:
         </div>
 
         {/* â”€â”€ Phase Tabs â”€â”€ */}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.2rem', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: isMobile ? 'flex-start' : 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.2rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
           {data.phases.map((p, index) => {
             const activePhase = phaseId === p.id
             const draft = getTimelineDraft(p)
@@ -2528,14 +2528,15 @@ Return JSON only:
                   boxShadow: activePhase ? '0 4px 14px rgba(233,100,136,0.28)' : 'none',
                   transition: 'all 0.2s',
                   textAlign: 'center',
-                  display: 'flex',
+                  display: 'inline-flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: isMobile ? '0.28rem' : '0.38rem',
-                  minWidth: isMobile ? 126 : 152,
+                  minWidth: isMobile ? 'auto' : 152,
                   minHeight: isMobile ? 64 : 82,
                   cursor: 'pointer',
+                  flexShrink: 0,
                 }}
               >
                 <button
@@ -2773,7 +2774,7 @@ Return JSON only:
             </div>
           </div>
         )}
-        <div id="pillar-section" className="phase-container" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1.5rem', alignItems: 'start' }}>
+        <div id="pillar-section" className="phase-container" style={{ display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : (isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))'), gap: '1rem', marginBottom: '1.5rem', alignItems: 'start' }}>
           {visiblePillars.map(pl => (
             <PillarCard
               key={pl.id} pl={pl} editing={editing} checked={checked} phaseId={phaseId}

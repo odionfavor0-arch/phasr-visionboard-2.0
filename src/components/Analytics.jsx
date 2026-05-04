@@ -457,6 +457,7 @@ function ProCard() {
 
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('overview')
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false
 
   const entries = useMemo(() => loadJournalEntries().sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date))), [])
   const board = useMemo(() => loadBoard(), [])
@@ -487,7 +488,7 @@ export default function Analytics() {
         : 'Your overview brings your journal and phase progress together.'
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.4rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1.4rem 1rem 80px' : '1.4rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '1rem', marginBottom: '1.3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
@@ -537,7 +538,7 @@ export default function Analytics() {
               </div>
             </SectionCard>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '0.72fr 1.28fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '0.72fr 1.28fr', gap: '1rem' }}>
               <div style={{ background: '#fff', borderRadius: 24, padding: '1rem', border: '1px solid var(--app-border)', boxShadow: '0 14px 32px rgba(86,53,66,0.06)', display: 'grid', gap: '0.9rem', alignContent: 'start' }}>
                 <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: '0 0 0.2rem' }}>This Week</p>
                 <div>
@@ -571,7 +572,7 @@ export default function Analytics() {
 
               <SectionCard title="Your Patterns This Week">
                 <div style={{ display: 'grid', gap: '0.9rem' }}>
-                  <div style={{ width: 'min(100%, 220px)', aspectRatio: '1 / 1', borderRadius: '50%', margin: '0 auto', background: buildPatternGradient(patternData) }} />
+                  <div style={{ width: isMobile ? 'min(100%, 200px)' : 'min(100%, 220px)', maxWidth: isMobile ? 200 : 220, aspectRatio: '1 / 1', borderRadius: '50%', margin: '0 auto', background: buildPatternGradient(patternData) }} />
                   <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0 }}>
                     {patternData.map(item => (
                       <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', color: '#54404a', fontSize: '0.86rem' }}>
