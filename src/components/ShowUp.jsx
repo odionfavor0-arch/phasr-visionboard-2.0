@@ -6,9 +6,7 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
 .showup-root{
-  min-height:100dvh;
-  display:flex;
-  flex-direction:column;
+  min-height:calc(100vh - 56px);
   background:var(--bg, #fff8f9);
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
@@ -16,13 +14,10 @@ const SHOW_UP_STYLES = `
 }
 .showup-shell{
   width:100%;
-  max-width:430px;
+  max-width:1120px;
   margin:0 auto;
   padding:16px 14px 80px;
   box-sizing:border-box;
-  display:flex;
-  flex-direction:column;
-  flex:1;
 }
 .showup-list-header{
   display:flex;
@@ -58,7 +53,6 @@ const SHOW_UP_STYLES = `
   overflow:hidden;
   background:#fff;
   box-shadow:none;
-  flex:1;
 }
 .showup-list-row{
   display:grid;
@@ -723,6 +717,14 @@ const SHOW_UP_STYLES = `
   line-height:1.6;
   background:var(--bg, #fff8f9);
 }
+@media (max-width: 767px){
+  .showup-root{
+    min-height:auto;
+  }
+  .showup-shell{
+    max-width:100%;
+  }
+}
 `
 
 const ROOM_DEFINITIONS = [
@@ -1379,10 +1381,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div
           className="showup-shell"
           style={{
-            maxWidth: 430,
+            maxWidth: '100%',
             paddingTop: 18,
             paddingBottom: 80,
-            flex: 1,
           }}
         >
           <div

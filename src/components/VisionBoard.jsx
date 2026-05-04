@@ -2357,7 +2357,7 @@ Return JSON only:
   }, [showCalendarPrompt])
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
         {showCalendarPrompt && (
           <div

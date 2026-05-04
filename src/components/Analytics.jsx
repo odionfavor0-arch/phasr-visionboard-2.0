@@ -488,7 +488,7 @@ export default function Analytics() {
         : 'Your overview brings your journal and phase progress together.'
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1.4rem 1rem 80px' : '1.4rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1.4rem 1rem 80px' : '1.4rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '1rem', marginBottom: '1.3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>

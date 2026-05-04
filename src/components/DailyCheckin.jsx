@@ -806,7 +806,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden' }}>
+    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden' }}>
       <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: isMobile ? '14px 10px 80px' : '18px 24px 96px', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {phases.map((phase, index) => (
