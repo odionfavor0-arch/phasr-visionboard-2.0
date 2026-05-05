@@ -725,6 +725,18 @@ const SHOW_UP_STYLES = `
     max-width:100%;
   }
 }
+@media (min-width: 768px){
+  .showup-tabs{
+    position:static;
+    left:auto;
+    bottom:auto;
+    transform:none;
+    max-width:none;
+    padding:0;
+    margin:14px 0 0;
+    background:transparent;
+  }
+}
 `
 
 const ROOM_DEFINITIONS = [
@@ -1383,7 +1395,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           style={{
             maxWidth: '100%',
             paddingTop: 18,
-            paddingBottom: 80,
+            paddingBottom: 24,
           }}
         >
           <div

@@ -2675,26 +2675,7 @@ Return JSON only:
             </div>
           )})}
 
-          {!isPro && data.phases.length >= FREE_PHASE_LIMIT ? (
-            <button
-              type="button"
-              style={{
-                padding: '0.48rem 1.1rem',
-                borderRadius: 99,
-                border: '1.5px solid #f6cddd',
-                background: '#fff',
-                color: '#ef5f97',
-                boxShadow: '0 4px 14px rgba(233,100,136,0.28)',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: "'DM Sans',sans-serif",
-                textAlign: 'center',
-              }}
-            >
-              Upgrade to Pro
-            </button>
-          ) : (
+          {!isPro && data.phases.length >= FREE_PHASE_LIMIT ? null : (
             <button onClick={addPhase} style={{ padding: '0.48rem 1.1rem', borderRadius: 99, border: '1.5px dashed var(--app-border)', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               + add it
             </button>
