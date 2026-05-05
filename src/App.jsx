@@ -15,6 +15,27 @@ const POST_ONBOARDING_KEY = 'phasr_post_onboarding_target'
 const PRODUCT_ENTRY_KEY = 'phasr_enter_product'
 const PRODUCT_READY_KEY = 'phasr_product_ready'
 
+function getAuthReturnValue() {
+  try {
+    const sessionValue = sessionStorage.getItem(AUTH_RETURN_KEY)
+    if (sessionValue != null) return sessionValue
+  } catch {}
+  try {
+    return localStorage.getItem(AUTH_RETURN_KEY)
+  } catch {
+    return null
+  }
+}
+
+function clearAuthReturnValue() {
+  try {
+    sessionStorage.removeItem(AUTH_RETURN_KEY)
+  } catch {}
+  try {
+    localStorage.removeItem(AUTH_RETURN_KEY)
+  } catch {}
+}
+
 function getOnboardingKey(user) {
   const identifier = user?.id || user?.email || 'guest'
   return `${ONBOARDING_KEY_PREFIX}:${identifier}`
@@ -55,7 +76,7 @@ export default function App() {
   })
   const [user, setUser] = useState(null)
   const [screen, setScreen] = useState(() => (
-    localStorage.getItem(AUTH_RETURN_KEY) === 'google' ||
+    getAuthReturnValue() === 'google' ||
     localStorage.getItem(ONBOARDING_ACTIVE_KEY) === 'true' ||
     hasAuthRedirectParams()
       ? 'auth'
@@ -70,7 +91,7 @@ export default function App() {
     }
     localStorage.removeItem(ONBOARDING_KEY_PREFIX)
     localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
-    localStorage.removeItem(AUTH_RETURN_KEY)
+    clearAuthReturnValue()
     localStorage.setItem(POST_ONBOARDING_KEY, 'app')
     localStorage.setItem(PRODUCT_ENTRY_KEY, 'true')
     localStorage.setItem(PRODUCT_READY_KEY, 'true')
@@ -155,7 +176,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return
       const nextUser = data.session?.user || null
-      const returningToAuth = localStorage.getItem(AUTH_RETURN_KEY) === 'google' || hasAuthRedirectParams()
+      const returningToAuth = getAuthReturnValue() === 'google' || hasAuthRedirectParams()
       const postOnboardingTarget = localStorage.getItem(POST_ONBOARDING_KEY) === 'app'
       const forceProduct = localStorage.getItem(PRODUCT_ENTRY_KEY) === 'true'
       const productReady = localStorage.getItem(PRODUCT_READY_KEY) === 'true'
@@ -169,7 +190,7 @@ export default function App() {
           localStorage.setItem('phasr_active_user', identifier)
         }
       }
-      if (nextUser) localStorage.removeItem(AUTH_RETURN_KEY)
+      if (nextUser) clearAuthReturnValue()
       if (nextUser) localStorage.removeItem(POST_ONBOARDING_KEY)
       if (nextUser) localStorage.removeItem(PRODUCT_ENTRY_KEY)
       setLoading(false)
@@ -186,9 +207,9 @@ export default function App() {
       setScreen(
         nextUser || forceProduct || productReady
           ? 'app'
-          : localStorage.getItem(AUTH_RETURN_KEY) === 'google' || hasAuthRedirectParams() || postOnboardingTarget
+          : getAuthReturnValue() === 'google' || hasAuthRedirectParams() || postOnboardingTarget
             ? 'auth'
-            : 'landing'
+          : 'landing'
       )
       if (nextUser) {
         const identifier = nextUser?.id || nextUser?.email || nextUser?.user_metadata?.email || ''
@@ -196,7 +217,7 @@ export default function App() {
           localStorage.setItem('phasr_active_user', identifier)
         }
       }
-      if (nextUser) localStorage.removeItem(AUTH_RETURN_KEY)
+      if (nextUser) clearAuthReturnValue()
       if (nextUser) localStorage.removeItem(POST_ONBOARDING_KEY)
       if (nextUser) localStorage.removeItem(PRODUCT_ENTRY_KEY)
       setLoading(false)
@@ -210,7 +231,7 @@ export default function App() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    localStorage.removeItem(AUTH_RETURN_KEY)
+    clearAuthReturnValue()
     localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
     localStorage.removeItem(PRODUCT_ENTRY_KEY)
     localStorage.removeItem(PRODUCT_READY_KEY)
@@ -259,7 +280,7 @@ export default function App() {
 
   if (screen === 'auth') {
     return (
-      <AuthPage
+        <AuthPage
         configError={supabaseConfigError}
         onBack={() => setScreen('landing')}
         onSuccess={nextUser => {
@@ -279,7 +300,7 @@ export default function App() {
     return (
       <OurStory
         onGetStarted={() => {
-          localStorage.removeItem(AUTH_RETURN_KEY)
+          clearAuthReturnValue()
           localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
           if (typeof window !== 'undefined') {
             window.history.replaceState({}, '', '/')
@@ -293,7 +314,7 @@ export default function App() {
   return (
     <LandingPage
       onGetStarted={() => {
-        localStorage.removeItem(AUTH_RETURN_KEY)
+        clearAuthReturnValue()
         localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
         setScreen('auth')
       }}

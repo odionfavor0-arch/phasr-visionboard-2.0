@@ -3,6 +3,28 @@ import { supabase } from '../lib/supabase'
 
 const AUTH_RETURN_KEY = 'phasr_auth_return'
 
+function setAuthReturnValue(value) {
+  try {
+    sessionStorage.setItem(AUTH_RETURN_KEY, value)
+    return true
+  } catch {}
+  try {
+    localStorage.setItem(AUTH_RETURN_KEY, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function clearAuthReturnValue() {
+  try {
+    sessionStorage.removeItem(AUTH_RETURN_KEY)
+  } catch {}
+  try {
+    localStorage.removeItem(AUTH_RETURN_KEY)
+  } catch {}
+}
+
 function getFriendlyAuthError(message) {
   if (!message) return ''
 
@@ -113,7 +135,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
     setError('')
     setSuccess('')
     setLoading(true)
-    localStorage.setItem(AUTH_RETURN_KEY, 'google')
+    setAuthReturnValue('google')
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -126,7 +148,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
     })
 
     if (oauthError) {
-      localStorage.removeItem(AUTH_RETURN_KEY)
+      clearAuthReturnValue()
       setError(getFriendlyAuthError(oauthError.message))
       setLoading(false)
       return
