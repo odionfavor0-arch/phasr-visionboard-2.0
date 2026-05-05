@@ -55,7 +55,19 @@ function safeRead(key, fallback) {
 }
 
 function safeWrite(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // Derived task caches should not crash the screen when storage is full.
+  }
+}
+
+function safeSet(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Ignore storage quota errors for non-critical cache writes.
+  }
 }
 
 function loadVisionBoardFromStorage() {
@@ -179,7 +191,7 @@ function getWeekStartDate(scope, week) {
   const key = weekStartKey(scope, week)
   const saved = localStorage.getItem(key)
   if (saved) return saved
-  localStorage.setItem(key, today)
+  safeSet(key, today)
   return today
 }
 
@@ -325,7 +337,7 @@ function checkNonNegComplete(nonNegIndex, weekNumber, scope = 'global') {
     }
   }
   if (foundTask && allDone) {
-    localStorage.setItem(nonNegCompleteKey(weekNumber, nonNegIndex, scope), 'true')
+    safeSet(nonNegCompleteKey(weekNumber, nonNegIndex, scope), 'true')
   }
 }
 
@@ -521,10 +533,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const nextStart = shouldResetStart ? todayKey : stored
 
     if (stored !== nextStart) {
-      localStorage.setItem('phasr_phase1_start_date', nextStart)
+      safeSet('phasr_phase1_start_date', nextStart)
     }
     if (storedScope !== phaseScope) {
-      localStorage.setItem('phasr_phase1_start_scope', phaseScope)
+      safeSet('phasr_phase1_start_scope', phaseScope)
     }
 
     return nextStart
@@ -546,7 +558,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [currentWeek, activePhaseId])
 
   useEffect(() => {
-    localStorage.setItem('phasr_current_week', String(currentWeek))
+    safeSet('phasr_current_week', String(currentWeek))
   }, [currentWeek])
 
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
@@ -709,7 +721,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       allFeaturesAvailable: true,
     }
 
-    localStorage.setItem('phasr_unlock_state', JSON.stringify(unlockState))
+    safeWrite('phasr_unlock_state', unlockState)
     window.dispatchEvent(new CustomEvent('phasr-unlocks-updated', { detail: unlockState }))
   }, [currentStreak, completedTasksThisWeek, currentLevel, currentMilestone, nextMilestone, streakLabel])
 
@@ -727,7 +739,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
 
     setMilestoneMessage(unlockedMilestone.description)
-    localStorage.setItem(shownKey, 'true')
+    safeSet(shownKey, 'true')
 
     const timeoutId = window.setTimeout(() => {
       setMilestoneMessage('')
@@ -759,11 +771,11 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
     const anyDoneToday = updated.some(item => item.done)
     if (anyDoneToday) {
-      localStorage.setItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
-      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
+      safeSet(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
+      safeSet(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
     } else {
-      localStorage.setItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'false')
-      localStorage.setItem(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
+      safeSet(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'false')
+      safeSet(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
     }
     setPhaseStats(calculatePhaseTaskStats(activePhaseId, tasksPerWeek))
     const task = updated.find(item => item.id === taskId)
