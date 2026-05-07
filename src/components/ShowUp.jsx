@@ -264,7 +264,7 @@ const SHOW_UP_STYLES = `
   position:sticky;
   top:0;
   z-index:14;
-  background:var(--bg, #fff8f9);
+  background:var(--bg, #fff);
   padding-bottom:10px;
 }
 .showup-topbar{
@@ -428,7 +428,7 @@ const SHOW_UP_STYLES = `
   display:grid;
   gap:0;
   align-content:start;
-  background:var(--bg, #fff8f9);
+  background:var(--bg, #fff);
 }
 .showup-compose-card,
 .showup-feed-card,
@@ -628,15 +628,24 @@ const SHOW_UP_STYLES = `
   grid-template-columns:repeat(3, 1fr);
   gap:8px;
   z-index:15;
-  background:linear-gradient(to top,#fff8f9 72%,rgba(255,248,249,0));
+  background:linear-gradient(to top,rgba(255,255,255,0.96) 72%,rgba(255,255,255,0));
 }
 .showup-tab{
   min-height:48px;
-  border-radius:14px;
-  color:#f95f85;
+  border-radius:16px;
+  border:1px solid rgba(249,95,133,0.14);
+  background:#fff;
+  color:#b27a91;
   font-size:13px;
-  font-weight:700;
+  font-weight:800;
   cursor:pointer;
+  box-shadow:0 8px 20px rgba(77,49,66,0.06);
+}
+.showup-tab.is-active{
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 10px 24px rgba(249,95,133,0.26);
 }
 .showup-sheet-backdrop{
   position:fixed;
@@ -733,7 +742,7 @@ const SHOW_UP_STYLES = `
     transform:none;
     max-width:none;
     padding:0;
-    margin:14px 0 0;
+    margin:16px 0 0;
     background:transparent;
   }
 }
@@ -1569,10 +1578,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   return (
-    <div className="showup-root" style={{ background: 'var(--bg, #fff8f9)' }}>
+    <div className="showup-root" style={{ '--bg': '#fff', background: '#fff' }}>
       <style>{SHOW_UP_STYLES}</style>
 
-      <div className="showup-shell" style={{ background: 'var(--bg, #fff8f9)' }}>
+      <div className="showup-shell" style={{ '--bg': '#fff', background: '#fff' }}>
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={() => setSelectedRoom(null)}>←</button>
@@ -1583,15 +1592,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
           </div>
 
-          <div className={`showup-cta ${activeTab !== 'live' ? 'is-hidden' : ''}`}>
-            {!checkedIn ? (
+          <div className={`showup-cta ${activeTab !== 'live' || checkedIn || taskDone ? 'is-hidden' : ''}`}>
+            {!checkedIn && !taskDone ? (
               <>
                 <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
-                <button type="button" className="showup-done-btn" onClick={handleMarkDone}>Mark Done</button>
-              </>
-            ) : !taskDone ? (
-              <>
-                <div />
                 <button type="button" className="showup-done-btn" onClick={handleMarkDone}>Mark Done</button>
               </>
             ) : null}
