@@ -14,6 +14,29 @@ const ONBOARDING_ACTIVE_KEY = 'phasr_onboarding_active'
 const POST_ONBOARDING_KEY = 'phasr_post_onboarding_target'
 const PRODUCT_ENTRY_KEY = 'phasr_enter_product'
 const PRODUCT_READY_KEY = 'phasr_product_ready'
+const ACTIVE_USER_KEY = 'phasr_active_user'
+const CACHED_USER_KEY = 'phasr_cached_user'
+const SIGNOUT_INTENT_KEY = 'phasr_signout_intent'
+
+function safeLocalGet(key) {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function safeLocalSet(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {}
+}
+
+function safeLocalRemove(key) {
+  try {
+    localStorage.removeItem(key)
+  } catch {}
+}
 
 function getAuthReturnValue() {
   try {
@@ -34,6 +57,48 @@ function clearAuthReturnValue() {
   try {
     localStorage.removeItem(AUTH_RETURN_KEY)
   } catch {}
+}
+
+function setExplicitSignOutIntent(value) {
+  if (value) safeLocalSet(SIGNOUT_INTENT_KEY, 'true')
+  else safeLocalRemove(SIGNOUT_INTENT_KEY)
+}
+
+function hasExplicitSignOutIntent() {
+  return safeLocalGet(SIGNOUT_INTENT_KEY) === 'true'
+}
+
+function getCachedUser() {
+  try {
+    const raw = localStorage.getItem(CACHED_USER_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function cacheUser(user) {
+  if (!user) return
+  const nextCachedUser = {
+    id: user?.id || user?.email || 'cached-user',
+    email: user?.email || user?.user_metadata?.email || '',
+    user_metadata: {
+      ...user?.user_metadata,
+      email: user?.email || user?.user_metadata?.email || '',
+      full_name:
+        user?.user_metadata?.full_name ||
+        user?.user_metadata?.name ||
+        user?.email ||
+        'Phasr User',
+    },
+  }
+  safeLocalSet(CACHED_USER_KEY, JSON.stringify(nextCachedUser))
+}
+
+function clearCachedUser() {
+  safeLocalRemove(CACHED_USER_KEY)
 }
 
 function getOnboardingKey(user) {
@@ -77,9 +142,11 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [screen, setScreen] = useState(() => (
     getAuthReturnValue() === 'google' ||
-    localStorage.getItem(ONBOARDING_ACTIVE_KEY) === 'true' ||
+    safeLocalGet(ONBOARDING_ACTIVE_KEY) === 'true' ||
     hasAuthRedirectParams()
       ? 'auth'
+      : getCachedUser() && !hasExplicitSignOutIntent()
+        ? 'app'
       : 'landing'
   ))
   const [loading, setLoading] = useState(true)
@@ -141,15 +208,18 @@ export default function App() {
 
   useEffect(() => {
     if (!user) {
-      localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
-      setOnboarded(false)
+      if (!hasExplicitSignOutIntent() && getCachedUser()) return
+      safeLocalRemove(ONBOARDING_ACTIVE_KEY)
+      setOnboarded(Boolean(getCachedUser() && !hasExplicitSignOutIntent()))
       return
     }
 
     const identifier = user?.id || user?.email || user?.user_metadata?.email || ''
     if (identifier) {
-      localStorage.setItem('phasr_active_user', identifier)
+      safeLocalSet(ACTIVE_USER_KEY, identifier)
     }
+    cacheUser(user)
+    setExplicitSignOutIntent(false)
     setOnboarded(getStoredOnboarded(user))
   }, [user])
 
@@ -178,11 +248,12 @@ export default function App() {
       const sessionUser = sessionData.session?.user || null
       const fallbackUser = sessionUser ? null : (await supabase.auth.getUser()).data.user || null
       if (!mounted) return
-      const nextUser = sessionUser || fallbackUser
+      const cachedUser = getCachedUser()
+      const nextUser = sessionUser || fallbackUser || (!hasExplicitSignOutIntent() ? cachedUser : null)
       const returningToAuth = getAuthReturnValue() === 'google' || hasAuthRedirectParams()
-      const postOnboardingTarget = localStorage.getItem(POST_ONBOARDING_KEY) === 'app'
-      const forceProduct = localStorage.getItem(PRODUCT_ENTRY_KEY) === 'true'
-      const productReady = localStorage.getItem(PRODUCT_READY_KEY) === 'true'
+      const postOnboardingTarget = safeLocalGet(POST_ONBOARDING_KEY) === 'app'
+      const forceProduct = safeLocalGet(PRODUCT_ENTRY_KEY) === 'true'
+      const productReady = safeLocalGet(PRODUCT_READY_KEY) === 'true'
       const nextOnboarded = getStoredOnboarded(nextUser)
       setUser(nextUser)
       setOnboarded(nextOnboarded)
@@ -190,39 +261,45 @@ export default function App() {
       if (nextUser) {
         const identifier = nextUser?.id || nextUser?.email || nextUser?.user_metadata?.email || ''
         if (identifier) {
-          localStorage.setItem('phasr_active_user', identifier)
+          safeLocalSet(ACTIVE_USER_KEY, identifier)
         }
+        cacheUser(nextUser)
+        setExplicitSignOutIntent(false)
       }
       if (nextUser) clearAuthReturnValue()
-      if (nextUser) localStorage.removeItem(POST_ONBOARDING_KEY)
-      if (nextUser) localStorage.removeItem(PRODUCT_ENTRY_KEY)
+      if (nextUser) safeLocalRemove(POST_ONBOARDING_KEY)
+      if (nextUser) safeLocalRemove(PRODUCT_ENTRY_KEY)
       setLoading(false)
     })()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user || null
-      const postOnboardingTarget = localStorage.getItem(POST_ONBOARDING_KEY) === 'app'
-      const forceProduct = localStorage.getItem(PRODUCT_ENTRY_KEY) === 'true'
-      const productReady = localStorage.getItem(PRODUCT_READY_KEY) === 'true'
+      const cachedUser = getCachedUser()
+      const resolvedUser = nextUser || (!hasExplicitSignOutIntent() ? cachedUser : null)
+      const postOnboardingTarget = safeLocalGet(POST_ONBOARDING_KEY) === 'app'
+      const forceProduct = safeLocalGet(PRODUCT_ENTRY_KEY) === 'true'
+      const productReady = safeLocalGet(PRODUCT_READY_KEY) === 'true'
       const nextOnboarded = getStoredOnboarded(nextUser)
-      setUser(nextUser)
-      setOnboarded(nextOnboarded)
+      setUser(resolvedUser)
+      setOnboarded(getStoredOnboarded(resolvedUser) || nextOnboarded)
       setScreen(
-        nextUser || forceProduct || productReady
+        resolvedUser || forceProduct || productReady
           ? 'app'
           : getAuthReturnValue() === 'google' || hasAuthRedirectParams() || postOnboardingTarget
             ? 'auth'
           : 'landing'
       )
-      if (nextUser) {
-        const identifier = nextUser?.id || nextUser?.email || nextUser?.user_metadata?.email || ''
+      if (resolvedUser) {
+        const identifier = resolvedUser?.id || resolvedUser?.email || resolvedUser?.user_metadata?.email || ''
         if (identifier) {
-          localStorage.setItem('phasr_active_user', identifier)
+          safeLocalSet(ACTIVE_USER_KEY, identifier)
         }
+        cacheUser(resolvedUser)
+        setExplicitSignOutIntent(false)
       }
-      if (nextUser) clearAuthReturnValue()
-      if (nextUser) localStorage.removeItem(POST_ONBOARDING_KEY)
-      if (nextUser) localStorage.removeItem(PRODUCT_ENTRY_KEY)
+      if (resolvedUser) clearAuthReturnValue()
+      if (resolvedUser) safeLocalRemove(POST_ONBOARDING_KEY)
+      if (resolvedUser) safeLocalRemove(PRODUCT_ENTRY_KEY)
       setLoading(false)
     })
 
@@ -233,12 +310,14 @@ export default function App() {
   }, [])
 
   async function handleSignOut() {
+    setExplicitSignOutIntent(true)
     await supabase.auth.signOut()
     clearAuthReturnValue()
-    localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
-    localStorage.removeItem(PRODUCT_ENTRY_KEY)
-    localStorage.removeItem(PRODUCT_READY_KEY)
-    localStorage.removeItem('phasr_active_user')
+    clearCachedUser()
+    safeLocalRemove(ONBOARDING_ACTIVE_KEY)
+    safeLocalRemove(PRODUCT_ENTRY_KEY)
+    safeLocalRemove(PRODUCT_READY_KEY)
+    safeLocalRemove(ACTIVE_USER_KEY)
     setUser(null)
     setScreen('landing')
   }
