@@ -173,9 +173,12 @@ export default function App() {
 
     let mounted = true
 
-    supabase.auth.getSession().then(({ data }) => {
+    ;(async () => {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const sessionUser = sessionData.session?.user || null
+      const fallbackUser = sessionUser ? null : (await supabase.auth.getUser()).data.user || null
       if (!mounted) return
-      const nextUser = data.session?.user || null
+      const nextUser = sessionUser || fallbackUser
       const returningToAuth = getAuthReturnValue() === 'google' || hasAuthRedirectParams()
       const postOnboardingTarget = localStorage.getItem(POST_ONBOARDING_KEY) === 'app'
       const forceProduct = localStorage.getItem(PRODUCT_ENTRY_KEY) === 'true'
@@ -194,7 +197,7 @@ export default function App() {
       if (nextUser) localStorage.removeItem(POST_ONBOARDING_KEY)
       if (nextUser) localStorage.removeItem(PRODUCT_ENTRY_KEY)
       setLoading(false)
-    })
+    })()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user || null
