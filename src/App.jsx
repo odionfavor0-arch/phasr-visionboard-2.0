@@ -151,6 +151,7 @@ export default function App() {
   ))
   const [loading, setLoading] = useState(true)
   const [onboarded, setOnboarded] = useState(false)
+  const effectiveUser = user || (!hasExplicitSignOutIntent() ? getCachedUser() : null)
 
   function finishOnboarding(nextUser = user, _choice = 'later') {
     if (nextUser) {
@@ -237,18 +238,29 @@ export default function App() {
 
   useEffect(() => {
     if (supabaseConfigError || !supabase) {
-      setLoading(false)
+      const cachedUser = getCachedUser()
+      if (cachedUser && !hasExplicitSignOutIntent()) {
+        queueMicrotask(() => {
+          setUser(cachedUser)
+          setOnboarded(getStoredOnboarded(cachedUser))
+          setScreen('app')
+          setLoading(false)
+        })
+        return
+      }
+      queueMicrotask(() => setLoading(false))
       return
     }
 
     let mounted = true
 
     ;(async () => {
+      const cachedUser = getCachedUser()
+      try {
       const { data: sessionData } = await supabase.auth.getSession()
       const sessionUser = sessionData.session?.user || null
       const fallbackUser = sessionUser ? null : (await supabase.auth.getUser()).data.user || null
       if (!mounted) return
-      const cachedUser = getCachedUser()
       const nextUser = sessionUser || fallbackUser || (!hasExplicitSignOutIntent() ? cachedUser : null)
       const returningToAuth = getAuthReturnValue() === 'google' || hasAuthRedirectParams()
       const postOnboardingTarget = safeLocalGet(POST_ONBOARDING_KEY) === 'app'
@@ -270,11 +282,26 @@ export default function App() {
       if (nextUser) safeLocalRemove(POST_ONBOARDING_KEY)
       if (nextUser) safeLocalRemove(PRODUCT_ENTRY_KEY)
       setLoading(false)
+      } catch {
+        if (!mounted) return
+        const nextUser = !hasExplicitSignOutIntent() ? cachedUser : null
+        setUser(nextUser)
+        setOnboarded(getStoredOnboarded(nextUser))
+        setScreen(nextUser ? 'app' : hasAuthRedirectParams() ? 'auth' : 'landing')
+        setLoading(false)
+      }
     })()
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = session?.user || null
       const cachedUser = getCachedUser()
+      if (event === 'SIGNED_OUT' && !hasExplicitSignOutIntent() && cachedUser) {
+        setUser(cachedUser)
+        setOnboarded(getStoredOnboarded(cachedUser))
+        setScreen('app')
+        setLoading(false)
+        return
+      }
       const resolvedUser = nextUser || (!hasExplicitSignOutIntent() ? cachedUser : null)
       const postOnboardingTarget = safeLocalGet(POST_ONBOARDING_KEY) === 'app'
       const forceProduct = safeLocalGet(PRODUCT_ENTRY_KEY) === 'true'
@@ -340,19 +367,19 @@ export default function App() {
     )
   }
 
-  if (user && !onboarded) {
+  if (effectiveUser && !onboarded) {
     return (
       <Onboarding
-        userName={user?.user_metadata?.full_name || 'there'}
-        onComplete={choice => finishOnboarding(user, choice)}
+        userName={effectiveUser?.user_metadata?.full_name || 'there'}
+        onComplete={choice => finishOnboarding(effectiveUser, choice)}
       />
     )
   }
 
-  if (user) {
+  if (effectiveUser) {
     return (
       <AppShell
-        user={user}
+        user={effectiveUser}
         theme={theme}
         onThemeChange={setTheme}
         onSignOut={handleSignOut}

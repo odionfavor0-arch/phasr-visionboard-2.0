@@ -11,6 +11,7 @@ const SHOW_UP_STYLES = `
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
   -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
   display:flex;
   flex-direction:column;
 }
@@ -55,7 +56,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-list-panel{
   border:1px solid rgba(232,64,122,0.14);
-  border-radius:16px;
+  border-radius:14px;
   overflow:hidden;
   background:#fff;
   box-shadow:none;
@@ -74,7 +75,7 @@ const SHOW_UP_STYLES = `
 .showup-list-icon{
   width:36px;
   height:36px;
-  border-radius:10px;
+  border-radius:8px;
   display:grid;
   place-items:center;
   color:#f95f85;
@@ -97,7 +98,7 @@ const SHOW_UP_STYLES = `
 .showup-comment-bubble{
   background:transparent;
   border:1px solid rgba(249,95,133,0.25);
-  border-radius:16px;
+  border-radius:14px;
 }
 .showup-list-name{
   margin:0;
@@ -190,7 +191,7 @@ const SHOW_UP_STYLES = `
 .showup-create-btn{
   width:100%;
   min-height:46px;
-  border-radius:14px;
+  border-radius:12px;
   font-size:13px;
   font-weight:800;
   cursor:pointer;
@@ -201,7 +202,8 @@ const SHOW_UP_STYLES = `
   padding:14px;
   display:grid;
   gap:10px;
-  margin-bottom:12px;
+  margin-bottom:14px;
+  background:rgba(255,255,255,0.74);
 }
 .showup-field{
   display:grid;
@@ -273,7 +275,7 @@ const SHOW_UP_STYLES = `
   background:linear-gradient(180deg, rgba(255,248,249,0.98) 0%, rgba(255,248,249,0.94) 100%);
   backdrop-filter:blur(16px);
   padding-bottom:14px;
-  margin-bottom:4px;
+  margin-bottom:8px;
 }
 .showup-topbar{
   display:grid;
@@ -327,10 +329,10 @@ const SHOW_UP_STYLES = `
 .showup-cta{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:10px;
+  gap:12px;
   width:100%;
   max-width:760px;
-  margin:0 auto 12px;
+  margin:0 auto 14px;
 }
 .showup-cta.is-hidden{display:none}
 .showup-checkin-stack{
@@ -342,8 +344,8 @@ const SHOW_UP_STYLES = `
 }
 .showup-checkin-btn,
 .showup-done-btn{
-  min-height:48px;
-  border-radius:14px;
+  min-height:50px;
+  border-radius:12px;
   font-size:14px;
   font-weight:700;
   cursor:pointer;
@@ -355,10 +357,11 @@ const SHOW_UP_STYLES = `
   min-height:20px;
   width:100%;
   max-width:760px;
-  margin:2px auto 12px;
-  font-size:12px;
+  margin:2px auto 14px;
+  font-size:13px;
   color:#9a7088;
   text-align:left;
+  line-height:1.45;
 }
 .showup-status-line.is-done{
   color:#f95f85;
@@ -367,7 +370,7 @@ const SHOW_UP_STYLES = `
 .showup-live-meta{
   width:100%;
   max-width:760px;
-  margin:0 auto 14px;
+  margin:0 auto 16px;
   text-align:center;
   font-size:12px;
   color:#9a7088;
@@ -375,13 +378,13 @@ const SHOW_UP_STYLES = `
 .showup-member-grid{
   display:block;
   border:1px solid rgba(249,95,133,0.18);
-  border-radius:18px;
+  border-radius:14px;
   overflow:hidden;
   background:var(--bg, #fff);
   margin:6px auto 0;
   width:100%;
   max-width:760px;
-  box-shadow:0 14px 36px rgba(249,95,133,0.08);
+  box-shadow:0 14px 36px rgba(249,95,133,0.07);
 }
 .showup-member-card{
   min-height:64px;
@@ -461,7 +464,7 @@ const SHOW_UP_STYLES = `
   width:100%;
   max-width:760px;
   margin:0 auto;
-  padding-bottom:12px;
+  padding-bottom:18px;
 }
 .showup-compose-card,
 .showup-feed-card,
@@ -470,7 +473,7 @@ const SHOW_UP_STYLES = `
   padding:14px;
 }
 .showup-compose-card{
-  padding:14px 0 14px;
+  padding:16px 0 16px;
   border:none;
   border-bottom:1px solid rgba(77,49,66,0.08);
   border-radius:0;
@@ -490,7 +493,7 @@ const SHOW_UP_STYLES = `
   border-radius:0;
   padding:10px 0;
   background:transparent;
-  font-size:14px;
+  font-size:15px;
 }
 .showup-sheet-textarea{
   min-height:96px;
@@ -520,17 +523,22 @@ const SHOW_UP_STYLES = `
 .showup-sheet-send{
   box-shadow:0 12px 28px rgba(249,95,133,0.18);
 }
+.showup-post-btn:disabled{
+  cursor:not-allowed;
+  opacity:.55;
+  box-shadow:none;
+}
 .showup-feed-card.is-anonymous{border-style:dashed}
 .showup-feed-card{
   border:none;
   border-top:1px solid rgba(77,49,66,0.08);
   border-radius:0;
   background:transparent;
-  padding:16px 0;
+  padding:18px 0;
 }
 .showup-feed-card.is-anonymous{
   border:1px dashed rgba(249,95,133,0.38);
-  border-radius:14px;
+  border-radius:12px;
   padding:14px 12px;
   margin-top:12px;
 }
@@ -553,7 +561,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-text{
   margin:12px 0 0;
-  font-size:13px;
+  font-size:14px;
   line-height:1.65;
   color:#4d3142;
   white-space:pre-wrap;
@@ -562,7 +570,7 @@ const SHOW_UP_STYLES = `
   width:100%;
   aspect-ratio:4 / 3;
   object-fit:cover;
-  border-radius:14px;
+  border-radius:12px;
   border:1px solid rgba(249,95,133,0.25);
   margin-top:12px;
 }
@@ -571,7 +579,7 @@ const SHOW_UP_STYLES = `
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin-top:12px;
+  margin-top:14px;
 }
 .showup-feed-chip-row{
   display:flex;
@@ -580,9 +588,9 @@ const SHOW_UP_STYLES = `
 }
 .showup-reaction-chip,
 .showup-comment-toggle{
-  min-height:34px;
+  min-height:38px;
   border-radius:999px;
-  padding:0 10px;
+  padding:0 12px;
   color:#9a7088;
   font-size:12px;
   font-weight:700;
@@ -622,10 +630,10 @@ const SHOW_UP_STYLES = `
 }
 .showup-rank-row{
   display:grid;
-  grid-template-columns:34px 42px 1fr auto auto;
+  grid-template-columns:34px 42px minmax(0,1fr) auto auto;
   align-items:center;
   gap:10px;
-  padding:14px 0;
+  padding:15px 0;
   border-top:1px solid rgba(77,49,66,0.08);
 }
 .showup-rank-row:first-child{
@@ -648,6 +656,9 @@ const SHOW_UP_STYLES = `
   font-size:13px;
   font-weight:700;
   color:#4d3142;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .showup-rank-streak{
   margin:2px 0 0;
@@ -662,6 +673,25 @@ const SHOW_UP_STYLES = `
   font-weight:700;
   color:#9a7088;
   white-space:nowrap;
+  justify-self:end;
+}
+.showup-rank-score{
+  display:grid;
+  gap:2px;
+  justify-items:end;
+  min-width:70px;
+}
+.showup-rank-score-value{
+  font-family:'Syne',sans-serif;
+  font-size:16px;
+  font-weight:800;
+  color:#4d3142;
+  line-height:1;
+}
+.showup-rank-score-label{
+  font-size:10px;
+  color:#9a7088;
+  line-height:1;
 }
 .showup-rank-row.is-leader .showup-rank-badge{border-color:rgba(231,186,73,.55);color:#b68500}
 .showup-rank-row.is-rising .showup-rank-badge{border-color:rgba(189,189,195,.65);color:#7d7d89}
@@ -693,6 +723,22 @@ const SHOW_UP_STYLES = `
   font-weight:800;
   cursor:pointer;
   box-shadow:none;
+}
+.showup-header-btn:focus-visible,
+.showup-checkin-btn:focus-visible,
+.showup-done-btn:focus-visible,
+.showup-tab:focus-visible,
+.showup-bell-btn:focus-visible,
+.showup-photo-btn:focus-visible,
+.showup-post-btn:focus-visible,
+.showup-comment-send:focus-visible,
+.showup-comment-toggle:focus-visible,
+.showup-reaction-chip:focus-visible,
+.showup-sheet-send:focus-visible,
+.showup-sheet-cancel:focus-visible,
+.showup-template-btn:focus-visible{
+  outline:2px solid rgba(249,95,133,0.55);
+  outline-offset:3px;
 }
 .showup-tab.is-active{
   background:linear-gradient(135deg,#f95f85,#ff8ca8);
@@ -800,7 +846,7 @@ const SHOW_UP_STYLES = `
   font-size:13px;
   line-height:1.6;
   background:var(--bg, #fff);
-  padding:18px 0;
+  padding:22px 12px;
 }
 @media (max-width: 767px){
   .showup-root{
@@ -808,7 +854,20 @@ const SHOW_UP_STYLES = `
   }
   .showup-shell{
     max-width:100%;
-    padding:16px 14px 104px;
+    padding:14px 14px 110px;
+  }
+  .showup-topbar{
+    grid-template-columns:42px minmax(0,1fr) auto;
+    gap:8px;
+  }
+  .showup-room-title{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .showup-live-pill{
+    padding:9px 10px;
+    font-size:11px;
   }
   .showup-feed-reactions{
     align-items:flex-start;
@@ -817,10 +876,27 @@ const SHOW_UP_STYLES = `
   .showup-comment-compose{
     flex-direction:column;
   }
+  .showup-comment-send{
+    width:100%;
+  }
+  .showup-rank-row{
+    grid-template-columns:28px 40px minmax(0,1fr) auto;
+    gap:8px;
+  }
+  .showup-rank-badge{
+    display:none;
+  }
+  .showup-rank-score{
+    min-width:48px;
+  }
 }
 @media (min-width: 768px){
   .showup-shell{
-    padding:24px 24px 40px;
+    padding:24px 32px 44px;
+  }
+  .showup-sticky-header{
+    top:0;
+  }
   }
   .showup-tabs{
     position:static;
@@ -854,6 +930,21 @@ const SHOW_UP_STYLES = `
     border-bottom-color:#f95f85;
     box-shadow:none;
   }
+  .showup-member-grid{
+    margin-top:10px;
+  }
+}
+@media (min-width: 1180px){
+  .showup-shell{
+    max-width:1180px;
+  }
+  .showup-live-layout{
+    display:grid;
+    grid-template-columns:minmax(0,760px) minmax(280px,1fr);
+    align-items:start;
+    gap:24px;
+    width:100%;
+  }
 }
 @media (hover: hover){
   .showup-header-btn:hover,
@@ -867,6 +958,12 @@ const SHOW_UP_STYLES = `
   }
   .showup-member-card:hover{
     background:rgba(255,255,255,0.9);
+  }
+  .showup-checkin-btn:hover,
+  .showup-post-btn:hover,
+  .showup-sheet-send:hover{
+    transform:translateY(-1px);
+    box-shadow:0 14px 28px rgba(249,95,133,0.22);
   }
 }
 `
@@ -898,9 +995,9 @@ const TEMPLATE_MESSAGES = [
 ]
 
 const REACTION_KEYS = [
-  { key: 'fire', emoji: '\u{1F525}' },
-  { key: 'power', emoji: '\u{1F4AA}' },
-  { key: 'love', emoji: '\u2764\uFE0F' },
+  { key: 'fire', label: 'Fire' },
+  { key: 'power', label: 'Power' },
+  { key: 'love', label: 'Love' },
 ]
 
 const MAX_ROOM_SIZE = 12
@@ -1305,7 +1402,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           id: `${post.user_id || 'room'}-${post.created_at || index}`,
           authorId: post.user_id || `anon-${index}`,
           authorName: post.is_anonymous ? 'Anonymous \u00B7 Room' : (post.display_name || 'Room member'),
-          authorInitials: post.is_anonymous ? '\u{1F464}' : buildInitials(post.display_name || 'Room member'),
+          authorInitials: post.is_anonymous ? 'AN' : buildInitials(post.display_name || 'Room member'),
           anonymous: Boolean(post.is_anonymous),
           text: post.content || '',
           image: post.image_url || '',
@@ -1330,7 +1427,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       id: uid(),
       authorId: anonymous ? `anon-${uid()}` : profile.id,
       authorName: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
-      authorInitials: anonymous ? '\u{1F464}' : profile.initials,
+      authorInitials: anonymous ? 'AN' : profile.initials,
       anonymous,
       text,
       image,
@@ -1863,13 +1960,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   placeholder="Share what you are working on..."
                 />
               </div>
-              {postImage ? <img className="showup-feed-image" src={postImage} alt="Upload preview" /> : null}
+              {postImage ? <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" /> : null}
               <div className="showup-compose-actions">
                 <button type="button" className="showup-photo-btn" onClick={() => fileInputRef.current?.click()}>Photo</button>
-                <button type="button" className="showup-post-btn" onClick={handleCreatePost}>Post</button>
+                <button type="button" className="showup-post-btn" onClick={handleCreatePost} disabled={!postDraft.trim() && !postImage}>Post</button>
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="showup-hidden-input" onChange={handlePhotoPick} />
             </div>
+
+            {!feedReady ? (
+              <div className="showup-empty">You are seeing saved room activity. New posts will sync when the connection returns.</div>
+            ) : null}
 
             {visiblePosts.length === 0 ? (
               <div className="showup-empty">No posts yet. Be the first to share.</div>
@@ -1886,7 +1987,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     </div>
                   </div>
                   <p className="showup-feed-text">{post.text}</p>
-                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" /> : null}
+                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" /> : null}
                   <div className="showup-feed-reactions">
                     <div className="showup-feed-chip-row">
                       {REACTION_KEYS.map(reaction => {
@@ -1899,7 +2000,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                             className={`showup-reaction-chip ${active ? 'is-active' : ''}`}
                             onClick={() => handleToggleReaction(post.id, reaction.key)}
                           >
-                            {reaction.emoji} {count}
+                            {reaction.label} {count}
                           </button>
                         )
                       })}
@@ -1916,7 +2017,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <div className="showup-comments">
                       {(post.comments || []).map(comment => (
                         <div key={comment.id} className="showup-comment-row">
-                          <div className="showup-avatar">{comment.anonymous ? '\u{1F464}' : comment.authorInitials || buildInitials(comment.authorName)}</div>
+                          <div className="showup-avatar">{comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName)}</div>
                           <div className="showup-comment-bubble">
                             <p className="showup-comment-author">{comment.anonymous ? 'Anonymous \u00B7 Room' : comment.authorName}</p>
                             <p className="showup-comment-text">{comment.text}</p>
@@ -1944,9 +2045,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-ranks-view">
             {rankedMembers.map((member, index) => {
               const badge =
-                index === 0 ? '\u{1F451} Leader'
-                  : index === 1 ? '\u{1F948} Rising'
-                    : index === 2 ? '\u{1F949} Building'
+                index === 0 ? 'Leader'
+                  : index === 1 ? 'Rising'
+                    : index === 2 ? 'Building'
                       : member.streakValue > 0 ? 'Starting' : 'Not yet'
               const rowClass =
                 index === 0 ? 'is-leader'
@@ -1966,7 +2067,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                     <p className="showup-rank-streak">{member.streakValue} day streak</p>
                   </div>
-                  <div className="showup-rank-number">{member.streakValue}</div>
+                  <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
+                    <span className="showup-rank-score-value">{member.streakValue}</span>
+                    <span className="showup-rank-score-label">days</span>
+                  </div>
                   <div className="showup-rank-badge">{badge}</div>
                 </div>
               )
