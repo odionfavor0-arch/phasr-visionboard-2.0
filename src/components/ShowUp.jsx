@@ -6,11 +6,13 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
 .showup-root{
-  min-height:calc(100vh - 56px);
+  min-height:100dvh;
   background:var(--bg, #fff8f9);
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
   -webkit-tap-highlight-color:transparent;
+  display:flex;
+  flex-direction:column;
 }
 .showup-shell{
   width:100%;
@@ -18,6 +20,10 @@ const SHOW_UP_STYLES = `
   margin:0 auto;
   padding:16px 14px 80px;
   box-sizing:border-box;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:100dvh;
 }
 .showup-list-header{
   display:flex;
@@ -321,6 +327,11 @@ const SHOW_UP_STYLES = `
   margin-bottom:12px;
 }
 .showup-cta.is-hidden{display:none}
+.showup-checkin-stack{
+  display:grid;
+  gap:12px;
+  margin-bottom:14px;
+}
 .showup-checkin-btn,
 .showup-done-btn{
   min-height:48px;
@@ -337,6 +348,7 @@ const SHOW_UP_STYLES = `
   margin:2px 0 12px;
   font-size:12px;
   color:#9a7088;
+  text-align:left;
 }
 .showup-status-line.is-done{
   color:#f95f85;
@@ -351,18 +363,18 @@ const SHOW_UP_STYLES = `
 .showup-member-grid{
   display:block;
   border:1px solid rgba(249,95,133,0.18);
-  border-radius:16px;
+  border-radius:18px;
   overflow:hidden;
   background:var(--bg, #fff);
+  margin-top:6px;
 }
 .showup-member-card{
-  position:relative;
-  min-height:56px;
-  padding:9px 12px;
+  min-height:64px;
+  padding:12px 14px;
   display:grid;
-  grid-template-columns:38px minmax(0,1fr) auto;
+  grid-template-columns:40px minmax(0,1fr) 32px;
   align-items:center;
-  gap:10px;
+  gap:12px;
   background:var(--bg, #fff);
   border:none;
   border-radius:0;
@@ -372,8 +384,8 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-dot{
   position:absolute;
+  top:-1px;
   right:-1px;
-  bottom:-1px;
   width:10px;
   height:10px;
   border-radius:50%;
@@ -383,14 +395,14 @@ const SHOW_UP_STYLES = `
 .showup-member-dot.is-done{background:#f95f85}
 .showup-member-dot.is-idle{background:#c9b2be}
 .showup-avatar{
-  width:52px;
-  height:52px;
+  width:40px;
+  height:40px;
   border-radius:50%;
   border:1px solid rgba(249,95,133,0.25);
   display:grid;
   place-items:center;
   font-family:'Syne',sans-serif;
-  font-size:15px;
+  font-size:13px;
   font-weight:700;
   color:#f95f85;
   background:var(--bg, #fff);
@@ -413,14 +425,15 @@ const SHOW_UP_STYLES = `
 .showup-member-status.is-done{color:#f95f85}
 .showup-member-status.is-idle{color:#9a7088}
 .showup-bell-btn{
-  width:30px;
-  height:30px;
+  width:32px;
+  height:32px;
   border-radius:50%;
   color:#f95f85;
   display:grid;
   place-items:center;
   cursor:pointer;
   background:transparent;
+  border:1px solid rgba(249,95,133,0.28);
 }
 .showup-feed-view,
 .showup-ranks-view{
@@ -429,6 +442,7 @@ const SHOW_UP_STYLES = `
   gap:0;
   align-content:start;
   background:var(--bg, #fff);
+  flex:1;
 }
 .showup-compose-card,
 .showup-feed-card,
@@ -489,6 +503,12 @@ const SHOW_UP_STYLES = `
   border-radius:0;
   background:transparent;
   padding:14px 0;
+}
+.showup-feed-card.is-anonymous{
+  border:1px dashed rgba(249,95,133,0.38);
+  border-radius:14px;
+  padding:14px 12px;
+  margin-top:12px;
 }
 .showup-feed-author{
   display:flex;
@@ -580,6 +600,11 @@ const SHOW_UP_STYLES = `
   grid-template-columns:34px 42px 1fr auto auto;
   align-items:center;
   gap:10px;
+  padding:12px 0;
+  border-top:1px solid rgba(77,49,66,0.08);
+}
+.showup-rank-row:first-child{
+  border-top:none;
 }
 .showup-rank-number{
   font-family:'Syne',sans-serif;
@@ -588,6 +613,10 @@ const SHOW_UP_STYLES = `
   color:#f95f85;
   text-align:center;
 }
+.showup-rank-number.is-leader{color:#c79a1d}
+.showup-rank-number.is-rising{color:#91939f}
+.showup-rank-number.is-building{color:#f95f85}
+.showup-rank-number.is-muted{color:#b8a3ae}
 .showup-rank-name{
   margin:0;
   font-family:'Syne',sans-serif;
@@ -609,9 +638,6 @@ const SHOW_UP_STYLES = `
   color:#9a7088;
   white-space:nowrap;
 }
-.showup-rank-row.is-leader{border-color:rgba(231,186,73,.55)}
-.showup-rank-row.is-rising{border-color:rgba(189,189,195,.65)}
-.showup-rank-row.is-building{border-color:rgba(249,95,133,.4)}
 .showup-rank-row.is-leader .showup-rank-badge{border-color:rgba(231,186,73,.55);color:#b68500}
 .showup-rank-row.is-rising .showup-rank-badge{border-color:rgba(189,189,195,.65);color:#7d7d89}
 .showup-rank-row.is-building .showup-rank-badge{color:#f95f85}
@@ -621,31 +647,32 @@ const SHOW_UP_STYLES = `
   bottom:0;
   transform:translateX(-50%);
   width:100%;
-  max-width:390px;
-  padding:0 12px calc(20px + env(safe-area-inset-bottom, 0px));
+  max-width:none;
+  padding:10px 20px calc(24px + env(safe-area-inset-bottom, 0px));
   box-sizing:border-box;
   display:grid;
   grid-template-columns:repeat(3, 1fr);
   gap:8px;
   z-index:15;
-  background:linear-gradient(to top,rgba(255,255,255,0.96) 72%,rgba(255,255,255,0));
+  background:transparent;
+  border-top:1px solid rgba(249,95,133,0.12);
 }
 .showup-tab{
   min-height:48px;
-  border-radius:16px;
-  border:1px solid rgba(249,95,133,0.14);
-  background:#fff;
-  color:#b27a91;
+  border-radius:999px;
+  border:1px solid rgba(249,95,133,0.35);
+  background:transparent;
+  color:#f95f85;
   font-size:13px;
   font-weight:800;
   cursor:pointer;
-  box-shadow:0 8px 20px rgba(77,49,66,0.06);
+  box-shadow:none;
 }
 .showup-tab.is-active{
   background:linear-gradient(135deg,#f95f85,#ff8ca8);
   color:#fff;
   border-color:transparent;
-  box-shadow:0 10px 24px rgba(249,95,133,0.26);
+  box-shadow:0 10px 24px rgba(249,95,133,0.22);
 }
 .showup-sheet-backdrop{
   position:fixed;
@@ -658,13 +685,26 @@ const SHOW_UP_STYLES = `
 }
 .showup-sheet{
   width:100%;
-  max-width:390px;
+  max-width:520px;
   background:#fff;
   border-radius:20px 20px 0 0;
   padding:18px 16px calc(26px + env(safe-area-inset-bottom, 0px));
   box-sizing:border-box;
   display:grid;
   gap:12px;
+}
+.showup-sheet-handle{
+  width:42px;
+  height:5px;
+  border-radius:999px;
+  background:rgba(77,49,66,0.18);
+  margin:0 auto 4px;
+}
+.showup-sheet-subtitle{
+  margin:0;
+  font-size:12px;
+  line-height:1.5;
+  color:#9a7088;
 }
 .showup-sheet-title{
   margin:0;
@@ -675,20 +715,28 @@ const SHOW_UP_STYLES = `
 }
 .showup-sheet-list{
   display:grid;
-  gap:8px;
+  gap:0;
+  border-top:1px solid rgba(77,49,66,0.08);
+  border-bottom:1px solid rgba(77,49,66,0.08);
 }
 .showup-template-btn{
   width:100%;
-  min-height:42px;
-  border-radius:12px;
-  padding:10px 12px;
+  min-height:46px;
+  border:none;
+  border-radius:0;
+  border-top:1px solid rgba(77,49,66,0.08);
+  padding:12px 2px;
   text-align:left;
   color:#4d3142;
   font-size:13px;
   cursor:pointer;
+  background:transparent;
+}
+.showup-template-btn:first-child{
+  border-top:none;
 }
 .showup-template-btn.is-selected{
-  background:rgba(249,95,133,0.12);
+  background:rgba(249,95,133,0.08);
   color:#f95f85;
 }
 .showup-sheet-divider{
@@ -707,7 +755,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-anon{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:10px;
   font-size:12px;
   color:#9a7088;
@@ -724,14 +772,15 @@ const SHOW_UP_STYLES = `
   color:#9a7088;
   font-size:13px;
   line-height:1.6;
-  background:var(--bg, #fff8f9);
+  background:var(--bg, #fff);
 }
 @media (max-width: 767px){
   .showup-root{
-    min-height:auto;
+    min-height:100dvh;
   }
   .showup-shell{
     max-width:100%;
+    padding-bottom:98px;
   }
 }
 @media (min-width: 768px){
@@ -740,10 +789,30 @@ const SHOW_UP_STYLES = `
     left:auto;
     bottom:auto;
     transform:none;
-    max-width:none;
+    width:auto;
     padding:0;
-    margin:16px 0 0;
+    margin:12px 0 0;
     background:transparent;
+    border-top:none;
+    display:flex;
+    justify-content:flex-start;
+    gap:22px;
+  }
+  .showup-tab{
+    min-height:auto;
+    padding:0 0 10px;
+    border:none;
+    border-radius:0;
+    background:transparent;
+    color:#a27a8c;
+    box-shadow:none;
+    border-bottom:2px solid transparent;
+  }
+  .showup-tab.is-active{
+    background:transparent;
+    color:#f95f85;
+    border-bottom-color:#f95f85;
+    box-shadow:none;
   }
 }
 `
@@ -767,17 +836,17 @@ const ROOM_ICONS = {
 }
 
 const TEMPLATE_MESSAGES = [
-  'We are waiting on you 👀',
-  'Hey I haven’t seen you in a while. Hope you’re good 🤍',
-  'Girl I thought you were doing your tasks 😂',
-  'You coming? I’ll cover for you 💪',
-  'How are you today? 🌸',
+  'We are waiting on you \u{1F440}',
+  'Hey I haven\u2019t seen you in a while. Hope you\u2019re good \u{1F90D}',
+  'Girl I thought you were doing your tasks \u{1F602}',
+  'You coming? I\u2019ll cover for you \u{1F4AA}',
+  'How are you today? \u{1F338}',
 ]
 
 const REACTION_KEYS = [
-  { key: 'fire', emoji: '🔥' },
-  { key: 'power', emoji: '💪' },
-  { key: 'love', emoji: '❤️' },
+  { key: 'fire', emoji: '\u{1F525}' },
+  { key: 'power', emoji: '\u{1F4AA}' },
+  { key: 'love', emoji: '\u2764\uFE0F' },
 ]
 
 const MAX_ROOM_SIZE = 12
@@ -886,6 +955,10 @@ function getFeedStorageKey(roomName) {
   return `phasr_showup_feed_${normalize(roomName)}`
 }
 
+function getRoomId(roomName) {
+  return normalize(roomName)
+}
+
 function getMockMemberStorageKey(roomName) {
   return `phasr_showup_mock_members_${normalize(roomName)}`
 }
@@ -940,6 +1013,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedPosts, setFeedPosts] = useState([])
+  const [feedReady, setFeedReady] = useState(true)
   const [postDraft, setPostDraft] = useState('')
   const [postImage, setPostImage] = useState('')
   const [expandedComments, setExpandedComments] = useState({})
@@ -983,7 +1057,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   useEffect(() => {
     if (!selectedRoom) return
-    setFeedPosts(safeRead(getFeedStorageKey(selectedRoom), []))
+    loadFeedPosts(selectedRoom)
   }, [selectedRoom])
 
   useEffect(() => {
@@ -1135,7 +1209,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setTaskDone(nextTaskDone)
     setStatusLine(
       nextTaskDone
-        ? `Done ✓ — marked at ${formatTime(myMember?.check_in_time)}`
+        ? `Done \u2713 \u2014 marked at ${formatTime(myMember?.check_in_time)}`
         : nextCheckedIn
           ? `Checked in at ${formatTime(myMember?.check_in_time)}`
           : ''
@@ -1151,6 +1225,91 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     safeWrite(getMockMemberStorageKey(roomName), next)
     loadMembersFromLocal(roomName, profile)
     loadRoomCountsFromLocal(profile)
+  }
+
+  async function loadFeedPosts(roomName) {
+    const localPosts = safeRead(getFeedStorageKey(roomName), [])
+    if (!supabase) {
+      setFeedReady(false)
+      setFeedPosts(Array.isArray(localPosts) ? localPosts : [])
+      return
+    }
+
+    try {
+      const { data, error: feedError } = await supabase
+        .from('room_feed')
+        .select('room_id,user_id,display_name,content,image_url,is_anonymous,created_at')
+        .eq('room_id', getRoomId(roomName))
+        .order('created_at', { ascending: false })
+
+      if (feedError) throw feedError
+
+      const cachedPosts = Array.isArray(localPosts) ? localPosts : []
+      const remotePosts = (data || []).map((post, index) => {
+        const cached = cachedPosts.find(item => item.createdAt === post.created_at && item.text === (post.content || ''))
+        return {
+          id: `${post.user_id || 'room'}-${post.created_at || index}`,
+          authorId: post.user_id || `anon-${index}`,
+          authorName: post.is_anonymous ? 'Anonymous \u00B7 Room' : (post.display_name || 'Room member'),
+          authorInitials: post.is_anonymous ? '\u{1F464}' : buildInitials(post.display_name || 'Room member'),
+          anonymous: Boolean(post.is_anonymous),
+          text: post.content || '',
+          image: post.image_url || '',
+          createdAt: post.created_at || new Date().toISOString(),
+          reactions: cached?.reactions || { fire: [], power: [], love: [] },
+          comments: cached?.comments || [],
+        }
+      })
+
+      setFeedReady(true)
+      setFeedPosts(remotePosts)
+    } catch (nextError) {
+      console.error('Show Up feed load failed', nextError)
+      setFeedReady(false)
+      setFeedPosts(Array.isArray(localPosts) ? localPosts : [])
+    }
+  }
+
+  async function createFeedPost({ text, image = '', anonymous = false }) {
+    const createdAt = new Date().toISOString()
+    const nextPost = {
+      id: uid(),
+      authorId: anonymous ? `anon-${uid()}` : profile.id,
+      authorName: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
+      authorInitials: anonymous ? '\u{1F464}' : profile.initials,
+      anonymous,
+      text,
+      image,
+      createdAt,
+      reactions: { fire: [], power: [], love: [] },
+      comments: [],
+    }
+
+    addFeedPost(nextPost)
+
+    if (!supabase || !selectedRoom) return nextPost
+
+    try {
+      const { error: insertError } = await supabase
+        .from('room_feed')
+        .insert({
+          room_id: getRoomId(selectedRoom),
+          user_id: profile.id,
+          display_name: profile.name,
+          content: text,
+          image_url: image || '',
+          is_anonymous: anonymous,
+          created_at: createdAt,
+        })
+
+      if (insertError) throw insertError
+      setFeedReady(true)
+    } catch (nextError) {
+      console.error('Show Up feed post failed', nextError)
+      setFeedReady(false)
+    }
+
+    return nextPost
   }
 
   async function ensureRoomMembership(roomName) {
@@ -1237,7 +1396,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setLastCompletedToday()
     setCheckedIn(true)
     setTaskDone(true)
-    setStatusLine(`Done ✓ — marked at ${formatTime(nowIso)}`)
+    setStatusLine(`Done \u2713 \u2014 marked at ${formatTime(nowIso)}`)
     loadMembers(selectedRoom, profile)
   }
 
@@ -1253,21 +1412,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setFeedPosts(current => [post, ...current].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
   }
 
-  function handleCreatePost() {
+  async function handleCreatePost() {
     const text = postDraft.trim()
     if (!text && !postImage) return
-    addFeedPost({
-      id: uid(),
-      authorId: profile.id,
-      authorName: profile.name,
-      authorInitials: profile.initials,
-      anonymous: false,
-      text,
-      image: postImage,
-      createdAt: new Date().toISOString(),
-      reactions: { fire: [], power: [], love: [] },
-      comments: [],
-    })
+    await createFeedPost({ text, image: postImage, anonymous: false })
     setPostDraft('')
     setPostImage('')
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -1325,21 +1473,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setNotifyText(template)
   }
 
-  function handleSendNotification() {
+  async function handleSendNotification() {
     const text = notifyText.trim()
     if (!text || !sheetState.member) return
-    addFeedPost({
-      id: uid(),
-      authorId: notifyAnonymous ? `anon-${uid()}` : profile.id,
-      authorName: notifyAnonymous ? 'Anonymous · Room' : profile.name,
-      authorInitials: notifyAnonymous ? '👤' : profile.initials,
-      anonymous: notifyAnonymous,
-      text,
-      image: '',
-      createdAt: new Date().toISOString(),
-      reactions: { fire: [], power: [], love: [] },
-      comments: [],
-    })
+    await createFeedPost({ text, image: '', anonymous: notifyAnonymous })
     setSheetState({ open: false, member: null })
     setSelectedTemplate('')
     setNotifyText('')
@@ -1578,13 +1715,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   return (
-    <div className="showup-root" style={{ '--bg': '#fff', background: '#fff' }}>
+    <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9' }}>
       <style>{SHOW_UP_STYLES}</style>
 
-      <div className="showup-shell" style={{ '--bg': '#fff', background: '#fff' }}>
+      <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9' }}>
         <div className="showup-sticky-header">
           <div className="showup-topbar">
-            <button type="button" className="showup-header-btn" onClick={() => setSelectedRoom(null)}>←</button>
+            <button type="button" className="showup-header-btn" onClick={() => setSelectedRoom(null)}>{'\u2190'}</button>
             <h1 className="showup-room-title">{selectedRoom}</h1>
             <div className="showup-live-pill">
               <span className="showup-live-dot" />
@@ -1592,7 +1729,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
           </div>
 
-          <div className={`showup-cta ${activeTab !== 'live' || checkedIn || taskDone ? 'is-hidden' : ''}`}>
+          <div className={`showup-cta ${activeTab !== 'live' || checkedIn ? 'is-hidden' : ''}`}>
             {!checkedIn && !taskDone ? (
               <>
                 <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
@@ -1601,8 +1738,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             ) : null}
           </div>
 
-          <p className={`showup-status-line ${taskDone ? 'is-done' : ''}`}>{statusLine}</p>
-          {activeTab === 'live' ? <p className="showup-live-meta">{members.length} in room · {completedCount} done today</p> : null}
+          {activeTab === 'live' && statusLine ? <p className={`showup-status-line ${taskDone ? 'is-done' : ''}`}>{statusLine}</p> : null}
+          {activeTab === 'live' && checkedIn && !taskDone ? (
+            <div className="showup-checkin-stack">
+              <button type="button" className="showup-checkin-btn" onClick={handleMarkDone}>Mark Done</button>
+            </div>
+          ) : null}
+          {activeTab === 'live' ? <p className="showup-live-meta">{members.length} in room {'\u00B7'} {completedCount} done today</p> : null}
+        </div>
+
+        <div className="showup-tabs">
+          {[
+            { key: 'live', label: 'Live' },
+            { key: 'feed', label: 'Feed' },
+            { key: 'ranks', label: 'Ranks' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`showup-tab ${activeTab === tab.key ? 'is-active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {error ? <div className="showup-empty">{error}</div> : null}
@@ -1615,14 +1774,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               const isSelf = member.user_id === profile.id
               return (
                 <div key={member.user_id} className="showup-member-card">
-                  <div className="showup-avatar" style={{ width: 38, height: 38, fontSize: 13 }}>
+                  <div className="showup-avatar">
                     {member.initials || buildInitials(member.display_name)}
                     <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
                     <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'active' ? 'Active now' : status === 'done' ? 'Done today' : 'Not yet'}
+                      {status === 'active' ? 'Active now' : status === 'done' ? 'Done' : 'Not yet'}
                     </p>
                   </div>
                   {!isSelf ? (
@@ -1630,7 +1789,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       <Bell size={15} strokeWidth={2.1} />
                     </button>
                   ) : (
-                    <div style={{ width: 30, height: 30 }} aria-hidden="true" />
+                    <div style={{ width: 32, height: 32 }} aria-hidden="true" />
                   )}
                 </div>
               )
@@ -1659,15 +1818,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
 
             {visiblePosts.length === 0 ? (
-              <div className="showup-empty">No posts yet. Share what you are working on…</div>
+              <div className="showup-empty">No posts yet. Be the first to share.</div>
             ) : (
               visiblePosts.map(post => (
                 <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
-                      <div className="showup-avatar">{post.anonymous ? '👤' : post.authorInitials || buildInitials(post.authorName)}</div>
+                      <div className="showup-avatar">{post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName)}</div>
                       <div>
-                        <p className="showup-feed-name">{post.anonymous ? 'Anonymous · Room' : post.authorName}</p>
+                        <p className="showup-feed-name">{post.anonymous ? 'Anonymous \u00B7 Room' : post.authorName}</p>
                         <p className="showup-feed-time">{formatTimestamp(post.createdAt)}</p>
                       </div>
                     </div>
@@ -1703,9 +1862,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <div className="showup-comments">
                       {(post.comments || []).map(comment => (
                         <div key={comment.id} className="showup-comment-row">
-                          <div className="showup-avatar">{comment.anonymous ? '👤' : comment.authorInitials || buildInitials(comment.authorName)}</div>
+                          <div className="showup-avatar">{comment.anonymous ? '\u{1F464}' : comment.authorInitials || buildInitials(comment.authorName)}</div>
                           <div className="showup-comment-bubble">
-                            <p className="showup-comment-author">{comment.anonymous ? 'Anonymous · Room' : comment.authorName}</p>
+                            <p className="showup-comment-author">{comment.anonymous ? 'Anonymous \u00B7 Room' : comment.authorName}</p>
                             <p className="showup-comment-text">{comment.text}</p>
                           </div>
                         </div>
@@ -1731,18 +1890,23 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-ranks-view">
             {rankedMembers.map((member, index) => {
               const badge =
-                index === 0 ? '👑 Leader'
-                  : index === 1 ? '🥈 Rising'
-                    : index === 2 ? '🥉 Building'
+                index === 0 ? '\u{1F451} Leader'
+                  : index === 1 ? '\u{1F948} Rising'
+                    : index === 2 ? '\u{1F949} Building'
                       : member.streakValue > 0 ? 'Starting' : 'Not yet'
               const rowClass =
                 index === 0 ? 'is-leader'
                   : index === 1 ? 'is-rising'
                     : index === 2 ? 'is-building'
                       : ''
+              const rankClass =
+                index === 0 ? 'is-leader'
+                  : index === 1 ? 'is-rising'
+                    : index === 2 ? 'is-building'
+                      : 'is-muted'
               return (
                 <div key={member.user_id} className={`showup-rank-row ${rowClass}`}>
-                  <div className="showup-rank-number">{index + 1}</div>
+                  <div className={`showup-rank-number ${rankClass}`}>{index + 1}</div>
                   <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
                   <div>
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
@@ -1757,29 +1921,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ) : null}
       </div>
 
-      {selectedRoom ? (
-        <div className="showup-tabs">
-          {[
-            { key: 'live', label: 'Live' },
-            { key: 'feed', label: 'Feed' },
-            { key: 'ranks', label: 'Ranks' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`showup-tab ${activeTab === tab.key ? 'is-active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       {sheetState.open && sheetState.member ? (
         <div className="showup-sheet-backdrop" onClick={() => setSheetState({ open: false, member: null })}>
           <div className="showup-sheet" onClick={event => event.stopPropagation()}>
+            <div className="showup-sheet-handle" />
             <h2 className="showup-sheet-title">Notify {sheetState.member.display_name}</h2>
+            <p className="showup-sheet-subtitle">They will receive this anonymously if you toggle it on.</p>
             <div className="showup-sheet-list">
               {TEMPLATE_MESSAGES.map(template => (
                 <button
@@ -1801,7 +1948,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             />
             <label className="showup-anon">
               <input type="checkbox" checked={notifyAnonymous} onChange={event => setNotifyAnonymous(event.target.checked)} />
-              <span>Send anonymously — shows in feed without your name</span>
+              <span>Send anonymously {'\u2014'} your name won{'\u2019'}t show in the feed.</span>
             </label>
             <div className="showup-sheet-actions">
               <button type="button" className="showup-sheet-send" onClick={handleSendNotification}>Send</button>
