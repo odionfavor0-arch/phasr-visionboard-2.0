@@ -1135,6 +1135,11 @@ const SHOW_UP_STYLES = `
     grid-template-columns:1fr 1fr;
     gap:8px;
   }
+  .showup-checkin-btn,
+  .showup-done-btn{
+    min-height:46px;
+    font-size:13px;
+  }
   .showup-status-actions{
     grid-template-columns:1fr 1fr;
     gap:8px;
@@ -1384,6 +1389,17 @@ function formatTimestamp(value) {
   })
 }
 
+function dataUrlToFile(dataUrl, fallbackName = 'room-progress.png') {
+  const [meta = '', data = ''] = String(dataUrl || '').split(',')
+  const mime = meta.match(/data:(.*?);base64/)?.[1] || 'image/png'
+  const binary = atob(data)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return new File([bytes], fallbackName, { type: mime })
+}
+
 function normalize(value) {
   return String(value || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -1617,14 +1633,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         table: 'show_up_checkins',
       }, () => {
         loadRoomCounts(profile)
-        if (selectedRoom) loadMembers(selectedRoom, profile)
+        if (selectedRoom && !checkInBusy && !doneBusy) loadMembers(selectedRoom, profile)
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [profile, selectedRoom])
+  }, [profile, selectedRoom, checkInBusy, doneBusy])
 
   async function loadRoomCounts(nextProfile = profile) {
     if (!supabase) {
@@ -1835,6 +1851,23 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     })
   }
 
+  async function uploadRoomFeedImage(image) {
+    if (!image || !String(image).startsWith('data:') || !supabase || !selectedRoom) return image
+    try {
+      const file = dataUrlToFile(image, `${profile.id}-${Date.now()}.png`)
+      const path = `${getRoomId(selectedRoom)}/${profile.id}-${Date.now()}.png`
+      const { error: uploadError } = await supabase.storage
+        .from('room-feed')
+        .upload(path, file, { contentType: file.type, upsert: true })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('room-feed').getPublicUrl(path)
+      return data?.publicUrl || image
+    } catch (nextError) {
+      console.error('Show Up image upload failed', nextError)
+      return image
+    }
+  }
+
   async function ensureRoomMembership(roomName) {
     const payload = {
       room_name: roomName,
@@ -1920,20 +1953,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       else next.unshift(payload)
       return next
     })
+    upsertLocalMember(selectedRoom, payload)
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { error: checkInError } = await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
       if (checkInError) throw checkInError
-      await loadMembers(selectedRoom, profile)
       await loadRoomCounts(profile)
     } catch (nextError) {
       console.error('Show Up check-in failed', nextError)
-      upsertLocalMember(selectedRoom, payload)
     } finally {
       setCheckInBusy(false)
     }
-    await createRoomActivityPost(`${profile.name} checked in at ${formatTime(nowIso)}.`)
   }
 
   async function handleMarkDone() {
@@ -1961,6 +1992,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setMembers(current => current.map(member => (
       member.user_id === profile.id ? { ...member, ...donePatch } : member
     )))
+    upsertLocalMember(selectedRoom, donePatch)
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
@@ -1970,10 +2002,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
       if (doneError) throw doneError
-      await loadMembers(selectedRoom, profile)
     } catch (nextError) {
       console.error('Show Up mark done failed', nextError)
-      upsertLocalMember(selectedRoom, donePatch)
     } finally {
       setDoneBusy(false)
     }
@@ -1996,7 +2026,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   async function handleCreatePost() {
     const text = postDraft.trim()
     if (!text && !postImage) return
-    await createFeedPost({ text, image: postImage, anonymous: false })
+    const uploadedImage = await uploadRoomFeedImage(postImage)
+    await createFeedPost({ text, image: uploadedImage, anonymous: false })
     setPostDraft('')
     setPostImage('')
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -2426,7 +2457,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               )}
             </div>
           ) : null}
-          {activeTab === 'live' ? <p className="showup-live-meta">{activeCount} active {'\u00B7'} {completedCount} done today</p> : null}
         </div>
 
         <div className="showup-tabs">
