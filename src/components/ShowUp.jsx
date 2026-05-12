@@ -365,9 +365,10 @@ const SHOW_UP_STYLES = `
   color:#f95f85;
 }
 .showup-entry-status{
-  width:fit-content;
+  width:100%;
+  box-sizing:border-box;
   max-width:760px;
-  margin:0 auto 14px;
+  margin:0;
   padding:9px 14px;
   border-radius:999px;
   background:rgba(249,95,133,0.1);
@@ -375,6 +376,34 @@ const SHOW_UP_STYLES = `
   font-size:13px;
   font-weight:800;
   line-height:1.2;
+  text-align:center;
+}
+.showup-status-actions{
+  width:100%;
+  max-width:760px;
+  margin:0 auto 14px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:stretch;
+  gap:8px;
+}
+.showup-mini-done-btn{
+  min-height:34px;
+  border-radius:999px;
+  border:1px solid rgba(249,95,133,0.24);
+  background:rgba(255,255,255,0.72);
+  color:#f95f85;
+  padding:0 14px;
+  font-size:12px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+  width:100%;
+}
+.showup-mini-done-btn.is-complete,
+.showup-mini-done-btn:disabled{
+  cursor:default;
+  color:#9a7088;
 }
 .showup-status-line{
   min-height:20px;
@@ -641,6 +670,15 @@ const SHOW_UP_STYLES = `
   display:flex;
   flex-wrap:wrap;
   gap:8px;
+  position:relative;
+}
+.showup-reaction-summary{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  font-size:12px;
+  color:#9a7088;
+  font-weight:800;
 }
 .showup-reaction-chip,
 .showup-comment-toggle{
@@ -658,6 +696,30 @@ const SHOW_UP_STYLES = `
 .showup-reaction-chip.is-active{
   background:rgba(249,95,133,0.14);
   color:#f95f85;
+}
+.showup-reaction-picker{
+  position:absolute;
+  left:0;
+  bottom:42px;
+  display:flex;
+  gap:6px;
+  padding:8px;
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:999px;
+  background:#fff;
+  box-shadow:0 14px 34px rgba(77,49,66,0.14);
+  z-index:4;
+}
+.showup-reaction-option{
+  width:34px;
+  height:34px;
+  border:none;
+  border-radius:50%;
+  background:rgba(249,95,133,0.08);
+  display:grid;
+  place-items:center;
+  font-size:17px;
+  cursor:pointer;
 }
 .showup-comments{
   display:grid;
@@ -823,6 +885,7 @@ const SHOW_UP_STYLES = `
 .showup-header-btn:focus-visible,
 .showup-checkin-btn:focus-visible,
 .showup-done-btn:focus-visible,
+.showup-mini-done-btn:focus-visible,
 .showup-tab:focus-visible,
 .showup-bell-btn:focus-visible,
 .showup-photo-btn:focus-visible,
@@ -830,6 +893,7 @@ const SHOW_UP_STYLES = `
 .showup-comment-send:focus-visible,
 .showup-comment-toggle:focus-visible,
 .showup-reaction-chip:focus-visible,
+.showup-reaction-option:focus-visible,
 .showup-sheet-send:focus-visible,
 .showup-sheet-cancel:focus-visible,
 .showup-template-btn:focus-visible{
@@ -1068,7 +1132,11 @@ const SHOW_UP_STYLES = `
     font-size:11px;
   }
   .showup-checkin-actions{
-    grid-template-columns:1fr;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .showup-status-actions{
+    grid-template-columns:1fr 1fr;
     gap:8px;
   }
   .showup-feed-reactions{
@@ -1217,10 +1285,12 @@ function getNudgeTemplates(member) {
   ]
 }
 
-const REACTION_KEYS = [
-  { key: 'fire', label: 'Fire', Icon: Flame },
-  { key: 'power', label: 'Power', Icon: Zap },
-  { key: 'love', label: 'Love', Icon: Heart },
+const REACTION_OPTIONS = [
+  { key: 'like', label: 'Like', emoji: '👍' },
+  { key: 'clap', label: 'Clap', emoji: '👏' },
+  { key: 'love', label: 'Love', emoji: '❤️' },
+  { key: 'laugh', label: 'Laugh', emoji: '😂' },
+  { key: 'smile', label: 'Smile', emoji: '😊' },
 ]
 
 const MAX_ROOM_SIZE = 12
@@ -1278,7 +1348,7 @@ function persistFeedPosts(key, posts) {
     text: String(post.text || '').slice(0, 500),
     image: '',
     createdAt: post.createdAt,
-    reactions: post.reactions || { fire: [], power: [], love: [] },
+    reactions: post.reactions || {},
     comments: [],
   }))
   safeWrite(key, minimalPosts)
@@ -1424,6 +1494,15 @@ function getMemberStatus(member) {
   return 'idle'
 }
 
+function getReactionSummary(reactions) {
+  return REACTION_OPTIONS
+    .map(reaction => ({
+      ...reaction,
+      count: (reactions?.[reaction.key] || []).length,
+    }))
+    .filter(reaction => reaction.count > 0)
+}
+
 export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [lockInState] = useState(() => loadLockInState())
   const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
@@ -1433,6 +1512,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [roomCounts, setRoomCounts] = useState({})
   const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
+  const [doneTime, setDoneTime] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedPosts, setFeedPosts] = useState([])
@@ -1443,6 +1523,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReplies, setExpandedReplies] = useState({})
   const [replyDrafts, setReplyDrafts] = useState({})
+  const [reactionPickerPostId, setReactionPickerPostId] = useState('')
+  const [checkInBusy, setCheckInBusy] = useState(false)
+  const [doneBusy, setDoneBusy] = useState(false)
   const [sheetState, setSheetState] = useState({ open: false, member: null })
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [notifyText, setNotifyText] = useState('')
@@ -1544,7 +1627,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [profile, selectedRoom])
 
   async function loadRoomCounts(nextProfile = profile) {
-    const today = getTodayKey()
     if (!supabase) {
       loadRoomCountsFromLocal(nextProfile)
       return
@@ -1554,7 +1636,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       const { data, error: countsError } = await supabase
         .from('show_up_checkins')
         .select('room_name')
-        .gte('created_at', `${today}T00:00:00`)
 
       if (countsError) throw countsError
 
@@ -1580,7 +1661,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   async function loadMembers(roomName, nextProfile = profile) {
-    const today = getTodayKey()
     if (!supabase) {
       loadMembersFromLocal(roomName, nextProfile)
       return
@@ -1591,7 +1671,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         .from('show_up_checkins')
         .select('*')
         .eq('room_name', roomName)
-        .gte('created_at', `${today}T00:00:00`)
         .order('check_in_time', { ascending: true })
 
       if (membersError) throw membersError
@@ -1634,6 +1713,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const nextTaskDone = Boolean(myMember?.task_done)
     setCheckedIn(nextCheckedIn)
     setTaskDone(nextTaskDone)
+    if (myMember?.task_done_time) setDoneTime(myMember.task_done_time)
+    if (!nextTaskDone) setDoneTime('')
   }
 
   function upsertLocalMember(roomName, patch) {
@@ -1676,7 +1757,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           text: post.content || '',
           image: post.image_url || '',
           createdAt: post.created_at || new Date().toISOString(),
-          reactions: cached?.reactions || { fire: [], power: [], love: [] },
+          reactions: cached?.reactions || {},
           comments: (cached?.comments || []).map(comment => ({
             ...comment,
             reactions: comment.reactions || { love: [] },
@@ -1710,7 +1791,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       text,
       image,
       createdAt,
-      reactions: { fire: [], power: [], love: [] },
+      reactions: {},
       comments: [],
     }
 
@@ -1747,9 +1828,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       image: '',
       anonymous: false,
       author: {
-        id: profile.id,
-        name: profile.name,
-        initials: profile.initials,
+        id: 'sage',
+        name: 'Sage',
+        initials: 'SG',
       },
     })
   }
@@ -1808,13 +1889,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setMembers([])
     setCheckedIn(false)
     setTaskDone(false)
+    setDoneTime('')
     setExitPromptOpen(false)
     setSelectedRoom(null)
     loadRoomCountsFromLocal(profile)
   }
 
   async function handleCheckIn() {
-    if (!selectedRoom) return
+    if (!selectedRoom || checkedIn || checkInBusy) return
     const nowIso = new Date().toISOString()
     const payload = {
       room_name: selectedRoom,
@@ -1827,16 +1909,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       streak_count: getCurrentStreakCount(),
     }
 
-    try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
-      await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
-    } catch (nextError) {
-      console.error('Show Up check-in failed', nextError)
-      upsertLocalMember(selectedRoom, payload)
-    }
-
+    setCheckInBusy(true)
     setCheckedIn(true)
     setTaskDone(false)
+    setDoneTime('')
     setMembers(current => {
       const next = [...current]
       const index = next.findIndex(member => member.user_id === profile.id)
@@ -1844,42 +1920,65 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       else next.unshift(payload)
       return next
     })
-    loadMembers(selectedRoom, profile)
-  }
-
-  async function handleMarkDone() {
-    if (!selectedRoom) return
-    const nowIso = new Date().toISOString()
-    const currentMember = members.find(member => member.user_id === profile.id)
-    const checkedInAt = currentMember?.check_in_time || nowIso
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
-      await supabase
+      const { error: checkInError } = await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
+      if (checkInError) throw checkInError
+      await loadMembers(selectedRoom, profile)
+      await loadRoomCounts(profile)
+    } catch (nextError) {
+      console.error('Show Up check-in failed', nextError)
+      upsertLocalMember(selectedRoom, payload)
+    } finally {
+      setCheckInBusy(false)
+    }
+    await createRoomActivityPost(`${profile.name} checked in at ${formatTime(nowIso)}.`)
+  }
+
+  async function handleMarkDone() {
+    if (!selectedRoom || !checkedIn || taskDone || doneBusy) return
+    const nowIso = new Date().toISOString()
+    const currentMember = members.find(member => member.user_id === profile.id)
+    const checkedInAt = currentMember?.check_in_time || nowIso
+    const donePatch = {
+      room_name: selectedRoom,
+      user_id: profile.id,
+      display_name: profile.name,
+      initials: profile.initials,
+      checked_in: true,
+      task_done: true,
+      check_in_time: checkedInAt,
+      task_done_time: nowIso,
+      streak_count: getCurrentStreakCount(),
+    }
+
+    setDoneBusy(true)
+    setLastCompletedToday()
+    setCheckedIn(true)
+    setTaskDone(true)
+    setDoneTime(nowIso)
+    setMembers(current => current.map(member => (
+      member.user_id === profile.id ? { ...member, ...donePatch } : member
+    )))
+
+    try {
+      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
+      const { error: doneError } = await supabase
         .from('show_up_checkins')
         .update({ checked_in: true, task_done: true, check_in_time: checkedInAt })
         .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
+      if (doneError) throw doneError
+      await loadMembers(selectedRoom, profile)
     } catch (nextError) {
       console.error('Show Up mark done failed', nextError)
-      upsertLocalMember(selectedRoom, {
-        room_name: selectedRoom,
-        user_id: profile.id,
-        display_name: profile.name,
-        initials: profile.initials,
-        checked_in: true,
-        task_done: true,
-        check_in_time: checkedInAt,
-        streak_count: getCurrentStreakCount(),
-      })
+      upsertLocalMember(selectedRoom, donePatch)
+    } finally {
+      setDoneBusy(false)
     }
-
-    setLastCompletedToday()
-    setCheckedIn(true)
-    setTaskDone(true)
     const doneText = `${profile.name} marked done at ${formatTime(nowIso)}.`
     await createRoomActivityPost(doneText)
-    loadMembers(selectedRoom, profile)
   }
 
   function handlePhotoPick(event) {
@@ -1906,17 +2005,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   function handleToggleReaction(postId, reactionKey) {
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
-      const nextSet = new Set(post.reactions?.[reactionKey] || [])
-      if (nextSet.has(profile.id)) nextSet.delete(profile.id)
-      else nextSet.add(profile.id)
+      const nextReactions = REACTION_OPTIONS.reduce((acc, reaction) => {
+        acc[reaction.key] = (post.reactions?.[reaction.key] || []).filter(userId => userId !== profile.id)
+        return acc
+      }, {})
+      const alreadyReacted = (post.reactions?.[reactionKey] || []).includes(profile.id)
+      if (!alreadyReacted) nextReactions[reactionKey] = [...(nextReactions[reactionKey] || []), profile.id]
       return {
         ...post,
-        reactions: {
-          ...post.reactions,
-          [reactionKey]: [...nextSet],
-        },
+        reactions: nextReactions,
       }
     }))
+    setReactionPickerPostId('')
   }
 
   function handleAddComment(postId) {
@@ -2310,7 +2410,21 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
           ) : null}
           {activeTab === 'live' && checkedIn ? (
-            <p className="showup-entry-status">Checked in at {formatTime(currentMember?.check_in_time)}</p>
+            <div className="showup-status-actions">
+              <p className="showup-entry-status">Checked in {formatTime(currentMember?.check_in_time)}</p>
+              {taskDone ? (
+                <p className="showup-entry-status">Done {formatTime(doneTime || currentMember?.task_done_time) || 'today'}</p>
+              ) : (
+                <button
+                  type="button"
+                  className="showup-mini-done-btn"
+                  onClick={handleMarkDone}
+                  disabled={doneBusy}
+                >
+                  {doneBusy ? 'Saving...' : 'Mark Done'}
+                </button>
+              )}
+            </div>
           ) : null}
           {activeTab === 'live' ? <p className="showup-live-meta">{activeCount} active {'\u00B7'} {completedCount} done today</p> : null}
         </div>
@@ -2403,7 +2517,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             {visiblePosts.length === 0 ? (
               <div className="showup-empty">No posts yet. Be the first to share.</div>
             ) : (
-              visiblePosts.map(post => (
+              visiblePosts.map(post => {
+                const reactionSummary = getReactionSummary(post.reactions)
+                const activeReaction = REACTION_OPTIONS.find(reaction => (post.reactions?.[reaction.key] || []).includes(profile.id))
+                const reactionTotal = reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
+                return (
                 <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
@@ -2418,23 +2536,37 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" /> : null}
                   <div className="showup-feed-reactions">
                     <div className="showup-feed-chip-row">
-                      {REACTION_KEYS.map(reaction => {
-                        const count = (post.reactions?.[reaction.key] || []).length
-                        const active = (post.reactions?.[reaction.key] || []).includes(profile.id)
-                        const ReactionIcon = reaction.Icon
-                        return (
-                          <button
-                            key={reaction.key}
-                            type="button"
-                            className={`showup-reaction-chip ${active ? 'is-active' : ''}`}
-                            onClick={() => handleToggleReaction(post.id, reaction.key)}
-                            aria-label={`${reaction.label} reaction`}
-                          >
-                            <ReactionIcon size={14} strokeWidth={2.1} />
-                            <span>{count}</span>
-                          </button>
-                        )
-                      })}
+                      <button
+                        type="button"
+                        className={`showup-reaction-chip ${activeReaction ? 'is-active' : ''}`}
+                        onClick={() => setReactionPickerPostId(current => current === post.id ? '' : post.id)}
+                        aria-label="Choose reaction"
+                      >
+                        <span>{activeReaction?.emoji || '\u263A'}</span>
+                        <span>{reactionTotal}</span>
+                      </button>
+                      {reactionSummary.length ? (
+                        <div className="showup-reaction-summary" aria-label={`${reactionTotal} reactions`}>
+                          {reactionSummary.map(reaction => (
+                            <span key={reaction.key}>{reaction.emoji}{reaction.count}</span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {reactionPickerPostId === post.id ? (
+                        <div className="showup-reaction-picker">
+                          {REACTION_OPTIONS.map(reaction => (
+                            <button
+                              key={reaction.key}
+                              type="button"
+                              className="showup-reaction-option"
+                              onClick={() => handleToggleReaction(post.id, reaction.key)}
+                              aria-label={reaction.label}
+                            >
+                              {reaction.emoji}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     <button
                       type="button"
@@ -2505,7 +2637,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     </div>
                   ) : null}
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         ) : null}
