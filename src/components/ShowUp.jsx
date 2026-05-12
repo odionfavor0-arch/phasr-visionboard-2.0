@@ -1132,7 +1132,26 @@ function safeRead(key, fallback) {
 }
 
 function safeWrite(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+    return true
+  } catch (error) {
+    console.warn('Show Up storage write skipped', key, error)
+    return false
+  }
+}
+
+function compactFeedPostsForStorage(posts) {
+  return (Array.isArray(posts) ? posts : [])
+    .slice(0, 30)
+    .map(post => ({
+      ...post,
+      image: String(post?.image || '').startsWith('data:') ? '' : post?.image || '',
+      comments: (post?.comments || []).slice(0, 40).map(comment => ({
+        ...comment,
+        replies: (comment?.replies || []).slice(0, 20),
+      })),
+    }))
 }
 
 function uid() {
@@ -1334,7 +1353,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   useEffect(() => {
     if (!selectedRoom) return
-    safeWrite(getFeedStorageKey(selectedRoom), feedPosts)
+    safeWrite(getFeedStorageKey(selectedRoom), compactFeedPostsForStorage(feedPosts))
   }, [feedPosts, selectedRoom])
 
   useEffect(() => {
