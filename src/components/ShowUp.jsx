@@ -335,9 +335,10 @@ const SHOW_UP_STYLES = `
   margin:0 auto 14px;
 }
 .showup-cta.is-hidden{display:none}
-.showup-checkin-stack{
+.showup-checkin-actions{
   display:grid;
-  gap:12px;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
   width:100%;
   max-width:760px;
   margin:0 auto 14px;
@@ -349,6 +350,16 @@ const SHOW_UP_STYLES = `
   font-size:14px;
   font-weight:700;
   cursor:pointer;
+}
+.showup-checkin-btn.is-complete,
+.showup-done-btn.is-complete,
+.showup-checkin-btn:disabled,
+.showup-done-btn:disabled{
+  border:1px solid rgba(249,95,133,0.24);
+  background:rgba(255,255,255,0.72);
+  color:#f95f85;
+  box-shadow:none;
+  cursor:default;
 }
 .showup-done-btn{
   color:#f95f85;
@@ -377,7 +388,8 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(104px, 1fr));
+  grid-template-columns:repeat(auto-fill, minmax(122px, 138px));
+  justify-content:center;
   gap:10px;
   border:none;
   border-radius:0;
@@ -388,8 +400,13 @@ const SHOW_UP_STYLES = `
   max-width:760px;
   box-shadow:none;
 }
+.showup-member-grid .showup-empty{
+  grid-column:1 / -1;
+  width:100%;
+  box-sizing:border-box;
+}
 .showup-member-card{
-  min-height:116px;
+  min-height:132px;
   padding:10px;
   display:grid;
   grid-template-columns:1fr;
@@ -455,9 +472,9 @@ const SHOW_UP_STYLES = `
 .showup-member-status.is-done{color:#f95f85}
 .showup-member-status.is-idle{color:#9a7088}
 .showup-bell-btn{
-  min-height:30px;
-  border-radius:999px;
-  padding:0 10px;
+  min-height:32px;
+  border-radius:10px;
+  padding:0 9px;
   color:#f95f85;
   display:inline-flex;
   align-items:center;
@@ -644,6 +661,35 @@ const SHOW_UP_STYLES = `
   line-height:1.55;
   color:#4d3142;
   white-space:pre-wrap;
+}
+.showup-comment-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:8px;
+}
+.showup-comment-action{
+  border:none;
+  background:transparent;
+  color:#f95f85;
+  font-size:11px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+  padding:0;
+}
+.showup-replies{
+  display:grid;
+  gap:8px;
+  margin-top:9px;
+  padding-left:12px;
+  border-left:1px solid rgba(249,95,133,0.18);
+}
+.showup-reply-bubble{
+  background:rgba(255,255,255,0.62);
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:12px;
+  padding:8px 10px;
 }
 .showup-comment-compose{
   display:flex;
@@ -922,16 +968,20 @@ const SHOW_UP_STYLES = `
     padding:9px 10px;
     font-size:11px;
   }
+  .showup-checkin-actions{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
   .showup-feed-reactions{
     align-items:flex-start;
     flex-direction:column;
   }
   .showup-member-grid{
-    grid-template-columns:repeat(3, minmax(0, 1fr));
+    grid-template-columns:repeat(2, minmax(118px, 1fr));
     gap:8px;
   }
   .showup-member-card{
-    min-height:106px;
+    min-height:128px;
     padding:9px 6px;
     border-radius:12px;
   }
@@ -941,7 +991,7 @@ const SHOW_UP_STYLES = `
     font-size:10px;
   }
   .showup-bell-btn span{
-    max-width:72px;
+    max-width:86px;
     overflow:hidden;
     text-overflow:ellipsis;
   }
@@ -1238,6 +1288,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [postImage, setPostImage] = useState('')
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
+  const [expandedReplies, setExpandedReplies] = useState({})
+  const [replyDrafts, setReplyDrafts] = useState({})
   const [sheetState, setSheetState] = useState({ open: false, member: null })
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [notifyText, setNotifyText] = useState('')
@@ -1470,7 +1522,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           image: post.image_url || '',
           createdAt: post.created_at || new Date().toISOString(),
           reactions: cached?.reactions || { fire: [], power: [], love: [] },
-          comments: cached?.comments || [],
+          comments: (cached?.comments || []).map(comment => ({
+            ...comment,
+            reactions: comment.reactions || { love: [] },
+            replies: comment.replies || [],
+          })),
         }
       })
 
@@ -1689,11 +1745,65 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             anonymous: false,
             text: draft,
             createdAt: new Date().toISOString(),
+            reactions: { love: [] },
+            replies: [],
           },
         ],
       }
     }))
     setCommentDrafts(current => ({ ...current, [postId]: '' }))
+  }
+
+  function handleToggleCommentReaction(postId, commentId) {
+    setFeedPosts(current => current.map(post => {
+      if (post.id !== postId) return post
+      return {
+        ...post,
+        comments: (post.comments || []).map(comment => {
+          if (comment.id !== commentId) return comment
+          const nextSet = new Set(comment.reactions?.love || [])
+          if (nextSet.has(profile.id)) nextSet.delete(profile.id)
+          else nextSet.add(profile.id)
+          return {
+            ...comment,
+            reactions: {
+              ...comment.reactions,
+              love: [...nextSet],
+            },
+          }
+        }),
+      }
+    }))
+  }
+
+  function handleAddReply(postId, commentId) {
+    const draftKey = `${postId}:${commentId}`
+    const draft = (replyDrafts[draftKey] || '').trim()
+    if (!draft) return
+    setFeedPosts(current => current.map(post => {
+      if (post.id !== postId) return post
+      return {
+        ...post,
+        comments: (post.comments || []).map(comment => {
+          if (comment.id !== commentId) return comment
+          return {
+            ...comment,
+            replies: [
+              ...(comment.replies || []),
+              {
+                id: uid(),
+                authorId: profile.id,
+                authorName: profile.name,
+                authorInitials: profile.initials,
+                text: draft,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          }
+        }),
+      }
+    }))
+    setReplyDrafts(current => ({ ...current, [draftKey]: '' }))
   }
 
   function openNotifySheet(member) {
@@ -1750,6 +1860,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   const completedCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'done').length, [members])
+  const activeCount = useMemo(() => members.filter(member => member.checked_in && !member.task_done).length, [members])
+  const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
+  const liveMembers = useMemo(() => {
+    if (!checkedIn && !taskDone) return []
+    return members.filter(member => member.checked_in || member.task_done)
+  }, [checkedIn, taskDone, members])
   const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
   const rankedMembers = useMemo(() => {
     return [...members]
@@ -1959,19 +2075,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             <h1 className="showup-room-title">{selectedRoom}</h1>
             <div className="showup-live-pill">
               <span className="showup-live-dot" />
-              <span>{members.length} in room</span>
+              <span>{activeCount} active</span>
             </div>
           </div>
 
-          <div className={`showup-cta ${activeTab !== 'live' || checkedIn ? 'is-hidden' : ''}`}>
-            {!checkedIn && !taskDone ? (
-              <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
-            ) : null}
-          </div>
-
-          {activeTab === 'live' && checkedIn && !taskDone ? (
-            <div className="showup-checkin-stack">
-              <button type="button" className="showup-checkin-btn" onClick={handleMarkDone}>Mark Done</button>
+          {activeTab === 'live' ? (
+            <div className="showup-checkin-actions">
+              <button
+                type="button"
+                className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
+                onClick={handleCheckIn}
+                disabled={checkedIn}
+              >
+                {checkedIn
+                  ? `Checked in${currentMember?.check_in_time ? ` ${formatTime(currentMember.check_in_time)}` : ''}`
+                  : 'Check In'}
+              </button>
+              <button
+                type="button"
+                className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
+                onClick={handleMarkDone}
+                disabled={!checkedIn || taskDone}
+              >
+                {taskDone ? 'Done today' : 'Mark Done'}
+              </button>
             </div>
           ) : null}
           {activeTab === 'live' ? <p className="showup-live-meta">{members.length} in room {'\u00B7'} {completedCount} done today</p> : null}
@@ -1999,7 +2126,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {activeTab === 'live' ? (
           <div className="showup-member-grid">
-            {members.map(member => {
+            {liveMembers.length === 0 ? (
+              <div className="showup-empty">Check in to enter the live room.</div>
+            ) : null}
+            {liveMembers.map(member => {
               const status = getMemberStatus(member)
               const isSelf = member.user_id === profile.id
               return (
@@ -2102,6 +2232,41 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           <div className="showup-comment-bubble">
                             <p className="showup-comment-author">{comment.anonymous ? 'Anonymous \u00B7 Room' : comment.authorName}</p>
                             <p className="showup-comment-text">{comment.text}</p>
+                            <div className="showup-comment-actions">
+                              <button
+                                type="button"
+                                className="showup-comment-action"
+                                onClick={() => handleToggleCommentReaction(post.id, comment.id)}
+                              >
+                                Love {(comment.reactions?.love || []).length}
+                              </button>
+                              <button
+                                type="button"
+                                className="showup-comment-action"
+                                onClick={() => setExpandedReplies(current => ({ ...current, [comment.id]: !current[comment.id] }))}
+                              >
+                                Reply {(comment.replies || []).length}
+                              </button>
+                            </div>
+                            {expandedReplies[comment.id] ? (
+                              <div className="showup-replies">
+                                {(comment.replies || []).map(reply => (
+                                  <div key={reply.id} className="showup-reply-bubble">
+                                    <p className="showup-comment-author">{reply.authorName}</p>
+                                    <p className="showup-comment-text">{reply.text}</p>
+                                  </div>
+                                ))}
+                                <div className="showup-comment-compose">
+                                  <input
+                                    className="showup-comment-input"
+                                    value={replyDrafts[`${post.id}:${comment.id}`] || ''}
+                                    onChange={event => setReplyDrafts(current => ({ ...current, [`${post.id}:${comment.id}`]: event.target.value }))}
+                                    placeholder="Reply..."
+                                  />
+                                  <button type="button" className="showup-comment-send" onClick={() => handleAddReply(post.id, comment.id)}>Send</button>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       ))}
