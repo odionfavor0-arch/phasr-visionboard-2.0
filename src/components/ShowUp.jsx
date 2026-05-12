@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bell, BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, HeartHandshake, Plus, Sparkles, Sprout } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, HeartHandshake, MessageCircle, Plus, Sparkles, Sprout } from 'lucide-react'
 import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
@@ -19,7 +19,7 @@ const SHOW_UP_STYLES = `
   width:100%;
   max-width:1120px;
   margin:0 auto;
-  padding:18px 16px 92px;
+  padding:18px 16px 132px;
   box-sizing:border-box;
   flex:1;
   display:flex;
@@ -376,29 +376,30 @@ const SHOW_UP_STYLES = `
   color:#9a7088;
 }
 .showup-member-grid{
-  display:block;
-  border:1px solid rgba(249,95,133,0.18);
-  border-radius:14px;
-  overflow:hidden;
-  background:var(--bg, #fff);
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(104px, 1fr));
+  gap:10px;
+  border:none;
+  border-radius:0;
+  overflow:visible;
+  background:transparent;
   margin:6px auto 0;
   width:100%;
   max-width:760px;
-  box-shadow:0 14px 36px rgba(249,95,133,0.07);
+  box-shadow:none;
 }
 .showup-member-card{
-  min-height:64px;
-  padding:12px 14px;
+  min-height:116px;
+  padding:10px;
   display:grid;
-  grid-template-columns:40px minmax(0,1fr) 32px;
-  align-items:center;
-  gap:12px;
+  grid-template-columns:1fr;
+  justify-items:center;
+  align-content:start;
+  gap:6px;
   background:var(--bg, #fff);
-  border:none;
-  border-radius:0;
-}
-.showup-member-card + .showup-member-card{
-  border-top:1px solid rgba(77,49,66,0.08);
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:14px;
+  text-align:center;
 }
 .showup-member-dot{
   position:absolute;
@@ -431,27 +432,44 @@ const SHOW_UP_STYLES = `
   font-family:'Syne',sans-serif;
   font-size:13px;
   font-weight:700;
-  text-align:left;
+  text-align:center;
   color:#4d3142;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .showup-member-status{
-  margin:3px 0 0;
+  margin:2px 0 0;
   font-size:11px;
-  text-align:left;
+  text-align:center;
+}
+.showup-member-time{
+  margin:2px 0 0;
+  font-size:10px;
+  color:#b29cab;
+  text-align:center;
+  line-height:1.2;
 }
 .showup-member-status.is-active{color:#2fb66d}
 .showup-member-status.is-done{color:#f95f85}
 .showup-member-status.is-idle{color:#9a7088}
 .showup-bell-btn{
-  width:32px;
-  height:32px;
-  border-radius:50%;
+  min-height:30px;
+  border-radius:999px;
+  padding:0 10px;
   color:#f95f85;
-  display:grid;
-  place-items:center;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
   cursor:pointer;
   background:transparent;
   border:1px solid rgba(249,95,133,0.28);
+  font-size:11px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  white-space:nowrap;
 }
 .showup-feed-view,
 .showup-ranks-view{
@@ -605,6 +623,9 @@ const SHOW_UP_STYLES = `
   gap:10px;
   margin-top:12px;
   padding-top:2px;
+  max-height:320px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
 }
 .showup-comment-bubble{
   padding:10px 12px;
@@ -785,6 +806,9 @@ const SHOW_UP_STYLES = `
   font-size:20px;
   font-weight:700;
   color:#4d3142;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
 .showup-sheet-list{
   display:grid;
@@ -854,7 +878,36 @@ const SHOW_UP_STYLES = `
   }
   .showup-shell{
     max-width:100%;
-    padding:14px 14px 110px;
+    padding:12px 12px 104px;
+    min-height:100dvh;
+  }
+  .showup-list-header{
+    padding:6px 2px 10px;
+  }
+  .showup-list-panel{
+    border-radius:12px;
+  }
+  .showup-list-row{
+    min-height:50px;
+    padding:8px 10px;
+    grid-template-columns:34px minmax(0,1fr) auto;
+    gap:8px;
+  }
+  .showup-list-icon{
+    width:30px;
+    height:30px;
+    border-radius:8px;
+  }
+  .showup-list-name{
+    font-size:13px;
+  }
+  .showup-list-meta{
+    font-size:10px;
+  }
+  .showup-join-pill{
+    min-height:28px;
+    padding:4px 10px;
+    font-size:11px;
   }
   .showup-topbar{
     grid-template-columns:42px minmax(0,1fr) auto;
@@ -872,6 +925,25 @@ const SHOW_UP_STYLES = `
   .showup-feed-reactions{
     align-items:flex-start;
     flex-direction:column;
+  }
+  .showup-member-grid{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:8px;
+  }
+  .showup-member-card{
+    min-height:106px;
+    padding:9px 6px;
+    border-radius:12px;
+  }
+  .showup-bell-btn{
+    min-height:28px;
+    padding:0 8px;
+    font-size:10px;
+  }
+  .showup-bell-btn span{
+    max-width:72px;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   .showup-comment-compose{
     flex-direction:column;
@@ -892,46 +964,44 @@ const SHOW_UP_STYLES = `
 }
 @media (min-width: 768px){
   .showup-shell{
-    padding:24px 32px 44px;
+    padding:24px 32px 148px;
   }
   .showup-sticky-header{
     top:0;
   }
-  }
   .showup-tabs{
-    position:static;
-    left:auto;
-    bottom:auto;
-    transform:none;
-    width:100%;
-    max-width:760px;
-    padding:0;
-    margin:0 auto 10px;
-    background:transparent;
-    border-top:none;
-    display:flex;
-    justify-content:center;
-    gap:22px;
-    backdrop-filter:none;
+    max-width:420px;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    padding:8px;
+    border:1px solid rgba(249,95,133,0.18);
+    border-radius:999px;
+    background:rgba(255,255,255,0.88);
+    box-shadow:0 18px 42px rgba(77,49,66,0.12);
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:6px;
+    backdrop-filter:blur(16px);
   }
   .showup-tab{
-    min-height:auto;
-    padding:0 0 10px;
-    border:none;
-    border-radius:0;
+    min-height:42px;
+    padding:0 16px;
+    border:1px solid transparent;
+    border-radius:999px;
     background:transparent;
     color:#a27a8c;
     box-shadow:none;
-    border-bottom:2px solid transparent;
   }
   .showup-tab.is-active{
-    background:transparent;
-    color:#f95f85;
-    border-bottom-color:#f95f85;
-    box-shadow:none;
+    background:linear-gradient(135deg,#f95f85,#ff8ca8);
+    color:#fff;
+    border-color:transparent;
+    box-shadow:0 10px 24px rgba(249,95,133,0.2);
   }
   .showup-member-grid{
-    margin-top:10px;
+    margin-top:auto;
+    padding-top:18px;
   }
 }
 @media (min-width: 1180px){
@@ -1160,7 +1230,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [roomCounts, setRoomCounts] = useState({})
   const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
-  const [statusLine, setStatusLine] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedPosts, setFeedPosts] = useState([])
@@ -1191,7 +1260,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         roomColor: room.roomColor || '#f95f85',
       }))
       : []
-    return [...ROOM_DEFINITIONS, ...mappedCustom]
+    return [...mappedCustom, ...ROOM_DEFINITIONS]
   }, [customRooms])
   const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const joinedRoomNames = useMemo(() => {
@@ -1358,13 +1427,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const nextTaskDone = Boolean(myMember?.task_done)
     setCheckedIn(nextCheckedIn)
     setTaskDone(nextTaskDone)
-    setStatusLine(
-      nextTaskDone
-        ? `Done \u2713 \u2014 marked at ${formatTime(myMember?.check_in_time)}`
-        : nextCheckedIn
-          ? `Checked in at ${formatTime(myMember?.check_in_time)}`
-          : ''
-    )
   }
 
   function upsertLocalMember(roomName, patch) {
@@ -1421,13 +1483,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
   }
 
-  async function createFeedPost({ text, image = '', anonymous = false }) {
+  async function createFeedPost({ text, image = '', anonymous = false, author = null }) {
     const createdAt = new Date().toISOString()
+    const postAuthor = author || {
+      id: anonymous ? `anon-${uid()}` : profile.id,
+      name: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
+      initials: anonymous ? 'AN' : profile.initials,
+    }
     const nextPost = {
       id: uid(),
-      authorId: anonymous ? `anon-${uid()}` : profile.id,
-      authorName: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
-      authorInitials: anonymous ? 'AN' : profile.initials,
+      authorId: postAuthor.id,
+      authorName: postAuthor.name,
+      authorInitials: postAuthor.initials,
       anonymous,
       text,
       image,
@@ -1445,8 +1512,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         .from('room_feed')
         .insert({
           room_id: getRoomId(selectedRoom),
-          user_id: profile.id,
-          display_name: profile.name,
+          user_id: postAuthor.id === 'sage' ? profile.id : postAuthor.id,
+          display_name: postAuthor.name,
           content: text,
           image_url: image || '',
           is_anonymous: anonymous,
@@ -1461,6 +1528,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
 
     return nextPost
+  }
+
+  function createRoomActivityPost(text) {
+    return createFeedPost({
+      text,
+      image: '',
+      anonymous: false,
+      author: {
+        id: profile.id,
+        name: profile.name,
+        initials: profile.initials,
+      },
+    })
   }
 
   async function ensureRoomMembership(roomName) {
@@ -1515,19 +1595,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
     setCheckedIn(true)
     setTaskDone(false)
-    setStatusLine(`Checked in at ${formatTime(nowIso)}`)
+    const checkedInText = `${profile.name} checked in at ${formatTime(nowIso)}.`
+    await createRoomActivityPost(checkedInText)
     loadMembers(selectedRoom, profile)
   }
 
   async function handleMarkDone() {
     if (!selectedRoom) return
     const nowIso = new Date().toISOString()
+    const currentMember = members.find(member => member.user_id === profile.id)
+    const checkedInAt = currentMember?.check_in_time || nowIso
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       await supabase
         .from('show_up_checkins')
-        .update({ checked_in: true, task_done: true, check_in_time: nowIso })
+        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt })
         .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
     } catch (nextError) {
@@ -1539,7 +1622,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         initials: profile.initials,
         checked_in: true,
         task_done: true,
-        check_in_time: nowIso,
+        check_in_time: checkedInAt,
         streak_count: getCurrentStreakCount(),
       })
     }
@@ -1547,7 +1630,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setLastCompletedToday()
     setCheckedIn(true)
     setTaskDone(true)
-    setStatusLine(`Done \u2713 \u2014 marked at ${formatTime(nowIso)}`)
+    const doneText = `${profile.name} marked done at ${formatTime(nowIso)}.`
+    await createRoomActivityPost(doneText)
     loadMembers(selectedRoom, profile)
   }
 
@@ -1665,7 +1749,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setShowCreateForm(false)
   }
 
-  const activeCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'active').length, [members])
   const completedCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'done').length, [members])
   const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
   const rankedMembers = useMemo(() => {
@@ -1876,20 +1959,16 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             <h1 className="showup-room-title">{selectedRoom}</h1>
             <div className="showup-live-pill">
               <span className="showup-live-dot" />
-              <span>{activeCount} active</span>
+              <span>{members.length} in room</span>
             </div>
           </div>
 
           <div className={`showup-cta ${activeTab !== 'live' || checkedIn ? 'is-hidden' : ''}`}>
             {!checkedIn && !taskDone ? (
-              <>
-                <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
-                <button type="button" className="showup-done-btn" onClick={handleMarkDone}>Mark Done</button>
-              </>
+              <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
             ) : null}
           </div>
 
-          {activeTab === 'live' && statusLine ? <p className={`showup-status-line ${taskDone ? 'is-done' : ''}`}>{statusLine}</p> : null}
           {activeTab === 'live' && checkedIn && !taskDone ? (
             <div className="showup-checkin-stack">
               <button type="button" className="showup-checkin-btn" onClick={handleMarkDone}>Mark Done</button>
@@ -1929,18 +2008,20 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     {member.initials || buildInitials(member.display_name)}
                     <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
                   </div>
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
                     <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'active' ? 'Active now' : status === 'done' ? 'Done' : 'Not yet'}
+                      {status === 'active' ? 'Checked in' : status === 'done' ? 'Done' : 'Not yet'}
                     </p>
+                    {member.check_in_time ? <p className="showup-member-time">{formatTime(member.check_in_time)}</p> : null}
                   </div>
                   {!isSelf ? (
                     <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
-                      <Bell size={15} strokeWidth={2.1} />
+                      <MessageCircle size={14} strokeWidth={2.2} />
+                      <span>Nudge this person</span>
                     </button>
                   ) : (
-                    <div style={{ width: 32, height: 32 }} aria-hidden="true" />
+                    <div style={{ minHeight: 30 }} aria-hidden="true" />
                   )}
                 </div>
               )
@@ -2065,7 +2146,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
                   <div>
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
-                    <p className="showup-rank-streak">{member.streakValue} day streak</p>
+                    <p className="showup-rank-streak">
+                      {member.streakValue} day streak{member.task_done ? ' · Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
+                    </p>
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
                     <span className="showup-rank-score-value">{member.streakValue}</span>
@@ -2083,7 +2166,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div className="showup-sheet-backdrop" onClick={() => setSheetState({ open: false, member: null })}>
           <div className="showup-sheet" onClick={event => event.stopPropagation()}>
             <div className="showup-sheet-handle" />
-            <h2 className="showup-sheet-title">Notify {sheetState.member.display_name}</h2>
+            <h2 className="showup-sheet-title">
+              <MessageCircle size={18} strokeWidth={2.3} />
+              <span>Nudge {sheetState.member.display_name}</span>
+            </h2>
             <p className="showup-sheet-subtitle">They will receive this anonymously if you toggle it on.</p>
             <div className="showup-sheet-list">
               {TEMPLATE_MESSAGES.map(template => (
