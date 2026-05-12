@@ -400,7 +400,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(122px, 138px));
+  grid-template-columns:repeat(auto-fill, 146px);
   justify-content:center;
   gap:10px;
   border:none;
@@ -418,6 +418,7 @@ const SHOW_UP_STYLES = `
   box-sizing:border-box;
 }
 .showup-member-card{
+  width:146px;
   min-height:132px;
   padding:10px;
   display:grid;
@@ -1075,10 +1076,12 @@ const SHOW_UP_STYLES = `
     flex-direction:column;
   }
   .showup-member-grid{
-    grid-template-columns:repeat(2, minmax(118px, 1fr));
+    grid-template-columns:repeat(2, minmax(0, 146px));
+    justify-content:center;
     gap:8px;
   }
   .showup-member-card{
+    width:146px;
     min-height:128px;
     padding:9px 6px;
     border-radius:12px;
@@ -1241,6 +1244,14 @@ function safeWrite(key, value) {
   }
 }
 
+function safeRemove(key) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Best effort cleanup only.
+  }
+}
+
 function compactFeedPostsForStorage(posts) {
   return (Array.isArray(posts) ? posts : [])
     .slice(0, 30)
@@ -1252,6 +1263,25 @@ function compactFeedPostsForStorage(posts) {
         replies: (comment?.replies || []).slice(0, 20),
       })),
     }))
+}
+
+function persistFeedPosts(key, posts) {
+  const compactPosts = compactFeedPostsForStorage(posts)
+  if (safeWrite(key, compactPosts)) return
+  safeRemove(key)
+  const minimalPosts = compactPosts.slice(0, 10).map(post => ({
+    id: post.id,
+    authorId: post.authorId,
+    authorName: post.authorName,
+    authorInitials: post.authorInitials,
+    anonymous: post.anonymous,
+    text: String(post.text || '').slice(0, 500),
+    image: '',
+    createdAt: post.createdAt,
+    reactions: post.reactions || { fire: [], power: [], love: [] },
+    comments: [],
+  }))
+  safeWrite(key, minimalPosts)
 }
 
 function uid() {
@@ -1459,7 +1489,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   useEffect(() => {
     if (!selectedRoom) return
-    safeWrite(getFeedStorageKey(selectedRoom), compactFeedPostsForStorage(feedPosts))
+    persistFeedPosts(getFeedStorageKey(selectedRoom), feedPosts)
   }, [feedPosts, selectedRoom])
 
   useEffect(() => {
