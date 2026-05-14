@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { buildWeeklyGoals, loadBoardData, loadLockInState } from '../lib/lockIn'
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const milestones = [
   {
     day: 3,
@@ -563,6 +564,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
   const displayedDay = activeWeek === currentWeek ? dayOfWeek : 7
+  const weekDayCards = useMemo(() => WEEKDAY_LABELS.map((label, index) => {
+    const day = index + 1
+    const dayTasks = safeRead(taskKey(activeWeek, day, phaseScope), [])
+    const streakValue = localStorage.getItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${day}`) ?? localStorage.getItem(`phasr_streak_w${activeWeek}_d${day}`)
+    const isFuture = activeWeek > currentWeek || (activeWeek === currentWeek && day > currentDayNumber)
+    const isCurrent = activeWeek === currentWeek && day === currentDayNumber
+    const isPast = activeWeek < currentWeek || (activeWeek === currentWeek && day < currentDayNumber)
+    const done = streakValue === 'true' || dayTasks.some(task => task?.done)
+    return { label, day, done, isCurrent, isPast, isFuture }
+  }), [activeWeek, currentWeek, currentDayNumber, phaseScope, tasks, refresh])
 
   useEffect(() => {
     if (!hasPillars || !week) {
@@ -588,6 +599,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
+  const pagePadding = isMobile ? '14px 14px 88px' : '22px 32px 96px'
+  const contentMaxWidth = 1040
 
   const currentStreak = useMemo(() => {
     const readStreakValue = (weekNumber, dayNumber) => {
@@ -819,14 +832,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   return (
     <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden' }}>
-      <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: isMobile ? '14px 10px 80px' : '18px 24px 96px', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ width: '100%', maxWidth: contentMaxWidth, margin: '0 auto', padding: pagePadding, boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           {phases.map((phase, index) => (
             <button
               key={phase.id}
               type="button"
               onClick={() => handlePhaseChange(phase.id)}
               style={{
+                minHeight: 44,
                 padding: '10px 18px',
                 borderRadius: 999,
                 border: phase.id === activePhaseId ? '1px solid transparent' : '1px solid #f2c8d6',
@@ -845,7 +859,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{ height: 16 }} />
 
-        <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 16, padding: '1rem', marginBottom: '1rem' }}>
+        <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 14, padding: isMobile ? '0.95rem' : '1.1rem', marginBottom: '1rem', boxShadow: '0 14px 34px rgba(240, 96, 144, 0.07)' }}>
           <div
             onClick={() => setSageCardExpanded(value => !value)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}
@@ -884,7 +898,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
                 Week {activeWeek} closed at {weekPercent}%. Complete your weekly reflection with Sage before week {activeWeek + 1} opens.
               </p>
-              <button onClick={openPulse} style={{ width: '100%', padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={openPulse} style={{ width: '100%', minHeight: 46, padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
                 Open Weekly Pulse
               </button>
             </>
@@ -897,7 +911,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && showReminder && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               You are {displayedDay} days into week {activeWeek}. Your week {activeWeek - 1} reflection with Sage is still pending.
-              <span onClick={openPulse} style={{ color: '#e8407a', fontWeight: 700, cursor: 'pointer' }}> Complete now</span>
+              <button type="button" onClick={openPulse} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: '#e8407a', fontWeight: 800, cursor: 'pointer', padding: '4px 0', font: 'inherit' }}>Complete now</button>
             </p>
           )}
           {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && !showReminder && (
@@ -910,12 +924,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         {!hasPillars && (
-          <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 16, background: '#fff6f9', marginBottom: '1rem' }}>
+          <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 14, background: '#fff6f9', marginBottom: '1rem' }}>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>Set up your Vision Board first</p>
             <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
               Your daily tasks come from your pillar activities. Add them to your Vision Board to activate your streak.
             </p>
-            <button type="button" onClick={onOpenBoard} style={{ borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            <button type="button" onClick={onOpenBoard} style={{ minHeight: 44, borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
               Go to Vision Board
             </button>
           </div>
@@ -940,7 +954,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                     setActiveWeek(item.index)
                   }}
                   style={{
-                    padding: isMobile ? '7px 12px' : '8px 14px',
+                    minHeight: 42,
+                    padding: isMobile ? '8px 13px' : '8px 14px',
                     borderRadius: 999,
                     border: active ? `1px solid ${accent}` : '1px solid #f2c8d6',
                     background: active ? '#fff1f6' : '#fff',
@@ -962,21 +977,60 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ height: 14 }} />
 
         {lockedWeekMessage ? (
-          <div style={{ background: '#fff8ec', border: '1px solid #f3d38a', borderRadius: 16, padding: '0.9rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ background: '#fff8ec', border: '1px solid #f3d38a', borderRadius: 14, padding: '0.9rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#5a4310', lineHeight: 1.5 }}>
               {lockedWeekMessage}
             </p>
             <button
               type="button"
               onClick={() => setLockedWeekMessage('')}
-              style={{ border: 'none', background: 'transparent', color: '#9f7a18', fontWeight: 700, cursor: 'pointer' }}
+              style={{ minWidth: 44, minHeight: 44, border: 'none', background: 'transparent', color: '#9f7a18', fontWeight: 700, cursor: 'pointer' }}
             >
               OK
             </button>
           </div>
         ) : null}
 
-        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 22, padding: isMobile ? 14 : 18 }}>
+        {hasPillars ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+            gap: isMobile ? 5 : 8,
+            marginBottom: 12,
+            position: 'relative',
+            zIndex: 2,
+            pointerEvents: 'auto',
+          }}>
+            {weekDayCards.map(day => (
+              <div
+                key={`${activeWeek}-${day.day}`}
+                style={{
+                  minHeight: isMobile ? 56 : 64,
+                  borderRadius: 12,
+                  border: day.isCurrent ? `1.5px solid ${accent}` : '1px solid #f2c8d6',
+                  background: day.isFuture ? '#fffafd' : day.done ? '#ffe4ee' : '#fff',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  opacity: day.isFuture ? 0.55 : 1,
+                  boxShadow: day.isCurrent ? '0 10px 22px rgba(240,96,144,0.13)' : 'none',
+                }}
+              >
+                <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 800, color: day.isCurrent ? accent : '#7e5d68' }}>{day.label}</span>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', border: `1.5px solid ${day.done ? accent : '#f2c8d6'}`, background: day.done ? accent : '#fff', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 10, lineHeight: 1 }}>
+                  {day.done ? '✓' : ''}
+                </span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: day.isFuture ? '#c39aaa' : day.isCurrent ? accent : '#b08090' }}>
+                  {day.isFuture ? 'Locked' : day.isCurrent ? 'Today' : day.done ? 'Done' : day.isPast ? 'Open' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 14, padding: isMobile ? 14 : 18, boxShadow: '0 14px 34px rgba(240, 96, 144, 0.06)', position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>Daily To-Do</div>
@@ -1006,13 +1060,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 onClick={() => toggleTask(task.id)}
                 style={{
                   width: '100%',
+                  position: 'relative',
+                  zIndex: 3,
+                  pointerEvents: 'auto',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 12,
+                  minHeight: 58,
                   padding: '14px 16px',
                   background: task.done ? '#ffe4ee' : '#fff6f9',
                   border: `1px solid ${task.done ? '#ef5d90' : '#f2c8d6'}`,
-                  borderRadius: 14,
+                  borderRadius: 12,
                   cursor: 'pointer',
                   textAlign: 'left',
                   opacity: 1,
@@ -1036,8 +1094,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '8px',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+          gap: isMobile ? '10px' : '10px',
           margin: '1rem 0',
         }}>
           <div

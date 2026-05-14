@@ -525,6 +525,14 @@ function saveNonNegotiableSchedule({ userId, phaseId, pillarId, weekStartKey }, 
   localStorage.setItem(key, JSON.stringify(value || {}))
 }
 
+function hasScheduledNonNegotiable({ userId, phaseId, pillars, weekStartKey }) {
+  if (!userId || !phaseId || !weekStartKey) return false
+  return (Array.isArray(pillars) ? pillars : []).some(pillar => {
+    const schedule = loadNonNegotiableSchedule({ userId, phaseId, pillarId: pillar?.id, weekStartKey })
+    return Object.values(schedule || {}).some(item => item?.scheduled && item?.assignedDate)
+  })
+}
+
 function buildCheckinScope(phase) {
   const text = [
     phase?.id || '',
@@ -1370,6 +1378,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [calendarPromptState, setCalendarPromptState] = useState('hidden')
   const [calendarPromptArmed, setCalendarPromptArmed] = useState(false)
   const [calendarBannerMounted, setCalendarBannerMounted] = useState(false)
+  const [scheduleRefresh, setScheduleRefresh] = useState(0)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   const [showReview, setShowReview] = useState(false)
   const [revealedDeleteTarget, setRevealedDeleteTarget] = useState(null)
@@ -1434,6 +1443,12 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    const refreshScheduleState = () => setScheduleRefresh(value => value + 1)
+    window.addEventListener('phasr-nonnegotiable-schedule-updated', refreshScheduleState)
+    return () => window.removeEventListener('phasr-nonnegotiable-schedule-updated', refreshScheduleState)
   }, [])
 
   useEffect(() => {
@@ -2332,6 +2347,13 @@ Return JSON only:
     const fallbackTasks = tasks.length ? tasks : (p.activities || []).filter(Boolean).slice(0, 3)
     return fallbackTasks.map(task => ({ task, pillar: p.name }))
   }) || []
+  const scheduledThisWeek = useMemo(() => hasScheduledNonNegotiable({
+    userId: activeUserId,
+    phaseId,
+    pillars: phase?.pillars || [],
+    weekStartKey,
+  }), [activeUserId, phaseId, phase?.pillars, scheduleRefresh, weekStartKey])
+  const showScheduleReminder = !!weeklyPlan.length && !editing && !scheduledThisWeek
   const showCalendarPrompt = !!weeklyPlan.length && !editing && calendarPromptState === 'open'
   const showCalendarPromptChip = !!weeklyPlan.length && !editing && calendarPromptState === 'collapsed'
 
@@ -2443,12 +2465,39 @@ Return JSON only:
           </div>
         )}
 
+        {showScheduleReminder ? (
+          <div style={{
+            minHeight: 34,
+            maxHeight: 36,
+            marginBottom: '0.55rem',
+            padding: isMobile ? '0.38rem 0.62rem' : '0.4rem 0.78rem',
+            borderRadius: 999,
+            border: '1px solid #f2c7d4',
+            background: '#fff7fa',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.65rem',
+            overflow: 'hidden',
+            position: 'sticky',
+            top: isMobile ? 8 : 12,
+            zIndex: 20,
+          }}>
+            <span style={{ color: '#7a4c5f', fontSize: isMobile ? '0.7rem' : '0.76rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Your weekly non-negotiables are not scheduled yet.
+            </span>
+            <button type="button" onClick={addToCalendarPlan} disabled={calendarBusy} style={{ border: 'none', background: 'transparent', color: '#f95f85', fontWeight: 800, fontSize: isMobile ? '0.68rem' : '0.74rem', cursor: calendarBusy ? 'wait' : 'pointer', padding: 0, whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>
+              Schedule your week →
+            </button>
+          </div>
+        ) : null}
+
         {/* Today's Task */}
         <div style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
-          borderRadius: 12, padding: isMobile ? '0.68rem 0.9rem' : '0.85rem 1.4rem',
+          borderRadius: 12, padding: isMobile ? '0.5rem 0.76rem' : '0.58rem 1rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: isMobile ? '1rem' : '1.5rem', flexWrap: 'wrap', gap: isMobile ? '0.35rem' : '0.5rem',
+          marginBottom: isMobile ? '0.75rem' : '1rem', flexWrap: 'wrap', gap: isMobile ? '0.3rem' : '0.45rem',
           boxShadow: '0 4px 16px rgba(233,100,136,0.25)',
           position: 'relative',
         }}>

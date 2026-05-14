@@ -177,6 +177,17 @@ const SHOW_UP_STYLES = `
   font-family:'DM Sans',sans-serif;
   -webkit-tap-highlight-color:transparent;
 }
+.showup-mini-link{
+  border:none;
+  background:transparent;
+  color:#f95f85;
+  font:inherit;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  padding:4px 0;
+  white-space:nowrap;
+}
 .showup-create-btn,
 .showup-join-btn,
 .showup-gate-btn,
@@ -742,10 +753,11 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-chip-row{
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   gap:8px;
   position:relative;
   justify-content:flex-end;
+  align-items:center;
 }
 .showup-reaction-summary{
   display:inline-flex;
@@ -1224,8 +1236,9 @@ const SHOW_UP_STYLES = `
     gap:8px;
   }
   .showup-feed-reactions{
-    align-items:flex-start;
-    flex-direction:column;
+    align-items:center;
+    flex-direction:row;
+    flex-wrap:nowrap;
   }
   .showup-member-grid{
     grid-template-columns:repeat(2, minmax(0, 146px));
@@ -1577,6 +1590,18 @@ function setLastCompletedToday() {
   })
 }
 
+function incrementCurrentStreak() {
+  const current = safeRead('phasr_streak', {})
+  const previous = Number(current?.current || 0)
+  const next = (Number.isFinite(previous) ? previous : 0) + 1
+  safeWrite('phasr_streak', {
+    ...current,
+    current: next,
+    lastCompleted: getTodayKey(),
+  })
+  return next
+}
+
 function getFeedStorageKey(roomName) {
   return `phasr_showup_feed_${normalize(roomName)}`
 }
@@ -1679,6 +1704,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [notifyAnonymous, setNotifyAnonymous] = useState(false)
   const [notifyPostToFeed, setNotifyPostToFeed] = useState(false)
   const [exitPromptOpen, setExitPromptOpen] = useState(false)
+  const [showProgressPhotoPrompt, setShowProgressPhotoPrompt] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showGate, setShowGate] = useState(false)
   const [createRoomName, setCreateRoomName] = useState('')
@@ -1786,12 +1812,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     try {
       const { data, error: countsError } = await supabase
         .from('show_up_checkins')
-        .select('room_name')
+        .select('room_name,checked_in,display_name')
 
       if (countsError) throw countsError
 
       const counts = {}
       ;(data || []).forEach(row => {
+        if (!row?.checked_in || isPlaceholderMember(row)) return
         counts[row.room_name] = (counts[row.room_name] || 0) + 1
       })
       setRoomCounts(counts)
@@ -1807,7 +1834,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       const stored = safeRead(getMockMemberStorageKey(room.name), [])
       const fallbackMember = buildMockMember(nextProfile, room.name)
       const nextMembers = Array.isArray(stored) && stored.length ? stored : (fallbackMember ? [fallbackMember] : [])
-      counts[room.name] = nextMembers.length
+      counts[room.name] = nextMembers.filter(member => member?.checked_in === true && !isPlaceholderMember(member)).length
     })
     setRoomCounts(counts)
   }
@@ -1904,9 +1931,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
       const cachedPosts = Array.isArray(localPosts) ? localPosts : []
       const remotePosts = (data || []).map((post, index) => {
-        const cached = cachedPosts.find(item => item.createdAt === post.created_at && item.text === (post.content || ''))
+        const remoteId = `${post.user_id || 'room'}-${post.created_at || index}`
+        const cached = cachedPosts.find(item => (
+          item.id === remoteId ||
+          (item.createdAt === post.created_at && item.text === (post.content || ''))
+        ))
         return {
-          id: `${post.user_id || 'room'}-${post.created_at || index}`,
+          id: remoteId,
           authorId: post.user_id || `anon-${index}`,
           authorName: post.is_anonymous ? 'Anonymous \u00B7 Room' : (post.display_name || 'Room member'),
           authorInitials: post.is_anonymous ? 'AN' : buildInitials(post.display_name || 'Room member'),
@@ -1922,9 +1953,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           })),
         }
       })
+      const hasRemoteMatch = localPost => remotePosts.some(remotePost => (
+        remotePost.id === localPost?.id ||
+        (remotePost.createdAt === localPost?.createdAt && remotePost.text === (localPost?.text || ''))
+      ))
+      const localOnlyPosts = cachedPosts.filter(post => !hasRemoteMatch(post))
 
       setFeedReady(true)
-      setFeedPosts(remotePosts)
+      setFeedPosts([...remotePosts, ...localOnlyPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
     } catch (nextError) {
       console.error('Show Up feed load failed', nextError)
       setFeedReady(false)
@@ -2132,6 +2168,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const nowIso = new Date().toISOString()
     const currentMember = members.find(member => member.user_id === profile.id)
     const checkedInAt = currentMember?.check_in_time || nowIso
+    const nextStreakCount = incrementCurrentStreak()
     const donePatch = {
       room_name: selectedRoom,
       user_id: profile.id,
@@ -2141,14 +2178,16 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       task_done: true,
       check_in_time: checkedInAt,
       task_done_time: nowIso,
-      streak_count: getCurrentStreakCount(),
+      streak_count: nextStreakCount,
     }
 
     setDoneBusy(true)
-    setLastCompletedToday()
     setCheckedIn(true)
     setTaskDone(true)
     setDoneTime(nowIso)
+    setActiveTab('feed')
+    setShowProgressPhotoPrompt(true)
+    window.setTimeout(() => fileInputRef.current?.click(), 80)
     setMembers(current => current.map(member => (
       member.user_id === profile.id ? { ...member, ...donePatch } : member
     )))
@@ -2158,7 +2197,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { error: doneError } = await supabase
         .from('show_up_checkins')
-        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt })
+        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt, task_done_time: nowIso, streak_count: nextStreakCount })
         .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
       if (doneError) throw doneError
@@ -2410,7 +2449,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ...member,
         streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
-      .sort((a, b) => b.streakValue - a.streakValue || String(a.display_name || '').localeCompare(String(b.display_name || '')))
+      .sort((a, b) => (
+        b.streakValue - a.streakValue ||
+        Number(Boolean(b.task_done)) - Number(Boolean(a.task_done)) ||
+        String(a.display_name || '').localeCompare(String(b.display_name || ''))
+      ))
   }, [realMembers, profile.id])
 
   if (!selectedRoom) {
@@ -2677,7 +2720,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         {activeTab === 'live' ? (
           <div className="showup-member-grid">
             {liveMembers.length === 0 ? (
-              <div className="showup-empty">Check in to enter the live room.</div>
+              <div className="showup-empty">You&apos;re in the room. Tap Check In to start your session.</div>
             ) : null}
             {liveMembers.map(member => {
               const status = getMemberStatus(member)
@@ -2691,7 +2734,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
                     <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'active' ? 'Checked in' : status === 'done' ? 'Done' : 'Not yet'}
+                      {status === 'active' ? 'Checked in' : status === 'done' ? 'Completed' : 'Not yet'}
                     </p>
                     {member.check_in_time ? <p className="showup-member-time">{formatTime(member.check_in_time)}</p> : null}
                   </div>
@@ -2711,6 +2754,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {activeTab === 'feed' ? (
           <div className="showup-feed-view">
+            {showProgressPhotoPrompt ? (
+              <div className="showup-sync-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <span>Nice work. Post a progress photo?</span>
+                <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)}>Dismiss</button>
+              </div>
+            ) : null}
             <div className="showup-compose-card">
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>
@@ -2938,7 +2987,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div>
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                     <p className="showup-rank-streak">
-                      {member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}{member.task_done ? ' · Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
+                      {member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}{member.task_done ? ' · ✓ Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
                     </p>
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
