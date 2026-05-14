@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, Plus, Reply, Send, Smile, Sparkles, Sprout } from 'lucide-react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreHorizontal, Plus, Reply, Send, Sparkles, Sprout, ThumbsUp } from 'lucide-react'
 import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
@@ -628,6 +628,7 @@ const SHOW_UP_STYLES = `
   border-radius:14px;
   background:rgba(255,255,255,0.72);
   padding:14px;
+  position:relative;
 }
 .showup-feed-card.is-anonymous{
   border:1px dashed rgba(249,95,133,0.38);
@@ -639,6 +640,69 @@ const SHOW_UP_STYLES = `
   display:flex;
   gap:10px;
   align-items:center;
+}
+.showup-post-menu-btn{
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:34px;
+  height:34px;
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:50%;
+  background:rgba(255,255,255,0.82);
+  color:#9a7088;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+}
+.showup-post-menu{
+  position:absolute;
+  top:50px;
+  right:12px;
+  width:150px;
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 16px 36px rgba(77,49,66,0.14);
+  overflow:hidden;
+  z-index:6;
+}
+.showup-post-menu button{
+  width:100%;
+  min-height:38px;
+  border:none;
+  border-top:1px solid rgba(77,49,66,0.06);
+  background:transparent;
+  color:#4d3142;
+  text-align:left;
+  padding:0 12px;
+  font-family:'DM Sans',sans-serif;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.showup-post-menu button:first-child{border-top:none}
+.showup-post-edit{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+.showup-post-edit-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+.showup-post-edit-actions button{
+  min-height:32px;
+  border-radius:999px;
+  border:1px solid rgba(249,95,133,0.22);
+  background:transparent;
+  color:#f95f85;
+  padding:0 12px;
+  font-size:12px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
 }
 .showup-feed-name{
   margin:0;
@@ -681,11 +745,12 @@ const SHOW_UP_STYLES = `
   flex-wrap:wrap;
   gap:8px;
   position:relative;
+  justify-content:flex-end;
 }
 .showup-reaction-summary{
   display:inline-flex;
   align-items:center;
-  gap:3px;
+  gap:6px;
   font-size:12px;
   color:#9a7088;
   font-weight:800;
@@ -704,8 +769,8 @@ const SHOW_UP_STYLES = `
   gap:6px;
 }
 .showup-reaction-chip.is-active{
-  background:rgba(249,95,133,0.14);
-  color:#f95f85;
+  background:transparent;
+  color:#9a7088;
 }
 .showup-reaction-picker{
   position:absolute;
@@ -763,6 +828,9 @@ const SHOW_UP_STYLES = `
   align-items:center;
   gap:8px;
   margin-top:8px;
+}
+.showup-comment-delete{
+  color:#b29cab;
 }
 .showup-comment-action{
   border:none;
@@ -900,6 +968,7 @@ const SHOW_UP_STYLES = `
 .showup-bell-btn:focus-visible,
 .showup-photo-btn:focus-visible,
 .showup-post-btn:focus-visible,
+.showup-post-menu-btn:focus-visible,
 .showup-comment-send:focus-visible,
 .showup-comment-toggle:focus-visible,
 .showup-reaction-chip:focus-visible,
@@ -1301,11 +1370,11 @@ function getNudgeTemplates(member) {
 }
 
 const REACTION_OPTIONS = [
-  { key: 'like', label: 'Like', emoji: '👍' },
-  { key: 'clap', label: 'Clap', emoji: '👏' },
-  { key: 'love', label: 'Love', emoji: '❤️' },
-  { key: 'laugh', label: 'Laugh', emoji: '😂' },
-  { key: 'smile', label: 'Smile', emoji: '😊' },
+  { key: 'like', label: 'Like', emoji: 'ðŸ‘' },
+  { key: 'clap', label: 'Clap', emoji: 'ðŸ‘' },
+  { key: 'love', label: 'Love', emoji: 'â¤ï¸' },
+  { key: 'laugh', label: 'Laugh', emoji: 'ðŸ˜‚' },
+  { key: 'smile', label: 'Smile', emoji: 'ðŸ˜Š' },
 ]
 
 const MAX_ROOM_SIZE = 12
@@ -1337,12 +1406,20 @@ function safeRemove(key) {
   }
 }
 
+function safeJsonParse(value, fallback = null) {
+  try {
+    return value ? JSON.parse(value) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function compactFeedPostsForStorage(posts) {
   return (Array.isArray(posts) ? posts : [])
     .slice(0, 30)
     .map(post => ({
       ...post,
-      image: String(post?.image || '').startsWith('data:') ? '' : post?.image || '',
+      image: post?.image || '',
       comments: (post?.comments || []).slice(0, 40).map(comment => ({
         ...comment,
         replies: (comment?.replies || []).slice(0, 20),
@@ -1354,19 +1431,16 @@ function persistFeedPosts(key, posts) {
   const compactPosts = compactFeedPostsForStorage(posts)
   if (safeWrite(key, compactPosts)) return
   safeRemove(key)
-  const minimalPosts = compactPosts.slice(0, 10).map(post => ({
-    id: post.id,
-    authorId: post.authorId,
-    authorName: post.authorName,
-    authorInitials: post.authorInitials,
-    anonymous: post.anonymous,
-    text: String(post.text || '').slice(0, 500),
-    image: '',
-    createdAt: post.createdAt,
-    reactions: post.reactions || {},
-    comments: [],
-  }))
-  safeWrite(key, minimalPosts)
+  safeWrite(key, compactPosts)
+}
+
+function persistMockMembers(key, members) {
+  const cleanMembers = (Array.isArray(members) ? members : [])
+    .filter(member => !isPlaceholderMember(member))
+    .slice(0, 24)
+  if (safeWrite(key, cleanMembers)) return
+  safeRemove(key)
+  safeWrite(key, cleanMembers.filter(member => member.checked_in || member.task_done).slice(0, 12))
 }
 
 function uid() {
@@ -1419,6 +1493,42 @@ function buildInitials(name) {
   if (!words.length) return 'U'
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
   return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase()
+}
+
+function getStoredProfileName() {
+  const directName = String(localStorage.getItem('phasr_user_name') || '').trim()
+  if (directName) return directName
+
+  const storedProfile = safeJsonParse(localStorage.getItem('phasr_profile'), null)
+  const profileName = String(
+    storedProfile?.full_name ||
+    storedProfile?.display_name ||
+    storedProfile?.name ||
+    ''
+  ).trim()
+  if (profileName) return profileName
+
+  const cachedUser = safeJsonParse(localStorage.getItem('phasr_cached_user'), null)
+  const cachedName = String(
+    cachedUser?.user_metadata?.full_name ||
+    cachedUser?.user_metadata?.name ||
+    cachedUser?.email?.split('@')?.[0] ||
+    ''
+  ).trim()
+  if (cachedName) return cachedName
+
+  const board = getActiveBoard()
+  return String(
+    board?.userName ||
+    board?.displayName ||
+    board?.profile?.name ||
+    board?.profile?.full_name ||
+    ''
+  ).trim()
+}
+
+function isPlaceholderMember(member) {
+  return !String(member?.display_name || '').trim() || String(member?.display_name || '').trim() === 'User'
 }
 
 function getActiveBoard() {
@@ -1488,20 +1598,28 @@ function getNotificationStorageKey(userId) {
 }
 
 function getProfile(user, authUser) {
+  const storedName = getStoredProfileName()
+  const storedId =
+    localStorage.getItem('phasr_active_user') ||
+    safeJsonParse(localStorage.getItem('phasr_cached_user'), null)?.id ||
+    safeJsonParse(localStorage.getItem('phasr_cached_user'), null)?.email ||
+    ''
   const displayName =
     authUser?.user_metadata?.full_name ||
     authUser?.email?.split('@')[0] ||
     user?.user_metadata?.full_name ||
     user?.email?.split('@')[0] ||
+    storedName ||
     'User'
   return {
-    id: authUser?.id || user?.id || localStorage.getItem('phasr_active_user') || 'local-user',
+    id: authUser?.id || user?.id || storedId || 'local-user',
     name: displayName,
     initials: buildInitials(displayName),
   }
 }
 
 function buildMockMember(profile, roomName) {
+  if (profile.name === 'User') return null
   return {
     room_name: roomName,
     user_id: profile.id,
@@ -1550,6 +1668,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [expandedReplies, setExpandedReplies] = useState({})
   const [replyDrafts, setReplyDrafts] = useState({})
   const [reactionPickerPostId, setReactionPickerPostId] = useState('')
+  const [openPostMenuId, setOpenPostMenuId] = useState('')
+  const [editingPostId, setEditingPostId] = useState('')
+  const [editPostDraft, setEditPostDraft] = useState('')
   const [checkInBusy, setCheckInBusy] = useState(false)
   const [doneBusy, setDoneBusy] = useState(false)
   const [sheetState, setSheetState] = useState({ open: false, member: null })
@@ -1684,7 +1805,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const counts = {}
     rooms.forEach(room => {
       const stored = safeRead(getMockMemberStorageKey(room.name), [])
-      const nextMembers = Array.isArray(stored) && stored.length ? stored : [buildMockMember(nextProfile, room.name)]
+      const fallbackMember = buildMockMember(nextProfile, room.name)
+      const nextMembers = Array.isArray(stored) && stored.length ? stored : (fallbackMember ? [fallbackMember] : [])
       counts[room.name] = nextMembers.length
     })
     setRoomCounts(counts)
@@ -1711,7 +1833,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       }))
 
       if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
-        nextMembers.unshift(buildMockMember(nextProfile, roomName))
+        const fallbackMember = buildMockMember(nextProfile, roomName)
+        if (fallbackMember) nextMembers.unshift(fallbackMember)
       }
 
       setMembers(nextMembers)
@@ -1724,15 +1847,16 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   function loadMembersFromLocal(roomName, nextProfile = profile) {
     const stored = safeRead(getMockMemberStorageKey(roomName), [])
-    const nextMembers = Array.isArray(stored) && stored.length ? stored : [buildMockMember(nextProfile, roomName)]
+    const fallbackMember = buildMockMember(nextProfile, roomName)
+    const nextMembers = Array.isArray(stored) && stored.length ? stored : (fallbackMember ? [fallbackMember] : [])
     if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
-      nextMembers.unshift(buildMockMember(nextProfile, roomName))
+      if (fallbackMember) nextMembers.unshift(fallbackMember)
     }
     const withStreaks = nextMembers.map(member => ({
       ...member,
       streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
     }))
-    safeWrite(getMockMemberStorageKey(roomName), withStreaks)
+    persistMockMembers(getMockMemberStorageKey(roomName), withStreaks)
     setMembers(withStreaks)
     hydrateCurrentMember(withStreaks, nextProfile)
   }
@@ -1752,8 +1876,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const next = [...current]
     const index = next.findIndex(member => member.user_id === patch.user_id)
     if (index >= 0) next[index] = { ...next[index], ...patch }
-    else next.unshift({ ...buildMockMember(profile, roomName), ...patch })
-    safeWrite(getMockMemberStorageKey(roomName), next)
+    else {
+      const fallbackMember = buildMockMember(profile, roomName)
+      next.unshift({ ...(fallbackMember || {}), ...patch })
+    }
+    persistMockMembers(getMockMemberStorageKey(roomName), next)
     loadMembersFromLocal(roomName, profile)
     loadRoomCountsFromLocal(profile)
   }
@@ -1785,7 +1912,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           authorInitials: post.is_anonymous ? 'AN' : buildInitials(post.display_name || 'Room member'),
           anonymous: Boolean(post.is_anonymous),
           text: post.content || '',
-          image: post.image_url || '',
+          image: post.image_url || cached?.image || '',
           createdAt: post.created_at || new Date().toISOString(),
           reactions: cached?.reactions || {},
           comments: (cached?.comments || []).map(comment => ({
@@ -1942,7 +2069,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
     const current = safeRead(getMockMemberStorageKey(roomName), [])
     if (Array.isArray(current)) {
-      safeWrite(getMockMemberStorageKey(roomName), current.filter(member => member.user_id !== profile.id))
+      persistMockMembers(getMockMemberStorageKey(roomName), current.filter(member => member.user_id !== profile.id))
     }
     setMembers([])
     setCheckedIn(false)
@@ -1954,13 +2081,20 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   async function handleCheckIn() {
+    console.log('Show Up check-in state', {
+      selectedRoom,
+      checkedIn,
+      checkInBusy,
+      profileId: profile.id,
+    })
     if (!selectedRoom || checkedIn || checkInBusy) return
+    const fallbackProfile = profile.id === 'local-user' ? getProfile(user, null) : profile
     const nowIso = new Date().toISOString()
     const payload = {
       room_name: selectedRoom,
-      user_id: profile.id,
-      display_name: profile.name,
-      initials: profile.initials,
+      user_id: fallbackProfile.id,
+      display_name: fallbackProfile.name,
+      initials: fallbackProfile.initials,
       checked_in: true,
       task_done: false,
       check_in_time: nowIso,
@@ -1973,7 +2107,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setDoneTime('')
     setMembers(current => {
       const next = [...current]
-      const index = next.findIndex(member => member.user_id === profile.id)
+      const index = next.findIndex(member => member.user_id === fallbackProfile.id)
       if (index >= 0) next[index] = { ...next[index], ...payload }
       else next.unshift(payload)
       return next
@@ -1990,7 +2124,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     } finally {
       setCheckInBusy(false)
     }
-    await createRoomActivityPost(`${profile.name} checked in at ${formatTime(nowIso)}.`)
+    await createRoomActivityPost(`${fallbackProfile.name} checked in at ${formatTime(nowIso)}.`)
   }
 
   async function handleMarkDone() {
@@ -2077,6 +2211,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setReactionPickerPostId('')
   }
 
+  function handleStartEditPost(post) {
+    setEditingPostId(post.id)
+    setEditPostDraft(post.text || '')
+    setOpenPostMenuId('')
+  }
+
+  function handleSavePostEdit(postId) {
+    const nextText = editPostDraft.trim()
+    setFeedPosts(current => current.map(post => (
+      post.id === postId ? { ...post, text: nextText } : post
+    )))
+    setEditingPostId('')
+    setEditPostDraft('')
+  }
+
+  function handleDeletePost(postId) {
+    setFeedPosts(current => current.filter(post => post.id !== postId))
+    setOpenPostMenuId('')
+    if (editingPostId === postId) {
+      setEditingPostId('')
+      setEditPostDraft('')
+    }
+  }
+
   function handleAddComment(postId) {
     const draft = String(commentDrafts[postId] || '').trim()
     if (!draft) return
@@ -2101,6 +2259,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       }
     }))
     setCommentDrafts(current => ({ ...current, [postId]: '' }))
+  }
+
+  function handleDeleteComment(postId, commentId) {
+    setFeedPosts(current => current.map(post => (
+      post.id === postId
+        ? { ...post, comments: (post.comments || []).filter(comment => comment.id !== commentId) }
+        : post
+    )))
   }
 
   function handleToggleCommentReaction(postId, commentId) {
@@ -2228,22 +2394,24 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setShowCreateForm(false)
   }
 
-  const completedCount = useMemo(() => members.filter(member => getMemberStatus(member) === 'done').length, [members])
-  const activeCount = useMemo(() => members.filter(member => member.checked_in && !member.task_done).length, [members])
+  const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
+  const completedCount = useMemo(() => realMembers.filter(member => getMemberStatus(member) === 'done').length, [realMembers])
+  const activeCount = useMemo(() => realMembers.filter(member => member.checked_in === true).length, [realMembers])
   const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
   const liveMembers = useMemo(() => {
     if (!checkedIn && !taskDone) return []
-    return members.filter(member => member.checked_in || member.task_done)
-  }, [checkedIn, taskDone, members])
+    return realMembers.filter(member => member.checked_in || member.task_done)
+  }, [checkedIn, taskDone, realMembers])
   const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
   const rankedMembers = useMemo(() => {
-    return [...members]
+    return [...realMembers]
+      .filter(member => !isPlaceholderMember(member))
       .map(member => ({
         ...member,
         streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
       .sort((a, b) => b.streakValue - a.streakValue || String(a.display_name || '').localeCompare(String(b.display_name || '')))
-  }, [members, profile.id])
+  }, [realMembers, profile.id])
 
   if (!selectedRoom) {
     return (
@@ -2575,11 +2743,29 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <div className="showup-empty">No posts yet. Be the first to share.</div>
             ) : (
               visiblePosts.map(post => {
-                const reactionSummary = getReactionSummary(post.reactions)
-                const activeReaction = REACTION_OPTIONS.find(reaction => (post.reactions?.[reaction.key] || []).includes(profile.id))
+                const reactionSummary = getReactionSummary(post.reactions).slice(0, 3)
                 const reactionTotal = reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
+                const isOwnPost = post.authorId === profile.id
                 return (
                 <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
+                  {isOwnPost ? (
+                    <>
+                      <button
+                        type="button"
+                        className="showup-post-menu-btn"
+                        onClick={() => setOpenPostMenuId(current => current === post.id ? '' : post.id)}
+                        aria-label="Post options"
+                      >
+                        <MoreHorizontal size={16} strokeWidth={2.2} />
+                      </button>
+                      {openPostMenuId === post.id ? (
+                        <div className="showup-post-menu">
+                          <button type="button" onClick={() => handleStartEditPost(post)}>Edit caption</button>
+                          <button type="button" onClick={() => handleDeletePost(post.id)}>Delete post</button>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
                       <div className="showup-avatar">{post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName)}</div>
@@ -2589,18 +2775,44 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       </div>
                     </div>
                   </div>
-                  <p className="showup-feed-text">{post.text}</p>
+                  {editingPostId === post.id ? (
+                    <div className="showup-post-edit">
+                      <input
+                        className="showup-comment-input"
+                        value={editPostDraft}
+                        onChange={event => setEditPostDraft(event.target.value)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter') handleSavePostEdit(post.id)
+                        }}
+                        autoFocus
+                      />
+                      <div className="showup-post-edit-actions">
+                        <button type="button" onClick={() => { setEditingPostId(''); setEditPostDraft('') }}>Cancel</button>
+                        <button type="button" onClick={() => handleSavePostEdit(post.id)}>Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="showup-feed-text">{post.text}</p>
+                  )}
                   {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" /> : null}
                   <div className="showup-feed-reactions">
+                    <button
+                      type="button"
+                      className="showup-comment-toggle"
+                      onClick={() => setExpandedComments(current => ({ ...current, [post.id]: !current[post.id] }))}
+                    >
+                      <MessageCircle size={14} strokeWidth={2.1} />
+                      <span>{(post.comments || []).length}</span>
+                    </button>
                     <div className="showup-feed-chip-row">
                       <button
                         type="button"
-                        className={`showup-reaction-chip ${activeReaction ? 'is-active' : ''}`}
+                        className="showup-reaction-chip"
                         onClick={() => setReactionPickerPostId(current => current === post.id ? '' : post.id)}
                         aria-label="Choose reaction"
                       >
-                        <Smile size={15} strokeWidth={2.2} />
-                        <span>{reactionTotal}</span>
+                        <ThumbsUp size={15} strokeWidth={2.2} />
+                        <span>Like</span>
                       </button>
                       {reactionSummary.length ? (
                         <div className="showup-reaction-summary" aria-label={`${reactionTotal} reactions`}>
@@ -2625,14 +2837,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         </div>
                       ) : null}
                     </div>
-                    <button
-                      type="button"
-                      className="showup-comment-toggle"
-                      onClick={() => setExpandedComments(current => ({ ...current, [post.id]: !current[post.id] }))}
-                    >
-                      <MessageCircle size={14} strokeWidth={2.1} />
-                      <span>{(post.comments || []).length}</span>
-                    </button>
                   </div>
                   {expandedComments[post.id] ? (
                     <div className="showup-comments">
@@ -2659,6 +2863,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                                 <Reply size={12} strokeWidth={2.1} />
                                 <span>{(comment.replies || []).length}</span>
                               </button>
+                              {comment.authorId === profile.id ? (
+                                <button
+                                  type="button"
+                                  className="showup-comment-action showup-comment-delete"
+                                  onClick={() => handleDeleteComment(post.id, comment.id)}
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
                             </div>
                             {expandedReplies[comment.id] ? (
                               <div className="showup-replies">
@@ -2725,7 +2938,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div>
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                     <p className="showup-rank-streak">
-                      {member.streakValue} day streak{member.task_done ? ' · Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
+                      {member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}{member.task_done ? ' · Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
                     </p>
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
@@ -2808,3 +3021,4 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     </div>
   )
 }
+
