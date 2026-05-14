@@ -14,10 +14,11 @@ const SHOW_UP_STYLES = `
   touch-action:manipulation;
   display:flex;
   flex-direction:column;
+  overflow-x:hidden;
 }
 .showup-shell{
   width:100%;
-  max-width:1120px;
+  max-width:none;
   margin:0 auto;
   padding:18px 16px 132px;
   box-sizing:border-box;
@@ -464,7 +465,7 @@ const SHOW_UP_STYLES = `
   display:grid;
   grid-template-columns:1fr;
   justify-items:center;
-  align-content:start;
+  align-content:center;
   gap:6px;
   background:var(--bg, #fff);
   border:1px solid rgba(249,95,133,0.18);
@@ -551,7 +552,7 @@ const SHOW_UP_STYLES = `
   background:var(--bg, #fff);
   flex:1;
   width:100%;
-  max-width:760px;
+  max-width:none;
   margin:0 auto;
   padding-bottom:18px;
 }
@@ -693,6 +694,14 @@ const SHOW_UP_STYLES = `
   cursor:pointer;
 }
 .showup-post-menu button:first-child{border-top:none}
+.showup-post-menu-note{
+  margin:0;
+  padding:10px 12px;
+  color:#9a7088;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+}
 .showup-post-edit{
   display:grid;
   gap:8px;
@@ -1383,11 +1392,11 @@ function getNudgeTemplates(member) {
 }
 
 const REACTION_OPTIONS = [
-  { key: 'like', label: 'Like', emoji: 'ðŸ‘' },
-  { key: 'clap', label: 'Clap', emoji: 'ðŸ‘' },
-  { key: 'love', label: 'Love', emoji: 'â¤ï¸' },
-  { key: 'laugh', label: 'Laugh', emoji: 'ðŸ˜‚' },
-  { key: 'smile', label: 'Smile', emoji: 'ðŸ˜Š' },
+  { key: 'like', label: 'Like', emoji: '\u{1F44D}' },
+  { key: 'clap', label: 'Clap', emoji: '\u{1F44F}' },
+  { key: 'love', label: 'Love', emoji: '\u2764\uFE0F' },
+  { key: 'laugh', label: 'Laugh', emoji: '\u{1F602}' },
+  { key: 'smile', label: 'Smile', emoji: '\u{1F60A}' },
 ]
 
 const MAX_ROOM_SIZE = 12
@@ -2206,8 +2215,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     } finally {
       setDoneBusy(false)
     }
-    const doneText = `${profile.name} marked done at ${formatTime(nowIso)}.`
-    await createRoomActivityPost(doneText)
   }
 
   function handlePhotoPick(event) {
@@ -2733,10 +2740,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   </div>
                   <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                    <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'active' ? 'Checked in' : status === 'done' ? 'Completed' : 'Not yet'}
-                    </p>
-                    {member.check_in_time ? <p className="showup-member-time">{formatTime(member.check_in_time)}</p> : null}
+                    {status === 'idle' ? (
+                      <p className="showup-member-status is-idle">Not yet</p>
+                    ) : null}
                   </div>
                   {!isSelf ? (
                     <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
@@ -2794,26 +2800,28 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               visiblePosts.map(post => {
                 const reactionSummary = getReactionSummary(post.reactions).slice(0, 3)
                 const reactionTotal = reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
-                const isOwnPost = post.authorId === profile.id
+                const isOwnPost = post.authorId === profile.id || normalize(post.authorName) === normalize(profile.name)
                 return (
                 <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
-                  {isOwnPost ? (
-                    <>
-                      <button
-                        type="button"
-                        className="showup-post-menu-btn"
-                        onClick={() => setOpenPostMenuId(current => current === post.id ? '' : post.id)}
-                        aria-label="Post options"
-                      >
-                        <MoreHorizontal size={16} strokeWidth={2.2} />
-                      </button>
-                      {openPostMenuId === post.id ? (
-                        <div className="showup-post-menu">
+                  <button
+                    type="button"
+                    className="showup-post-menu-btn"
+                    onClick={() => setOpenPostMenuId(current => current === post.id ? '' : post.id)}
+                    aria-label="Post options"
+                  >
+                    <MoreHorizontal size={16} strokeWidth={2.2} />
+                  </button>
+                  {openPostMenuId === post.id ? (
+                    <div className="showup-post-menu">
+                      {isOwnPost ? (
+                        <>
                           <button type="button" onClick={() => handleStartEditPost(post)}>Edit caption</button>
                           <button type="button" onClick={() => handleDeletePost(post.id)}>Delete post</button>
-                        </div>
-                      ) : null}
-                    </>
+                        </>
+                      ) : (
+                        <p className="showup-post-menu-note">Only the author can edit or delete this post.</p>
+                      )}
+                    </div>
                   ) : null}
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">

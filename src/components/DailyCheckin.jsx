@@ -448,7 +448,7 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
 export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview, ...props }) {
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [refresh, setRefresh] = useState(0)
-  const [sageCardExpanded, setSageCardExpanded] = useState(true)
+  const [sageCardExpanded] = useState(false)
   const [milestoneMessage, setMilestoneMessage] = useState('')
   const [phaseStats, setPhaseStats] = useState({
     completedTasks: 0,
@@ -860,11 +860,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ height: 16 }} />
 
         <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 14, padding: isMobile ? '0.95rem' : '1.1rem', marginBottom: '1rem', boxShadow: '0 14px 34px rgba(240, 96, 144, 0.07)' }}>
-          <div
-            onClick={() => setSageCardExpanded(value => !value)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}
-            title={sageCardExpanded ? 'Collapse' : 'Expand'}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #e8407a, #f472a8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>Live Score</p>
             <p style={{ fontSize: '0.65rem', color: '#b08090', marginLeft: 'auto' }}>{weekPercent}% this week</p>
@@ -1094,8 +1090,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
-          gap: isMobile ? '10px' : '10px',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: isMobile ? '6px' : '10px',
           margin: '1rem 0',
         }}>
           <div
