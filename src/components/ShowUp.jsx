@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, Flame, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, Plus, Reply, Send, Sparkles, Sprout, Zap } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, Plus, Reply, Send, Smile, Sparkles, Sprout } from 'lucide-react'
 import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
@@ -546,6 +546,16 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-view{
   gap:12px;
+}
+.showup-sync-notice{
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:999px;
+  background:rgba(249,95,133,0.06);
+  color:#b98097;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+  padding:8px 12px;
 }
 .showup-compose-card,
 .showup-feed-card,
@@ -1557,6 +1567,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const daysStreak = Math.max(0, Number(summary.currentStreak || 0))
   const customRooms = useMemo(() => safeRead(getCreatedRoomsKey(), []), [showCreateForm, selectedRoom])
+  const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const rooms = useMemo(() => {
     const mappedCustom = Array.isArray(customRooms)
       ? customRooms.map(room => ({
@@ -1566,9 +1577,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         roomColor: room.roomColor || '#f95f85',
       }))
       : []
-    return [...mappedCustom, ...ROOM_DEFINITIONS]
-  }, [customRooms])
-  const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
+    const nextRooms = [...mappedCustom, ...ROOM_DEFINITIONS]
+    const preferredIndex = nextRooms.findIndex(room => room.name === preferredRoomName)
+    if (preferredIndex <= 0) return nextRooms
+    const preferredRoom = nextRooms[preferredIndex]
+    return [preferredRoom, ...nextRooms.filter((_, index) => index !== preferredIndex)]
+  }, [customRooms, preferredRoomName])
   const joinedRoomNames = useMemo(() => {
     const joined = new Set()
     if (preferredRoomName) joined.add(preferredRoomName)
@@ -1869,6 +1883,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   async function ensureRoomMembership(roomName) {
+    const existingLocal = safeRead(getMockMemberStorageKey(roomName), [])
+    if (Array.isArray(existingLocal) && existingLocal.some(member => member.user_id === profile.id)) return
+
     const payload = {
       room_name: roomName,
       user_id: profile.id,
@@ -1881,6 +1898,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
+      const { data: existingRemote, error: lookupError } = await supabase
+        .from('show_up_checkins')
+        .select('user_id')
+        .eq('room_name', roomName)
+        .eq('user_id', profile.id)
+        .maybeSingle()
+      if (lookupError) throw lookupError
+      if (existingRemote) return
       await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
     } catch (nextError) {
       console.error('Show Up membership fallback', nextError)
@@ -1965,6 +1990,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     } finally {
       setCheckInBusy(false)
     }
+    await createRoomActivityPost(`${profile.name} checked in at ${formatTime(nowIso)}.`)
   }
 
   async function handleMarkDone() {
@@ -2025,12 +2051,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   async function handleCreatePost() {
     const text = postDraft.trim()
-    if (!text && !postImage) return
-    const uploadedImage = await uploadRoomFeedImage(postImage)
-    await createFeedPost({ text, image: uploadedImage, anonymous: false })
+    const imageDraft = postImage
+    if (!text && !imageDraft) return
     setPostDraft('')
     setPostImage('')
     if (fileInputRef.current) fileInputRef.current.value = ''
+    const uploadedImage = await uploadRoomFeedImage(imageDraft)
+    await createFeedPost({ text, image: uploadedImage, anonymous: false })
   }
 
   function handleToggleReaction(postId, reactionKey) {
@@ -2541,7 +2568,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </div>
 
             {!feedReady ? (
-              <div className="showup-empty">You are seeing saved room activity. New posts will sync when the connection returns.</div>
+              <div className="showup-sync-notice">Saved room activity. New posts will sync when the connection returns.</div>
             ) : null}
 
             {visiblePosts.length === 0 ? (
@@ -2572,7 +2599,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         onClick={() => setReactionPickerPostId(current => current === post.id ? '' : post.id)}
                         aria-label="Choose reaction"
                       >
-                        <span>{activeReaction?.emoji || '\u263A'}</span>
+                        <Smile size={15} strokeWidth={2.2} />
                         <span>{reactionTotal}</span>
                       </button>
                       {reactionSummary.length ? (

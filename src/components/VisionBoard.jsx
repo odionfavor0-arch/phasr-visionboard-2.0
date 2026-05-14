@@ -390,7 +390,7 @@ function save(d, user) {
 }
 
 const FREE_PILLAR_LIMIT = 2
-const FREE_PHASE_LIMIT = 2
+const FREE_PHASE_LIMIT = 4
 const TODO_STATE_KEY = 'phasr_daily_todo_state'
 const MAX_UPLOAD_FILE_BYTES = 5 * 1024 * 1024
 const MAX_UPLOAD_WIDTH = 2400
@@ -2501,7 +2501,7 @@ Return JSON only:
         </div>
 
         {/* â”€â”€ Phase Tabs â”€â”€ */}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: isMobile ? 'flex-start' : 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.2rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.2rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
           {data.phases.map((p, index) => {
             const activePhase = phaseId === p.id
             const draft = getTimelineDraft(p)
@@ -2675,11 +2675,11 @@ Return JSON only:
             </div>
           )})}
 
-          {!isPro && data.phases.length >= FREE_PHASE_LIMIT ? null : (
+          {editing && (isPro || data.phases.length < FREE_PHASE_LIMIT) ? (
             <button onClick={addPhase} style={{ padding: '0.48rem 1.1rem', borderRadius: 99, border: '1.5px dashed var(--app-border)', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               + add it
             </button>
-          )}
+          ) : null}
         </div>
 
 
