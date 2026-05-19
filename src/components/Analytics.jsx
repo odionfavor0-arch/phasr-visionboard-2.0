@@ -3,10 +3,8 @@ import { buildWeeklyGoals, getLockInSummary, loadLockInState } from '../lib/lock
 
 export const STATS_TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'journal', label: 'Journal' },
   { id: 'phases', label: 'Phases' },
-  { id: 'activity', label: 'Activity Summary' },
-  { id: 'days', label: 'Days Overview' },
+  { id: 'journal', label: 'Journal' },
 ]
 
 const JOURNAL_KEY = 'phasr_journal_v2'
@@ -70,6 +68,15 @@ function loadBoard() {
 
 function loadCompletions() {
   return safeRead(COMPLETIONS_KEY, [])
+}
+
+function getCurrentStreakCount() {
+  const scoped = safeRead('phasr_streak', {})
+  const direct = Number(scoped?.current || 0)
+  if (Number.isFinite(direct) && direct > 0) return direct
+  const unlockState = safeRead('phasr_unlock_state', {})
+  const fallback = Number(unlockState?.streakDays || 0)
+  return Number.isFinite(fallback) ? fallback : 0
 }
 
 function buildWeeklyBuckets(entries) {
@@ -474,9 +481,10 @@ export default function Analytics() {
   const weeklyStats = useMemo(() => buildWeeklyStats(board, rawLockState), [board, rawLockState, completions])
 
   const totalEntries = entries.length
-  const weeklyActivity = weeklyBuckets.reduce((sum, week) => sum + week.count, 0)
+  const weeklyActivity = weeklyStats.tasksCompleted
   const phase = board?.phases?.find(item => item.id === board?.activePhaseId) || board?.phases?.[0]
   const pillars = phase?.pillars || []
+  const selectedPillar = pillars[0] || null
   const phaseProgress = pillars.length ? Math.round(pillars.reduce((sum, pillar) => sum + getPhaseCompletion(pillar), 0) / pillars.length) : 0
   const weeklyActions = pillars.flatMap(pillar => pillar.weeklyActions || []).filter(Boolean)
   const reviewComplete = Boolean(phase?.reviewWorked || phase?.reviewDrained || phase?.reviewPaid || phase?.reviewStrategy)
@@ -497,14 +505,13 @@ export default function Analytics() {
             </TabButton>
           </div>
           <div style={{ display: 'grid', justifyItems: 'center' }}>
-            <p style={{ color: 'var(--app-muted)', fontSize: '0.82rem', marginTop: '0.1rem', textAlign: 'center', fontWeight: 600 }}>Activity Summary</p>
+            <TabButton active={activeTab === 'phases'} onClick={() => setActiveTab('phases')}>
+              Phases
+            </TabButton>
           </div>
           <div style={{ display: 'flex', gap: '0.55rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <TabButton active={activeTab === 'journal'} onClick={() => setActiveTab('journal')}>
               Journal
-            </TabButton>
-            <TabButton active={activeTab === 'phases'} onClick={() => setActiveTab('phases')}>
-              Phases
             </TabButton>
           </div>
         </div>
@@ -519,7 +526,7 @@ export default function Analytics() {
                 <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{weeklyActivity}</p>
               </SectionCard>
               <SectionCard title="Current streak">
-                <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{lockIn.currentStreak} day{lockIn.currentStreak !== 1 ? 's' : ''}</p>
+                <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{getCurrentStreakCount()} day{getCurrentStreakCount() !== 1 ? 's' : ''}</p>
               </SectionCard>
             </div>
 
@@ -637,10 +644,13 @@ export default function Analytics() {
             <div style={{ display: 'grid', gridTemplateColumns: '0.85fr 1.15fr', gap: '1rem' }}>
               <SectionCard title="Current phase">
                 <p style={{ fontSize: '1.15rem', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>
-                  {phase?.title || 'Phase 1'}
+                  {phase?.name || 'Phase 1'}
                 </p>
                 <p style={{ margin: '0.55rem 0 0', color: '#705665', fontSize: '0.88rem', lineHeight: 1.6, textAlign: 'center' }}>
-                  {phase?.subtitle || 'Your active phase progress lives here.'}
+                  {[phase?.startDate, phase?.endDate].filter(Boolean).join(' - ') || 'Your active phase progress lives here.'}
+                </p>
+                <p style={{ margin: '0.35rem 0 0', color: '#705665', fontSize: '0.88rem', lineHeight: 1.6, textAlign: 'center' }}>
+                  Pillar: {selectedPillar?.name || 'Not selected yet'}
                 </p>
               </SectionCard>
               <SectionCard title="Phase completion">

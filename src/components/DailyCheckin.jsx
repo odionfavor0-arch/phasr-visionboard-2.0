@@ -550,6 +550,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     if (!Number.isFinite(startMs) || !Number.isFinite(todayMs)) return 1
     return Math.max(Math.floor((todayMs - startMs) / 86400000) + 1, 1)
   }, [phaseStart])
+  const daysIn = dayOfPhase
   const currentWeek = useMemo(() => Math.max(Math.min(totalWeeks, Math.ceil(dayOfPhase / 7)), 1), [dayOfPhase, totalWeeks])
   const currentDayNumber = useMemo(() => ((dayOfPhase - 1) % 7) + 1, [dayOfPhase])
   const dayOfWeek = currentDayNumber
@@ -599,7 +600,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
-  const pagePadding = isMobile ? '14px 14px 88px' : '22px 32px 96px'
+  const pagePadding = isMobile ? '14px 14px 12px' : '22px 32px 96px'
   const contentMaxWidth = 1040
 
   const currentStreak = useMemo(() => {
@@ -613,13 +614,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     let weekNumber = currentWeek
     let dayNumber = currentDayNumber
 
-    if (readStreakValue(weekNumber, dayNumber) !== 'true') {
-      dayNumber -= 1
-      if (dayNumber < 1) {
-        weekNumber -= 1
-        dayNumber = 7
-      }
-    }
+    if (readStreakValue(weekNumber, dayNumber) !== 'true') return 0
 
     while (weekNumber >= 1 && dayNumber >= 1) {
       const isSuccessful = readStreakValue(weekNumber, dayNumber) === 'true'
@@ -647,19 +642,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     5: 'Unstoppable',
   }
   const streakLabel = currentLevel === 1
-    ? `Day ${currentStreak} in`
+    ? `Day ${daysIn} in`
     : levelLabels[currentLevel]
-  const currentMilestone = milestones.filter(item => item.day <= currentStreak).slice(-1)[0]
-  const nextMilestone = milestones.find(item => item.day > currentStreak)
+  const currentMilestone = milestones.filter(item => item.day <= daysIn).slice(-1)[0]
+  const nextMilestone = milestones.find(item => item.day > daysIn)
   const unlockPathLabel =
-    currentStreak >= 90 ? 'Legacy active'
-      : currentStreak >= 60 ? 'Deep reflection'
-        : currentStreak >= 30 ? 'Monthly insight'
-          : currentStreak >= 14 ? 'Pattern visibility'
-            : currentStreak >= 7 ? 'Weekly rhythm active'
-              : currentStreak >= 3 ? 'Personalization building'
+    daysIn >= 90 ? 'Legacy active'
+      : daysIn >= 60 ? 'Deep reflection'
+        : daysIn >= 30 ? 'Monthly insight'
+          : daysIn >= 14 ? 'Pattern visibility'
+            : daysIn >= 7 ? 'Weekly rhythm active'
+              : daysIn >= 3 ? 'Personalization building'
                 : 'Sage learning you'
-  const unlockPathMessage = currentStreak <= 3 ? 'Sage is getting to know you' : unlockPathLabel
+  const unlockPathMessage = daysIn <= 3 ? 'Sage is getting to know you' : unlockPathLabel
   const completedTasksThisPhase = phaseStats.completedTasks
   const totalTasksThisPhase = phaseStats.totalTasksInPhase
   const phasePercent = phaseStats.phasePercent
@@ -668,7 +663,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     : 0
   const displayPhasePercent = formatPhasePercentLabel(exactPhasePercent)
   const progressToNext = nextMilestone
-    ? Math.min(Math.round((currentStreak / nextMilestone.day) * 100), 100)
+    ? Math.min(Math.round((daysIn / nextMilestone.day) * 100), 100)
     : 100
 
   const buildProgressTrackStyle = background => ({
@@ -739,7 +734,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [currentStreak, completedTasksThisWeek, currentLevel, currentMilestone, nextMilestone, streakLabel])
 
   useEffect(() => {
-    const unlockedMilestone = milestones.find(item => item.day === currentStreak)
+    const unlockedMilestone = milestones.find(item => item.day === daysIn)
     if (!unlockedMilestone) {
       setMilestoneMessage('')
       return undefined
@@ -759,7 +754,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }, 5000)
 
     return () => window.clearTimeout(timeoutId)
-  }, [currentStreak])
+  }, [daysIn])
 
   function recalculatePhaseStats() {
     setPhaseStats(calculatePhaseTaskStats(activePhaseId, tasksPerWeek))
@@ -1147,7 +1142,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 color: '#e8407a',
                 margin: 0,
               }}>
-                {`Day ${currentStreak} in`}
+                {`Day ${daysIn} in`}
               </p>
             </div>
           </div>

@@ -77,12 +77,12 @@ const PROMPTS = [
 ]
 
 const MOODS = [
-  { emoji: '😊', label: 'Calm', score: 8 },
-  { emoji: '🔥', label: 'Focused', score: 9 },
-  { emoji: '😔', label: 'Reflective', score: 5 },
-  { emoji: '😤', label: 'Stressed', score: 3 },
-  { emoji: '😎', label: 'Confident', score: 8 },
-  { emoji: '💪', label: 'Energised', score: 9 },
+  { emoji: '??', label: 'Calm', score: 8 },
+  { emoji: '??', label: 'Focused', score: 9 },
+  { emoji: '??', label: 'Reflective', score: 5 },
+  { emoji: '??', label: 'Stressed', score: 3 },
+  { emoji: '??', label: 'Confident', score: 8 },
+  { emoji: '??', label: 'Energised', score: 9 },
 ]
 
 const TEMPLATES = [
@@ -166,13 +166,13 @@ const TEMPLATES = [
 
 const BACKGROUNDS = [
   { id: 'original', name: 'Original', style: { background: '#ffffff' }, deco: '' },
-  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '🌹 ✿ 🌷' },
-  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '✦ ☾ ✦' },
-  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '🦋 ✦ 🦋' },
-  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '🎀 ✿ 🎀' },
+  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '?? ? ??' },
+  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '? ? ?' },
+  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '?? ? ??' },
+  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '?? ? ??' },
 ]
 
-const STICKERS = ['💖', '🎀', '🧸', '✨', '🌸']
+const STICKERS = ['??', '??', '??', '?', '??']
 const COLORS = ['#2f1e2a', '#7b243e', '#b03060', '#e8407a', '#ff7aaa', '#6e2fb8']
 const FONTS = [
   { id: 'dm', name: 'Default', family: "'DM Sans', sans-serif" },
@@ -322,6 +322,51 @@ function getActivePhase(boardData) {
   return phases[0]
 }
 
+function buildPhaseFingerprint(phase) {
+  const text = [
+    phase?.id || '',
+    phase?.name || '',
+    phase?.startDate || '',
+    phase?.endDate || '',
+    ...(Array.isArray(phase?.pillars) ? phase.pillars.flatMap((pillar, index) => [
+      pillar?.id || index,
+      pillar?.name || '',
+    ]) : []),
+  ].join('|')
+  let hash = 0
+  for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0
+  return `${phase?.id || 'phase'}_${Math.abs(hash)}`
+}
+
+function getPlatformDaysIn() {
+  const boardData = readVisionBoardData()
+  const phase = getActivePhase(boardData)
+  const savedStart =
+    localStorage.getItem('phasr_joined_at') ||
+    localStorage.getItem('phasr_phase1_start_date') ||
+    phase?.startDate ||
+    new Date().toISOString().slice(0, 10)
+  const start = new Date(`${String(savedStart).slice(0, 10)}T12:00:00`)
+  if (Number.isNaN(start.getTime())) return 1
+  return Math.max(1, Math.floor((Date.now() - start.getTime()) / MS_IN_DAY) + 1)
+}
+
+function getMissedDaysForWeeklyReflection(phase, weekNumber, currentDayOfWeek) {
+  const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+  const scope = buildPhaseFingerprint(phase || {})
+  const missed = []
+  for (let day = 1; day < currentDayOfWeek; day += 1) {
+    const scopedValue = localStorage.getItem(`phasr_streak_${scope}_w${weekNumber}_d${day}`)
+    const legacyValue = localStorage.getItem(`phasr_streak_w${weekNumber}_d${day}`)
+    const tasks = (() => {
+      try { return JSON.parse(localStorage.getItem(`phasr_tasks_${scope}_w${weekNumber}_d${day}`) || '[]') } catch { return [] }
+    })()
+    const checked = scopedValue === 'true' || legacyValue === 'true' || (Array.isArray(tasks) && tasks.some(task => task?.done))
+    if (!checked) missed.push(labels[day - 1])
+  }
+  return missed
+}
+
 function buildWeeklyPulsePayload() {
   const boardData = readVisionBoardData()
   const phase = getActivePhase(boardData) || (Array.isArray(boardData?.phases) ? boardData.phases[0] : null)
@@ -332,9 +377,14 @@ function buildWeeklyPulsePayload() {
     : []
 
   const phaseStart = phase?.startDate ? new Date(`${phase.startDate}T12:00:00`) : null
-  const weekNumber = phaseStart && !Number.isNaN(phaseStart.getTime())
+  const dayOfPhase = phaseStart && !Number.isNaN(phaseStart.getTime())
+    ? Math.max(1, Math.floor((Date.now() - phaseStart.getTime()) / MS_IN_DAY) + 1)
+    : 1
+  const dayOfWeek = ((dayOfPhase - 1) % 7) + 1
+  const currentWeekNumber = phaseStart && !Number.isNaN(phaseStart.getTime())
     ? Math.max(1, Math.floor((Date.now() - phaseStart.getTime()) / (7 * MS_IN_DAY)) + 1)
     : 1
+  const targetWeekNumber = currentWeekNumber > 1 ? currentWeekNumber - 1 : 1
   const primaryPillar = pillars[0] || 'Personal Growth'
   const primaryPool = PILLAR_QUESTIONS[normalizeLabel(primaryPillar)] || PILLAR_QUESTIONS['personal growth']
   const safePillars = [primaryPillar]
@@ -342,12 +392,20 @@ function buildWeeklyPulsePayload() {
   const questionOne = primaryPool[weekIndexSeed % primaryPool.length] || primaryPool[0]
   const questionTwo = primaryPool[(weekIndexSeed + 1) % primaryPool.length] || primaryPool[1] || primaryPool[0]
   const therapistMove = THERAPIST_MOVES[normalizeLabel(primaryPillar)] || THERAPIST_MOVES['personal growth']
+  const missedDays = getMissedDaysForWeeklyReflection(phase, targetWeekNumber, dayOfWeek)
+  const missedLabel = missedDays.length === 1 ? missedDays[0] : `${missedDays.slice(0, -1).join(', ')} and ${missedDays.slice(-1)[0]}`
+  const accountabilityQuestion = missedDays.length
+    ? `I noticed you didn't check in on ${missedLabel} - what got in the way?`
+    : ''
+  const weeklyQuestions = accountabilityQuestion ? [accountabilityQuestion, questionOne] : [questionOne, questionTwo]
 
   return {
     phaseName: removeDashPunctuation(phaseName),
-    weekNumber,
+    currentWeekNumber,
+    weekNumber: targetWeekNumber,
+    dayOfWeek,
     pillars: safePillars,
-    weeklyQuestions: [questionOne, questionTwo].map(removeDashPunctuation),
+    weeklyQuestions: weeklyQuestions.map(removeDashPunctuation),
     therapistMove: removeDashPunctuation(therapistMove),
   }
 }
@@ -475,9 +533,9 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
           {
             role: 'system',
              content: isWeeklyPulse
-               ? `The user just completed their weekly pulse reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
+               ? `The user just completed their weekly reflection reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
 
-Weekly Pulse is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
+Weekly Reflection is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
 
 Respond the way a sharp warm honest friend would respond if they received this as a voice note. Not a therapist. Not a coach. A real person who absorbed everything they said.
 
@@ -489,7 +547,7 @@ Do not use m-dashes. Do not use clinical phrases.
 
 Return strict JSON only with this shape:
 {
-  "generatedTitle": "Weekly Pulse",
+  "generatedTitle": "Weekly Reflection",
   "clarityScore": 8,
   "clarityLabel": "Calm",
   "sageResponse": "string"
@@ -614,7 +672,7 @@ function TemplatesPage({ onBack, onSelect }) {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#eef6ff', padding: '0.9rem 0.9rem 1.4rem' }}>
-      <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
+      <div style={{ width: '100%', maxWidth: '100%', margin: 0, display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1d2430' }}>Templates</h2>
@@ -645,7 +703,7 @@ function buildTemplateContent(template, answers) {
 function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'linear-gradient(180deg, #7b4a88 0%, #f8f0fb 100%)', padding: '0.9rem 0.9rem 1.5rem' }}>
-      <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: '1rem' }}>
+      <div style={{ width: '100%', maxWidth: '100%', margin: 0, display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <button type="button" onClick={onBack} style={{ ...ghostIconButtonStyle, background: 'rgba(255,255,255,0.86)' }}>
             <ArrowLeft size={20} />
@@ -697,7 +755,7 @@ function WeeklyPulseWriter({
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', borderBottom: '1px solid var(--app-border)' }}>
         <button type="button" onClick={onPrev} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
-        <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Weekly Pulse</p>
+        <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Weekly Reflection</p>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.38rem' }}>
           {questions.map((_, idx) => (
             <span
@@ -717,7 +775,7 @@ function WeeklyPulseWriter({
 
       <div style={{ padding: '20px 16px', display: 'grid', gap: '1rem', flex: 1 }}>
         <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e8407a', margin: 0 }}>
-          Weekly Pulse {phaseName}
+          Weekly Reflection {phaseName}
         </p>
         <p style={{ fontFamily: "'Cormorant Garamond, serif", fontSize: '1.15rem', fontWeight: 400, color: '#3d1f2b', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
           {currentQuestion}
@@ -768,7 +826,7 @@ function WeeklyPulseWriter({
             disabled={isSaving}
             style={{ width: '100%', border: 'none', borderRadius: 14, padding: '0.86rem 1rem', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: '0 10px 22px rgba(232,64,122,0.24)' }}
           >
-            {isSaving ? 'Saving...' : 'Save Weekly Pulse'}
+            {isSaving ? 'Saving...' : 'Save Weekly Reflection'}
           </button>
         ) : (
           <button
@@ -788,7 +846,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
   const hideSessionCtaTapRef = useRef(0)
   const detailBody = entry.content || getTemplateSummary(entry) || ''
-  const isWeeklyPulse = String(entry?.prompt || '').toLowerCase() === 'weekly pulse'
+  const isWeeklyPulse = String(entry?.prompt || '').toLowerCase() === 'weekly reflection'
   const weeklySession = entry?.weeklyPulseSession || null
   const sessionMessages = Array.isArray(weeklySession?.messages) ? weeklySession.messages : []
   const sessionCompleted = Boolean(weeklySession?.completedAt || weeklySession?.status === 'completed')
@@ -840,7 +898,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
           <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672', marginLeft: 'auto' }}>{formatDate(entry.date)}</p>
           <button type="button" onClick={onEdit} style={ghostIconButtonStyle}><Pencil size={16} /></button>
         </div>
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
+      <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
           <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
           <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
@@ -970,7 +1028,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
               </div>
             </div>
             <p style={{ margin: 0, paddingTop: '0.3rem', color: '#8f7180', fontSize: '0.82rem' }}>
-              Weekly Pulse • {entry.weeklyPulseMeta?.phaseName || 'Phase'} • {(entry.weeklyPulseMeta?.pillars || []).join(' • ')}
+              Weekly Reflection • {entry.weeklyPulseMeta?.phaseName || 'Phase'} • {(entry.weeklyPulseMeta?.pillars || []).join(' • ')}
             </p>
           </>
         ) : (
@@ -1154,7 +1212,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <input ref={dateInputRef} type="date" value={draft.date} onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
           <div style={{ flex: 1 }} />
           <button type="button" onClick={() => setShowMoodPicker(true)} aria-label="Change emoji" title="Change emoji" style={{ border: 'none', background: 'transparent', padding: 0, color: '#4f9bff' }}>
-            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || MOODS[0]?.emoji || '😊'}</span>
+            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || MOODS[0]?.emoji || '??'}</span>
           </button>
         </div>
 
@@ -1251,7 +1309,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
       <BottomSheet open={showMenu} onClose={() => setShowMenu(false)} title="">
         <div style={{ display: 'grid', gap: '0.2rem' }}>
-          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>→</span></button>
+          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>?</span></button>
           <div style={menuStatStyle}><span>Words</span><strong>{wordCount}</strong></div>
         </div>
       </BottomSheet>
@@ -1272,7 +1330,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div>
             <p style={sheetLabelStyle}>Emojis</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-                {['😊', '😌', '🔥', '😔', '😤', '😎', '💖', '✨', '🌸', '🫶'].map(emoji => (
+                {['??', '??', '??', '??', '??', '??', '??', '?', '??', '??'].map(emoji => (
                   <button key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</button>
                 ))}
               </div>
@@ -1306,8 +1364,8 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
       <BottomSheet open={activeTray === 'list'} onClose={() => setActiveTray(null)} title="List style">
           <div style={{ display: 'grid', gap: '0.55rem' }}>
             <button type="button" onClick={() => insertList('• ')} style={menuRowStyle}><span>• Bullet points</span><span>• • •</span></button>
-            <button type="button" onClick={() => insertList('☐ ')} style={menuRowStyle}><span>☐ Check list</span><span>☐ ☐ ☐</span></button>
-            <button type="button" onClick={() => insertList('★ ')} style={menuRowStyle}><span>★ Star list</span><span>★ ★ ★</span></button>
+            <button type="button" onClick={() => insertList('? ')} style={menuRowStyle}><span>? Check list</span><span>? ? ?</span></button>
+            <button type="button" onClick={() => insertList('? ')} style={menuRowStyle}><span>? Star list</span><span>? ? ?</span></button>
           </div>
         </BottomSheet>
 
@@ -1430,14 +1488,18 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
   const filteredEntries = useMemo(() => sortEntries(entries, search, sortOrder), [entries, search, sortOrder])
   const currentWeeklyPulsePayload = useMemo(() => buildWeeklyPulsePayload(), [weeklyPulseDate, entries])
+  const daysIn = useMemo(() => getPlatformDaysIn(), [entries, weeklyPulseDate])
   const weeklyPulseDue = useMemo(() => {
+    if (daysIn < 7) return false
     const phaseKey = normalizeLabel(currentWeeklyPulsePayload?.phaseName || 'phase 1')
-    const currentWeekNumber = String(currentWeeklyPulsePayload?.weekNumber || 1)
+    const currentWeekNumber = Number(currentWeeklyPulsePayload?.currentWeekNumber || 1)
+    if (currentWeekNumber <= 1) return false
+    const previousWeekNumber = String(Math.max(1, currentWeekNumber - 1))
     const completionStore = (() => {
       try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
     })()
-    return !Boolean(completionStore?.[phaseKey]?.[currentWeekNumber])
-  }, [currentWeeklyPulsePayload, weeklyPulseDate])
+    return !Boolean(completionStore?.[phaseKey]?.[previousWeekNumber])
+  }, [currentWeeklyPulsePayload, weeklyPulseDate, daysIn])
 
   function prepareWeeklyPulseState() {
     const payload = buildWeeklyPulsePayload()
@@ -1453,6 +1515,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   }
 
   function openWeeklyPulse() {
+    if (daysIn < 7) return
     setScreen('weekly-pulse')
   }
 
@@ -1463,9 +1526,10 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
   useEffect(() => {
     if (!autoOpenWeeklyPulse) return
+    if (daysIn < 7) return
     openWeeklyPulse()
     onWeeklyPulseOpened?.()
-  }, [autoOpenWeeklyPulse])
+  }, [autoOpenWeeklyPulse, daysIn])
 
   useEffect(() => {
     if (!openTemplatesToken) return
@@ -1546,12 +1610,12 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       .trim()
 
     if (!content) return
-    const weeklyPulseTitle = `Weekly Pulse — Week ${weeklyPulseState.weekNumber || 1}`
+    const weeklyPulseTitle = `Weekly Reflection — Week ${weeklyPulseState.weekNumber || 1}`
     const weeklyDraft = {
       ...blankDraft(),
       date: getToday(),
       title: weeklyPulseTitle,
-      prompt: 'Weekly Pulse',
+      prompt: 'Weekly Reflection',
       content,
       templateAccent: '#fff5f7',
       templateFields,
@@ -1618,7 +1682,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         mood: weeklyDraft.mood,
         clarityScore: 6,
         clarityLabel: 'Reflective',
-        sageResponse: localSageResponse({ content: weeklyDraft.content, prompt: 'Weekly Pulse', clarityLabel: 'Reflective' }),
+        sageResponse: localSageResponse({ content: weeklyDraft.content, prompt: 'Weekly Reflection', clarityLabel: 'Reflective' }),
         backgroundId: weeklyDraft.backgroundId,
         fontId: weeklyDraft.fontId,
         color: weeklyDraft.color,
@@ -1656,7 +1720,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       setIsSaving(true)
       setScreen('processing')
       try {
-        const isWeeklyPulse = String(draft.prompt || '').toLowerCase() === 'weekly pulse'
+        const isWeeklyPulse = String(draft.prompt || '').toLowerCase() === 'weekly reflection'
         const normalizedContent = draft.templateFields
           ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers })
           : draft.content
@@ -1729,7 +1793,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         templateAccent: draft.templateAccent,
         templateFields: draft.templateFields,
         templateAnswers: draft.templateAnswers,
-        weeklyPulseMeta: String(draft.prompt || '').toLowerCase() === 'weekly pulse' ? {
+        weeklyPulseMeta: String(draft.prompt || '').toLowerCase() === 'weekly reflection' ? {
           phaseName: draft.weeklyPulsePhaseName || '',
           pillars: draft.weeklyPulsePillars || [],
           weekNumber: draft.weeklyPulseWeekNumber || 1,
@@ -1737,7 +1801,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? fallback : item) : [fallback, ...current])
       setSelectedEntry(fallback)
-      if (String(draft.prompt || '').toLowerCase() === 'weekly pulse') {
+      if (String(draft.prompt || '').toLowerCase() === 'weekly reflection') {
         setWeeklyPulseDate(getToday())
         const completionStore = (() => {
           try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
@@ -1880,12 +1944,16 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
               <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></button>
           </div>
 
-          {weeklyPulseDue ? (
+          {daysIn < 7 ? (
+            <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
+              <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Your first weekly reflection unlocks after day 7</p>
+            </div>
+          ) : weeklyPulseDue ? (
             <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your weekly reset.</p>
-              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Weekly Pulse. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
+              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Weekly Reflection. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
               <button type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
-                Open Weekly Pulse
+                Open Weekly Reflection
               </button>
             </div>
           ) : null}
@@ -1903,7 +1971,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
-                      <span>{entry.mood?.emoji || '😊'}</span>
+                      <span>{entry.mood?.emoji || '??'}</span>
                       <span>{entry.clarityLabel || 'Reflective'}</span>
                       <span>· {entry.clarityScore || 7}/10</span>
                     </span>
@@ -1933,7 +2001,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
           {[{ id: 'latest', label: 'Latest first' }, { id: 'oldest', label: 'Oldest first' }].map(option => (
             <button key={option.id} type="button" onClick={() => { setSortOrder(option.id); setShowSortSheet(false) }} style={menuRowStyle}>
               <span>{option.label}</span>
-              {option.id === sortOrder ? <span>✓</span> : null}
+              {option.id === sortOrder ? <span>?</span> : null}
             </button>
           ))}
         </div>
@@ -1949,7 +2017,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
             </button>
           ))}
         </div>
-        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.7rem', width: '100%' }}>Skip for now →</button>
+        <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.7rem', width: '100%' }}>Skip for now ?</button>
       </BottomSheet>
 
     </>

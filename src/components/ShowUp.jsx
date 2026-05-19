@@ -883,6 +883,78 @@ const SHOW_UP_STYLES = `
   display:flex;
   gap:8px;
 }
+.showup-comment-sheet{
+  width:100%;
+  max-width:560px;
+  max-height:min(76dvh, 620px);
+  background:#fff;
+  border-radius:20px 20px 0 0;
+  padding:14px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-sizing:border-box;
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr) auto;
+  gap:12px;
+  box-shadow:0 -22px 48px rgba(77,49,66,0.14);
+}
+.showup-comment-sheet-list{
+  overflow-y:auto;
+  display:grid;
+  gap:10px;
+  padding-right:2px;
+}
+.showup-comment-sheet-compose{
+  display:grid;
+  gap:8px;
+  border-top:1px solid rgba(77,49,66,0.08);
+  padding-top:10px;
+}
+.showup-comment-inline{
+  display:grid;
+  grid-template-columns:auto 1fr auto auto auto;
+  gap:8px;
+  align-items:center;
+}
+.showup-comment-icon-btn,
+.showup-comment-round-send{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  border:1px solid rgba(249,95,133,0.24);
+  background:#fff;
+  color:#f95f85;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  font-weight:900;
+  flex-shrink:0;
+}
+.showup-comment-round-send{
+  border:none;
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+}
+.showup-mention-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.showup-mention-list button{
+  border:1px solid rgba(249,95,133,0.22);
+  background:#fff7fa;
+  color:#8b6275;
+  border-radius:999px;
+  padding:5px 9px;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.showup-comment-image-preview{
+  width:64px;
+  height:64px;
+  object-fit:cover;
+  border-radius:10px;
+  border:1px solid rgba(249,95,133,0.22);
+}
 .showup-rank-row{
   display:grid;
   grid-template-columns:34px 42px minmax(0,1fr) auto auto;
@@ -1612,7 +1684,7 @@ function incrementCurrentStreak() {
 }
 
 function getFeedStorageKey(roomName) {
-  return `phasr_showup_feed_${normalize(roomName)}`
+  return `showup_feed_${normalize(roomName)}`
 }
 
 function getRoomId(roomName) {
@@ -1620,11 +1692,15 @@ function getRoomId(roomName) {
 }
 
 function getMockMemberStorageKey(roomName) {
-  return `phasr_showup_mock_members_${normalize(roomName)}`
+  return `showup_members_${normalize(roomName)}`
 }
 
 function getCreatedRoomsKey() {
   return 'phasr_showup_created_rooms'
+}
+
+function getJoinedRoomsKey(userId) {
+  return `phasr_showup_joined_rooms_${userId || 'local-user'}`
 }
 
 function getNotificationStorageKey(userId) {
@@ -1697,6 +1773,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [feedReady, setFeedReady] = useState(true)
   const [postDraft, setPostDraft] = useState('')
   const [postImage, setPostImage] = useState('')
+  const [toast, setToast] = useState('')
+  const [commentSheetPostId, setCommentSheetPostId] = useState('')
+  const [commentImage, setCommentImage] = useState('')
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReplies, setExpandedReplies] = useState({})
@@ -1719,6 +1798,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [createRoomName, setCreateRoomName] = useState('')
   const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
   const fileInputRef = useRef(null)
+  const commentFileInputRef = useRef(null)
 
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const daysStreak = Math.max(0, Number(summary.currentStreak || 0))
@@ -1740,8 +1820,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     return [preferredRoom, ...nextRooms.filter((_, index) => index !== preferredIndex)]
   }, [customRooms, preferredRoomName])
   const joinedRoomNames = useMemo(() => {
-    const joined = new Set()
-    if (preferredRoomName) joined.add(preferredRoomName)
+    const joined = new Set(safeRead(getJoinedRoomsKey(profile.id), []))
     rooms.forEach(room => {
       const stored = safeRead(getMockMemberStorageKey(room.name), [])
       if (Array.isArray(stored) && stored.some(member => member?.user_id === profile.id)) {
@@ -1749,7 +1828,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       }
     })
     return joined
-  }, [preferredRoomName, profile.id, rooms])
+  }, [profile.id, rooms, selectedRoom, roomCounts])
 
   useEffect(() => {
     if (!selectedRoom) return
@@ -1821,13 +1900,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     try {
       const { data, error: countsError } = await supabase
         .from('show_up_checkins')
-        .select('room_name,checked_in,display_name')
+        .select('room_name,display_name')
 
       if (countsError) throw countsError
 
       const counts = {}
       ;(data || []).forEach(row => {
-        if (!row?.checked_in || isPlaceholderMember(row)) return
+        if (isPlaceholderMember(row)) return
         counts[row.room_name] = (counts[row.room_name] || 0) + 1
       })
       setRoomCounts(counts)
@@ -1843,7 +1922,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       const stored = safeRead(getMockMemberStorageKey(room.name), [])
       const fallbackMember = buildMockMember(nextProfile, room.name)
       const nextMembers = Array.isArray(stored) && stored.length ? stored : (fallbackMember ? [fallbackMember] : [])
-      counts[room.name] = nextMembers.filter(member => member?.checked_in === true && !isPlaceholderMember(member)).length
+      counts[room.name] = nextMembers.filter(member => !isPlaceholderMember(member)).length
     })
     setRoomCounts(counts)
   }
@@ -2056,7 +2135,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   async function ensureRoomMembership(roomName) {
     const existingLocal = safeRead(getMockMemberStorageKey(roomName), [])
-    if (Array.isArray(existingLocal) && existingLocal.some(member => member.user_id === profile.id)) return
+    const rememberJoinedRoom = () => {
+      const joined = new Set(safeRead(getJoinedRoomsKey(profile.id), []))
+      joined.add(roomName)
+      safeWrite(getJoinedRoomsKey(profile.id), [...joined].slice(0, 2))
+    }
+    if (Array.isArray(existingLocal) && existingLocal.some(member => member.user_id === profile.id)) {
+      rememberJoinedRoom()
+      return
+    }
 
     const payload = {
       room_name: roomName,
@@ -2077,25 +2164,43 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         .eq('user_id', profile.id)
         .maybeSingle()
       if (lookupError) throw lookupError
-      if (existingRemote) return
+      if (existingRemote) {
+        rememberJoinedRoom()
+        return
+      }
       await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
     } catch (nextError) {
       console.error('Show Up membership fallback', nextError)
       upsertLocalMember(roomName, payload)
     }
+    rememberJoinedRoom()
   }
 
   async function handleJoinRoom(roomName) {
+    const joined = new Set(safeRead(getJoinedRoomsKey(profile.id), []))
+    const joinedCount = joined.size
+    const roomCount = roomCounts[roomName] || 0
+    if (!joined.has(roomName) && joinedCount >= 2) {
+      setError('You can only be in 2 rooms at a time.')
+      return
+    }
+    if (!joined.has(roomName) && roomCount >= MAX_ROOM_SIZE) {
+      setError('This room is full.')
+      return
+    }
+    setError('')
     setLoading(true)
     await ensureRoomMembership(roomName)
     setSelectedRoom(roomName)
     setActiveTab('live')
+    setToast("You're in. Tap Check In to start your session.")
     setLoading(false)
   }
 
   function handleLeaveForNow() {
     setExitPromptOpen(false)
     setSelectedRoom(null)
+    setToast("You're still checked in - come back to mark done.")
   }
 
   async function handleExitRoom() {
@@ -2116,6 +2221,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (Array.isArray(current)) {
       persistMockMembers(getMockMemberStorageKey(roomName), current.filter(member => member.user_id !== profile.id))
     }
+    const joined = safeRead(getJoinedRoomsKey(profile.id), [])
+    safeWrite(getJoinedRoomsKey(profile.id), (Array.isArray(joined) ? joined : []).filter(name => name !== roomName))
     setMembers([])
     setCheckedIn(false)
     setTaskDone(false)
@@ -2126,12 +2233,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   async function handleCheckIn() {
-    console.log('Show Up check-in state', {
-      selectedRoom,
-      checkedIn,
-      checkInBusy,
-      profileId: profile.id,
-    })
     if (!selectedRoom || checkedIn || checkInBusy) return
     const fallbackProfile = profile.id === 'local-user' ? getProfile(user, null) : profile
     const nowIso = new Date().toISOString()
@@ -2194,9 +2295,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setCheckedIn(true)
     setTaskDone(true)
     setDoneTime(nowIso)
-    setActiveTab('feed')
     setShowProgressPhotoPrompt(true)
-    window.setTimeout(() => fileInputRef.current?.click(), 80)
     setMembers(current => current.map(member => (
       member.user_id === profile.id ? { ...member, ...donePatch } : member
     )))
@@ -2206,7 +2305,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { error: doneError } = await supabase
         .from('show_up_checkins')
-        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt, task_done_time: nowIso, streak_count: nextStreakCount })
+        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt, streak_count: nextStreakCount })
         .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
       if (doneError) throw doneError
@@ -2215,6 +2314,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     } finally {
       setDoneBusy(false)
     }
+    await createRoomActivityPost(`${profile.name} marked done at ${formatTime(nowIso)}.`)
   }
 
   function handlePhotoPick(event) {
@@ -2222,6 +2322,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => setPostImage(String(reader.result || ''))
+    reader.readAsDataURL(file)
+  }
+
+  function handleCommentPhotoPick(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setCommentImage(String(reader.result || ''))
     reader.readAsDataURL(file)
   }
 
@@ -2297,6 +2405,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             authorInitials: profile.initials,
             anonymous: false,
             text: draft,
+            image: commentImage,
             createdAt: new Date().toISOString(),
             reactions: { love: [] },
             replies: [],
@@ -2305,6 +2414,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       }
     }))
     setCommentDrafts(current => ({ ...current, [postId]: '' }))
+    setCommentImage('')
+    if (commentFileInputRef.current) commentFileInputRef.current.value = ''
   }
 
   function handleDeleteComment(postId, commentId) {
@@ -2449,6 +2560,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     return realMembers.filter(member => member.checked_in || member.task_done)
   }, [checkedIn, taskDone, realMembers])
   const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
+  const commentSheetPost = useMemo(() => visiblePosts.find(post => post.id === commentSheetPostId) || null, [visiblePosts, commentSheetPostId])
+  const commentDraft = commentSheetPost ? String(commentDrafts[commentSheetPost.id] || '') : ''
+  const showMentionSuggestions = /(^|\s)@\w*$/.test(commentDraft)
   const rankedMembers = useMemo(() => {
     return [...realMembers]
       .filter(member => !isPlaceholderMember(member))
@@ -2457,8 +2571,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
       .sort((a, b) => (
-        b.streakValue - a.streakValue ||
         Number(Boolean(b.task_done)) - Number(Boolean(a.task_done)) ||
+        b.streakValue - a.streakValue ||
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
   }, [realMembers, profile.id])
@@ -2481,6 +2595,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             paddingBottom: 24,
           }}
         >
+          {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
           <div
             className="showup-list-header"
             style={{
@@ -2572,6 +2687,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               const joined = roomCounts[room.name] || 0
               const spotsLeft = Math.max(0, MAX_ROOM_SIZE - joined)
               const isJoined = joinedRoomNames.has(room.name)
+              const isFull = !isJoined && joined >= MAX_ROOM_SIZE
               const RoomIcon = ROOM_ICONS[room.id] || Sparkles
               return (
                 <div
@@ -2613,6 +2729,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <button
                       type="button"
                       onClick={() => handleJoinRoom(room.name)}
+                      disabled={isFull}
                       className={`showup-join-pill ${isJoined ? 'is-joined' : ''}`}
                       style={{
                         minHeight: 30,
@@ -2628,7 +2745,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         background: isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)',
                         color: isJoined ? '#9a7088' : '#f45f92',
                         fontFamily: "'DM Sans',sans-serif",
-                        cursor: 'pointer',
+                        cursor: isFull ? 'not-allowed' : 'pointer',
+                        opacity: isFull ? 0.6 : 1,
                       }}
                     >
                       {isJoined ? (
@@ -2637,7 +2755,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           <span>Joined</span>
                         </span>
                       ) : (
-                        <span>Join</span>
+                        <span>{isFull ? 'Full' : 'Join'}</span>
                       )}
                     </button>
                     <ChevronRight size={16} strokeWidth={2.3} color="#c89aab" />
@@ -2656,6 +2774,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       <style>{SHOW_UP_STYLES}</style>
 
       <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9' }}>
+        {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={() => setExitPromptOpen(true)}>{'\u2190'}</button>
@@ -2740,9 +2859,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   </div>
                   <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                    {status === 'idle' ? (
-                      <p className="showup-member-status is-idle">Not yet</p>
-                    ) : null}
+                    <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
+                      {status === 'done' ? 'Completed ✓' : status === 'active' ? `Checked in ${formatTime(member.check_in_time)}` : 'Not yet'}
+                    </p>
                   </div>
                   {!isSelf ? (
                     <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
@@ -2763,7 +2882,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             {showProgressPhotoPrompt ? (
               <div className="showup-sync-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                 <span>Nice work. Post a progress photo?</span>
-                <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)}>Dismiss</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="showup-mini-link" onClick={() => fileInputRef.current?.click()}>Add photo</button>
+                  <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)}>Dismiss</button>
+                </div>
               </div>
             ) : null}
             <div className="showup-compose-card">
@@ -2789,10 +2911,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="showup-hidden-input" onChange={handlePhotoPick} />
             </div>
-
-            {!feedReady ? (
-              <div className="showup-sync-notice">Saved room activity. New posts will sync when the connection returns.</div>
-            ) : null}
 
             {visiblePosts.length === 0 ? (
               <div className="showup-empty">No posts yet. Be the first to share.</div>
@@ -2856,7 +2974,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <button
                       type="button"
                       className="showup-comment-toggle"
-                      onClick={() => setExpandedComments(current => ({ ...current, [post.id]: !current[post.id] }))}
+                      onClick={() => setCommentSheetPostId(post.id)}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
                       <span>{(post.comments || []).length}</span>
@@ -2895,7 +3013,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       ) : null}
                     </div>
                   </div>
-                  {expandedComments[post.id] ? (
+                  {false && expandedComments[post.id] ? (
                     <div className="showup-comments">
                       {(post.comments || []).map(comment => (
                         <div key={comment.id} className="showup-comment-row">
@@ -3028,6 +3146,73 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               </button>
             </div>
             <button type="button" className="showup-exit-cancel" onClick={() => setExitPromptOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
+
+      {commentSheetPost ? (
+        <div className="showup-sheet-backdrop" onClick={() => setCommentSheetPostId('')}>
+          <div className="showup-comment-sheet" onClick={event => event.stopPropagation()}>
+            <div className="showup-sheet-handle" />
+            <h2 className="showup-sheet-title">
+              <MessageCircle size={18} strokeWidth={2.3} />
+              <span>Comments</span>
+            </h2>
+            <div className="showup-comment-sheet-list">
+              {(commentSheetPost.comments || []).length ? (commentSheetPost.comments || []).map(comment => (
+                <div key={comment.id} className="showup-comment-row">
+                  <div className="showup-avatar">{comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName)}</div>
+                  <div className="showup-comment-bubble">
+                    <p className="showup-comment-author">{comment.anonymous ? 'Anonymous · Room' : comment.authorName}</p>
+                    <p className="showup-comment-text">{comment.text}</p>
+                    {comment.image ? <img className="showup-comment-image-preview" src={comment.image} alt="Comment attachment" loading="lazy" /> : null}
+                    {comment.authorId === profile.id ? (
+                      <button type="button" className="showup-comment-action showup-comment-delete" onClick={() => handleDeleteComment(commentSheetPost.id, comment.id)}>
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )) : (
+                <div className="showup-empty">No comments yet.</div>
+              )}
+            </div>
+            <div className="showup-comment-sheet-compose">
+              {showMentionSuggestions ? (
+                <div className="showup-mention-list">
+                  {realMembers.slice(0, 6).map(member => (
+                    <button
+                      key={member.user_id}
+                      type="button"
+                      onClick={() => setCommentDrafts(current => ({
+                        ...current,
+                        [commentSheetPost.id]: `${commentDraft.replace(/@\w*$/, '')}@${String(member.display_name || '').split(' ')[0]} `,
+                      }))}
+                    >
+                      @{String(member.display_name || '').split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {commentImage ? <img className="showup-comment-image-preview" src={commentImage} alt="Comment upload preview" /> : null}
+              <div className="showup-comment-inline">
+                <div className="showup-avatar">{profile.initials}</div>
+                <input
+                  className="showup-comment-input"
+                  value={commentDraft}
+                  onChange={event => setCommentDrafts(current => ({ ...current, [commentSheetPost.id]: event.target.value }))}
+                  placeholder="Add a comment..."
+                />
+                <button type="button" className="showup-comment-icon-btn" onClick={() => setCommentDrafts(current => ({ ...current, [commentSheetPost.id]: `${commentDraft}@` }))}>@</button>
+                <button type="button" className="showup-comment-icon-btn" onClick={() => commentFileInputRef.current?.click()}>
+                  <ImageIcon size={15} strokeWidth={2.2} />
+                </button>
+                <button type="button" className="showup-comment-round-send" onClick={() => handleAddComment(commentSheetPost.id)}>
+                  <Send size={15} strokeWidth={2.4} />
+                </button>
+              </div>
+              <input ref={commentFileInputRef} type="file" accept="image/*" className="showup-hidden-input" onChange={handleCommentPhotoPick} />
+            </div>
           </div>
         </div>
       ) : null}

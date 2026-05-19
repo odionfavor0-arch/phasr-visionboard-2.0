@@ -2483,10 +2483,7 @@ Return JSON only:
             top: isMobile ? 8 : 12,
             zIndex: 20,
           }}>
-            <span style={{ color: '#7a4c5f', fontSize: isMobile ? '0.7rem' : '0.76rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Your weekly non-negotiables are not scheduled yet.
-            </span>
-            <button type="button" onClick={addToCalendarPlan} disabled={calendarBusy} style={{ border: 'none', background: 'transparent', color: '#f95f85', fontWeight: 800, fontSize: isMobile ? '0.68rem' : '0.74rem', cursor: calendarBusy ? 'wait' : 'pointer', padding: 0, whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif" }}>
+            <button type="button" onClick={addToCalendarPlan} disabled={calendarBusy} style={{ width: '100%', border: 'none', background: 'transparent', color: '#f95f85', fontWeight: 800, fontSize: isMobile ? '0.72rem' : '0.78rem', cursor: calendarBusy ? 'wait' : 'pointer', padding: 0, whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif", textAlign: 'center' }}>
               Schedule your week →
             </button>
           </div>
@@ -2879,11 +2876,11 @@ Return JSON only:
 
         {/* â”€â”€ Quarterly Review â”€â”€ */}
         {!isMobile && (
-          <div data-quarterly-review="true" style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: 'var(--sh)', overflow: 'hidden', marginBottom: '1.5rem' }}>
-            <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.9rem 1.3rem', display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', justifyContent: 'space-between' }}>
+          <div data-quarterly-review="true" style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--app-border)', boxShadow: 'none', overflow: 'hidden', marginBottom: '1rem' }}>
+            <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.45rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', flexShrink: 0 }}>Q</div>
-              <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: '1rem', fontWeight: 600, color: '#7a4a00' }}>Quarterly Review - {phaseDisplayName}</h3>
+              <div style={{ width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.72rem', flexShrink: 0 }}>Q</div>
+              <h3 style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', fontWeight: 800, color: '#7a4a00' }}>Quarterly Review - {phaseDisplayName}</h3>
               </div>
               <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
             </div>
