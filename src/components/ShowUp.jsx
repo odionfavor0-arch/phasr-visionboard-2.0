@@ -1501,6 +1501,10 @@ function safeRead(key, fallback) {
   }
 }
 
+function safeArray(value) {
+  return Array.isArray(value) ? value : []
+}
+
 function safeWrite(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
@@ -1533,9 +1537,9 @@ function compactFeedPostsForStorage(posts) {
     .map(post => ({
       ...post,
       image: post?.image || '',
-      comments: (post?.comments || []).slice(0, 40).map(comment => ({
+      comments: safeArray(post?.comments).slice(0, 40).map(comment => ({
         ...comment,
-        replies: (comment?.replies || []).slice(0, 20),
+        replies: safeArray(comment?.replies).slice(0, 20),
       })),
     }))
 }
@@ -1771,7 +1775,7 @@ function getReactionSummary(reactions) {
   return REACTION_OPTIONS
     .map(reaction => ({
       ...reaction,
-      count: (reactions?.[reaction.key] || []).length,
+      count: safeArray(reactions?.[reaction.key]).length,
     }))
     .filter(reaction => reaction.count > 0)
 }
@@ -2081,10 +2085,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           image: post.image_url || cached?.image || '',
           createdAt: post.created_at || new Date().toISOString(),
           reactions: cached?.reactions || {},
-          comments: (cached?.comments || []).map(comment => ({
+          comments: safeArray(cached?.comments).map(comment => ({
             ...comment,
             reactions: comment.reactions || { love: [] },
-            replies: comment.replies || [],
+            replies: safeArray(comment.replies),
           })),
         }
       })
@@ -2405,10 +2409,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
       const nextReactions = REACTION_OPTIONS.reduce((acc, reaction) => {
-        acc[reaction.key] = (post.reactions?.[reaction.key] || []).filter(userId => userId !== profile.id)
+        acc[reaction.key] = safeArray(post.reactions?.[reaction.key]).filter(userId => userId !== profile.id)
         return acc
       }, {})
-      const alreadyReacted = (post.reactions?.[reactionKey] || []).includes(profile.id)
+      const alreadyReacted = safeArray(post.reactions?.[reactionKey]).includes(profile.id)
       if (!alreadyReacted) nextReactions[reactionKey] = [...(nextReactions[reactionKey] || []), profile.id]
       return {
         ...post,
@@ -2450,7 +2454,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       return {
         ...post,
         comments: [
-          ...(post.comments || []),
+          ...safeArray(post.comments),
           {
             id: uid(),
             authorId: profile.id,
@@ -2474,7 +2478,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   function handleDeleteComment(postId, commentId) {
     setFeedPosts(current => current.map(post => (
       post.id === postId
-        ? { ...post, comments: (post.comments || []).filter(comment => comment.id !== commentId) }
+        ? { ...post, comments: safeArray(post.comments).filter(comment => comment.id !== commentId) }
         : post
     )))
     setHeldCommentId(current => current === commentId ? '' : current)
@@ -2500,9 +2504,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       if (post.id !== postId) return post
       return {
         ...post,
-        comments: (post.comments || []).map(comment => {
+        comments: safeArray(post.comments).map(comment => {
           if (comment.id !== commentId) return comment
-          const nextSet = new Set(comment.reactions?.love || [])
+          const nextSet = new Set(safeArray(comment.reactions?.love))
           if (nextSet.has(profile.id)) nextSet.delete(profile.id)
           else nextSet.add(profile.id)
           return {
@@ -2525,12 +2529,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       if (post.id !== postId) return post
       return {
         ...post,
-        comments: (post.comments || []).map(comment => {
+        comments: safeArray(post.comments).map(comment => {
           if (comment.id !== commentId) return comment
           return {
             ...comment,
             replies: [
-              ...(comment.replies || []),
+              ...safeArray(comment.replies),
               {
                 id: uid(),
                 authorId: profile.id,
@@ -2629,12 +2633,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     return realMembers.filter(member => member.checked_in || member.task_done)
   }, [checkedIn, taskDone, realMembers])
   const visiblePosts = useMemo(() => (
-    [...feedPosts]
+    safeArray(feedPosts)
       .map(post => ({
         ...post,
-        comments: dedupeByIdOrTimestamp(post.comments || []).map(comment => ({
+        comments: dedupeByIdOrTimestamp(safeArray(post?.comments)).map(comment => ({
           ...comment,
-          replies: dedupeByIdOrTimestamp(comment.replies || []),
+          replies: dedupeByIdOrTimestamp(safeArray(comment?.replies)),
         })),
       }))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -3098,7 +3102,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
                       <span>Comment</span>
-                      <span>{(post.comments || []).length}</span>
+                      <span>{safeArray(post.comments).length}</span>
                     </button>
                   </div>
                   {false && expandedComments[post.id] ? (
@@ -3247,11 +3251,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <span>Comments</span>
             </h2>
             <div className="showup-comment-sheet-list">
-              {(commentSheetPost.comments || []).length ? dedupeByIdOrTimestamp(commentSheetPost.comments || []).map(comment => {
+              {safeArray(commentSheetPost.comments).length ? dedupeByIdOrTimestamp(safeArray(commentSheetPost.comments)).map(comment => {
                 const ownComment = comment.authorId === profile.id
                 const replyKey = `${commentSheetPost.id}:${comment.id}`
                 const repliesExpanded = Boolean(expandedReplies[replyKey])
-                const replies = dedupeByIdOrTimestamp(comment.replies || [])
+                const replies = dedupeByIdOrTimestamp(safeArray(comment.replies))
                 return (
                 <div
                   key={comment.id}
@@ -3270,7 +3274,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <div className="showup-comment-actions">
                       <button type="button" className="showup-comment-action" onClick={() => handleToggleCommentReaction(commentSheetPost.id, comment.id)}>
                         <Heart size={12} strokeWidth={2.1} />
-                        <span>{(comment.reactions?.love || []).length}</span>
+                        <span>{safeArray(comment.reactions?.love).length}</span>
                       </button>
                       <button type="button" className="showup-comment-action" onClick={() => setExpandedReplies(current => ({ ...current, [replyKey]: !current[replyKey] }))}>
                         <Reply size={12} strokeWidth={2.1} />

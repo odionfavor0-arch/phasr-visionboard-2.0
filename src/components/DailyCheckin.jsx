@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { buildWeeklyGoals, loadBoardData, loadLockInState } from '../lib/lockIn'
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAILY_STREAK_RESET_KEY = 'phasr_daily_streak_reset_2026_05_20_v1'
 const milestones = [
   {
     day: 3,
@@ -372,6 +373,26 @@ function hasTrackedProgressForScope(scope = 'global') {
   return false
 }
 
+function resetDailyStreakToFreshStart() {
+  if (localStorage.getItem(DAILY_STREAK_RESET_KEY) === 'true') return
+  const prefixes = ['phasr_tasks_', 'phasr_streak_', 'phasr_nonneg_', 'phasr_current_week']
+  try {
+    const keysToRemove = []
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index) || ''
+      if (prefixes.some(prefix => key.startsWith(prefix))) keysToRemove.push(key)
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key))
+  } catch {
+    // If storage cleanup fails, the fresh start date below still prevents old week jumps.
+  }
+  const todayKey = new Date().toISOString().slice(0, 10)
+  safeSet('phasr_joined_at', todayKey)
+  safeSet('phasr_phase1_start_date', todayKey)
+  safeSet('phasr_current_week', '1')
+  safeSet(DAILY_STREAK_RESET_KEY, 'true')
+}
+
 function countWeekTasksDone(week, scope = 'global') {
   let done = 0
   for (let day = 1; day <= 7; day += 1) {
@@ -465,6 +486,7 @@ function calculatePhaseTaskStats(activePhaseId, tasksPerWeek) {
 }
 
 export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeeklyPulse, onOpenQuarterlyReview, ...props }) {
+  resetDailyStreakToFreshStart()
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [refresh, setRefresh] = useState(0)
   const [sageCardExpanded] = useState(false)
@@ -886,7 +908,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 onClick={openPulse}
                 style={{ minHeight: 28, padding: '0.35rem 0.65rem', borderRadius: 999, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#e8407a', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
               >
-                Sage Reflect
+                Weekly Reflection
               </button>
             </div>
           </div>
@@ -917,10 +939,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           {hasPillars && !isNewUser && !milestoneMessage && weekComplete && !currentPulseDone && (
             <>
               <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
-                Week {activeWeek} closed at {weekPercent}%. Complete Sage Reflect before week {activeWeek + 1} opens.
+                Week {activeWeek} closed at {weekPercent}%. Complete Weekly Reflection before week {activeWeek + 1} opens.
               </p>
               <button onClick={openPulse} style={{ width: '100%', minHeight: 46, padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
-                Sage Reflect
+                Weekly Reflection
               </button>
             </>
           )}
@@ -969,7 +991,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   type="button"
                   onClick={() => {
                     if (locked) {
-                      setLockedWeekMessage(`Finish Week ${item.index - 1} and complete its weekly reflection with Sage first.`)
+                      setLockedWeekMessage(`Finish Week ${item.index - 1} and complete Weekly Reflection first.`)
                       return
                     }
                     setActiveWeek(item.index)
@@ -1055,7 +1077,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>Daily To-Do</div>
-              <div style={{ fontSize: '0.65rem', color: '#b08090' }}>Day {displayedDay} of 7</div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>{completedToday}/{totalToday}</div>
           </div>
