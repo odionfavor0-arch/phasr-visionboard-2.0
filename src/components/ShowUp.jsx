@@ -3107,7 +3107,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   </div>
                   {false && expandedComments[post.id] ? (
                     <div className="showup-comments">
-                      {(post.comments || []).map(comment => (
+                      {safeArray(post.comments).map(comment => (
                         <div key={comment.id} className="showup-comment-row">
                           <div className="showup-avatar">{comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName)}</div>
                           <div className="showup-comment-bubble">
@@ -3120,7 +3120,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                                 onClick={() => handleToggleCommentReaction(post.id, comment.id)}
                               >
                                 <Heart size={12} strokeWidth={2.1} />
-                                <span>{(comment.reactions?.love || []).length}</span>
+                                <span>{safeArray(comment.reactions?.love).length}</span>
                               </button>
                               <button
                                 type="button"
@@ -3128,7 +3128,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                                 onClick={() => setExpandedReplies(current => ({ ...current, [comment.id]: !current[comment.id] }))}
                               >
                                 <Reply size={12} strokeWidth={2.1} />
-                                <span>{(comment.replies || []).length}</span>
+                                <span>{safeArray(comment.replies).length}</span>
                               </button>
                               {comment.authorId === profile.id ? (
                                 <button
@@ -3142,7 +3142,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                             </div>
                             {expandedReplies[comment.id] ? (
                               <div className="showup-replies">
-                                {(comment.replies || []).map(reply => (
+                                {safeArray(comment.replies).map(reply => (
                                   <div key={reply.id} className="showup-reply-bubble">
                                     <p className="showup-comment-author">{reply.authorName}</p>
                                     <p className="showup-comment-text">{reply.text}</p>

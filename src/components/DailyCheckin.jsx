@@ -543,6 +543,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [tasks, setTasks] = useState([])
   const [showPhaseModal, setShowPhaseModal] = useState(false)
   const [lockedWeekMessage, setLockedWeekMessage] = useState('')
+  const [reflectionHover, setReflectionHover] = useState(false)
 
   const weekStatuses = useMemo(() => {
     return (weeklyData.weeks || []).map(item => {
@@ -687,17 +688,18 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const streakLabel = currentLevel === 1
     ? `Day ${daysIn} in`
     : levelLabels[currentLevel]
-  const currentMilestone = milestones.filter(item => item.day <= daysIn).slice(-1)[0]
-  const nextMilestone = milestones.find(item => item.day > daysIn)
+  const unlockProgressDays = currentStreak
+  const currentMilestone = milestones.filter(item => item.day <= unlockProgressDays).slice(-1)[0]
+  const nextMilestone = milestones.find(item => item.day > unlockProgressDays)
   const unlockPathLabel =
-    daysIn >= 90 ? 'Legacy active'
-      : daysIn >= 60 ? 'Deep reflection'
-        : daysIn >= 30 ? 'Monthly insight'
-          : daysIn >= 14 ? 'Pattern visibility'
-            : daysIn >= 7 ? 'Weekly rhythm active'
-              : daysIn >= 3 ? 'Personalization building'
+    unlockProgressDays >= 90 ? 'Legacy active'
+      : unlockProgressDays >= 60 ? 'Deep reflection'
+        : unlockProgressDays >= 30 ? 'Monthly insight'
+          : unlockProgressDays >= 14 ? 'Pattern visibility'
+            : unlockProgressDays >= 7 ? 'Weekly rhythm active'
+              : unlockProgressDays >= 3 ? 'Personalization building'
                 : 'Sage learning you'
-  const unlockPathMessage = daysIn <= 3 ? 'Sage is getting to know you' : unlockPathLabel
+  const unlockPathMessage = unlockProgressDays <= 0 ? 'Start with one checked task' : unlockPathLabel
   const completedTasksThisPhase = phaseStats.completedTasks
   const totalTasksThisPhase = phaseStats.totalTasksInPhase
   const phasePercent = phaseStats.phasePercent
@@ -706,7 +708,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     : 0
   const displayPhasePercent = formatPhasePercentLabel(exactPhasePercent)
   const progressToNext = nextMilestone
-    ? Math.min(Math.round((daysIn / nextMilestone.day) * 100), 100)
+    ? Math.min(Math.round((unlockProgressDays / nextMilestone.day) * 100), 100)
     : 100
 
   const buildProgressTrackStyle = background => ({
@@ -902,11 +904,26 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #e8407a, #f472a8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>Live Score</p>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <p style={{ fontSize: '0.65rem', color: '#b08090', margin: 0 }}>{weekPercent}% this week</p>
               <button
                 type="button"
                 onClick={openPulse}
-                style={{ minHeight: 28, padding: '0.35rem 0.65rem', borderRadius: 999, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#e8407a', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                onMouseEnter={() => setReflectionHover(true)}
+                onMouseLeave={() => setReflectionHover(false)}
+                style={{
+                  minHeight: 32,
+                  padding: '0.42rem 0.78rem',
+                  borderRadius: 999,
+                  border: '1px solid rgba(232,64,122,0.32)',
+                  background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                  color: '#fff',
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  fontFamily: "'DM Sans', sans-serif",
+                  boxShadow: reflectionHover ? '0 12px 26px rgba(232,64,122,0.32)' : '0 7px 16px rgba(232,64,122,0.18)',
+                  transform: reflectionHover ? 'translateY(-1px)' : 'translateY(0)',
+                  transition: 'all 0.18s ease',
+                }}
               >
                 Weekly Reflection
               </button>

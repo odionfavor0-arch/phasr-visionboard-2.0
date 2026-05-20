@@ -2030,6 +2030,12 @@ Return JSON only:
         return { ...entry, assignedDateKey, dayOffset, calendarUrl: getCalendarUrl(entry.task, entry.pillar, windowStart, index) }
       })
 
+      const schedulePreview = scheduledEntries
+        .map(entry => `${entry.assignedDateKey} - ${entry.task}`)
+        .join('\n')
+      const confirmed = window.confirm(`Schedule these weekly actions?\n\n${schedulePreview}`)
+      if (!confirmed) return
+
       // Persist scheduled state into each pillar card so the UI updates immediately (no waiting for Calendar confirmation).
       scheduledEntries.forEach(entry => {
         if (!entry.pillarId || entry.actionIndex == null) return
@@ -2403,19 +2409,23 @@ Return JSON only:
               {todayTask}
             </p>
           </div>
-          <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+            {!scheduledThisWeek && (
+              <button
+                type="button"
+                onClick={addToCalendarPlan}
+                disabled={calendarBusy}
+                style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.68rem' : '0.82rem', boxShadow: '0 10px 22px rgba(105,33,63,0.16)' }}
+              >
+                {calendarBusy ? 'Scheduling...' : 'Schedule your week'}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => {
-                if (!scheduledThisWeek) {
-                  addToCalendarPlan()
-                  return
-                }
-                onOpenDailyStreak?.()
-              }}
-              style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.7rem' : '0.86rem' }}
+              onClick={() => onOpenDailyStreak?.()}
+              style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.68rem' : '0.82rem' }}
             >
-              {!scheduledThisWeek ? 'Schedule your week' : (isMobile ? 'Start' : 'Complete action')}
+              {isMobile ? 'Start now' : 'Complete this task now'}
             </button>
           </div>
         </div>
