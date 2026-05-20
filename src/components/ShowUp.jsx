@@ -6,6 +6,7 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
 .showup-root{
+  width:100%;
   min-height:100dvh;
   background:var(--bg, #fff8f9);
   color:#4d3142;
@@ -20,12 +21,12 @@ const SHOW_UP_STYLES = `
   width:100%;
   max-width:none;
   margin:0 auto;
-  padding:18px 16px 132px;
+  padding:18px 16px 96px;
   box-sizing:border-box;
   flex:1;
   display:flex;
   flex-direction:column;
-  min-height:100dvh;
+  min-height:0;
 }
 .showup-list-header{
   display:flex;
@@ -1255,12 +1256,12 @@ const SHOW_UP_STYLES = `
 }
 @media (max-width: 767px){
   .showup-root{
-    min-height:100dvh;
+    min-height:auto;
   }
   .showup-shell{
     max-width:100%;
-    padding:12px 12px 104px;
-    min-height:100dvh;
+    padding:12px 12px 20px;
+    min-height:0;
   }
   .showup-list-header{
     padding:6px 2px 10px;
@@ -2590,9 +2591,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div
           className="showup-shell"
           style={{
-            maxWidth: '100%',
+            width: '100%',
+            maxWidth: isMobile ? '100%' : 1180,
             paddingTop: 18,
-            paddingBottom: 24,
+            paddingBottom: isMobile ? 8 : 36,
+            minHeight: 'auto',
+            flex: '0 0 auto',
           }}
         >
           {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
@@ -2676,6 +2680,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div
             className="showup-list-panel"
             style={{
+              width: '100%',
               border: '1px solid rgba(242,196,208,0.95)',
               borderRadius: 16,
               overflow: 'hidden',
@@ -2770,10 +2775,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   return (
-    <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9' }}>
+    <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%' }}>
       <style>{SHOW_UP_STYLES}</style>
 
-      <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9' }}>
+      <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180 }}>
         {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">

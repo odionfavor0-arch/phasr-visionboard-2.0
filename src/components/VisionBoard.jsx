@@ -2823,19 +2823,14 @@ Return JSON only:
             />
           ))}
           {editing && (
-            !isPro && (phase?.pillars?.length || 0) >= FREE_PILLAR_LIMIT ? (
-              <div style={{ border: '1px solid #f6cddd', borderRadius: 22, background: 'linear-gradient(180deg,#fffafb,#fff)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.42rem', padding: '1.2rem 1rem', minHeight: 120, textAlign: 'center', boxShadow: '0 12px 28px rgba(240,96,144,0.18)' }}>
-                <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#ef5f97' }}>Upgrade to Pro</p>
-                <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--app-text)' }}>Unlock more focus areas</p>
-              </div>
-            ) : (
+            (phase?.pillars?.length || 0) < FREE_PILLAR_LIMIT ? (
               <button onClick={addPillar} style={{ border: '2px dashed var(--app-border)', borderRadius: 16, background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.8rem 1rem', cursor: 'pointer', minHeight: 120 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--app-bg2)'; e.currentTarget.style.borderColor = 'var(--app-accent2)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--app-border)' }}>
                 <span style={{ fontSize: '1.4rem', color: 'var(--app-accent2)' }}>+</span>
                 <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--app-accent2)', fontFamily: "'DM Sans',sans-serif" }}>add pillar</span>
               </button>
-            )
+            ) : null
           )}
         </div>
         {/* â”€â”€ Ultimate Impact â”€â”€ */}
