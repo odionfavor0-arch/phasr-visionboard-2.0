@@ -2628,6 +2628,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const completedCount = useMemo(() => realMembers.filter(member => getMemberStatus(member) === 'done').length, [realMembers])
   const activeCount = useMemo(() => realMembers.filter(member => member.checked_in === true).length, [realMembers])
   const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const liveMembers = useMemo(() => {
     if (!checkedIn && !taskDone) return []
     return realMembers.filter(member => member.checked_in || member.task_done)
