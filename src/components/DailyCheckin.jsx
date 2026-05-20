@@ -600,7 +600,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
-  const pagePadding = isMobile ? '14px 14px 12px' : '22px 32px 96px'
+  const pagePadding = isMobile ? '14px 14px 0' : '22px 32px 96px'
   const contentMaxWidth = 1040
 
   const currentStreak = useMemo(() => {
@@ -826,7 +826,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   return (
-    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden' }}>
+    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden', paddingBottom: isMobile ? 0 : 0 }}>
       <div style={{ width: '100%', maxWidth: contentMaxWidth, margin: '0 auto', padding: pagePadding, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           {phases.map((phase, index) => (
@@ -1081,13 +1081,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
         </div>
 
-        <div style={{ height: 18 }} />
+        <div style={{ height: isMobile ? 8 : 18 }} />
 
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
           gap: isMobile ? '6px' : '10px',
-          margin: '1rem 0',
+          margin: isMobile ? '0.75rem 0 0' : '1rem 0',
         }}>
           <div
             onClick={() => {

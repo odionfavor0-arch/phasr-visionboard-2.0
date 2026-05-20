@@ -7,7 +7,7 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 const SHOW_UP_STYLES = `
 .showup-root{
   width:100%;
-  min-height:100dvh;
+  min-height:auto;
   background:var(--bg, #fff8f9);
   color:#4d3142;
   font-family:'DM Sans',sans-serif;
@@ -21,9 +21,9 @@ const SHOW_UP_STYLES = `
   width:100%;
   max-width:none;
   margin:0 auto;
-  padding:18px 16px 96px;
+  padding:18px 16px 32px;
   box-sizing:border-box;
-  flex:1;
+  flex:0 0 auto;
   display:flex;
   flex-direction:column;
   min-height:0;
@@ -1361,7 +1361,11 @@ const SHOW_UP_STYLES = `
   }
 }
 @media (min-width: 768px){
+  .showup-root{
+    min-height:calc(100vh - 56px);
+  }
   .showup-shell{
+    flex:1;
     padding:24px 32px 148px;
   }
   .showup-sticky-header{
@@ -2585,6 +2589,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         style={{
           background: 'linear-gradient(180deg,#fff8fb 0%,#fff2f7 100%)',
           color: '#4d3142',
+          minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)',
         }}
       >
         <style>{SHOW_UP_STYLES}</style>
@@ -2594,9 +2599,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             width: '100%',
             maxWidth: isMobile ? '100%' : 1180,
             paddingTop: 18,
-            paddingBottom: isMobile ? 8 : 36,
+            paddingBottom: isMobile ? 0 : 36,
             minHeight: 'auto',
             flex: '0 0 auto',
+            alignSelf: 'stretch',
           }}
         >
           {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
@@ -2608,6 +2614,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               justifyContent: 'space-between',
               gap: 12,
               padding: '8px 2px 18px',
+              width: '100%',
             }}
           >
             <p
@@ -2681,6 +2688,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             className="showup-list-panel"
             style={{
               width: '100%',
+              maxWidth: '100%',
               border: '1px solid rgba(242,196,208,0.95)',
               borderRadius: 16,
               overflow: 'hidden',
