@@ -520,10 +520,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const storedScope = localStorage.getItem('phasr_phase1_start_scope')
     const joinedDate = parseDateOnly(joinedAt)
     const storedDate = parseDateOnly(stored)
+    const normalizedJoinedAt = joinedDate ? joinedAt : todayKey
+    if (!joinedAt) {
+      safeSet('phasr_joined_at', normalizedJoinedAt)
+    }
     const nextStart =
       storedScope === phaseScope && storedDate
         ? stored
-        : (joinedDate ? joinedAt : (stored || todayKey))
+        : normalizedJoinedAt
 
     if (stored !== nextStart) {
       safeSet('phasr_phase1_start_date', nextStart)
@@ -1045,10 +1049,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </div>
             )}
             {tasks.map(task => (
-              <button
+              <div
                 key={task.id}
-                type="button"
                 onClick={() => toggleTask(task.id)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    toggleTask(task.id)
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 style={{
                   width: '100%',
                   position: 'relative',
@@ -1068,7 +1079,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   opacity: 1,
                 }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${task.done ? '#ef5d90' : '#f2c8d6'}`, background: task.done ? '#ef5d90' : '#fff', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 800, lineHeight: 1 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${task.done ? '#ef5d90' : '#f2c8d6'}`, background: task.done ? '#ef5d90' : '#fff', color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 800, lineHeight: 1, pointerEvents: 'none' }}>
                   {task.done ? '✓' : ''}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -1077,7 +1088,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   </div>
                   <div style={{ fontSize: 12, color: '#7e5d68', marginTop: 4 }}>{task.pillar}</div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </div>

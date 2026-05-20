@@ -2388,7 +2388,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setPostImage('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     const uploadedImage = await uploadRoomFeedImage(imageDraft)
-    await createFeedPost({ text, image: uploadedImage, anonymous: false })
+    const nextPost = await createFeedPost({ text, image: uploadedImage, anonymous: false })
+    if (uploadedImage && nextPost?.id) {
+      setCommentSheetPostId(nextPost.id)
+    }
   }
 
   function handleToggleReaction(postId, reactionKey) {
@@ -2475,7 +2478,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (commentHoldTimerRef.current) window.clearTimeout(commentHoldTimerRef.current)
     commentHoldTimerRef.current = window.setTimeout(() => {
       setHeldCommentId(commentId)
-    }, 700)
+    }, 2200)
   }
 
   function clearCommentHold() {
