@@ -3,8 +3,8 @@ import { buildWeeklyGoals, getLockInSummary, loadLockInState } from '../lib/lock
 
 export const STATS_TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'phases', label: 'Phases' },
   { id: 'journal', label: 'Journal' },
+  { id: 'phases', label: 'Phases' },
 ]
 
 const JOURNAL_KEY = 'phasr_journal_v2'

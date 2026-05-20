@@ -515,23 +515,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [weeklyData.weeks, hasPillars, currentPhase, tasks, refresh])
   const phaseStart = useMemo(() => {
     const todayKey = new Date().toISOString().slice(0, 10)
+    const joinedAt = String(localStorage.getItem('phasr_joined_at') || '').slice(0, 10)
     const stored = localStorage.getItem('phasr_phase1_start_date')
     const storedScope = localStorage.getItem('phasr_phase1_start_scope')
+    const joinedDate = parseDateOnly(joinedAt)
     const storedDate = parseDateOnly(stored)
-    const todayDate = parseDateOnly(todayKey)
-    const hasTrackedProgress = Object.keys(localStorage).some(key => {
-      if (key.startsWith(`phasr_streak_${phaseScope}_w`)) return localStorage.getItem(key) === 'true'
-      if (!key.startsWith(`phasr_tasks_${phaseScope}_w`)) return false
-      const entries = safeRead(key, [])
-      return Array.isArray(entries) && entries.some(item => item?.done)
-    })
-
-    const shouldResetStart =
-      !storedDate ||
-      storedScope !== phaseScope ||
-      (!hasTrackedProgress && storedDate.getTime() < todayDate.getTime())
-
-    const nextStart = shouldResetStart ? todayKey : stored
+    const nextStart =
+      storedScope === phaseScope && storedDate
+        ? stored
+        : (joinedDate ? joinedAt : (stored || todayKey))
 
     if (stored !== nextStart) {
       safeSet('phasr_phase1_start_date', nextStart)
@@ -572,7 +564,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const isFuture = activeWeek > currentWeek || (activeWeek === currentWeek && day > currentDayNumber)
     const isCurrent = activeWeek === currentWeek && day === currentDayNumber
     const isPast = activeWeek < currentWeek || (activeWeek === currentWeek && day < currentDayNumber)
-    const done = streakValue === 'true' || dayTasks.some(task => task?.done)
+    const allTasksDone = Array.isArray(dayTasks) && dayTasks.length > 0 && dayTasks.every(task => task?.done)
+    const done = streakValue === 'true' || allTasksDone
     return { label, day, done, isCurrent, isPast, isFuture }
   }), [activeWeek, currentWeek, currentDayNumber, phaseScope, tasks, refresh])
 
@@ -777,8 +770,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setLockInState(loadLockInState())
     onLockInChange?.()
 
-    const anyDoneToday = updated.some(item => item.done)
-    if (anyDoneToday) {
+    const allDoneToday = updated.length > 0 && updated.every(item => item.done)
+    if (allDoneToday) {
       safeSet(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
       safeSet(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
     } else {
@@ -890,7 +883,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 Week {activeWeek} closed at {weekPercent}%. Complete your weekly reflection with Sage before week {activeWeek + 1} opens.
               </p>
               <button onClick={openPulse} style={{ width: '100%', minHeight: 46, padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
-                Open Weekly Pulse
+                Sage Reflect
               </button>
             </>
           )}
@@ -912,6 +905,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           )}
             </>
           )}
+          <button
+            type="button"
+            onClick={openPulse}
+            style={{ marginTop: 10, minHeight: 34, padding: '0.5rem 0.8rem', borderRadius: 999, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#e8407a', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Sage Reflect
+          </button>
         </div>
 
         {!hasPillars && (
@@ -1052,6 +1052,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 style={{
                   width: '100%',
                   position: 'relative',
+                  isolation: 'isolate',
                   zIndex: 3,
                   pointerEvents: 'auto',
                   display: 'flex',

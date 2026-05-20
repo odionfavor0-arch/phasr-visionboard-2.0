@@ -535,7 +535,7 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
              content: isWeeklyPulse
                ? `The user just completed their weekly reflection reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
 
-Weekly Reflection is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
+Sage Reflect is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
 
 Respond the way a sharp warm honest friend would respond if they received this as a voice note. Not a therapist. Not a coach. A real person who absorbed everything they said.
 
@@ -547,7 +547,7 @@ Do not use m-dashes. Do not use clinical phrases.
 
 Return strict JSON only with this shape:
 {
-  "generatedTitle": "Weekly Reflection",
+  "generatedTitle": "Sage Reflect",
   "clarityScore": 8,
   "clarityLabel": "Calm",
   "sageResponse": "string"
@@ -755,7 +755,7 @@ function WeeklyPulseWriter({
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', borderBottom: '1px solid var(--app-border)' }}>
         <button type="button" onClick={onPrev} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
-        <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Weekly Reflection</p>
+        <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Sage Reflect</p>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.38rem' }}>
           {questions.map((_, idx) => (
             <span
@@ -775,7 +775,7 @@ function WeeklyPulseWriter({
 
       <div style={{ padding: '20px 16px', display: 'grid', gap: '1rem', flex: 1 }}>
         <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e8407a', margin: 0 }}>
-          Weekly Reflection {phaseName}
+          Sage Reflect {phaseName}
         </p>
         <p style={{ fontFamily: "'Cormorant Garamond, serif", fontSize: '1.15rem', fontWeight: 400, color: '#3d1f2b', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
           {currentQuestion}
@@ -826,7 +826,7 @@ function WeeklyPulseWriter({
             disabled={isSaving}
             style={{ width: '100%', border: 'none', borderRadius: 14, padding: '0.86rem 1rem', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: '0 10px 22px rgba(232,64,122,0.24)' }}
           >
-            {isSaving ? 'Saving...' : 'Save Weekly Reflection'}
+            {isSaving ? 'Saving...' : 'Save Sage Reflect'}
           </button>
         ) : (
           <button
@@ -846,7 +846,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const [expanded, setExpanded] = useState(false)
   const hideSessionCtaTapRef = useRef(0)
   const detailBody = entry.content || getTemplateSummary(entry) || ''
-  const isWeeklyPulse = String(entry?.prompt || '').toLowerCase() === 'weekly reflection'
+  const isWeeklyPulse = ['weekly reflection', 'sage reflect'].includes(String(entry?.prompt || '').toLowerCase())
   const weeklySession = entry?.weeklyPulseSession || null
   const sessionMessages = Array.isArray(weeklySession?.messages) ? weeklySession.messages : []
   const sessionCompleted = Boolean(weeklySession?.completedAt || weeklySession?.status === 'completed')
@@ -1028,7 +1028,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
               </div>
             </div>
             <p style={{ margin: 0, paddingTop: '0.3rem', color: '#8f7180', fontSize: '0.82rem' }}>
-              Weekly Reflection • {entry.weeklyPulseMeta?.phaseName || 'Phase'} • {(entry.weeklyPulseMeta?.pillars || []).join(' • ')}
+              Sage Reflect • {entry.weeklyPulseMeta?.phaseName || 'Phase'} • {(entry.weeklyPulseMeta?.pillars || []).join(' • ')}
             </p>
           </>
         ) : (
@@ -1610,12 +1610,12 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       .trim()
 
     if (!content) return
-    const weeklyPulseTitle = `Weekly Reflection — Week ${weeklyPulseState.weekNumber || 1}`
+    const weeklyPulseTitle = `Sage Reflect — Week ${weeklyPulseState.weekNumber || 1}`
     const weeklyDraft = {
       ...blankDraft(),
       date: getToday(),
       title: weeklyPulseTitle,
-      prompt: 'Weekly Reflection',
+      prompt: 'Sage Reflect',
       content,
       templateAccent: '#fff5f7',
       templateFields,
@@ -1682,7 +1682,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         mood: weeklyDraft.mood,
         clarityScore: 6,
         clarityLabel: 'Reflective',
-        sageResponse: localSageResponse({ content: weeklyDraft.content, prompt: 'Weekly Reflection', clarityLabel: 'Reflective' }),
+        sageResponse: localSageResponse({ content: weeklyDraft.content, prompt: 'Sage Reflect', clarityLabel: 'Reflective' }),
         backgroundId: weeklyDraft.backgroundId,
         fontId: weeklyDraft.fontId,
         color: weeklyDraft.color,
@@ -1720,7 +1720,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       setIsSaving(true)
       setScreen('processing')
       try {
-        const isWeeklyPulse = String(draft.prompt || '').toLowerCase() === 'weekly reflection'
+        const isWeeklyPulse = ['weekly reflection', 'sage reflect'].includes(String(draft.prompt || '').toLowerCase())
         const normalizedContent = draft.templateFields
           ? getTemplateSummary({ templateFields: draft.templateFields, templateAnswers: draft.templateAnswers })
           : draft.content
@@ -1793,7 +1793,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         templateAccent: draft.templateAccent,
         templateFields: draft.templateFields,
         templateAnswers: draft.templateAnswers,
-        weeklyPulseMeta: String(draft.prompt || '').toLowerCase() === 'weekly reflection' ? {
+        weeklyPulseMeta: ['weekly reflection', 'sage reflect'].includes(String(draft.prompt || '').toLowerCase()) ? {
           phaseName: draft.weeklyPulsePhaseName || '',
           pillars: draft.weeklyPulsePillars || [],
           weekNumber: draft.weeklyPulseWeekNumber || 1,
@@ -1801,7 +1801,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       }
       setEntries(current => editingEntryId ? current.map(item => item.id === editingEntryId ? fallback : item) : [fallback, ...current])
       setSelectedEntry(fallback)
-      if (String(draft.prompt || '').toLowerCase() === 'weekly reflection') {
+      if (['weekly reflection', 'sage reflect'].includes(String(draft.prompt || '').toLowerCase())) {
         setWeeklyPulseDate(getToday())
         const completionStore = (() => {
           try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
@@ -1946,14 +1946,14 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
           {daysIn < 7 ? (
             <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
-              <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Your first weekly reflection unlocks after day 7</p>
+              <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Sage Reflect unlocks after your first 7 days</p>
             </div>
           ) : weeklyPulseDue ? (
             <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your weekly reset.</p>
-              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Weekly Reflection. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
+              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Sage Reflect. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
               <button type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
-                Open Weekly Reflection
+                Open Sage Reflect
               </button>
             </div>
           ) : null}

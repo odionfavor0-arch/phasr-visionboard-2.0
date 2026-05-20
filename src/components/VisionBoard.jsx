@@ -2353,7 +2353,6 @@ Return JSON only:
     pillars: phase?.pillars || [],
     weekStartKey,
   }), [activeUserId, phaseId, phase?.pillars, scheduleRefresh, weekStartKey])
-  const showScheduleReminder = !!weeklyPlan.length && !editing && !scheduledThisWeek
   const showCalendarPrompt = !!weeklyPlan.length && !editing && calendarPromptState === 'open'
   const showCalendarPromptChip = !!weeklyPlan.length && !editing && calendarPromptState === 'collapsed'
 
@@ -2381,113 +2380,11 @@ Return JSON only:
   return (
     <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
-        {showCalendarPrompt && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 500,
-              padding: `calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px`,
-              transform: calendarBannerMounted ? 'translateY(0)' : 'translateY(-100%)',
-              transition: 'transform 0.4s ease-out',
-              pointerEvents: 'none',
-            }}
-          >
-            <div
-              style={{
-                pointerEvents: 'auto',
-                margin: '0 auto',
-                width: 'min(640px, 100%)',
-                background: 'linear-gradient(180deg,#fff5f8,#ffe8f0)',
-                border: '1px solid #f4c9d6',
-                borderRadius: 14,
-                boxShadow: '0 18px 44px rgba(185,87,122,0.18)',
-                padding: isMobile ? '0.55rem 0.7rem 0.6rem' : '0.7rem 0.9rem 0.7rem',
-                position: 'relative',
-              }}
-            >
-              <button
-                onClick={closeCalendarPrompt}
-                aria-label="Close calendar prompt"
-                style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  width: 28,
-                  height: 28,
-                  borderRadius: '50%',
-                  border: '1px solid #efc3d1',
-                  background: 'rgba(255,255,255,0.92)',
-                  color: '#b85a82',
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
-              <p style={{ fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#e07b9f', margin: 0, marginBottom: '0.35rem' }}>
-                Calendar
-              </p>
-              <p style={{ color: '#5c3342', fontSize: isMobile ? '0.8rem' : '0.9rem', lineHeight: 1.45, margin: '0 1.6rem 0.55rem 0' }}>
-                Schedule your 4 weekly non-negotiables across the next 7 days.
-              </p>
-              <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={addToCalendarPlan}
-                  disabled={calendarBusy}
-                  style={{
-                    minHeight: 40,
-                    padding: '0.68rem 0.95rem',
-                    borderRadius: 999,
-                    border: 'none',
-                    background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
-                    color: '#fff',
-                    fontWeight: 700,
-                    cursor: calendarBusy ? 'wait' : 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
-                    opacity: calendarBusy ? 0.75 : 1,
-                  }}
-                >
-                  {calendarBusy ? 'Opening...' : 'Schedule week'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {uploadMessage && (
           <div style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
             {uploadMessage}
           </div>
         )}
-
-        {showScheduleReminder ? (
-          <div style={{
-            minHeight: 34,
-            maxHeight: 36,
-            marginBottom: '0.55rem',
-            padding: isMobile ? '0.38rem 0.62rem' : '0.4rem 0.78rem',
-            borderRadius: 999,
-            border: '1px solid #f2c7d4',
-            background: '#fff7fa',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.65rem',
-            overflow: 'hidden',
-            position: 'sticky',
-            top: isMobile ? 8 : 12,
-            zIndex: 20,
-          }}>
-            <button type="button" onClick={addToCalendarPlan} disabled={calendarBusy} style={{ width: '100%', border: 'none', background: 'transparent', color: '#f95f85', fontWeight: 800, fontSize: isMobile ? '0.72rem' : '0.78rem', cursor: calendarBusy ? 'wait' : 'pointer', padding: 0, whiteSpace: 'nowrap', fontFamily: "'DM Sans', sans-serif", textAlign: 'center' }}>
-              Schedule your week →
-            </button>
-          </div>
-        ) : null}
 
         {/* Today's Task */}
         <div style={{
@@ -2507,23 +2404,20 @@ Return JSON only:
             </p>
           </div>
           <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => onOpenDailyStreak?.()} style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.7rem' : '0.86rem' }}>
-              {isMobile ? 'Start' : 'Complete action'}
+            <button
+              type="button"
+              onClick={() => {
+                if (!scheduledThisWeek) {
+                  addToCalendarPlan()
+                  return
+                }
+                onOpenDailyStreak?.()
+              }}
+              style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.7rem' : '0.86rem' }}
+            >
+              {!scheduledThisWeek ? 'Schedule your week' : (isMobile ? 'Start' : 'Complete action')}
             </button>
           </div>
-
-          {showCalendarPromptChip && (
-            <div style={{ position: 'absolute', right: -6, top: '50%', transform: 'translateY(-50%)', zIndex: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#fff1f6', border: '1px solid #f2c8d6', borderRadius: 999, padding: '0.35rem 0.4rem 0.35rem 0.7rem', boxShadow: '0 14px 30px rgba(185,87,122,0.16)' }}>
-                <button type="button" onClick={() => setCalendarPromptState('open')} style={{ border: 'none', background: 'transparent', color: '#9a6277', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", padding: 0 }}>
-                  Calendar reminders
-                </button>
-                <button type="button" onClick={closeCalendarPrompt} aria-label="Close calendar reminder chip" style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #efc3d1', background: '#fff', color: '#b85a82', cursor: 'pointer', padding: 0, lineHeight: 1 }}>
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* â”€â”€ Header â”€â”€ */}

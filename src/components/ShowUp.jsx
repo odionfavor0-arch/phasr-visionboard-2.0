@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreHorizontal, Plus, Reply, Send, Sparkles, Sprout, ThumbsUp } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreHorizontal, Plus, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
 import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
 import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
@@ -766,8 +766,9 @@ const SHOW_UP_STYLES = `
   flex-wrap:nowrap;
   gap:8px;
   position:relative;
-  justify-content:flex-end;
+  justify-content:flex-start;
   align-items:center;
+  min-width:0;
 }
 .showup-reaction-summary{
   display:inline-flex;
@@ -776,6 +777,8 @@ const SHOW_UP_STYLES = `
   font-size:12px;
   color:#9a7088;
   font-weight:800;
+  flex-wrap:nowrap;
+  white-space:nowrap;
 }
 .showup-reaction-chip,
 .showup-comment-toggle{
@@ -1322,6 +1325,13 @@ const SHOW_UP_STYLES = `
     flex-direction:row;
     flex-wrap:nowrap;
   }
+  .showup-comment-sheet{
+    max-width:100%;
+    max-height:100dvh;
+    min-height:100dvh;
+    border-radius:20px 20px 0 0;
+    padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+  }
   .showup-member-grid{
     grid-template-columns:repeat(2, minmax(0, 146px));
     justify-content:center;
@@ -1762,6 +1772,16 @@ function getReactionSummary(reactions) {
     .filter(reaction => reaction.count > 0)
 }
 
+function dedupeByIdOrTimestamp(items) {
+  const seen = new Set()
+  return (Array.isArray(items) ? items : []).filter(item => {
+    const key = item?.id || `${item?.createdAt || ''}:${item?.text || ''}:${item?.authorId || ''}`
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [lockInState] = useState(() => loadLockInState())
   const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
@@ -1785,6 +1805,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReplies, setExpandedReplies] = useState({})
   const [replyDrafts, setReplyDrafts] = useState({})
+  const [heldCommentId, setHeldCommentId] = useState('')
   const [reactionPickerPostId, setReactionPickerPostId] = useState('')
   const [openPostMenuId, setOpenPostMenuId] = useState('')
   const [editingPostId, setEditingPostId] = useState('')
@@ -1804,6 +1825,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
   const fileInputRef = useRef(null)
   const commentFileInputRef = useRef(null)
+  const commentHoldTimerRef = useRef(null)
 
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const daysStreak = Math.max(0, Number(summary.currentStreak || 0))
@@ -1845,6 +1867,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     persistFeedPosts(getFeedStorageKey(selectedRoom), feedPosts)
   }, [feedPosts, selectedRoom])
 
+  useEffect(() => () => {
+    if (commentHoldTimerRef.current) window.clearTimeout(commentHoldTimerRef.current)
+  }, [])
+
   useEffect(() => {
     let alive = true
 
@@ -1875,6 +1901,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       alive = false
     }
   }, [selectedRoom, user])
+
+  useEffect(() => {
+    if (!profile?.id || profile.id === 'local-user') return
+    if (!preferredRoomName) return
+    const joined = safeRead(getJoinedRoomsKey(profile.id), [])
+    if (Array.isArray(joined) && joined.length) return
+    ensureRoomMembership(preferredRoomName).then(() => {
+      loadRoomCounts(profile)
+    }).catch(error => {
+      console.error('Show Up auto join failed', error)
+    })
+  }, [preferredRoomName, profile.id])
 
   useEffect(() => {
     if (!supabase) return undefined
@@ -2429,6 +2467,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ? { ...post, comments: (post.comments || []).filter(comment => comment.id !== commentId) }
         : post
     )))
+    setHeldCommentId(current => current === commentId ? '' : current)
+  }
+
+  function startCommentHold(commentId, isOwnComment) {
+    if (!isOwnComment) return
+    if (commentHoldTimerRef.current) window.clearTimeout(commentHoldTimerRef.current)
+    commentHoldTimerRef.current = window.setTimeout(() => {
+      setHeldCommentId(commentId)
+    }, 700)
+  }
+
+  function clearCommentHold() {
+    if (commentHoldTimerRef.current) {
+      window.clearTimeout(commentHoldTimerRef.current)
+      commentHoldTimerRef.current = null
+    }
   }
 
   function handleToggleCommentReaction(postId, commentId) {
@@ -2564,7 +2618,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!checkedIn && !taskDone) return []
     return realMembers.filter(member => member.checked_in || member.task_done)
   }, [checkedIn, taskDone, realMembers])
-  const visiblePosts = useMemo(() => [...feedPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [feedPosts])
+  const visiblePosts = useMemo(() => (
+    [...feedPosts]
+      .map(post => ({
+        ...post,
+        comments: dedupeByIdOrTimestamp(post.comments || []).map(comment => ({
+          ...comment,
+          replies: dedupeByIdOrTimestamp(comment.replies || []),
+        })),
+      }))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  ), [feedPosts])
   const commentSheetPost = useMemo(() => visiblePosts.find(post => post.id === commentSheetPostId) || null, [visiblePosts, commentSheetPostId])
   const commentDraft = commentSheetPost ? String(commentDrafts[commentSheetPost.id] || '') : ''
   const showMentionSuggestions = /(^|\s)@\w*$/.test(commentDraft)
@@ -2984,15 +3048,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   )}
                   {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" /> : null}
                   <div className="showup-feed-reactions">
-                    <button
-                      type="button"
-                      className="showup-comment-toggle"
-                      onClick={() => setCommentSheetPostId(post.id)}
-                    >
-                      <MessageCircle size={14} strokeWidth={2.1} />
-                      <span>{(post.comments || []).length}</span>
-                    </button>
-                    <div className="showup-feed-chip-row">
+                    <div className="showup-feed-chip-row" style={{ justifyContent: 'flex-start' }}>
                       <button
                         type="button"
                         className="showup-reaction-chip"
@@ -3025,6 +3081,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         </div>
                       ) : null}
                     </div>
+                    <button
+                      type="button"
+                      className="showup-comment-toggle"
+                      onClick={() => setCommentSheetPostId(post.id)}
+                    >
+                      <MessageCircle size={14} strokeWidth={2.1} />
+                      <span>{(post.comments || []).length}</span>
+                    </button>
                   </div>
                   {false && expandedComments[post.id] ? (
                     <div className="showup-comments">
@@ -3172,21 +3236,63 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <span>Comments</span>
             </h2>
             <div className="showup-comment-sheet-list">
-              {(commentSheetPost.comments || []).length ? (commentSheetPost.comments || []).map(comment => (
-                <div key={comment.id} className="showup-comment-row">
+              {(commentSheetPost.comments || []).length ? dedupeByIdOrTimestamp(commentSheetPost.comments || []).map(comment => {
+                const ownComment = comment.authorId === profile.id
+                const replyKey = `${commentSheetPost.id}:${comment.id}`
+                const repliesExpanded = Boolean(expandedReplies[replyKey])
+                const replies = dedupeByIdOrTimestamp(comment.replies || [])
+                return (
+                <div
+                  key={comment.id}
+                  className="showup-comment-row"
+                  onMouseDown={() => startCommentHold(comment.id, ownComment)}
+                  onMouseUp={clearCommentHold}
+                  onMouseLeave={() => { clearCommentHold(); if (heldCommentId === comment.id) setHeldCommentId('') }}
+                  onTouchStart={() => startCommentHold(comment.id, ownComment)}
+                  onTouchEnd={clearCommentHold}
+                >
                   <div className="showup-avatar">{comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName)}</div>
                   <div className="showup-comment-bubble">
                     <p className="showup-comment-author">{comment.anonymous ? 'Anonymous · Room' : comment.authorName}</p>
                     <p className="showup-comment-text">{comment.text}</p>
                     {comment.image ? <img className="showup-comment-image-preview" src={comment.image} alt="Comment attachment" loading="lazy" /> : null}
-                    {comment.authorId === profile.id ? (
-                      <button type="button" className="showup-comment-action showup-comment-delete" onClick={() => handleDeleteComment(commentSheetPost.id, comment.id)}>
-                        Delete
+                    <div className="showup-comment-actions">
+                      <button type="button" className="showup-comment-action" onClick={() => handleToggleCommentReaction(commentSheetPost.id, comment.id)}>
+                        <Heart size={12} strokeWidth={2.1} />
+                        <span>{(comment.reactions?.love || []).length}</span>
                       </button>
+                      <button type="button" className="showup-comment-action" onClick={() => setExpandedReplies(current => ({ ...current, [replyKey]: !current[replyKey] }))}>
+                        <Reply size={12} strokeWidth={2.1} />
+                        <span>{repliesExpanded ? 'Hide replies' : `View replies${replies.length ? ` (${replies.length})` : ''}`}</span>
+                      </button>
+                      {ownComment && heldCommentId === comment.id ? (
+                        <button type="button" className="showup-comment-action showup-comment-delete" onClick={() => handleDeleteComment(commentSheetPost.id, comment.id)}>
+                          <Trash2 size={12} strokeWidth={2.1} />
+                        </button>
+                      ) : null}
+                    </div>
+                    {repliesExpanded ? (
+                      <div className="showup-replies">
+                        {replies.map(reply => (
+                          <div key={reply.id} className="showup-reply-bubble">
+                            <p className="showup-comment-author">{reply.authorName}</p>
+                            <p className="showup-comment-text">{reply.text}</p>
+                          </div>
+                        ))}
+                        <div className="showup-comment-compose">
+                          <input
+                            className="showup-comment-input"
+                            value={replyDrafts[replyKey] || ''}
+                            onChange={event => setReplyDrafts(current => ({ ...current, [replyKey]: event.target.value }))}
+                            placeholder="Reply..."
+                          />
+                          <button type="button" className="showup-comment-send" onClick={() => handleAddReply(commentSheetPost.id, comment.id)}>Send</button>
+                        </div>
+                      </div>
                     ) : null}
                   </div>
                 </div>
-              )) : (
+              )}) : (
                 <div className="showup-empty">No comments yet.</div>
               )}
             </div>
