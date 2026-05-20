@@ -328,6 +328,20 @@ const SHOW_UP_STYLES = `
   white-space:nowrap;
   background:rgba(255,255,255,0.9);
 }
+.showup-room-subtitle{
+  margin:-8px 0 10px;
+  text-align:center;
+  font-size:11px;
+  font-weight:800;
+  color:#b98097;
+}
+.showup-room-streak{
+  margin:0 auto 12px;
+  text-align:center;
+  font-size:12px;
+  font-weight:800;
+  color:#b98097;
+}
 .showup-live-dot{
   width:8px;
   height:8px;
@@ -523,6 +537,26 @@ const SHOW_UP_STYLES = `
   text-align:center;
   line-height:1.2;
 }
+.showup-role-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:4px;
+  padding:4px 7px;
+  border-radius:999px;
+  color:#b98097;
+  background:rgba(249,95,133,0.08);
+  border:1px solid rgba(249,95,133,0.18);
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+  white-space:nowrap;
+}
+.showup-role-badge.is-leader{
+  color:#9a6500;
+  background:linear-gradient(135deg,#fff7d6,#ffe8a3);
+  border-color:rgba(210,153,30,0.28);
+}
 .showup-member-status.is-active{color:#2fb66d}
 .showup-member-status.is-done{color:#f95f85}
 .showup-member-status.is-idle{color:#9a7088}
@@ -581,6 +615,35 @@ const SHOW_UP_STYLES = `
   border:1px solid rgba(249,95,133,0.18);
   border-radius:14px;
   background:rgba(255,255,255,0.72);
+}
+.showup-proof-strip{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:0 0 10px;
+  margin-bottom:6px;
+  scrollbar-width:none;
+}
+.showup-proof-strip::-webkit-scrollbar{display:none}
+.showup-proof-chip{
+  border:1px solid rgba(249,95,133,0.2);
+  border-radius:999px;
+  background:#fff;
+  color:#9a7088;
+  padding:8px 10px;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+  white-space:nowrap;
+  flex:0 0 auto;
+}
+.showup-proof-chip.is-selected{
+  color:#fff;
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  border-color:transparent;
+  box-shadow:0 10px 22px rgba(249,95,133,0.18);
 }
 .showup-compose-top,
 .showup-feed-header,
@@ -648,6 +711,42 @@ const SHOW_UP_STYLES = `
   border-radius:12px;
   padding:14px 12px;
   margin-top:12px;
+}
+.showup-feed-card.is-sage{
+  background:linear-gradient(135deg,rgba(255,245,248,0.96),rgba(255,234,242,0.9));
+  border-color:rgba(249,95,133,0.28);
+}
+.showup-feed-card.is-pulse{
+  background:linear-gradient(135deg,rgba(255,250,252,0.98),rgba(255,239,245,0.94));
+  border-color:rgba(249,95,133,0.32);
+}
+.showup-feed-card.is-recap{
+  padding:18px;
+  background:linear-gradient(135deg,#fff0f6,#ffe0eb);
+  border-color:rgba(249,95,133,0.36);
+}
+.showup-pulse-label{
+  margin:0 0 8px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:#f95f85;
+}
+.showup-post-type{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  margin:0 0 8px;
+  padding:5px 8px;
+  border-radius:999px;
+  color:#b98097;
+  background:rgba(249,95,133,0.08);
+  border:1px solid rgba(249,95,133,0.18);
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
 }
 .showup-feed-author{
   display:flex;
@@ -1280,6 +1379,31 @@ const SHOW_UP_STYLES = `
   background:var(--bg, #fff);
   padding:22px 12px;
 }
+.showup-rank-roles{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:6px;
+}
+.showup-rank-role-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  padding:5px 7px;
+  color:#b98097;
+  background:rgba(249,95,133,0.08);
+  border:1px solid rgba(249,95,133,0.18);
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+  white-space:nowrap;
+}
+.showup-rank-role-chip.is-leader{
+  color:#9a6500;
+  background:linear-gradient(135deg,#fff7d6,#ffe8a3);
+  border-color:rgba(210,153,30,0.28);
+}
 .showup-toast-stack{
   position:fixed;
   top:calc(14px + env(safe-area-inset-top, 0px));
@@ -1599,6 +1723,95 @@ const REACTION_OPTIONS = [
   { key: 'smile', label: 'Smile', emoji: '\u{1F60A}' },
 ]
 
+const PROOF_TYPES = [
+  '\u{1F3CB}\uFE0F Workout done',
+  '\u{1F4DA} Study session',
+  '\u{1F957} Meal prep',
+  '\u{1F4BB} Deep work',
+  '\u{1F4D3} Journaled',
+  '\u{1F3C6} Small win',
+  '\u2705 Showed up',
+]
+
+const confessionByPillar = {
+  'Personal Growth': "What habit did you promise yourself this week that you didn't follow through on? No judgment - just say it.",
+  'Health & Fitness': "What did you eat or skip this week that you know wasn't aligned? Drop it here and move on.",
+  'Career & Business': 'What opportunity did you hesitate on this week? What actually stopped you?',
+  Wealth: "What did you spend money on this week that didn't align with where you're trying to go?",
+  Relationships: 'What did you avoid saying or doing this week that you know you should have?',
+  'Inner Life': 'What truth did you keep from yourself this week? This is the safe space to say it.',
+}
+
+const knowledgeByPillar = {
+  'Personal Growth': [
+    "Identity before action. You don't journal because you're disciplined. You journal because you're becoming someone who does.",
+    "The reason most people don't finish things isn't laziness. It's unclear next steps. What is your next step today - not this week, today?",
+    "Consistency over 30 days rewires how you see yourself. You're not building a habit. You're building an identity.",
+    'The gap between who you are and who you want to be closes one small decision at a time. Make one today.',
+  ],
+  'Health & Fitness': [
+    'Rest is not the enemy of progress. Chronic under-recovery is. Are you sleeping enough to actually rebuild?',
+    'Protein timing matters less than people think. Total daily intake matters more. Are you hitting yours?',
+    'The workout you do consistently beats the perfect workout you do twice. Show up even when it is small.',
+    'Your body keeps score. What you eat, how you sleep, how you move - it compounds. So does neglect.',
+  ],
+  'Career & Business': [
+    'The most underpaid skill in business: following up. One follow-up has a higher ROI than most strategies.',
+    'You do not need a perfect plan. You need a clear next action and the discipline to do it today.',
+    'Visibility is a skill. The work is not enough if no one knows it exists. Who needs to know what you are building?',
+    'The women who move fastest are not the ones who know the most. They are the ones who act before they feel ready.',
+  ],
+  Wealth: [
+    'Saving 20% of nothing is nothing. Income expansion and expense reduction work together - not one or the other.',
+    "The wealth gap isn't just about money. It's about financial literacy that wasn't passed down. You're learning what wasn't taught.",
+    'Investing is not for people who have money left over. It is a decision you make before you spend anything else.',
+    'Your relationship with money is emotional before it is mathematical. What story did you grow up believing about it?',
+  ],
+  Relationships: [
+    'You cannot out-give your way into reciprocity. Boundaries are not walls - they are the terms under which you stay.',
+    'The people around you set the ceiling on what feels normal. Normal should feel like growth, not survival.',
+    'Saying what you need is not demanding. Silence is not peace - it is just delayed resentment.',
+    'Who you spend time with is a decision. Passive proximity is still a choice.',
+  ],
+  'Inner Life': [
+    'Stillness is not laziness. The women who know themselves make better decisions, faster.',
+    'You cannot pour from a place you have not filled. What fills you - not what should, what actually does?',
+    'Healing is not linear and it is not a destination. It is the practice of returning to yourself daily.',
+    'Your intuition has been right more than you have given it credit for. What is it telling you right now?',
+  ],
+}
+
+const WEEKLY_PULSE = {
+  Monday: {
+    format: 'Intention Drop',
+    prompt: pillar => `It's Monday. What's one thing you will finish this week in your ${pillar} journey? Drop it here - the room is your witness.`,
+  },
+  Tuesday: {
+    format: 'Action Check',
+    prompt: pillar => `What did you actually do yesterday toward your ${pillar} goal? One sentence. Be honest.`,
+  },
+  Wednesday: {
+    format: 'Confession Night',
+    prompt: pillar => confessionByPillar[pillar] || confessionByPillar['Personal Growth'],
+  },
+  Thursday: {
+    format: 'Knowledge Drop',
+    content: (pillar, weekIndex) => (knowledgeByPillar[pillar] || knowledgeByPillar['Personal Growth'])[weekIndex % 4],
+  },
+  Friday: {
+    format: 'Proof Day',
+    prompt: pillar => `It's Proof Day. Post what you built this week - a photo, a result, a win, anything real. The room needs to see it.`,
+  },
+  Saturday: {
+    format: 'Rest & Reflect',
+    prompt: pillar => `Rest is part of the work. What's one thing you're proud of from this week in your ${pillar} journey?`,
+  },
+  Sunday: {
+    format: 'Weekly Recap',
+    content: 'auto-generated',
+  },
+}
+
 const MAX_ROOM_SIZE = 12
 
 function safeRead(key, fallback) {
@@ -1646,6 +1859,12 @@ function compactFeedPostsForStorage(posts) {
     .map(post => ({
       ...post,
       image: post?.image || '',
+      postType: post?.postType || '',
+      system: Boolean(post?.system),
+      pulseFormat: post?.pulseFormat || '',
+      pulseLabel: post?.pulseLabel || '',
+      targetUserId: post?.targetUserId || '',
+      postStyle: post?.postStyle || '',
       comments: safeArray(post?.comments).slice(0, 40).map(comment => ({
         ...comment,
         replies: safeArray(comment?.replies).slice(0, 20),
@@ -1679,6 +1898,42 @@ function getTodayKey() {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function getDateKeyDaysAgo(daysAgo) {
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getLocalDayName(date = new Date()) {
+  return date.toLocaleDateString('en-US', { weekday: 'long' })
+}
+
+function getIsoWeekNumber(date = new Date()) {
+  const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNumber = copy.getUTCDay() || 7
+  copy.setUTCDate(copy.getUTCDate() + 4 - dayNumber)
+  const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1))
+  return Math.ceil((((copy - yearStart) / 86400000) + 1) / 7)
+}
+
+function getCurrentWeekDateKeys() {
+  const today = new Date()
+  const mondayOffset = (today.getDay() + 6) % 7
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - mondayOffset)
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  })
 }
 
 function formatTime(value) {
@@ -1819,6 +2074,30 @@ function getFeedStorageKey(roomName) {
   return `showup_feed_${normalize(roomName)}`
 }
 
+function getRoomActivityStorageKey(roomName) {
+  return `showup_activity_${normalize(roomName)}`
+}
+
+function getRoomStreakStorageKey(roomName) {
+  return `showup_room_streak_${normalize(roomName)}`
+}
+
+function getPulseStorageKey(roomName) {
+  return `showup_pulse_${normalize(roomName)}_date`
+}
+
+function getPulseIndexStorageKey(roomName) {
+  return `showup_knowledge_${normalize(roomName)}_index`
+}
+
+function getAbsentPostStorageKey(roomName, dateKey) {
+  return `showup_absent_posts_${normalize(roomName)}_${dateKey}`
+}
+
+function getWeeklyRecapStorageKey(roomName) {
+  return `showup_recap_${normalize(roomName)}_week`
+}
+
 function getActiveRoomStorageKey(userId) {
   return `showup_active_room_${normalize(userId || 'local-user')}`
 }
@@ -1829,6 +2108,55 @@ function getCheckInPostStorageKey(roomName, userId, checkInTime) {
 
 function getRoomId(roomName) {
   return normalize(roomName)
+}
+
+function getPillarFromRoom(roomName) {
+  const found = ROOM_DEFINITIONS.find(room => normalize(room.name) === normalize(roomName))
+  return found?.name || roomName || 'Personal Growth'
+}
+
+function getRoomTitleFromStreak(count) {
+  if (count >= 90) return 'Unbreakable'
+  if (count >= 60) return 'Discipline Circle'
+  if (count >= 30) return 'Locked In'
+  if (count >= 14) return 'Building Together'
+  if (count >= 7) return 'Momentum Room'
+  return 'Show Up Room'
+}
+
+function getRoomStreakLabel(streak) {
+  const count = Math.max(0, Number(streak?.count || 0))
+  if (count <= 1) return 'Room streak: Day 1'
+  return `\u{1F525} Room streak: ${count} days`
+}
+
+function readRoomStreak(roomName) {
+  return safeRead(getRoomStreakStorageKey(roomName), { count: 0, lastActiveDate: '' })
+}
+
+function updateRoomStreak(roomName, dateKey = getTodayKey()) {
+  const current = readRoomStreak(roomName)
+  if (current.lastActiveDate === dateKey) return current
+  const last = current.lastActiveDate ? new Date(`${current.lastActiveDate}T00:00:00`) : null
+  const today = new Date(`${dateKey}T00:00:00`)
+  const gap = last ? Math.round((today - last) / 86400000) : 0
+  const next = {
+    count: gap === 1 ? Number(current.count || 0) + 1 : 1,
+    lastActiveDate: dateKey,
+  }
+  safeWrite(getRoomStreakStorageKey(roomName), next)
+  return next
+}
+
+function addRoomActivity(roomName, event) {
+  const current = safeArray(safeRead(getRoomActivityStorageKey(roomName), []))
+  const next = [{ id: uid(), roomName, createdAt: new Date().toISOString(), ...event }, ...current].slice(0, 500)
+  safeWrite(getRoomActivityStorageKey(roomName), next)
+  return next
+}
+
+function getRoomActivity(roomName) {
+  return safeArray(safeRead(getRoomActivityStorageKey(roomName), []))
 }
 
 function getMockMemberStorageKey(roomName) {
@@ -1907,6 +2235,52 @@ function dedupeByIdOrTimestamp(items) {
   })
 }
 
+function computeRoomRoles(members, roomName) {
+  const activity = getRoomActivity(roomName)
+  const weekDates = new Set(getCurrentWeekDateKeys())
+  const today = getTodayKey()
+  const roles = {}
+  const realMembers = safeArray(members).filter(member => !isPlaceholderMember(member))
+  realMembers.forEach(member => { roles[member.user_id] = [] })
+
+  const leader = [...realMembers].sort((a, b) => Number(b.streak_count || 0) - Number(a.streak_count || 0))[0]
+  if (leader && Number(leader.streak_count || 0) > 0) roles[leader.user_id]?.push('Room Leader')
+
+  realMembers.forEach(member => {
+    const userEvents = activity.filter(event => event.userId === member.user_id)
+    const checkins = userEvents.filter(event => event.type === 'checkin')
+    const dones = userEvents.filter(event => event.type === 'done')
+    const checkinDates = new Set(checkins.map(event => event.date))
+    const thisWeekCheckins = [...weekDates].filter(date => checkinDates.has(date)).length
+    const totalCheckins = Math.max(checkins.length, Number(member.checked_in || member.task_done))
+    const completionRate = totalCheckins ? dones.length / totalCheckins : 0
+    const checkedToday = member.checked_in || member.task_done || checkinDates.has(today)
+    const missedBeforeToday = [1, 2, 3].every(daysAgo => !checkinDates.has(getDateKeyDaysAgo(daysAgo)))
+    const earlyDates = new Set(checkins.filter(event => Number(String(event.time || '99').slice(0, 2)) < 8).map(event => event.date))
+    const earlyMover = [0, 1, 2].every(daysAgo => earlyDates.has(getDateKeyDaysAgo(daysAgo)))
+
+    if (completionRate >= 0.9 && totalCheckins >= 3) roles[member.user_id]?.push('Discipline')
+    if (thisWeekCheckins >= Math.min(7, weekDates.size)) roles[member.user_id]?.push('Locked In')
+    if (checkedToday && missedBeforeToday && checkins.length > 1) roles[member.user_id]?.push('Comeback')
+    if (earlyMover) roles[member.user_id]?.push('Early Mover')
+  })
+
+  const nudgeCounts = {}
+  activity
+    .filter(event => event.type === 'nudge' && weekDates.has(event.date))
+    .forEach(event => {
+      nudgeCounts[event.userId] = (nudgeCounts[event.userId] || 0) + 1
+    })
+  const topNudger = Object.entries(nudgeCounts).sort((a, b) => b[1] - a[1])[0]
+  if (topNudger?.[0] && topNudger[1] > 0) roles[topNudger[0]]?.push('Encourager')
+
+  const priority = ['Room Leader', 'Discipline', 'Locked In', 'Comeback', 'Encourager', 'Early Mover']
+  Object.keys(roles).forEach(memberId => {
+    roles[memberId] = priority.filter(role => roles[memberId].includes(role))
+  })
+  return roles
+}
+
 export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [lockInState] = useState(() => loadLockInState())
   const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
@@ -1923,7 +2297,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [feedReady, setFeedReady] = useState(true)
   const [postDraft, setPostDraft] = useState('')
   const [postImage, setPostImage] = useState('')
+  const [selectedPostType, setSelectedPostType] = useState('')
   const [toast, setToast] = useState('')
+  const [pulseBanner, setPulseBanner] = useState('')
   const [commentSheetPostId, setCommentSheetPostId] = useState('')
   const [commentImage, setCommentImage] = useState('')
   const [lightboxImage, setLightboxImage] = useState('')
@@ -1949,6 +2325,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [showGate, setShowGate] = useState(false)
   const [createRoomName, setCreateRoomName] = useState('')
   const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
+  const [roomStreak, setRoomStreak] = useState({ count: 0, lastActiveDate: '' })
   const fileInputRef = useRef(null)
   const commentFileInputRef = useRef(null)
   const commentHoldTimerRef = useRef(null)
@@ -1987,6 +2364,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   useEffect(() => {
     if (!selectedRoom) return
     loadFeedPosts(selectedRoom)
+    setRoomStreak(readRoomStreak(selectedRoom))
   }, [selectedRoom])
 
   useEffect(() => {
@@ -2003,6 +2381,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const timer = window.setTimeout(() => setNudgeToast(null), 5000)
     return () => window.clearTimeout(timer)
   }, [nudgeToast])
+
+  useEffect(() => {
+    if (!pulseBanner) return undefined
+    const timer = window.setTimeout(() => setPulseBanner(''), 5000)
+    return () => window.clearTimeout(timer)
+  }, [pulseBanner])
 
   useEffect(() => {
     function showRecipientNudge(notification) {
@@ -2245,6 +2629,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           anonymous: Boolean(post.is_anonymous),
           text: post.content || '',
           image: post.image_url || cached?.image || '',
+          postType: cached?.postType || '',
+          system: cached?.system || post.display_name === 'Sage',
+          pulseFormat: cached?.pulseFormat || '',
+          pulseLabel: cached?.pulseLabel || '',
+          targetUserId: cached?.targetUserId || '',
+          postStyle: cached?.postStyle || '',
           createdAt: post.created_at || new Date().toISOString(),
           reactions: cached?.reactions || {},
           comments: safeArray(cached?.comments).map(comment => ({
@@ -2269,7 +2659,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
   }
 
-  async function createFeedPost({ text, image = '', anonymous = false, author = null }) {
+  async function createFeedPost({ text, image = '', anonymous = false, author = null, postType = '', system = false, pulseFormat = '', pulseLabel = '', targetUserId = '', postStyle = '' }) {
     const createdAt = new Date().toISOString()
     const postAuthor = author || {
       id: anonymous ? `anon-${uid()}` : profile.id,
@@ -2284,6 +2674,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       anonymous,
       text,
       image,
+      postType,
+      system,
+      pulseFormat,
+      pulseLabel,
+      targetUserId,
+      postStyle,
       createdAt,
       reactions: {},
       comments: [],
@@ -2316,16 +2712,91 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     return nextPost
   }
 
-  function createRoomActivityPost(text) {
+  function createRoomActivityPost(text, options = {}) {
     return createFeedPost({
       text,
       image: '',
       anonymous: false,
+      system: true,
       author: {
         id: 'sage',
         name: 'Sage',
         initials: 'SG',
       },
+      ...options,
+    })
+  }
+
+  async function postWeeklyPulseIfNeeded(roomName) {
+    const today = getTodayKey()
+    if (localStorage.getItem(getPulseStorageKey(roomName)) === today) return
+    const dayName = getLocalDayName()
+    const pulse = WEEKLY_PULSE[dayName]
+    if (!pulse || dayName === 'Sunday') return
+    const pillar = getPillarFromRoom(roomName)
+    let text = ''
+    if (dayName === 'Thursday') {
+      const currentIndex = Number(localStorage.getItem(getPulseIndexStorageKey(roomName)) || 0)
+      text = pulse.content(pillar, currentIndex)
+      safeWrite(getPulseIndexStorageKey(roomName), currentIndex + 1)
+    } else {
+      text = pulse.prompt(pillar)
+    }
+    safeWrite(getPulseStorageKey(roomName), today)
+    await createRoomActivityPost(text, {
+      pulseFormat: pulse.format,
+      pulseLabel: `\u{1F4C5} ${pulse.format.toUpperCase()}`,
+      postStyle: 'pulse',
+    })
+    setPulseBanner(`${pulse.format} just dropped in ${roomName}.`)
+  }
+
+  async function postSilentAccountability(roomName, nextMembers) {
+    const now = new Date()
+    if (now.getHours() < 14) return
+    const today = getTodayKey()
+    const postedKey = getAbsentPostStorageKey(roomName, today)
+    const posted = new Set(safeArray(safeRead(postedKey, [])))
+    const absentMembers = safeArray(nextMembers).filter(member => (
+      !isPlaceholderMember(member) &&
+      !member.checked_in &&
+      !member.task_done &&
+      !posted.has(member.user_id)
+    ))
+    for (const member of absentMembers) {
+      posted.add(member.user_id)
+      await createRoomActivityPost(`${member.display_name} hasn't checked in yet today. Room's here when you're ready. \u{1F49B}`, {
+        targetUserId: member.user_id,
+        postStyle: 'sage',
+      })
+    }
+    safeWrite(postedKey, [...posted])
+  }
+
+  async function postSundayRecapIfNeeded(roomName, nextRoomStreak) {
+    if (getLocalDayName() !== 'Sunday') return
+    const currentWeek = getIsoWeekNumber()
+    if (Number(localStorage.getItem(getWeeklyRecapStorageKey(roomName)) || 0) === currentWeek) return
+    const activity = getRoomActivity(roomName)
+    const weekDates = new Set(getCurrentWeekDateKeys())
+    const weeklyCheckins = activity.filter(event => event.type === 'checkin' && weekDates.has(event.date))
+    const weeklyDone = activity.filter(event => event.type === 'done' && weekDates.has(event.date))
+    const byDay = {}
+    weeklyCheckins.forEach(event => {
+      const day = new Date(`${event.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' })
+      byDay[day] = (byDay[day] || 0) + 1
+    })
+    const mostActiveDay = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Sunday'
+    const leader = [...realMembers].sort((a, b) => Number(b.streak_count || 0) - Number(a.streak_count || 0))[0]
+    const completion = weeklyCheckins.length ? Math.round((weeklyDone.length / weeklyCheckins.length) * 100) : 0
+    const text = weeklyCheckins.length < 3
+      ? `Weekly Recap - ${roomName}\n\nWeek 1 complete. You showed up. That's everything.`
+      : `Weekly Recap - ${roomName}\n\n\u2705 Total check-ins this week: ${weeklyCheckins.length}\n\u{1F525} Room streak: ${Number(nextRoomStreak?.count || 0)} days\n\u{1F4C5} Most active day: ${mostActiveDay}\n\u26A1 Streak leader: ${leader?.display_name || 'Room'} - ${Number(leader?.streak_count || 0)} days\n\u{1F49B} Room completion: ${completion}%\n\nKeep going. Same room, new week.`
+    safeWrite(getWeeklyRecapStorageKey(roomName), currentWeek)
+    await createRoomActivityPost(text, {
+      pulseFormat: 'Weekly Recap',
+      pulseLabel: '\u{1F4C5} WEEKLY RECAP',
+      postStyle: 'recap',
     })
   }
 
@@ -2472,6 +2943,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setDoneTime('')
     safeWrite(getActiveRoomStorageKey(fallbackProfile.id), selectedRoom)
     setToast('Session active. Make it count.')
+    addRoomActivity(selectedRoom, {
+      type: 'checkin',
+      userId: fallbackProfile.id,
+      displayName: fallbackProfile.name,
+      date: getTodayKey(),
+      time: new Date(nowIso).toTimeString().slice(0, 5),
+    })
+    const nextRoomStreak = updateRoomStreak(selectedRoom)
+    setRoomStreak(nextRoomStreak)
     setMembers(current => {
       const next = [...current]
       const index = next.findIndex(member => member.user_id === fallbackProfile.id)
@@ -2496,6 +2976,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       safeWrite(checkInPostKey, true)
       await createRoomActivityPost(`${fallbackProfile.name} just checked in. Say hi \u{1F44B}`)
     }
+    await postWeeklyPulseIfNeeded(selectedRoom)
+    await postSundayRecapIfNeeded(selectedRoom, nextRoomStreak)
+    await postSilentAccountability(selectedRoom, [
+      payload,
+      ...members.filter(member => member.user_id !== fallbackProfile.id),
+    ])
   }
 
   async function handleMarkDone() {
@@ -2522,6 +3008,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setDoneTime(nowIso)
     setToast('')
     safeRemove(getActiveRoomStorageKey(profile.id))
+    addRoomActivity(selectedRoom, {
+      type: 'done',
+      userId: profile.id,
+      displayName: profile.name,
+      date: getTodayKey(),
+      time: new Date(nowIso).toTimeString().slice(0, 5),
+    })
     setShowProgressPhotoPrompt(true)
     setMembers(current => current.map(member => (
       member.user_id === profile.id ? { ...member, ...donePatch } : member
@@ -2570,9 +3063,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!text && !imageDraft) return
     setPostDraft('')
     setPostImage('')
+    setSelectedPostType('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     const uploadedImage = await uploadRoomFeedImage(imageDraft)
-    const nextPost = await createFeedPost({ text, image: uploadedImage, anonymous: false })
+    const nextPost = await createFeedPost({ text, image: uploadedImage, anonymous: false, postType: selectedPostType })
     if (uploadedImage && nextPost?.id) {
       setCommentSheetPostId(nextPost.id)
     }
@@ -2740,10 +3234,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setReplyDrafts(current => ({ ...current, [draftKey]: '' }))
   }
 
-  function openNotifySheet(member) {
+  function openNotifySheet(member, prefill = '') {
     setSheetState({ open: true, member })
     setSelectedTemplate('')
-    setNotifyText('')
+    setNotifyText(prefill)
     setNotifyAnonymous(false)
     setNotifyPostToFeed(false)
   }
@@ -2771,6 +3265,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     const saved = safeRead(getNotificationStorageKey(target.user_id), [])
     safeWrite(getNotificationStorageKey(target.user_id), [notification, ...(Array.isArray(saved) ? saved : [])].slice(0, 50))
+    addRoomActivity(selectedRoom, {
+      type: 'nudge',
+      userId: profile.id,
+      targetUserId: target.user_id,
+      displayName: profile.name,
+      date: getTodayKey(),
+      time: new Date().toTimeString().slice(0, 5),
+    })
     window.dispatchEvent(new CustomEvent('phasr-showup-notification', { detail: notification }))
     if (notifyPostToFeed) {
       const senderName = notifyAnonymous ? 'Someone' : profile.name
@@ -2850,6 +3352,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
   }, [realMembers, profile.id])
+  const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
+  const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
+  const roomIdentityTitle = getRoomTitleFromStreak(roomStreak.count)
   const roomBannerText = selectedRoom && activeTab === 'live' && !taskDone
     ? (checkedIn ? 'Session active. Make it count.' : "You're in. Tap Check In to start your session.")
     : ''
@@ -3084,6 +3589,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
       <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180 }}>
         {roomBannerText ? <div className="showup-empty" style={{ marginBottom: 10 }}>{roomBannerText}</div> : null}
+        {pulseBanner ? <div className="showup-sync-notice" style={{ marginBottom: 10 }}>{pulseBanner}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={() => setExitPromptOpen(true)}>{'\u2190'}</button>
@@ -3093,6 +3599,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <span>{activeCount} active</span>
             </div>
           </div>
+          <p className="showup-room-subtitle">{roomIdentityTitle}</p>
+          <p className="showup-room-streak">{getRoomStreakLabel(roomStreak)}</p>
 
           {activeTab === 'live' && !checkedIn && !taskDone ? (
             <div className="showup-checkin-actions">
@@ -3169,6 +3677,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             {liveMembers.map(member => {
               const status = getMemberStatus(member)
               const isSelf = member.user_id === profile.id
+              const role = topRoleFor(member)
               return (
                 <div key={member.user_id} className="showup-member-card">
                   <div className="showup-avatar">
@@ -3180,6 +3689,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
                       {status === 'done' ? 'Completed' : status === 'active' ? 'Active now' : 'Not yet'}
                     </p>
+                    {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
                     {member.check_in_time && status !== 'idle' ? (
                       <p className="showup-member-time">Checked in {formatTime(member.check_in_time)}</p>
                     ) : null}
@@ -3201,6 +3711,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         {activeTab === 'feed' ? (
           <div className="showup-feed-view">
             <div className="showup-compose-card">
+              <div className="showup-proof-strip" aria-label="Proof moment type">
+                {PROOF_TYPES.map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`showup-proof-chip ${selectedPostType === type ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedPostType(current => current === type ? '' : type)}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>
                 <input
@@ -3233,8 +3755,24 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 const reactionSummary = getReactionSummary(post.reactions).filter(reaction => reaction.key !== 'like').slice(0, 3)
                 const reactionTotal = likeCount + reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
                 const isOwnPost = post.authorId === profile.id || normalize(post.authorName) === normalize(profile.name)
+                const targetMember = post.targetUserId ? realMembers.find(member => member.user_id === post.targetUserId) : null
+                const feedClass = [
+                  'showup-feed-card',
+                  post.anonymous ? 'is-anonymous' : '',
+                  post.system ? 'is-sage' : '',
+                  post.postStyle === 'pulse' ? 'is-pulse' : '',
+                  post.postStyle === 'recap' ? 'is-recap' : '',
+                ].filter(Boolean).join(' ')
                 return (
-                <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
+                <div
+                  key={post.id}
+                  className={feedClass}
+                  onClick={() => {
+                    if (!targetMember) return
+                    openNotifySheet(targetMember, `Room's here when you're ready. One small check-in still counts.`)
+                  }}
+                  style={{ cursor: targetMember ? 'pointer' : undefined }}
+                >
                   <button
                     type="button"
                     className="showup-post-menu-btn"
@@ -3264,6 +3802,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       </div>
                     </div>
                   </div>
+                  {post.pulseLabel ? <p className="showup-pulse-label">{post.pulseLabel}</p> : null}
+                  {post.postType ? <p className="showup-post-type">{post.postType}</p> : null}
                   {editingPostId === post.id ? (
                     <div className="showup-post-edit">
                       <input
@@ -3391,13 +3931,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         {activeTab === 'ranks' ? (
           <div className="showup-ranks-view">
             {rankedMembers.map((member, index) => {
-              const badge =
+              const roles = roomRoles[member.user_id] || []
+              const topRole = roles[0] || (
                 index === 0 ? 'Leader'
                   : index === 1 ? 'Rising'
                     : index === 2 ? 'Building'
                       : member.streakValue > 0 ? 'Starting' : 'Not yet'
+              )
               const rowClass =
-                index === 0 ? 'is-leader'
+                topRole === 'Room Leader' || index === 0 ? 'is-leader'
                   : index === 1 ? 'is-rising'
                     : index === 2 ? 'is-building'
                       : ''
@@ -3415,12 +3957,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <p className="showup-rank-streak">
                       {member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}{member.task_done ? ' · ✓ Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
                     </p>
+                    {member.user_id === profile.id && roles.length > 1 ? (
+                      <div className="showup-rank-roles">
+                        {roles.map(role => (
+                          <span key={role} className={`showup-rank-role-chip ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
                     <span className="showup-rank-score-value">{member.streakValue}</span>
                     <span className="showup-rank-score-label">days</span>
                   </div>
-                  <div className="showup-rank-badge">{badge}</div>
+                  <div className="showup-rank-badge">{topRole}</div>
                 </div>
               )
             })}
