@@ -751,6 +751,7 @@ const SHOW_UP_STYLES = `
   border-radius:12px;
   border:1px solid rgba(249,95,133,0.25);
   margin-top:12px;
+  cursor:pointer;
 }
 .showup-feed-reactions{
   display:flex;
@@ -797,9 +798,20 @@ const SHOW_UP_STYLES = `
   background:#fff;
   flex-shrink:0;
 }
+.showup-reaction-chip{
+  border:none;
+  background:transparent;
+  padding:0;
+  color:#9a7088;
+  min-width:44px;
+}
 .showup-reaction-chip.is-active{
   background:transparent;
-  color:#9a7088;
+  color:#3b82f6;
+}
+.showup-reaction-chip.is-active svg{
+  fill:#3b82f6;
+  stroke:#3b82f6;
 }
 .showup-reaction-picker{
   position:absolute;
@@ -894,6 +906,7 @@ const SHOW_UP_STYLES = `
 .showup-comment-sheet{
   width:100%;
   max-width:560px;
+  height:58dvh;
   max-height:min(76dvh, 620px);
   background:#fff;
   border-radius:20px 20px 0 0;
@@ -903,6 +916,12 @@ const SHOW_UP_STYLES = `
   grid-template-rows:auto minmax(0,1fr) auto;
   gap:12px;
   box-shadow:0 -22px 48px rgba(77,49,66,0.14);
+  touch-action:pan-y;
+  transition:height .22s ease, max-height .22s ease;
+}
+.showup-comment-sheet.is-expanded{
+  height:75dvh;
+  max-height:75dvh;
 }
 .showup-comment-sheet-list{
   overflow-y:auto;
@@ -1261,6 +1280,91 @@ const SHOW_UP_STYLES = `
   background:var(--bg, #fff);
   padding:22px 12px;
 }
+.showup-toast-stack{
+  position:fixed;
+  top:calc(14px + env(safe-area-inset-top, 0px));
+  left:50%;
+  transform:translateX(-50%);
+  width:min(440px, calc(100% - 24px));
+  z-index:40;
+  pointer-events:none;
+}
+.showup-nudge-toast{
+  width:100%;
+  border:1px solid rgba(249,95,133,0.34);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 18px 44px rgba(77,49,66,0.18);
+  padding:12px;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  animation:showup-toast-in .24s ease both;
+  pointer-events:auto;
+}
+.showup-nudge-toast-text{
+  min-width:0;
+}
+.showup-nudge-toast-name{
+  margin:0 0 2px;
+  font-size:12px;
+  font-weight:800;
+  color:#4d3142;
+}
+.showup-nudge-toast-message{
+  margin:0;
+  font-size:12px;
+  line-height:1.4;
+  color:#8b6275;
+}
+.showup-nudge-toast-close,
+.showup-lightbox-close{
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+}
+.showup-nudge-toast-close{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  color:#9a7088;
+  font-size:20px;
+}
+@keyframes showup-toast-in{
+  from{opacity:0;transform:translateY(-14px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.showup-lightbox{
+  position:fixed;
+  inset:0;
+  z-index:50;
+  background:rgba(0,0,0,0.92);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  box-sizing:border-box;
+}
+.showup-lightbox img{
+  max-width:100%;
+  max-height:100%;
+  object-fit:contain;
+  border-radius:12px;
+}
+.showup-lightbox-close{
+  position:absolute;
+  top:calc(14px + env(safe-area-inset-top, 0px));
+  right:14px;
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.14);
+  color:#fff;
+  font-size:28px;
+  line-height:1;
+}
 @media (max-width: 767px){
   .showup-root{
     min-height:auto;
@@ -1331,10 +1435,15 @@ const SHOW_UP_STYLES = `
   }
   .showup-comment-sheet{
     max-width:100%;
-    max-height:100dvh;
-    min-height:100dvh;
+    height:58dvh;
+    max-height:58dvh;
+    min-height:0;
     border-radius:20px 20px 0 0;
     padding-bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  .showup-comment-sheet.is-expanded{
+    height:75dvh;
+    max-height:75dvh;
   }
   .showup-member-grid{
     grid-template-columns:repeat(2, minmax(0, 146px));
@@ -1710,6 +1819,14 @@ function getFeedStorageKey(roomName) {
   return `showup_feed_${normalize(roomName)}`
 }
 
+function getActiveRoomStorageKey(userId) {
+  return `showup_active_room_${normalize(userId || 'local-user')}`
+}
+
+function getCheckInPostStorageKey(roomName, userId, checkInTime) {
+  return `showup_checkin_posted_${normalize(roomName)}_${normalize(userId)}_${normalize(checkInTime)}`
+}
+
 function getRoomId(roomName) {
   return normalize(roomName)
 }
@@ -1809,12 +1926,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [toast, setToast] = useState('')
   const [commentSheetPostId, setCommentSheetPostId] = useState('')
   const [commentImage, setCommentImage] = useState('')
+  const [lightboxImage, setLightboxImage] = useState('')
+  const [nudgeToast, setNudgeToast] = useState(null)
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReplies, setExpandedReplies] = useState({})
   const [replyDrafts, setReplyDrafts] = useState({})
   const [heldCommentId, setHeldCommentId] = useState('')
-  const [reactionPickerPostId, setReactionPickerPostId] = useState('')
   const [openPostMenuId, setOpenPostMenuId] = useState('')
   const [editingPostId, setEditingPostId] = useState('')
   const [editPostDraft, setEditPostDraft] = useState('')
@@ -1834,6 +1952,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const fileInputRef = useRef(null)
   const commentFileInputRef = useRef(null)
   const commentHoldTimerRef = useRef(null)
+  const commentSheetTouchStartRef = useRef(null)
 
   const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
   const daysStreak = Math.max(0, Number(summary.currentStreak || 0))
@@ -1878,6 +1997,49 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   useEffect(() => () => {
     if (commentHoldTimerRef.current) window.clearTimeout(commentHoldTimerRef.current)
   }, [])
+
+  useEffect(() => {
+    if (!nudgeToast) return undefined
+    const timer = window.setTimeout(() => setNudgeToast(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [nudgeToast])
+
+  useEffect(() => {
+    function showRecipientNudge(notification) {
+      if (!notification || notification.toUserId !== profile.id) return
+      setNudgeToast(notification)
+    }
+
+    function handleNudgeEvent(event) {
+      showRecipientNudge(event.detail)
+    }
+
+    function handleStorageEvent(event) {
+      if (event.key !== getNotificationStorageKey(profile.id)) return
+      const notifications = safeJsonParse(event.newValue, [])
+      showRecipientNudge(safeArray(notifications)[0])
+    }
+
+    window.addEventListener('phasr-showup-notification', handleNudgeEvent)
+    window.addEventListener('storage', handleStorageEvent)
+    return () => {
+      window.removeEventListener('phasr-showup-notification', handleNudgeEvent)
+      window.removeEventListener('storage', handleStorageEvent)
+    }
+  }, [profile.id])
+
+  useEffect(() => {
+    if (selectedRoom || !profile.id) return
+    const rememberedRoom = localStorage.getItem(getActiveRoomStorageKey(profile.id))
+    if (!rememberedRoom) return
+    const storedMembers = safeRead(getMockMemberStorageKey(rememberedRoom), [])
+    const activeMember = safeArray(storedMembers).find(member => (
+      member?.user_id === profile.id && member?.checked_in && !member?.task_done
+    ))
+    if (!activeMember) return
+    setSelectedRoom(rememberedRoom)
+    setActiveTab('live')
+  }, [profile.id, selectedRoom])
 
   useEffect(() => {
     let alive = true
@@ -2244,12 +2406,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     await ensureRoomMembership(roomName)
     setSelectedRoom(roomName)
     setActiveTab('live')
+    safeWrite(getActiveRoomStorageKey(profile.id), roomName)
     setToast("You're in. Tap Check In to start your session.")
     setLoading(false)
   }
 
   function handleLeaveForNow() {
     setExitPromptOpen(false)
+    if (selectedRoom) safeWrite(getActiveRoomStorageKey(profile.id), selectedRoom)
     setSelectedRoom(null)
     setToast("You're still checked in - come back to mark done.")
   }
@@ -2274,6 +2438,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     const joined = safeRead(getJoinedRoomsKey(profile.id), [])
     safeWrite(getJoinedRoomsKey(profile.id), (Array.isArray(joined) ? joined : []).filter(name => name !== roomName))
+    safeRemove(getActiveRoomStorageKey(profile.id))
     setMembers([])
     setCheckedIn(false)
     setTaskDone(false)
@@ -2305,6 +2470,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setCheckedIn(true)
     setTaskDone(false)
     setDoneTime('')
+    safeWrite(getActiveRoomStorageKey(fallbackProfile.id), selectedRoom)
+    setToast('Session active. Make it count.')
     setMembers(current => {
       const next = [...current]
       const index = next.findIndex(member => member.user_id === fallbackProfile.id)
@@ -2324,7 +2491,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     } finally {
       setCheckInBusy(false)
     }
-    await createRoomActivityPost(`${fallbackProfile.name} checked in at ${formatTime(nowIso)}.`)
+    const checkInPostKey = getCheckInPostStorageKey(selectedRoom, fallbackProfile.id, nowIso)
+    if (!localStorage.getItem(checkInPostKey)) {
+      safeWrite(checkInPostKey, true)
+      await createRoomActivityPost(`${fallbackProfile.name} just checked in. Say hi \u{1F44B}`)
+    }
   }
 
   async function handleMarkDone() {
@@ -2349,6 +2520,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setCheckedIn(true)
     setTaskDone(true)
     setDoneTime(nowIso)
+    setToast('')
+    safeRemove(getActiveRoomStorageKey(profile.id))
     setShowProgressPhotoPrompt(true)
     setMembers(current => current.map(member => (
       member.user_id === profile.id ? { ...member, ...donePatch } : member
@@ -2359,7 +2532,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { error: doneError } = await supabase
         .from('show_up_checkins')
-        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt, streak_count: nextStreakCount })
+        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt, task_done_time: nowIso, streak_count: nextStreakCount })
         .eq('room_name', selectedRoom)
         .eq('user_id', profile.id)
       if (doneError) throw doneError
@@ -2405,13 +2578,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
   }
 
-  function handleToggleReaction(postId, reactionKey) {
+  function handleToggleReaction(postId, reactionKey = 'like') {
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
-      const nextReactions = REACTION_OPTIONS.reduce((acc, reaction) => {
-        acc[reaction.key] = safeArray(post.reactions?.[reaction.key]).filter(userId => userId !== profile.id)
-        return acc
-      }, {})
+      const nextReactions = { ...(post.reactions || {}) }
+      nextReactions[reactionKey] = safeArray(post.reactions?.[reactionKey]).filter(userId => userId !== profile.id)
       const alreadyReacted = safeArray(post.reactions?.[reactionKey]).includes(profile.id)
       if (!alreadyReacted) nextReactions[reactionKey] = [...(nextReactions[reactionKey] || []), profile.id]
       return {
@@ -2419,7 +2590,25 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         reactions: nextReactions,
       }
     }))
-    setReactionPickerPostId('')
+  }
+
+  function closeCommentSheet() {
+    setCommentSheetPostId('')
+    setCommentImage('')
+    commentSheetTouchStartRef.current = null
+    if (commentFileInputRef.current) commentFileInputRef.current.value = ''
+  }
+
+  function handleCommentSheetTouchStart(event) {
+    commentSheetTouchStartRef.current = event.touches?.[0]?.clientY ?? null
+  }
+
+  function handleCommentSheetTouchEnd(event) {
+    const startY = commentSheetTouchStartRef.current
+    const endY = event.changedTouches?.[0]?.clientY
+    commentSheetTouchStartRef.current = null
+    if (typeof startY !== 'number' || typeof endY !== 'number') return
+    if (endY - startY > 70) closeCommentSheet()
   }
 
   function handleStartEditPost(post) {
@@ -2584,7 +2773,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     safeWrite(getNotificationStorageKey(target.user_id), [notification, ...(Array.isArray(saved) ? saved : [])].slice(0, 50))
     window.dispatchEvent(new CustomEvent('phasr-showup-notification', { detail: notification }))
     if (notifyPostToFeed) {
-      await createFeedPost({ text, image: '', anonymous: notifyAnonymous })
+      const senderName = notifyAnonymous ? 'Someone' : profile.name
+      await createRoomActivityPost(`${senderName} nudged ${target.display_name}: ${text}`)
     }
     setSheetState({ open: false, member: null })
     setSelectedTemplate('')
@@ -2660,6 +2850,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
   }, [realMembers, profile.id])
+  const roomBannerText = selectedRoom && activeTab === 'live' && !taskDone
+    ? (checkedIn ? 'Session active. Make it count.' : "You're in. Tap Check In to start your session.")
+    : ''
 
   if (!selectedRoom) {
     return (
@@ -2672,6 +2865,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         }}
       >
         <style>{SHOW_UP_STYLES}</style>
+        {nudgeToast ? (
+          <div className="showup-toast-stack" role="status" aria-live="polite">
+            <div className="showup-nudge-toast">
+              <div className="showup-avatar">{nudgeToast.anonymous ? 'AN' : buildInitials(nudgeToast.fromName || 'Someone')}</div>
+              <div className="showup-nudge-toast-text">
+                <p className="showup-nudge-toast-name">{nudgeToast.anonymous ? 'Someone' : nudgeToast.fromName || 'Someone'}</p>
+                <p className="showup-nudge-toast-message">{nudgeToast.text}</p>
+              </div>
+              <button type="button" className="showup-nudge-toast-close" onClick={() => setNudgeToast(null)} aria-label="Dismiss nudge">×</button>
+            </div>
+          </div>
+        ) : null}
         <div
           className="showup-shell"
           style={{
@@ -2864,9 +3069,21 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   return (
     <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%' }}>
       <style>{SHOW_UP_STYLES}</style>
+      {nudgeToast ? (
+        <div className="showup-toast-stack" role="status" aria-live="polite">
+          <div className="showup-nudge-toast">
+            <div className="showup-avatar">{nudgeToast.anonymous ? 'AN' : buildInitials(nudgeToast.fromName || 'Someone')}</div>
+            <div className="showup-nudge-toast-text">
+              <p className="showup-nudge-toast-name">{nudgeToast.anonymous ? 'Someone' : nudgeToast.fromName || 'Someone'}</p>
+              <p className="showup-nudge-toast-message">{nudgeToast.text}</p>
+            </div>
+            <button type="button" className="showup-nudge-toast-close" onClick={() => setNudgeToast(null)} aria-label="Dismiss nudge">×</button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180 }}>
-        {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
+        {roomBannerText ? <div className="showup-empty" style={{ marginBottom: 10 }}>{roomBannerText}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={() => setExitPromptOpen(true)}>{'\u2190'}</button>
@@ -2961,8 +3178,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
                     <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'done' ? 'Completed ✓' : status === 'active' ? `Checked in ${formatTime(member.check_in_time)}` : 'Not yet'}
+                      {status === 'done' ? 'Completed' : status === 'active' ? 'Active now' : 'Not yet'}
                     </p>
+                    {member.check_in_time && status !== 'idle' ? (
+                      <p className="showup-member-time">Checked in {formatTime(member.check_in_time)}</p>
+                    ) : null}
                   </div>
                   {!isSelf ? (
                     <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
@@ -2990,7 +3210,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   placeholder="Share what you are working on..."
                 />
               </div>
-              {postImage ? <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" /> : null}
+              {postImage ? <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" onClick={() => setLightboxImage(postImage)} /> : null}
               <div className="showup-compose-actions">
                 <button type="button" className="showup-photo-btn" onClick={() => fileInputRef.current?.click()}>
                   <ImageIcon size={15} strokeWidth={2.2} />
@@ -3008,8 +3228,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <div className="showup-empty">No posts yet. Be the first to share.</div>
             ) : (
               visiblePosts.map(post => {
-                const reactionSummary = getReactionSummary(post.reactions).slice(0, 3)
-                const reactionTotal = reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
+                const likeCount = safeArray(post.reactions?.like).length
+                const likedByMe = safeArray(post.reactions?.like).includes(profile.id)
+                const reactionSummary = getReactionSummary(post.reactions).filter(reaction => reaction.key !== 'like').slice(0, 3)
+                const reactionTotal = likeCount + reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
                 const isOwnPost = post.authorId === profile.id || normalize(post.authorName) === normalize(profile.name)
                 return (
                 <div key={post.id} className={`showup-feed-card ${post.anonymous ? 'is-anonymous' : ''}`}>
@@ -3061,37 +3283,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   ) : (
                     <p className="showup-feed-text">{post.text}</p>
                   )}
-                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" /> : null}
+                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={() => setLightboxImage(post.image)} /> : null}
                   <div className="showup-feed-reactions">
                     <div className="showup-feed-chip-row" style={{ justifyContent: 'flex-start' }}>
                       <button
                         type="button"
-                        className="showup-reaction-chip"
-                        onClick={() => setReactionPickerPostId(current => current === post.id ? '' : post.id)}
-                        aria-label="Choose reaction"
+                        className={`showup-reaction-chip ${likedByMe ? 'is-active' : ''}`}
+                        onClick={() => handleToggleReaction(post.id, 'like')}
+                        aria-label={likedByMe ? 'Unlike post' : 'Like post'}
                       >
                         <ThumbsUp size={15} strokeWidth={2.2} />
-                        <span>Like</span>
+                        <span>{likeCount}</span>
                       </button>
                       {reactionSummary.length ? (
                         <div className="showup-reaction-summary" aria-label={`${reactionTotal} reactions`}>
                           {reactionSummary.map(reaction => (
                             <span key={reaction.key}>{reaction.emoji}{reaction.count}</span>
-                          ))}
-                        </div>
-                      ) : null}
-                      {reactionPickerPostId === post.id ? (
-                        <div className="showup-reaction-picker">
-                          {REACTION_OPTIONS.map(reaction => (
-                            <button
-                              key={reaction.key}
-                              type="button"
-                              className="showup-reaction-option"
-                              onClick={() => handleToggleReaction(post.id, reaction.key)}
-                              aria-label={reaction.label}
-                            >
-                              {reaction.emoji}
-                            </button>
                           ))}
                         </div>
                       ) : null}
@@ -3243,9 +3450,21 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         </div>
       ) : null}
 
+      {lightboxImage ? (
+        <div className="showup-lightbox" onClick={() => setLightboxImage('')}>
+          <button type="button" className="showup-lightbox-close" onClick={() => setLightboxImage('')} aria-label="Close image">×</button>
+          <img src={lightboxImage} alt="Expanded feed upload" onClick={event => event.stopPropagation()} />
+        </div>
+      ) : null}
+
       {commentSheetPost ? (
-        <div className="showup-sheet-backdrop" onClick={() => setCommentSheetPostId('')}>
-          <div className="showup-comment-sheet" onClick={event => event.stopPropagation()}>
+        <div className="showup-sheet-backdrop" onClick={closeCommentSheet}>
+          <div
+            className={`showup-comment-sheet ${commentDraft ? 'is-expanded' : ''}`}
+            onClick={event => event.stopPropagation()}
+            onTouchStart={handleCommentSheetTouchStart}
+            onTouchEnd={handleCommentSheetTouchEnd}
+          >
             <div className="showup-sheet-handle" />
             <h2 className="showup-sheet-title">
               <MessageCircle size={18} strokeWidth={2.3} />
