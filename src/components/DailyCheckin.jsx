@@ -516,22 +516,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const phaseStart = useMemo(() => {
     const todayKey = new Date().toISOString().slice(0, 10)
     const joinedAt = String(localStorage.getItem('phasr_joined_at') || '').slice(0, 10)
-    const stored = localStorage.getItem('phasr_phase1_start_date')
     const storedScope = localStorage.getItem('phasr_phase1_start_scope')
     const joinedDate = parseDateOnly(joinedAt)
-    const storedDate = parseDateOnly(stored)
     const normalizedJoinedAt = joinedDate ? joinedAt : todayKey
     if (!joinedAt) {
       safeSet('phasr_joined_at', normalizedJoinedAt)
     }
-    const nextStart =
-      storedScope === phaseScope && storedDate
-        ? stored
-        : normalizedJoinedAt
+    const nextStart = normalizedJoinedAt
 
-    if (stored !== nextStart) {
-      safeSet('phasr_phase1_start_date', nextStart)
-    }
+    safeSet('phasr_phase1_start_date', nextStart)
     if (storedScope !== phaseScope) {
       safeSet('phasr_phase1_start_scope', phaseScope)
     }
@@ -568,8 +561,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const isFuture = activeWeek > currentWeek || (activeWeek === currentWeek && day > currentDayNumber)
     const isCurrent = activeWeek === currentWeek && day === currentDayNumber
     const isPast = activeWeek < currentWeek || (activeWeek === currentWeek && day < currentDayNumber)
-    const allTasksDone = Array.isArray(dayTasks) && dayTasks.length > 0 && dayTasks.every(task => task?.done)
-    const done = streakValue === 'true' || allTasksDone
+    const anyTaskDone = Array.isArray(dayTasks) && dayTasks.some(task => task?.done)
+    const done = streakValue === 'true' || anyTaskDone
     return { label, day, done, isCurrent, isPast, isFuture }
   }), [activeWeek, currentWeek, currentDayNumber, phaseScope, tasks, refresh])
 
@@ -717,7 +710,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       streakDays: currentStreak,
       completedActionsThisWeek: completedTasksThisWeek,
       rank: streakLabel,
-      rankSubtitle: `${currentStreak} ${currentStreak === 1 ? 'day' : 'days'} in a row`,
+      rankSubtitle: `${currentStreak} ${currentStreak === 1 ? 'day' : 'days'} active`,
       stageLevel: currentLevel,
       stageLabel: streakLabel,
       milestones,
@@ -774,8 +767,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     setLockInState(loadLockInState())
     onLockInChange?.()
 
-    const allDoneToday = updated.length > 0 && updated.every(item => item.done)
-    if (allDoneToday) {
+    const checkedInToday = updated.some(item => item.done)
+    if (checkedInToday) {
       safeSet(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
       safeSet(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
     } else {
@@ -884,7 +877,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           {hasPillars && !isNewUser && !milestoneMessage && weekComplete && !currentPulseDone && (
             <>
               <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
-                Week {activeWeek} closed at {weekPercent}%. Complete your weekly reflection with Sage before week {activeWeek + 1} opens.
+                Week {activeWeek} closed at {weekPercent}%. Complete Sage Reflect before week {activeWeek + 1} opens.
               </p>
               <button onClick={openPulse} style={{ width: '100%', minHeight: 46, padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
                 Sage Reflect

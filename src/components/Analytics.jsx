@@ -505,13 +505,13 @@ export default function Analytics() {
             </TabButton>
           </div>
           <div style={{ display: 'grid', justifyItems: 'center' }}>
-            <TabButton active={activeTab === 'phases'} onClick={() => setActiveTab('phases')}>
-              Phases
+            <TabButton active={activeTab === 'journal'} onClick={() => setActiveTab('journal')}>
+              Journal
             </TabButton>
           </div>
           <div style={{ display: 'flex', gap: '0.55rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <TabButton active={activeTab === 'journal'} onClick={() => setActiveTab('journal')}>
-              Journal
+            <TabButton active={activeTab === 'phases'} onClick={() => setActiveTab('phases')}>
+              Phases
             </TabButton>
           </div>
         </div>

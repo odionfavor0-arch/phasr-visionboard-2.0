@@ -2278,6 +2278,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   async function handleCheckIn() {
     if (!selectedRoom || checkedIn || checkInBusy) return
     const fallbackProfile = profile.id === 'local-user' ? getProfile(user, null) : profile
+    if (fallbackProfile.id !== profile.id || fallbackProfile.name !== profile.name) {
+      setProfile(fallbackProfile)
+    }
     const nowIso = new Date().toISOString()
     const payload = {
       room_name: selectedRoom,
@@ -2307,7 +2310,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { error: checkInError } = await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
       if (checkInError) throw checkInError
-      await loadRoomCounts(profile)
+      await loadRoomCounts(fallbackProfile)
     } catch (nextError) {
       console.error('Show Up check-in failed', nextError)
     } finally {
@@ -2922,6 +2925,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {error ? <div className="showup-empty">{error}</div> : null}
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
+        {showProgressPhotoPrompt ? (
+          <div className="showup-sync-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span>Nice work. Post a progress photo?</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="showup-mini-link" onClick={() => fileInputRef.current?.click()}>Add photo</button>
+              <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)}>Dismiss</button>
+            </div>
+          </div>
+        ) : null}
 
         {activeTab === 'live' ? (
           <div className="showup-member-grid">
@@ -2959,15 +2971,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {activeTab === 'feed' ? (
           <div className="showup-feed-view">
-            {showProgressPhotoPrompt ? (
-              <div className="showup-sync-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <span>Nice work. Post a progress photo?</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" className="showup-mini-link" onClick={() => fileInputRef.current?.click()}>Add photo</button>
-                  <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)}>Dismiss</button>
-                </div>
-              </div>
-            ) : null}
             <div className="showup-compose-card">
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>

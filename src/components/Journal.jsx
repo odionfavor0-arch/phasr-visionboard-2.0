@@ -533,7 +533,7 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
           {
             role: 'system',
              content: isWeeklyPulse
-               ? `The user just completed their weekly reflection reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
+               ? `The user just completed Sage Reflect. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
 
 Sage Reflect is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
 
@@ -1953,7 +1953,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your weekly reset.</p>
               <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Sage Reflect. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
               <button type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
-                Open Sage Reflect
+                Sage Reflect
               </button>
             </div>
           ) : null}
