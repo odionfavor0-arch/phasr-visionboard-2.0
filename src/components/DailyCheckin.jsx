@@ -353,6 +353,25 @@ function countDaysDone(week, dayLimit = 7, scope = 'global') {
   return done
 }
 
+function hasTrackedProgressForScope(scope = 'global') {
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index) || ''
+      const isScopedTask = key.startsWith(`phasr_tasks_${scope}_w`)
+      const isScopedStreak = key.startsWith(`phasr_streak_${scope}_w`)
+      if (!isScopedTask && !isScopedStreak) continue
+      if (isScopedStreak && localStorage.getItem(key) === 'true') return true
+      if (isScopedTask) {
+        const tasks = safeRead(key, [])
+        if (Array.isArray(tasks) && tasks.some(task => task?.done)) return true
+      }
+    }
+  } catch {
+    return false
+  }
+  return false
+}
+
 function countWeekTasksDone(week, scope = 'global') {
   let done = 0
   for (let day = 1; day <= 7; day += 1) {
@@ -497,6 +516,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const nonNegotiables = useMemo(() => buildNonNegotiables(currentPhase), [currentPhase])
   const phaseScope = useMemo(() => buildFingerprint(currentPhase || {}), [currentPhase])
   const totalWeeks = Math.max(weeklyData.weeks?.length || 1, 1)
+  const tasksPerWeek = activities.length * 7
   const [activeWeek, setActiveWeek] = useState(1)
   const [tasks, setTasks] = useState([])
   const [showPhaseModal, setShowPhaseModal] = useState(false)
@@ -516,13 +536,25 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const phaseStart = useMemo(() => {
     const todayKey = new Date().toISOString().slice(0, 10)
     const joinedAt = String(localStorage.getItem('phasr_joined_at') || '').slice(0, 10)
+    const stored = localStorage.getItem('phasr_phase1_start_date')
     const storedScope = localStorage.getItem('phasr_phase1_start_scope')
     const joinedDate = parseDateOnly(joinedAt)
+    const storedDate = parseDateOnly(stored)
+    const todayDate = parseDateOnly(todayKey)
     const normalizedJoinedAt = joinedDate ? joinedAt : todayKey
     if (!joinedAt) {
       safeSet('phasr_joined_at', normalizedJoinedAt)
     }
-    const nextStart = normalizedJoinedAt
+    const hasProgress = hasTrackedProgressForScope(phaseScope)
+    const shouldResetStaleStart =
+      !hasProgress &&
+      storedDate &&
+      todayDate &&
+      storedDate.getTime() < todayDate.getTime()
+    const nextStart =
+      storedScope === phaseScope && storedDate && !shouldResetStaleStart
+        ? stored
+        : todayKey
 
     safeSet('phasr_phase1_start_date', nextStart)
     if (storedScope !== phaseScope) {
@@ -580,7 +612,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay, phaseScope) : 0, [hasPillars, activeWeek, displayedDay, phaseScope, tasks])
   const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek, phaseScope) : 0, [hasPillars, activeWeek, phaseScope, tasks])
   const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek, phaseScope) : 0, [hasPillars, activeWeek, phaseScope, tasks])
-  const tasksPerWeek = activities.length * 7
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
   const currentPulseDone = weekStatuses.find(item => item.week === activeWeek)?.pulseDone || false
   const previousPulseDone = activeWeek === 1 ? true : (weekStatuses.find(item => item.week === activeWeek - 1)?.pulseDone || false)
@@ -848,7 +879,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #e8407a, #f472a8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>Live Score</p>
-            <p style={{ fontSize: '0.65rem', color: '#b08090', marginLeft: 'auto' }}>{weekPercent}% this week</p>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <p style={{ fontSize: '0.65rem', color: '#b08090', margin: 0 }}>{weekPercent}% this week</p>
+              <button
+                type="button"
+                onClick={openPulse}
+                style={{ minHeight: 28, padding: '0.35rem 0.65rem', borderRadius: 999, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#e8407a', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Sage Reflect
+              </button>
+            </div>
           </div>
 
           {!sageCardExpanded && (
@@ -902,13 +942,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           )}
             </>
           )}
-          <button
-            type="button"
-            onClick={openPulse}
-            style={{ marginTop: 10, minHeight: 34, padding: '0.5rem 0.8rem', borderRadius: 999, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#e8407a', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
-          >
-            Sage Reflect
-          </button>
         </div>
 
         {!hasPillars && (
@@ -1042,8 +1075,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </div>
             )}
             {tasks.map(task => (
-              <div
+              <button
                 key={task.id}
+                type="button"
                 onClick={() => toggleTask(task.id)}
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -1051,10 +1085,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                     toggleTask(task.id)
                   }
                 }}
-                role="button"
-                tabIndex={0}
                 style={{
                   width: '100%',
+                  appearance: 'none',
                   position: 'relative',
                   isolation: 'isolate',
                   zIndex: 3,
@@ -1069,6 +1102,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   borderRadius: 12,
                   cursor: 'pointer',
                   textAlign: 'left',
+                  fontFamily: "'DM Sans', sans-serif",
                   opacity: 1,
                 }}
               >
@@ -1081,7 +1115,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   </div>
                   <div style={{ fontSize: 12, color: '#7e5d68', marginTop: 4 }}>{task.pillar}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

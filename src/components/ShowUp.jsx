@@ -769,6 +769,8 @@ const SHOW_UP_STYLES = `
   justify-content:flex-start;
   align-items:center;
   min-width:0;
+  flex:1 1 auto;
+  overflow:visible;
 }
 .showup-reaction-summary{
   display:inline-flex;
@@ -785,13 +787,15 @@ const SHOW_UP_STYLES = `
   min-height:34px;
   border-radius:999px;
   padding:0 10px;
-  color:#9a7088;
+  color:#4d3142;
   font-size:12px;
   font-weight:700;
   cursor:pointer;
   display:inline-flex;
   align-items:center;
   gap:6px;
+  background:#fff;
+  flex-shrink:0;
 }
 .showup-reaction-chip.is-active{
   background:transparent;
@@ -1525,7 +1529,7 @@ function safeJsonParse(value, fallback = null) {
 
 function compactFeedPostsForStorage(posts) {
   return (Array.isArray(posts) ? posts : [])
-    .slice(0, 30)
+    .slice(0, 100)
     .map(post => ({
       ...post,
       image: post?.image || '',
@@ -3093,6 +3097,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       onClick={() => setCommentSheetPostId(post.id)}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
+                      <span>Comment</span>
                       <span>{(post.comments || []).length}</span>
                     </button>
                   </div>

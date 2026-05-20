@@ -3310,6 +3310,7 @@ Return JSON only:
                                    }
                                    setScheduleState(next)
                                    if (userId && weekStartKey) saveNonNegotiableSchedule(scheduleStateKey, next)
+                                   window.dispatchEvent(new CustomEvent('phasr-nonnegotiable-schedule-updated', { detail: { phaseId, weekStartKey } }))
                                  }}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 4,
