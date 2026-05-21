@@ -2121,11 +2121,12 @@ function getRoomTitleFromStreak(count) {
   if (count >= 30) return 'Locked In'
   if (count >= 14) return 'Building Together'
   if (count >= 7) return 'Momentum Room'
-  return 'Show Up Room'
+  return ''
 }
 
 function getRoomStreakLabel(streak) {
   const count = Math.max(0, Number(streak?.count || 0))
+  if (count <= 0) return ''
   if (count <= 1) return 'Room streak: Day 1'
   return `\u{1F525} Room streak: ${count} days`
 }
@@ -2773,12 +2774,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     safeWrite(postedKey, [...posted])
   }
 
-  async function postSundayRecapIfNeeded(roomName, nextRoomStreak) {
+  async function postSundayRecapIfNeeded(roomName, nextRoomStreak, nextMembers = []) {
     if (getLocalDayName() !== 'Sunday') return
     const currentWeek = getIsoWeekNumber()
     if (Number(localStorage.getItem(getWeeklyRecapStorageKey(roomName)) || 0) === currentWeek) return
     const activity = getRoomActivity(roomName)
     const weekDates = new Set(getCurrentWeekDateKeys())
+    const realMembers = safeArray(nextMembers).filter(member => !isPlaceholderMember(member))
     const weeklyCheckins = activity.filter(event => event.type === 'checkin' && weekDates.has(event.date))
     const weeklyDone = activity.filter(event => event.type === 'done' && weekDates.has(event.date))
     const byDay = {}
@@ -2977,7 +2979,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       await createRoomActivityPost(`${fallbackProfile.name} just checked in. Say hi \u{1F44B}`)
     }
     await postWeeklyPulseIfNeeded(selectedRoom)
-    await postSundayRecapIfNeeded(selectedRoom, nextRoomStreak)
+    await postSundayRecapIfNeeded(selectedRoom, nextRoomStreak, [
+      payload,
+      ...members.filter(member => member.user_id !== fallbackProfile.id),
+    ])
     await postSilentAccountability(selectedRoom, [
       payload,
       ...members.filter(member => member.user_id !== fallbackProfile.id),
@@ -3599,8 +3604,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <span>{activeCount} active</span>
             </div>
           </div>
-          <p className="showup-room-subtitle">{roomIdentityTitle}</p>
-          <p className="showup-room-streak">{getRoomStreakLabel(roomStreak)}</p>
+          {roomIdentityTitle ? <p className="showup-room-subtitle">{roomIdentityTitle}</p> : null}
+          {getRoomStreakLabel(roomStreak) ? <p className="showup-room-streak">{getRoomStreakLabel(roomStreak)}</p> : null}
 
           {activeTab === 'live' && !checkedIn && !taskDone ? (
             <div className="showup-checkin-actions">
