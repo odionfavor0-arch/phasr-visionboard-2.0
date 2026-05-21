@@ -475,17 +475,18 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-card{
   width:146px;
-  min-height:132px;
+  min-height:108px;
   padding:10px;
   display:grid;
   grid-template-columns:1fr;
   justify-items:center;
   align-content:center;
-  gap:6px;
+  gap:8px;
   background:var(--bg, #fff);
   border:1px solid rgba(249,95,133,0.18);
   border-radius:14px;
   text-align:center;
+  cursor:pointer;
 }
 .showup-member-dot{
   position:absolute;
@@ -497,6 +498,7 @@ const SHOW_UP_STYLES = `
   border:2px solid #fff;
 }
 .showup-member-dot.is-active{background:#2fb66d}
+.showup-member-dot.is-inactive{background:#c9b2be}
 .showup-member-dot.is-done{background:#f95f85}
 .showup-member-dot.is-idle{background:#c9b2be}
 .showup-avatar{
@@ -525,23 +527,11 @@ const SHOW_UP_STYLES = `
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.showup-member-status{
-  margin:2px 0 0;
-  font-size:11px;
-  text-align:center;
-}
-.showup-member-time{
-  margin:2px 0 0;
-  font-size:10px;
-  color:#b29cab;
-  text-align:center;
-  line-height:1.2;
-}
 .showup-role-badge{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  margin-top:4px;
+  margin-top:0;
   padding:4px 7px;
   border-radius:999px;
   color:#b98097;
@@ -616,35 +606,6 @@ const SHOW_UP_STYLES = `
   border-radius:14px;
   background:rgba(255,255,255,0.72);
 }
-.showup-proof-strip{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  padding:0 0 10px;
-  margin-bottom:6px;
-  scrollbar-width:none;
-}
-.showup-proof-strip::-webkit-scrollbar{display:none}
-.showup-proof-chip{
-  border:1px solid rgba(249,95,133,0.2);
-  border-radius:999px;
-  background:#fff;
-  color:#9a7088;
-  padding:8px 10px;
-  cursor:pointer;
-  font-family:'DM Sans',sans-serif;
-  font-size:10px;
-  font-weight:900;
-  line-height:1;
-  white-space:nowrap;
-  flex:0 0 auto;
-}
-.showup-proof-chip.is-selected{
-  color:#fff;
-  background:linear-gradient(135deg,#f95f85,#ff8ca8);
-  border-color:transparent;
-  box-shadow:0 10px 22px rgba(249,95,133,0.18);
-}
 .showup-compose-top,
 .showup-feed-header,
 .showup-comment-row{
@@ -700,11 +661,12 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-card.is-anonymous{border-style:dashed}
 .showup-feed-card{
-  border:1px solid rgba(249,95,133,0.16);
-  border-radius:14px;
-  background:rgba(255,255,255,0.72);
+  border:1px solid rgba(77,49,66,0.08);
+  border-radius:12px;
+  background:#fff;
   padding:14px;
   position:relative;
+  box-shadow:0 10px 28px rgba(77,49,66,0.08);
 }
 .showup-feed-card.is-anonymous{
   border:1px dashed rgba(249,95,133,0.38);
@@ -752,55 +714,14 @@ const SHOW_UP_STYLES = `
   display:flex;
   gap:10px;
   align-items:center;
+  min-width:0;
 }
-.showup-post-menu-btn{
-  position:absolute;
-  top:12px;
-  right:12px;
-  width:34px;
-  height:34px;
-  border:1px solid rgba(249,95,133,0.16);
-  border-radius:50%;
-  background:rgba(255,255,255,0.82);
-  color:#9a7088;
-  display:grid;
-  place-items:center;
-  cursor:pointer;
-}
-.showup-post-menu{
-  position:absolute;
-  top:50px;
-  right:12px;
-  width:150px;
-  border:1px solid rgba(249,95,133,0.16);
-  border-radius:12px;
-  background:#fff;
-  box-shadow:0 16px 36px rgba(77,49,66,0.14);
-  overflow:hidden;
-  z-index:6;
-}
-.showup-post-menu button{
+.showup-feed-header-main{
+  min-width:0;
+  display:flex;
+  align-items:baseline;
+  gap:8px;
   width:100%;
-  min-height:38px;
-  border:none;
-  border-top:1px solid rgba(77,49,66,0.06);
-  background:transparent;
-  color:#4d3142;
-  text-align:left;
-  padding:0 12px;
-  font-family:'DM Sans',sans-serif;
-  font-size:12px;
-  font-weight:800;
-  cursor:pointer;
-}
-.showup-post-menu button:first-child{border-top:none}
-.showup-post-menu-note{
-  margin:0;
-  padding:10px 12px;
-  color:#9a7088;
-  font-size:12px;
-  font-weight:700;
-  line-height:1.35;
 }
 .showup-post-edit{
   display:grid;
@@ -830,11 +751,15 @@ const SHOW_UP_STYLES = `
   font-size:13px;
   font-weight:700;
   color:#4d3142;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .showup-feed-time{
-  margin:2px 0 0;
+  margin:0;
   font-size:11px;
   color:#9a7088;
+  white-space:nowrap;
 }
 .showup-feed-text{
   margin:12px 0 0;
@@ -845,12 +770,15 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-image{
   width:100%;
-  aspect-ratio:4 / 3;
-  object-fit:cover;
+  max-width:100%;
+  max-height:520px;
+  object-fit:contain;
   border-radius:12px;
   border:1px solid rgba(249,95,133,0.25);
   margin-top:12px;
   cursor:pointer;
+  background:#f8f0f4;
+  display:block;
 }
 .showup-feed-reactions{
   display:flex;
@@ -860,33 +788,19 @@ const SHOW_UP_STYLES = `
   margin-top:14px;
   padding-top:12px;
   border-top:1px solid rgba(77,49,66,0.08);
+  flex-wrap:nowrap;
 }
 .showup-feed-chip-row{
   display:flex;
-  flex-wrap:nowrap;
-  gap:8px;
-  position:relative;
-  justify-content:flex-start;
-  align-items:center;
-  min-width:0;
-  flex:1 1 auto;
-  overflow:visible;
-}
-.showup-reaction-summary{
-  display:inline-flex;
   align-items:center;
   gap:6px;
-  font-size:12px;
-  color:#9a7088;
-  font-weight:800;
-  flex-wrap:nowrap;
-  white-space:nowrap;
+  min-width:0;
 }
 .showup-reaction-chip,
 .showup-comment-toggle{
-  min-height:34px;
+  min-height:32px;
   border-radius:999px;
-  padding:0 10px;
+  padding:0;
   color:#4d3142;
   font-size:12px;
   font-weight:700;
@@ -902,7 +816,7 @@ const SHOW_UP_STYLES = `
   background:transparent;
   padding:0;
   color:#9a7088;
-  min-width:44px;
+  min-width:auto;
 }
 .showup-reaction-chip.is-active{
   background:transparent;
@@ -1576,9 +1490,12 @@ const SHOW_UP_STYLES = `
   }
   .showup-member-card{
     width:146px;
-    min-height:128px;
+    min-height:108px;
     padding:9px 6px;
     border-radius:12px;
+  }
+  .showup-feed-image{
+    max-height:420px;
   }
   .showup-bell-btn{
     min-height:28px;
@@ -1900,6 +1817,23 @@ function getTodayKey() {
   return `${year}-${month}-${day}`
 }
 
+function getStoredActiveRoom() {
+  try {
+    return localStorage.getItem('showup_active_room') || ''
+  } catch {
+    return ''
+  }
+}
+
+function setStoredActiveRoom(roomName) {
+  try {
+    if (roomName) localStorage.setItem('showup_active_room', roomName)
+    else localStorage.removeItem('showup_active_room')
+  } catch {
+    // Best effort only.
+  }
+}
+
 function getDateKeyDaysAgo(daysAgo) {
   const date = new Date()
   date.setDate(date.getDate() - daysAgo)
@@ -2176,6 +2110,10 @@ function getNotificationStorageKey(userId) {
   return `phasr_showup_notifications_${userId || 'local-user'}`
 }
 
+function getPresenceStorageKey(roomName, userId) {
+  return `showup_presence_${normalize(roomName)}_${normalize(userId)}`
+}
+
 function getProfile(user, authUser) {
   const storedName = getStoredProfileName()
   const storedId =
@@ -2217,6 +2155,37 @@ function getMemberStatus(member) {
   return 'idle'
 }
 
+function readPresence(roomName, userId) {
+  const value = safeRead(getPresenceStorageKey(roomName, userId), null)
+  if (!value || !roomName || !userId) return { status: 'none', lastSeen: 0 }
+  const lastSeen = Number(value?.lastSeen || 0)
+  if (!lastSeen || (Date.now() - lastSeen) > 5 * 60 * 1000) {
+    return { status: 'inactive', lastSeen }
+  }
+  return {
+    status: value?.status === 'active' ? 'active' : 'inactive',
+    lastSeen,
+  }
+}
+
+function writePresence(roomName, userId, status = 'active') {
+  if (!roomName || !userId) return
+  safeWrite(getPresenceStorageKey(roomName, userId), {
+    status,
+    lastSeen: Date.now(),
+  })
+}
+
+function clearPresence(roomName, userId) {
+  if (!roomName || !userId) return
+  safeRemove(getPresenceStorageKey(roomName, userId))
+}
+
+function getPresenceStatus(roomName, member) {
+  if (!roomName || !member?.user_id || !member?.checked_in) return 'none'
+  return readPresence(roomName, member.user_id).status
+}
+
 function getReactionSummary(reactions) {
   return REACTION_OPTIONS
     .map(reaction => ({
@@ -2234,6 +2203,53 @@ function dedupeByIdOrTimestamp(items) {
     seen.add(key)
     return true
   })
+}
+
+function mergeFeedPosts(remotePosts, cachedPosts) {
+  const merged = new Map()
+  const localItems = Array.isArray(cachedPosts) ? cachedPosts : []
+
+  remotePosts.forEach(post => {
+    const localMatch = localItems.find(item => (
+      item?.id === post?.id ||
+      (
+        item?.createdAt === post?.createdAt &&
+        item?.authorId === post?.authorId &&
+        item?.text === post?.text
+      )
+    ))
+    merged.set(post.id, {
+      ...localMatch,
+      ...post,
+      image: post?.image || localMatch?.image || '',
+      reactions: localMatch?.reactions || post?.reactions || {},
+      comments: safeArray(localMatch?.comments).map(comment => ({
+        ...comment,
+        reactions: comment.reactions || { love: [] },
+        replies: safeArray(comment.replies),
+      })),
+    })
+  })
+
+  localItems.forEach(post => {
+    const existing = [...merged.values()].find(item => (
+      item?.id === post?.id ||
+      (
+        item?.createdAt === post?.createdAt &&
+        item?.authorId === post?.authorId &&
+        item?.text === post?.text
+      )
+    ))
+    if (existing) {
+      if (!existing.image && post?.image) {
+        merged.set(existing.id, { ...existing, image: post.image })
+      }
+      return
+    }
+    merged.set(post.id, post)
+  })
+
+  return [...merged.values()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
 function computeRoomRoles(members, roomName) {
@@ -2327,6 +2343,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [createRoomName, setCreateRoomName] = useState('')
   const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
   const [roomStreak, setRoomStreak] = useState({ count: 0, lastActiveDate: '' })
+  const [presenceTick, setPresenceTick] = useState(0)
   const fileInputRef = useRef(null)
   const commentFileInputRef = useRef(null)
   const commentHoldTimerRef = useRef(null)
@@ -2369,6 +2386,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [selectedRoom])
 
   useEffect(() => {
+    if (activeTab !== 'feed' || !selectedRoom) return undefined
+    const interval = window.setInterval(() => {
+      loadFeedPosts(selectedRoom)
+    }, 30000)
+    return () => window.clearInterval(interval)
+  }, [activeTab, selectedRoom])
+
+  useEffect(() => {
     if (!selectedRoom) return
     persistFeedPosts(getFeedStorageKey(selectedRoom), feedPosts)
   }, [feedPosts, selectedRoom])
@@ -2388,6 +2413,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const timer = window.setTimeout(() => setPulseBanner(''), 5000)
     return () => window.clearTimeout(timer)
   }, [pulseBanner])
+
+  useEffect(() => {
+    const roomMember = safeArray(members).find(member => member?.user_id === profile.id)
+    if (!selectedRoom || !profile?.id || !roomMember?.checked_in) return undefined
+    writePresence(selectedRoom, profile.id, 'active')
+    setPresenceTick(current => current + 1)
+    const interval = window.setInterval(() => {
+      writePresence(selectedRoom, profile.id, 'active')
+      setPresenceTick(current => current + 1)
+    }, 60000)
+    return () => window.clearInterval(interval)
+  }, [checkedIn, members, profile.id, selectedRoom])
 
   useEffect(() => {
     function showRecipientNudge(notification) {
@@ -2415,15 +2452,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   useEffect(() => {
     if (selectedRoom || !profile.id) return
-    const rememberedRoom = localStorage.getItem(getActiveRoomStorageKey(profile.id))
+    const rememberedRoom = getStoredActiveRoom() || localStorage.getItem(getActiveRoomStorageKey(profile.id))
     if (!rememberedRoom) return
     const storedMembers = safeRead(getMockMemberStorageKey(rememberedRoom), [])
     const activeMember = safeArray(storedMembers).find(member => (
-      member?.user_id === profile.id && member?.checked_in && !member?.task_done
+      member?.user_id === profile.id && member?.checked_in
     ))
     if (!activeMember) return
     setSelectedRoom(rememberedRoom)
     setActiveTab('live')
+    writePresence(rememberedRoom, profile.id, 'active')
+    setPresenceTick(current => current + 1)
   }, [profile.id, selectedRoom])
 
   useEffect(() => {
@@ -2608,34 +2647,47 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
     try {
       const { data, error: feedError } = await supabase
-        .from('room_feed')
-        .select('room_id,user_id,display_name,content,image_url,is_anonymous,created_at')
-        .eq('room_id', getRoomId(roomName))
+        .from('room_feed_posts')
+        .select('*')
+        .eq('room_id', roomName)
         .order('created_at', { ascending: false })
+        .limit(50)
 
       if (feedError) throw feedError
 
       const cachedPosts = Array.isArray(localPosts) ? localPosts : []
       const remotePosts = (data || []).map((post, index) => {
-        const remoteId = `${post.user_id || 'room'}-${post.created_at || index}`
+        const remoteId = String(post.id || `${post.author_id || post.user_id || 'room'}-${post.created_at || index}`)
+        const remoteType = String(post.post_type || '')
+        const remotePulseFormat = remoteType.startsWith('pulse:') ? remoteType.slice(6) : ''
+        const remoteRecap = remoteType.startsWith('recap:')
+        const remoteTargetUserId = remoteType.startsWith('nudge:') ? remoteType.slice(6) : ''
         const cached = cachedPosts.find(item => (
           item.id === remoteId ||
-          (item.createdAt === post.created_at && item.text === (post.content || ''))
+          (
+            item.createdAt === post.created_at &&
+            item.authorId === (post.author_id || post.user_id || `anon-${index}`) &&
+            item.text === (post.text || post.content || '')
+          )
         ))
         return {
           id: remoteId,
-          authorId: post.user_id || `anon-${index}`,
-          authorName: post.is_anonymous ? 'Anonymous \u00B7 Room' : (post.display_name || 'Room member'),
-          authorInitials: post.is_anonymous ? 'AN' : buildInitials(post.display_name || 'Room member'),
-          anonymous: Boolean(post.is_anonymous),
-          text: post.content || '',
+          authorId: post.author_id || post.user_id || `anon-${index}`,
+          authorName: post.author_name || post.display_name || 'Room member',
+          authorInitials: buildInitials(post.author_name || post.display_name || 'Room member'),
+          anonymous: false,
+          text: post.text || post.content || '',
           image: post.image_url || cached?.image || '',
-          postType: cached?.postType || '',
-          system: cached?.system || post.display_name === 'Sage',
-          pulseFormat: cached?.pulseFormat || '',
-          pulseLabel: cached?.pulseLabel || '',
-          targetUserId: cached?.targetUserId || '',
-          postStyle: cached?.postStyle || '',
+          postType: (!remotePulseFormat && !remoteRecap && !remoteTargetUserId) ? (post.post_type || cached?.postType || '') : '',
+          system: cached?.system || (post.author_name || post.display_name) === 'Sage',
+          pulseFormat: remotePulseFormat || (remoteRecap ? 'Weekly Recap' : cached?.pulseFormat || ''),
+          pulseLabel: remotePulseFormat
+            ? `\u{1F4C5} ${remotePulseFormat.toUpperCase()}`
+            : remoteRecap
+              ? '\u{1F4C5} WEEKLY RECAP'
+              : (cached?.pulseLabel || ''),
+          targetUserId: remoteTargetUserId || cached?.targetUserId || '',
+          postStyle: remoteRecap ? 'recap' : (remotePulseFormat ? 'pulse' : (cached?.postStyle || '')),
           createdAt: post.created_at || new Date().toISOString(),
           reactions: cached?.reactions || {},
           comments: safeArray(cached?.comments).map(comment => ({
@@ -2645,14 +2697,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           })),
         }
       })
-      const hasRemoteMatch = localPost => remotePosts.some(remotePost => (
-        remotePost.id === localPost?.id ||
-        (remotePost.createdAt === localPost?.createdAt && remotePost.text === (localPost?.text || ''))
-      ))
-      const localOnlyPosts = cachedPosts.filter(post => !hasRemoteMatch(post))
-
       setFeedReady(true)
-      setFeedPosts([...remotePosts, ...localOnlyPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()))
+      setFeedPosts(mergeFeedPosts(remotePosts, cachedPosts))
     } catch (nextError) {
       console.error('Show Up feed load failed', nextError)
       setFeedReady(false)
@@ -2668,7 +2714,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       initials: anonymous ? 'AN' : profile.initials,
     }
     const nextPost = {
-      id: uid(),
+      id: `${postAuthor.id || 'room'}-${createdAt}`,
       authorId: postAuthor.id,
       authorName: postAuthor.name,
       authorInitials: postAuthor.initials,
@@ -2691,15 +2737,21 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!supabase || !selectedRoom) return nextPost
 
     try {
+      const remotePostType = postType || (
+        postStyle === 'recap' ? 'recap:Weekly Recap'
+          : pulseFormat ? `pulse:${pulseFormat}`
+            : targetUserId ? `nudge:${targetUserId}`
+              : ''
+      )
       const { error: insertError } = await supabase
-        .from('room_feed')
+        .from('room_feed_posts')
         .insert({
-          room_id: getRoomId(selectedRoom),
-          user_id: postAuthor.id === 'sage' ? profile.id : postAuthor.id,
-          display_name: postAuthor.name,
-          content: text,
+          room_id: selectedRoom,
+          author_id: postAuthor.id === 'sage' ? profile.id : postAuthor.id,
+          author_name: postAuthor.name,
+          text,
           image_url: image || '',
-          is_anonymous: anonymous,
+          post_type: remotePostType,
           created_at: createdAt,
         })
 
@@ -2885,8 +2937,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   function handleLeaveForNow() {
+    if (selectedRoom) {
+      setStoredActiveRoom(selectedRoom)
+      writePresence(selectedRoom, profile.id, 'inactive')
+      setPresenceTick(current => current + 1)
+    }
     setExitPromptOpen(false)
-    if (selectedRoom) safeWrite(getActiveRoomStorageKey(profile.id), selectedRoom)
     setSelectedRoom(null)
     setToast("You're still checked in - come back to mark done.")
   }
@@ -2905,6 +2961,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       console.error('Show Up exit room fallback', nextError)
     }
 
+    clearPresence(roomName, profile.id)
+    setStoredActiveRoom('')
     const current = safeRead(getMockMemberStorageKey(roomName), [])
     if (Array.isArray(current)) {
       persistMockMembers(getMockMemberStorageKey(roomName), current.filter(member => member.user_id !== profile.id))
@@ -2943,7 +3001,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setCheckedIn(true)
     setTaskDone(false)
     setDoneTime('')
-    safeWrite(getActiveRoomStorageKey(fallbackProfile.id), selectedRoom)
+    setStoredActiveRoom(selectedRoom)
+    writePresence(selectedRoom, fallbackProfile.id, 'active')
+    setPresenceTick(current => current + 1)
     setToast('Session active. Make it count.')
     addRoomActivity(selectedRoom, {
       type: 'checkin',
@@ -3012,7 +3072,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setTaskDone(true)
     setDoneTime(nowIso)
     setToast('')
-    safeRemove(getActiveRoomStorageKey(profile.id))
+    setStoredActiveRoom('')
     addRoomActivity(selectedRoom, {
       type: 'done',
       userId: profile.id,
@@ -3323,7 +3383,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
   const completedCount = useMemo(() => realMembers.filter(member => getMemberStatus(member) === 'done').length, [realMembers])
-  const activeCount = useMemo(() => realMembers.filter(member => member.checked_in === true).length, [realMembers])
+  const activeCount = useMemo(() => realMembers.filter(member => getPresenceStatus(selectedRoom, member) === 'active').length, [presenceTick, realMembers, selectedRoom])
   const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const liveMembers = useMemo(() => {
@@ -3352,14 +3412,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
       .sort((a, b) => (
-        Number(Boolean(b.task_done)) - Number(Boolean(a.task_done)) ||
         b.streakValue - a.streakValue ||
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
-  }, [realMembers, profile.id])
+  }, [activeTab, realMembers, profile.id])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
-  const roomIdentityTitle = getRoomTitleFromStreak(roomStreak.count)
+  const isPillarRoom = detectRoomNameFromBoard() === selectedRoom
   const roomBannerText = selectedRoom && activeTab === 'live' && !taskDone
     ? (checkedIn ? 'Session active. Make it count.' : "You're in. Tap Check In to start your session.")
     : ''
@@ -3604,8 +3663,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <span>{activeCount} active</span>
             </div>
           </div>
-          {roomIdentityTitle ? <p className="showup-room-subtitle">{roomIdentityTitle}</p> : null}
-          {getRoomStreakLabel(roomStreak) ? <p className="showup-room-streak">{getRoomStreakLabel(roomStreak)}</p> : null}
 
           {activeTab === 'live' && !checkedIn && !taskDone ? (
             <div className="showup-checkin-actions">
@@ -3680,33 +3737,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <div className="showup-empty">You&apos;re in the room. Tap Check In to start your session.</div>
             ) : null}
             {liveMembers.map(member => {
-              const status = getMemberStatus(member)
               const isSelf = member.user_id === profile.id
               const role = topRoleFor(member)
+              const presenceStatus = getPresenceStatus(selectedRoom, member)
               return (
-                <div key={member.user_id} className="showup-member-card">
+                <div key={member.user_id} className="showup-member-card" onClick={() => { if (!isSelf) openNotifySheet(member) }}>
                   <div className="showup-avatar">
                     {member.initials || buildInitials(member.display_name)}
-                    <span className={`showup-member-dot ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`} />
+                    {presenceStatus !== 'none' ? <span className={`showup-member-dot ${presenceStatus === 'active' ? 'is-active' : 'is-inactive'}`} /> : null}
                   </div>
                   <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                    <p className={`showup-member-status ${status === 'active' ? 'is-active' : status === 'done' ? 'is-done' : 'is-idle'}`}>
-                      {status === 'done' ? 'Completed' : status === 'active' ? 'Active now' : 'Not yet'}
-                    </p>
                     {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
-                    {member.check_in_time && status !== 'idle' ? (
-                      <p className="showup-member-time">Checked in {formatTime(member.check_in_time)}</p>
-                    ) : null}
                   </div>
-                  {!isSelf ? (
-                    <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
-                      <MessageCircle size={14} strokeWidth={2.2} />
-                      <span>Nudge</span>
-                    </button>
-                  ) : (
-                    <div style={{ minHeight: 30 }} aria-hidden="true" />
-                  )}
                 </div>
               )
             })}
@@ -3716,18 +3759,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         {activeTab === 'feed' ? (
           <div className="showup-feed-view">
             <div className="showup-compose-card">
-              <div className="showup-proof-strip" aria-label="Proof moment type">
-                {PROOF_TYPES.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    className={`showup-proof-chip ${selectedPostType === type ? 'is-selected' : ''}`}
-                    onClick={() => setSelectedPostType(current => current === type ? '' : type)}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>
                 <input
@@ -3757,9 +3788,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               visiblePosts.map(post => {
                 const likeCount = safeArray(post.reactions?.like).length
                 const likedByMe = safeArray(post.reactions?.like).includes(profile.id)
-                const reactionSummary = getReactionSummary(post.reactions).filter(reaction => reaction.key !== 'like').slice(0, 3)
-                const reactionTotal = likeCount + reactionSummary.reduce((sum, reaction) => sum + reaction.count, 0)
-                const isOwnPost = post.authorId === profile.id || normalize(post.authorName) === normalize(profile.name)
                 const targetMember = post.targetUserId ? realMembers.find(member => member.user_id === post.targetUserId) : null
                 const feedClass = [
                   'showup-feed-card',
@@ -3778,37 +3806,16 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   }}
                   style={{ cursor: targetMember ? 'pointer' : undefined }}
                 >
-                  <button
-                    type="button"
-                    className="showup-post-menu-btn"
-                    onClick={() => setOpenPostMenuId(current => current === post.id ? '' : post.id)}
-                    aria-label="Post options"
-                  >
-                    <MoreHorizontal size={16} strokeWidth={2.2} />
-                  </button>
-                  {openPostMenuId === post.id ? (
-                    <div className="showup-post-menu">
-                      {isOwnPost ? (
-                        <>
-                          <button type="button" onClick={() => handleStartEditPost(post)}>Edit caption</button>
-                          <button type="button" onClick={() => handleDeletePost(post.id)}>Delete post</button>
-                        </>
-                      ) : (
-                        <p className="showup-post-menu-note">Only the author can edit or delete this post.</p>
-                      )}
-                    </div>
-                  ) : null}
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
                       <div className="showup-avatar">{post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName)}</div>
-                      <div>
+                      <div className="showup-feed-header-main">
                         <p className="showup-feed-name">{post.anonymous ? 'Anonymous \u00B7 Room' : post.authorName}</p>
                         <p className="showup-feed-time">{formatTimestamp(post.createdAt)}</p>
                       </div>
                     </div>
                   </div>
                   {post.pulseLabel ? <p className="showup-pulse-label">{post.pulseLabel}</p> : null}
-                  {post.postType ? <p className="showup-post-type">{post.postType}</p> : null}
                   {editingPostId === post.id ? (
                     <div className="showup-post-edit">
                       <input
@@ -3828,104 +3835,34 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   ) : (
                     <p className="showup-feed-text">{post.text}</p>
                   )}
-                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={() => setLightboxImage(post.image)} /> : null}
+                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxImage(post.image) }} /> : null}
                   <div className="showup-feed-reactions">
-                    <div className="showup-feed-chip-row" style={{ justifyContent: 'flex-start' }}>
+                    <div className="showup-feed-chip-row">
                       <button
                         type="button"
                         className={`showup-reaction-chip ${likedByMe ? 'is-active' : ''}`}
-                        onClick={() => handleToggleReaction(post.id, 'like')}
+                        onClick={event => {
+                          event.stopPropagation()
+                          handleToggleReaction(post.id, 'like')
+                        }}
                         aria-label={likedByMe ? 'Unlike post' : 'Like post'}
                       >
                         <ThumbsUp size={15} strokeWidth={2.2} />
                         <span>{likeCount}</span>
                       </button>
-                      {reactionSummary.length ? (
-                        <div className="showup-reaction-summary" aria-label={`${reactionTotal} reactions`}>
-                          {reactionSummary.map(reaction => (
-                            <span key={reaction.key}>{reaction.emoji}{reaction.count}</span>
-                          ))}
-                        </div>
-                      ) : null}
                     </div>
                     <button
                       type="button"
                       className="showup-comment-toggle"
-                      onClick={() => setCommentSheetPostId(post.id)}
+                      onClick={event => {
+                        event.stopPropagation()
+                        setCommentSheetPostId(post.id)
+                      }}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
-                      <span>Comment</span>
                       <span>{safeArray(post.comments).length}</span>
                     </button>
                   </div>
-                  {false && expandedComments[post.id] ? (
-                    <div className="showup-comments">
-                      {safeArray(post.comments).map(comment => (
-                        <div key={comment.id} className="showup-comment-row">
-                          <div className="showup-avatar">{comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName)}</div>
-                          <div className="showup-comment-bubble">
-                            <p className="showup-comment-author">{comment.anonymous ? 'Anonymous \u00B7 Room' : comment.authorName}</p>
-                            <p className="showup-comment-text">{comment.text}</p>
-                            <div className="showup-comment-actions">
-                              <button
-                                type="button"
-                                className="showup-comment-action"
-                                onClick={() => handleToggleCommentReaction(post.id, comment.id)}
-                              >
-                                <Heart size={12} strokeWidth={2.1} />
-                                <span>{safeArray(comment.reactions?.love).length}</span>
-                              </button>
-                              <button
-                                type="button"
-                                className="showup-comment-action"
-                                onClick={() => setExpandedReplies(current => ({ ...current, [comment.id]: !current[comment.id] }))}
-                              >
-                                <Reply size={12} strokeWidth={2.1} />
-                                <span>{safeArray(comment.replies).length}</span>
-                              </button>
-                              {comment.authorId === profile.id ? (
-                                <button
-                                  type="button"
-                                  className="showup-comment-action showup-comment-delete"
-                                  onClick={() => handleDeleteComment(post.id, comment.id)}
-                                >
-                                  Delete
-                                </button>
-                              ) : null}
-                            </div>
-                            {expandedReplies[comment.id] ? (
-                              <div className="showup-replies">
-                                {safeArray(comment.replies).map(reply => (
-                                  <div key={reply.id} className="showup-reply-bubble">
-                                    <p className="showup-comment-author">{reply.authorName}</p>
-                                    <p className="showup-comment-text">{reply.text}</p>
-                                  </div>
-                                ))}
-                                <div className="showup-comment-compose">
-                                  <input
-                                    className="showup-comment-input"
-                                    value={replyDrafts[`${post.id}:${comment.id}`] || ''}
-                                    onChange={event => setReplyDrafts(current => ({ ...current, [`${post.id}:${comment.id}`]: event.target.value }))}
-                                    placeholder="Reply..."
-                                  />
-                                  <button type="button" className="showup-comment-send" onClick={() => handleAddReply(post.id, comment.id)}>Send</button>
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
-                      <div className="showup-comment-compose">
-                        <input
-                          className="showup-comment-input"
-                          value={commentDrafts[post.id] || ''}
-                          onChange={event => setCommentDrafts(current => ({ ...current, [post.id]: event.target.value }))}
-                          placeholder="Add a comment..."
-                        />
-                        <button type="button" className="showup-comment-send" onClick={() => handleAddComment(post.id)}>Send</button>
-                      </div>
-                    </div>
-                  ) : null}
                 </div>
                 )
               })
@@ -3937,31 +3874,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-ranks-view">
             {rankedMembers.map((member, index) => {
               const roles = roomRoles[member.user_id] || []
-              const topRole = roles[0] || (
-                index === 0 ? 'Leader'
-                  : index === 1 ? 'Rising'
-                    : index === 2 ? 'Building'
-                      : member.streakValue > 0 ? 'Starting' : 'Not yet'
-              )
+              const topRole = roles[0] || (member.streakValue > 0 ? 'Starting' : 'Not yet')
               const rowClass =
-                topRole === 'Room Leader' || index === 0 ? 'is-leader'
-                  : index === 1 ? 'is-rising'
-                    : index === 2 ? 'is-building'
-                      : ''
+                topRole === 'Room Leader' ? 'is-leader' : ''
               const rankClass =
-                index === 0 ? 'is-leader'
-                  : index === 1 ? 'is-rising'
-                    : index === 2 ? 'is-building'
-                      : 'is-muted'
+                topRole === 'Room Leader' ? 'is-leader' : 'is-muted'
               return (
                 <div key={member.user_id} className={`showup-rank-row ${rowClass}`}>
                   <div className={`showup-rank-number ${rankClass}`}>{index + 1}</div>
                   <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
                   <div>
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
-                    <p className="showup-rank-streak">
-                      {member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}{member.task_done ? ' · ✓ Done today' : member.checked_in ? ` · Checked in ${formatTime(member.check_in_time)}` : ''}
-                    </p>
+                    <p className="showup-rank-streak">{member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}</p>
                     {member.user_id === profile.id && roles.length > 1 ? (
                       <div className="showup-rank-roles">
                         {roles.map(role => (
@@ -3991,13 +3915,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 <strong>Leave for now</strong>
                 <span>Stay in this room and come back anytime.</span>
               </button>
-              <button type="button" className="showup-exit-option" onClick={handleExitRoom}>
-                <strong>
-                  <LogOut size={15} strokeWidth={2.2} />
-                  <span>Exit room</span>
-                </strong>
-                <span>You will lose your spot in this room.</span>
-              </button>
+              {isPillarRoom ? (
+                <p className="showup-sheet-subtitle" style={{ marginTop: -2 }}>This is your pillar room. Your spot is always here.</p>
+              ) : (
+                <button type="button" className="showup-exit-option" onClick={handleExitRoom}>
+                  <strong>
+                    <LogOut size={15} strokeWidth={2.2} />
+                    <span>Exit room</span>
+                  </strong>
+                  <span>You will lose your spot in this room.</span>
+                </button>
+              )}
             </div>
             <button type="button" className="showup-exit-cancel" onClick={() => setExitPromptOpen(false)}>Cancel</button>
           </div>
