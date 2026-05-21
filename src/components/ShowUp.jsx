@@ -1613,12 +1613,12 @@ const SHOW_UP_STYLES = `
 `
 
 const ROOM_DEFINITIONS = [
-  { id: 'health-fitness', name: 'Health & Fitness', description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
-  { id: 'career-business', name: 'Career & Business', description: 'Job, entrepreneurship, income streams', roomColor: '#7a58b0' },
-  { id: 'wealth', name: 'Wealth', description: 'Savings, investing, debt, financial freedom', roomColor: '#d4773a' },
-  { id: 'relationships', name: 'Relationships', description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
-  { id: 'inner-life', name: 'Inner Life', description: 'Spirituality, religion, mindfulness, mental health', roomColor: '#4a7fc1' },
-  { id: 'personal-growth', name: 'Personal Growth', description: 'Learning, creativity, self-development', roomColor: '#5e8f64' },
+  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', maxSpots: 12, description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
+  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', maxSpots: 12, description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
+  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', maxSpots: 12, description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
+  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', maxSpots: 12, description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
+  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', maxSpots: 12, description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
+  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', maxSpots: 12, description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
 ]
 
 const ROOM_ICONS = {
@@ -1799,7 +1799,7 @@ function persistMockMembers(key, members) {
     .slice(0, 24)
   if (safeWrite(key, cleanMembers)) return
   safeRemove(key)
-  safeWrite(key, cleanMembers.filter(member => member.checked_in || member.task_done).slice(0, 12))
+  safeWrite(key, cleanMembers.slice(0, 12))
 }
 
 function uid() {
@@ -2005,6 +2005,10 @@ function getFeedStorageKey(roomName) {
   return `showup_feed_${normalize(roomName)}`
 }
 
+function getWaitlistStorageKey(roomName) {
+  return `showup_waitlist_${normalize(roomName)}`
+}
+
 function getRoomActivityStorageKey(roomName) {
   return `showup_activity_${normalize(roomName)}`
 }
@@ -2033,6 +2037,14 @@ function getActiveRoomStorageKey(userId) {
   return `showup_active_room_${normalize(userId || 'local-user')}`
 }
 
+function getLastDoneDateStorageKey(roomName, userId) {
+  return `showup_last_done_${normalize(roomName)}_${normalize(userId || 'local-user')}`
+}
+
+function getDailyAbsencePromptKey(roomName, dateKey) {
+  return `showup_daily_absence_${normalize(roomName)}_${dateKey}`
+}
+
 function getCheckInPostStorageKey(roomName, userId, checkInTime) {
   return `showup_checkin_posted_${normalize(roomName)}_${normalize(userId)}_${normalize(checkInTime)}`
 }
@@ -2043,7 +2055,16 @@ function getRoomId(roomName) {
 
 function getPillarFromRoom(roomName) {
   const found = ROOM_DEFINITIONS.find(room => normalize(room.name) === normalize(roomName))
-  return found?.name || roomName || 'Personal Growth'
+  return found?.pillar || found?.name || roomName || 'Personal Growth'
+}
+
+function getRoomEnergyState(doneCount) {
+  if (doneCount === 0) return { label: 'Quiet', emoji: '🌙' }
+  if (doneCount <= 2) return { label: 'Warming Up', emoji: '☁️' }
+  if (doneCount <= 5) return { label: 'Focused', emoji: '🎯' }
+  if (doneCount <= 8) return { label: 'On Fire', emoji: '🔥' }
+  if (doneCount <= 11) return { label: 'Locked In', emoji: '⚡' }
+  return { label: 'Full Send', emoji: '💥' }
 }
 
 function getRoomTitleFromStreak(count) {
@@ -2139,16 +2160,14 @@ function buildMockMember(profile, roomName) {
     user_id: profile.id,
     display_name: profile.name,
     initials: profile.initials,
-    checked_in: false,
     task_done: false,
-    check_in_time: '',
+    task_done_time: '',
     streak_count: getCurrentStreakCount(),
   }
 }
 
 function getMemberStatus(member) {
   if (member?.task_done) return 'done'
-  if (member?.checked_in) return 'active'
   return 'idle'
 }
 
@@ -2179,7 +2198,7 @@ function clearPresence(roomName, userId) {
 }
 
 function getPresenceStatus(roomName, member) {
-  if (!roomName || !member?.user_id || !member?.checked_in) return 'none'
+  if (!roomName || !member?.user_id) return 'none'
   return readPresence(roomName, member.user_id).status
 }
 
@@ -2278,20 +2297,19 @@ function computeRoomRoles(members, roomName) {
 
   realMembers.forEach(member => {
     const userEvents = activity.filter(event => event.userId === member.user_id)
-    const checkins = userEvents.filter(event => event.type === 'checkin')
     const dones = userEvents.filter(event => event.type === 'done')
-    const checkinDates = new Set(checkins.map(event => event.date))
-    const thisWeekCheckins = [...weekDates].filter(date => checkinDates.has(date)).length
-    const totalCheckins = Math.max(checkins.length, Number(member.checked_in || member.task_done))
-    const completionRate = totalCheckins ? dones.length / totalCheckins : 0
-    const checkedToday = member.checked_in || member.task_done || checkinDates.has(today)
-    const missedBeforeToday = [1, 2, 3].every(daysAgo => !checkinDates.has(getDateKeyDaysAgo(daysAgo)))
-    const earlyDates = new Set(checkins.filter(event => Number(String(event.time || '99').slice(0, 2)) < 8).map(event => event.date))
+    const doneDates = new Set(dones.map(event => event.date))
+    const thisWeekDones = [...weekDates].filter(date => doneDates.has(date)).length
+    const totalDoneDays = Math.max(dones.length, Number(member.task_done ? 1 : 0))
+    const completionRate = totalDoneDays ? dones.length / totalDoneDays : 0
+    const doneToday = member.task_done || doneDates.has(today)
+    const missedBeforeToday = [1, 2, 3].every(daysAgo => !doneDates.has(getDateKeyDaysAgo(daysAgo)))
+    const earlyDates = new Set(dones.filter(event => Number(String(event.time || '99').slice(0, 2)) < 8).map(event => event.date))
     const earlyMover = [0, 1, 2].every(daysAgo => earlyDates.has(getDateKeyDaysAgo(daysAgo)))
 
-    if (completionRate >= 0.9 && totalCheckins >= 3) roles[member.user_id]?.push('Discipline')
-    if (thisWeekCheckins >= Math.min(7, weekDates.size)) roles[member.user_id]?.push('Locked In')
-    if (checkedToday && missedBeforeToday && checkins.length > 1) roles[member.user_id]?.push('Comeback')
+    if (completionRate >= 0.9 && totalDoneDays >= 3) roles[member.user_id]?.push('Discipline')
+    if (thisWeekDones >= Math.min(7, weekDates.size)) roles[member.user_id]?.push('Locked In')
+    if (doneToday && missedBeforeToday && dones.length > 1) roles[member.user_id]?.push('Comeback')
     if (earlyMover) roles[member.user_id]?.push('Early Mover')
   })
 
@@ -2318,7 +2336,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [activeTab, setActiveTab] = useState('live')
   const [members, setMembers] = useState([])
   const [roomCounts, setRoomCounts] = useState({})
-  const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
   const [doneTime, setDoneTime] = useState('')
   const [loading, setLoading] = useState(true)
@@ -2341,7 +2358,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [openPostMenuId, setOpenPostMenuId] = useState('')
   const [editingPostId, setEditingPostId] = useState('')
   const [editPostDraft, setEditPostDraft] = useState('')
-  const [checkInBusy, setCheckInBusy] = useState(false)
   const [doneBusy, setDoneBusy] = useState(false)
   const [sheetState, setSheetState] = useState({ open: false, member: null })
   const [selectedTemplate, setSelectedTemplate] = useState('')
@@ -2350,45 +2366,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [notifyPostToFeed, setNotifyPostToFeed] = useState(false)
   const [exitPromptOpen, setExitPromptOpen] = useState(false)
   const [showProgressPhotoPrompt, setShowProgressPhotoPrompt] = useState(false)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showGate, setShowGate] = useState(false)
-  const [createRoomName, setCreateRoomName] = useState('')
-  const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
   const [roomStreak, setRoomStreak] = useState({ count: 0, lastActiveDate: '' })
   const [presenceTick, setPresenceTick] = useState(0)
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false)
   const fileInputRef = useRef(null)
   const commentFileInputRef = useRef(null)
   const commentHoldTimerRef = useRef(null)
   const commentSheetTouchStartRef = useRef(null)
 
-  const summary = useMemo(() => getLockInSummary(lockInState), [lockInState])
-  const daysStreak = Math.max(0, Number(summary.currentStreak || 0))
-  const customRooms = useMemo(() => safeRead(getCreatedRoomsKey(), []), [showCreateForm, selectedRoom])
   const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const rooms = useMemo(() => {
-    const mappedCustom = Array.isArray(customRooms)
-      ? customRooms.map(room => ({
-        id: room.id,
-        name: room.name,
-        description: room.description || 'Custom accountability room',
-        roomColor: room.roomColor || '#f95f85',
-      }))
-      : []
-    const nextRooms = [...mappedCustom, ...ROOM_DEFINITIONS]
+    const nextRooms = [...ROOM_DEFINITIONS]
     const preferredIndex = nextRooms.findIndex(room => room.name === preferredRoomName)
     if (preferredIndex <= 0) return nextRooms
     const preferredRoom = nextRooms[preferredIndex]
     return [preferredRoom, ...nextRooms.filter((_, index) => index !== preferredIndex)]
-  }, [customRooms, preferredRoomName])
-  const joinedRoomNames = useMemo(() => {
-    const joined = new Set(safeRead(getJoinedRoomsKey(profile.id), []))
-    rooms.forEach(room => {
+  }, [preferredRoomName])
+  const joinedRoomName = useMemo(() => {
+    const joined = safeArray(safeRead(getJoinedRoomsKey(profile.id), []))[0] || ''
+    if (joined) return joined
+    const localRoom = rooms.find(room => {
       const stored = safeRead(getMockMemberStorageKey(room.name), [])
-      if (Array.isArray(stored) && stored.some(member => member?.user_id === profile.id)) {
-        joined.add(room.name)
-      }
+      return Array.isArray(stored) && stored.some(member => member?.user_id === profile.id)
     })
-    return joined
+    return localRoom?.name || ''
   }, [profile.id, rooms, selectedRoom, roomCounts])
 
   useEffect(() => {
@@ -2427,8 +2428,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [pulseBanner])
 
   useEffect(() => {
-    const roomMember = safeArray(members).find(member => member?.user_id === profile.id)
-    if (!selectedRoom || !profile?.id || !roomMember?.checked_in) return undefined
+    if (!selectedRoom || !profile?.id) return undefined
     writePresence(selectedRoom, profile.id, 'active')
     setPresenceTick(current => current + 1)
     const interval = window.setInterval(() => {
@@ -2436,7 +2436,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       setPresenceTick(current => current + 1)
     }, 60000)
     return () => window.clearInterval(interval)
-  }, [checkedIn, members, profile.id, selectedRoom])
+  }, [members, profile.id, selectedRoom])
 
   useEffect(() => {
     function showRecipientNudge(notification) {
@@ -2468,7 +2468,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!rememberedRoom) return
     const storedMembers = safeRead(getMockMemberStorageKey(rememberedRoom), [])
     const activeMember = safeArray(storedMembers).find(member => (
-      member?.user_id === profile.id && member?.checked_in
+      member?.user_id === profile.id
     ))
     if (!activeMember) return
     setSelectedRoom(rememberedRoom)
@@ -2509,18 +2509,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [selectedRoom, user])
 
   useEffect(() => {
-    if (!profile?.id || profile.id === 'local-user') return
-    if (!preferredRoomName) return
-    const joined = safeRead(getJoinedRoomsKey(profile.id), [])
-    if (Array.isArray(joined) && joined.length) return
-    ensureRoomMembership(preferredRoomName).then(() => {
-      loadRoomCounts(profile)
-    }).catch(error => {
-      console.error('Show Up auto join failed', error)
-    })
-  }, [preferredRoomName, profile.id])
-
-  useEffect(() => {
     if (!supabase) return undefined
 
     const channel = supabase
@@ -2531,14 +2519,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         table: 'show_up_checkins',
       }, () => {
         loadRoomCounts(profile)
-        if (selectedRoom && !checkInBusy && !doneBusy) loadMembers(selectedRoom, profile)
+        if (selectedRoom && !doneBusy) loadMembers(selectedRoom, profile)
       })
       .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [profile, selectedRoom, checkInBusy, doneBusy])
+  }, [profile, selectedRoom, doneBusy])
 
   async function loadRoomCounts(nextProfile = profile) {
     if (!supabase) {
@@ -2587,12 +2575,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         .from('show_up_checkins')
         .select('*')
         .eq('room_name', roomName)
-        .order('check_in_time', { ascending: true })
+        .order('task_done_time', { ascending: false })
 
       if (membersError) throw membersError
 
       const nextMembers = (data || []).map(member => ({
         ...member,
+        checked_in: false,
         streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
 
@@ -2618,6 +2607,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     const withStreaks = nextMembers.map(member => ({
       ...member,
+      checked_in: false,
       streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
     }))
     persistMockMembers(getMockMemberStorageKey(roomName), withStreaks)
@@ -2627,9 +2617,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   function hydrateCurrentMember(nextMembers, nextProfile = profile) {
     const myMember = nextMembers.find(member => member.user_id === nextProfile.id)
-    const nextCheckedIn = Boolean(myMember?.checked_in)
     const nextTaskDone = Boolean(myMember?.task_done)
-    setCheckedIn(nextCheckedIn)
     setTaskDone(nextTaskDone)
     if (myMember?.task_done_time) setDoneTime(myMember.task_done_time)
     if (!nextTaskDone) setDoneTime('')
@@ -2817,22 +2805,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const now = new Date()
     if (now.getHours() < 14) return
     const today = getTodayKey()
-    const postedKey = getAbsentPostStorageKey(roomName, today)
-    const posted = new Set(safeArray(safeRead(postedKey, [])))
-    const absentMembers = safeArray(nextMembers).filter(member => (
-      !isPlaceholderMember(member) &&
-      !member.checked_in &&
-      !member.task_done &&
-      !posted.has(member.user_id)
-    ))
-    for (const member of absentMembers) {
-      posted.add(member.user_id)
-      await createRoomActivityPost(`${member.display_name} hasn't checked in yet today. Room's here when you're ready. \u{1F49B}`, {
-        targetUserId: member.user_id,
-        postStyle: 'sage',
-      })
-    }
-    safeWrite(postedKey, [...posted])
+    const doneCount = safeArray(nextMembers).filter(member => !isPlaceholderMember(member) && member.task_done).length
+    if (doneCount >= Math.ceil(MAX_ROOM_SIZE / 2)) return
+    const postedKey = getDailyAbsencePromptKey(roomName, today)
+    if (localStorage.getItem(postedKey)) return
+    const pendingMembers = safeArray(nextMembers).filter(member => !isPlaceholderMember(member) && !member.task_done)
+    if (!pendingMembers.length) return
+    const leadName = pendingMembers[0]?.display_name || 'Someone'
+    const othersCount = Math.max(0, pendingMembers.length - 1)
+    const message = othersCount > 0
+      ? `${leadName} and ${othersCount} others haven't marked done yet today. You've still got time. \u{1F49B}`
+      : `${leadName} hasn't marked done yet today. You've still got time. \u{1F49B}`
+    localStorage.setItem(postedKey, '1')
+    await createRoomActivityPost(message, { postStyle: 'sage' })
   }
 
   async function postSundayRecapIfNeeded(roomName, nextRoomStreak, nextMembers = []) {
@@ -2842,19 +2827,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const activity = getRoomActivity(roomName)
     const weekDates = new Set(getCurrentWeekDateKeys())
     const realMembers = safeArray(nextMembers).filter(member => !isPlaceholderMember(member))
-    const weeklyCheckins = activity.filter(event => event.type === 'checkin' && weekDates.has(event.date))
     const weeklyDone = activity.filter(event => event.type === 'done' && weekDates.has(event.date))
     const byDay = {}
-    weeklyCheckins.forEach(event => {
+    weeklyDone.forEach(event => {
       const day = new Date(`${event.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' })
       byDay[day] = (byDay[day] || 0) + 1
     })
     const mostActiveDay = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Sunday'
     const leader = [...realMembers].sort((a, b) => Number(b.streak_count || 0) - Number(a.streak_count || 0))[0]
-    const completion = weeklyCheckins.length ? Math.round((weeklyDone.length / weeklyCheckins.length) * 100) : 0
-    const text = weeklyCheckins.length < 3
+    const completion = realMembers.length ? Math.round((weeklyDone.length / Math.max(1, realMembers.length * Math.max(1, weekDates.size))) * 100) : 0
+    const text = weeklyDone.length < 3
       ? `Weekly Recap - ${roomName}\n\nWeek 1 complete. You showed up. That's everything.`
-      : `Weekly Recap - ${roomName}\n\n\u2705 Total check-ins this week: ${weeklyCheckins.length}\n\u{1F525} Room streak: ${Number(nextRoomStreak?.count || 0)} days\n\u{1F4C5} Most active day: ${mostActiveDay}\n\u26A1 Streak leader: ${leader?.display_name || 'Room'} - ${Number(leader?.streak_count || 0)} days\n\u{1F49B} Room completion: ${completion}%\n\nKeep going. Same room, new week.`
+      : `Weekly Recap - ${roomName}\n\n\u2705 Total mark-dones this week: ${weeklyDone.length}\n\u{1F525} Room streak: ${Number(nextRoomStreak?.count || 0)} days\n\u{1F4C5} Most active day: ${mostActiveDay}\n\u26A1 Streak leader: ${leader?.display_name || 'Room'} - ${Number(leader?.streak_count || 0)} days\n\u{1F49B} Room completion: ${completion}%\n\nKeep going. Same room, new week.`
     safeWrite(getWeeklyRecapStorageKey(roomName), currentWeek)
     await createRoomActivityPost(text, {
       pulseFormat: 'Weekly Recap',
@@ -2883,9 +2867,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   async function ensureRoomMembership(roomName) {
     const existingLocal = safeRead(getMockMemberStorageKey(roomName), [])
     const rememberJoinedRoom = () => {
-      const joined = new Set(safeRead(getJoinedRoomsKey(profile.id), []))
-      joined.add(roomName)
-      safeWrite(getJoinedRoomsKey(profile.id), [...joined].slice(0, 2))
+      safeWrite(getJoinedRoomsKey(profile.id), [roomName])
     }
     if (Array.isArray(existingLocal) && existingLocal.some(member => member.user_id === profile.id)) {
       rememberJoinedRoom()
@@ -2897,8 +2879,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
-      checked_in: false,
       task_done: false,
+      task_done_time: '',
       streak_count: getCurrentStreakCount(),
     }
 
@@ -2924,14 +2906,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   async function handleJoinRoom(roomName) {
-    const joined = new Set(safeRead(getJoinedRoomsKey(profile.id), []))
-    const joinedCount = joined.size
+    const joined = safeArray(safeRead(getJoinedRoomsKey(profile.id), []))[0] || ''
     const roomCount = roomCounts[roomName] || 0
-    if (!joined.has(roomName) && joinedCount >= 2) {
-      setError('You can only be in 2 rooms at a time.')
+    if (joined && joined !== roomName) {
+      setError('Leave your current room to join another.')
       return
     }
-    if (!joined.has(roomName) && roomCount >= MAX_ROOM_SIZE) {
+    if (joined !== roomName && roomCount >= MAX_ROOM_SIZE) {
       setError('This room is full.')
       return
     }
@@ -2941,8 +2922,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setSelectedRoom(roomName)
     setActiveTab('live')
     safeWrite(getActiveRoomStorageKey(profile.id), roomName)
-    setToast("You're in. Tap Check In to start your session.")
+    setToast('')
+    await postWeeklyPulseIfNeeded(roomName)
     setLoading(false)
+  }
+
+  function handleJoinWaitlist(roomName) {
+    const current = safeArray(safeRead(getWaitlistStorageKey(roomName), []))
+    if (current.some(item => item.user_id === profile.id)) {
+      setToast(`You're already on the waitlist for ${roomName}.`)
+      return
+    }
+    safeWrite(getWaitlistStorageKey(roomName), [
+      ...current,
+      { user_id: profile.id, display_name: profile.name, joined_at: new Date().toISOString() },
+    ])
+    setToast(`You're on the waitlist for ${roomName}.`)
   }
 
   function handleLeaveForNow() {
@@ -2953,7 +2948,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     setExitPromptOpen(false)
     setSelectedRoom(null)
-    setToast("You're still checked in - come back to mark done.")
+    setToast(selectedRoom ? `You're in ${selectedRoom} - back to finish?` : '')
+  }
+
+  function handleBackPress() {
+    if (!selectedRoom) return
+    if (taskDone) {
+      setSelectedRoom(null)
+      setToast(`You're in ${selectedRoom} - back to finish?`)
+      return
+    }
+    setExitPromptOpen(true)
   }
 
   async function handleExitRoom() {
@@ -2976,113 +2981,41 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (Array.isArray(current)) {
       persistMockMembers(getMockMemberStorageKey(roomName), current.filter(member => member.user_id !== profile.id))
     }
-    const joined = safeRead(getJoinedRoomsKey(profile.id), [])
-    safeWrite(getJoinedRoomsKey(profile.id), (Array.isArray(joined) ? joined : []).filter(name => name !== roomName))
+    safeWrite(getJoinedRoomsKey(profile.id), [])
     safeRemove(getActiveRoomStorageKey(profile.id))
     setMembers([])
-    setCheckedIn(false)
     setTaskDone(false)
     setDoneTime('')
     setExitPromptOpen(false)
+    setRoomSettingsOpen(false)
     setSelectedRoom(null)
     loadRoomCountsFromLocal(profile)
   }
 
-  async function handleCheckIn() {
-    if (!selectedRoom || checkedIn || checkInBusy) return
-    const fallbackProfile = profile.id === 'local-user' ? getProfile(user, null) : profile
-    if (fallbackProfile.id !== profile.id || fallbackProfile.name !== profile.name) {
-      setProfile(fallbackProfile)
-    }
-    const nowIso = new Date().toISOString()
-    const payload = {
-      room_name: selectedRoom,
-      user_id: fallbackProfile.id,
-      display_name: fallbackProfile.name,
-      initials: fallbackProfile.initials,
-      checked_in: true,
-      task_done: false,
-      check_in_time: nowIso,
-      streak_count: getCurrentStreakCount(),
-    }
-
-    setCheckInBusy(true)
-    setCheckedIn(true)
-    setTaskDone(false)
-    setDoneTime('')
-    setStoredActiveRoom(selectedRoom)
-    writePresence(selectedRoom, fallbackProfile.id, 'active')
-    setPresenceTick(current => current + 1)
-    setToast('Session active. Make it count.')
-    addRoomActivity(selectedRoom, {
-      type: 'checkin',
-      userId: fallbackProfile.id,
-      displayName: fallbackProfile.name,
-      date: getTodayKey(),
-      time: new Date(nowIso).toTimeString().slice(0, 5),
-    })
-    const nextRoomStreak = updateRoomStreak(selectedRoom)
-    setRoomStreak(nextRoomStreak)
-    setMembers(current => {
-      const next = [...current]
-      const index = next.findIndex(member => member.user_id === fallbackProfile.id)
-      if (index >= 0) next[index] = { ...next[index], ...payload }
-      else next.unshift(payload)
-      return next
-    })
-    upsertLocalMember(selectedRoom, payload)
-
-    try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
-      const { error: checkInError } = await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
-      if (checkInError) throw checkInError
-      await loadRoomCounts(fallbackProfile)
-    } catch (nextError) {
-      console.error('Show Up check-in failed', nextError)
-    } finally {
-      setCheckInBusy(false)
-    }
-    const checkInPostKey = getCheckInPostStorageKey(selectedRoom, fallbackProfile.id, nowIso)
-    if (!localStorage.getItem(checkInPostKey)) {
-      safeWrite(checkInPostKey, true)
-      await createRoomActivityPost(`${fallbackProfile.name} just checked in. Say hi \u{1F44B}`)
-    }
-    await postWeeklyPulseIfNeeded(selectedRoom)
-    await postSundayRecapIfNeeded(selectedRoom, nextRoomStreak, [
-      payload,
-      ...members.filter(member => member.user_id !== fallbackProfile.id),
-    ])
-    await postSilentAccountability(selectedRoom, [
-      payload,
-      ...members.filter(member => member.user_id !== fallbackProfile.id),
-    ])
-  }
-
   async function handleMarkDone() {
-    if (!selectedRoom || !checkedIn || taskDone || doneBusy) return
+    if (!selectedRoom || taskDone || doneBusy) return
     const nowIso = new Date().toISOString()
-    const currentMember = members.find(member => member.user_id === profile.id)
-    const checkedInAt = currentMember?.check_in_time || nowIso
+    const roomName = selectedRoom
+    const lastDoneDate = localStorage.getItem(getLastDoneDateStorageKey(roomName, profile.id))
+    if (lastDoneDate === getTodayKey()) return
     const nextStreakCount = incrementCurrentStreak()
     const donePatch = {
-      room_name: selectedRoom,
+      room_name: roomName,
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
-      checked_in: true,
       task_done: true,
-      check_in_time: checkedInAt,
       task_done_time: nowIso,
       streak_count: nextStreakCount,
     }
 
     setDoneBusy(true)
-    setCheckedIn(true)
     setTaskDone(true)
     setDoneTime(nowIso)
     setToast('')
     setStoredActiveRoom('')
-    addRoomActivity(selectedRoom, {
+    safeWrite(getLastDoneDateStorageKey(roomName, profile.id), getTodayKey())
+    addRoomActivity(roomName, {
       type: 'done',
       userId: profile.id,
       displayName: profile.name,
@@ -3090,25 +3023,40 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       time: new Date(nowIso).toTimeString().slice(0, 5),
     })
     setShowProgressPhotoPrompt(true)
-    setMembers(current => current.map(member => (
-      member.user_id === profile.id ? { ...member, ...donePatch } : member
-    )))
-    upsertLocalMember(selectedRoom, donePatch)
+    const nextMembers = members.some(member => member.user_id === profile.id)
+      ? members.map(member => (member.user_id === profile.id ? { ...member, ...donePatch } : member))
+      : [donePatch, ...members]
+    setMembers(nextMembers)
+    upsertLocalMember(roomName, donePatch)
+    const nextRoomStreak = updateRoomStreak(roomName)
+    setRoomStreak(nextRoomStreak)
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { error: doneError } = await supabase
         .from('show_up_checkins')
-        .update({ checked_in: true, task_done: true, check_in_time: checkedInAt, task_done_time: nowIso, streak_count: nextStreakCount })
-        .eq('room_name', selectedRoom)
-        .eq('user_id', profile.id)
+        .upsert({ ...donePatch }, { onConflict: 'room_name,user_id' })
       if (doneError) throw doneError
+      await loadRoomCounts(profile)
     } catch (nextError) {
       console.error('Show Up mark done failed', nextError)
     } finally {
       setDoneBusy(false)
     }
-    await createRoomActivityPost(`${profile.name} marked done at ${formatTime(nowIso)}.`)
+
+    const completedMembers = nextMembers.filter(member => member.task_done).length
+    await createRoomActivityPost(`${profile.name} marked done. Room completions today: ${completedMembers}/${MAX_ROOM_SIZE}.`)
+    await postSundayRecapIfNeeded(roomName, nextRoomStreak, nextMembers)
+    await postSilentAccountability(roomName, nextMembers)
+  }
+
+  function handleRoomExitRequest() {
+    setRoomSettingsOpen(false)
+    setExitPromptOpen(true)
+  }
+
+  function closeExitPrompt() {
+    setExitPromptOpen(false)
   }
 
   function handlePhotoPick(event) {
@@ -3358,46 +3306,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setNotifyPostToFeed(false)
   }
 
-  function handleCreateRoomPress() {
-    const latestLevel = getStoredUserLevel() || calculateUserPoints()
-    if ((latestLevel?.level || 1) < 4) {
-      setShowGate(true)
-      setShowCreateForm(false)
-      return
-    }
-    setShowGate(false)
-    setShowCreateForm(current => !current)
-  }
-
-  function handleCreateRoomSubmit(event) {
-    event.preventDefault()
-    const room = createRoomName.trim()
-    if (!room) return
-    const focus = rooms.find(item => item.id === createFocusAreaId) || ROOM_DEFINITIONS[0]
-    const nextRooms = [
-      ...safeRead(getCreatedRoomsKey(), []),
-      {
-        id: uid(),
-        name: room,
-        description: focus.description,
-        roomColor: focus.roomColor,
-      },
-    ]
-    safeWrite(getCreatedRoomsKey(), nextRooms)
-    setCreateRoomName('')
-    setCreateFocusAreaId(ROOM_DEFINITIONS[0].id)
-    setShowCreateForm(false)
-  }
-
   const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
   const completedCount = useMemo(() => realMembers.filter(member => getMemberStatus(member) === 'done').length, [realMembers])
   const activeCount = useMemo(() => realMembers.filter(member => getPresenceStatus(selectedRoom, member) === 'active').length, [presenceTick, realMembers, selectedRoom])
   const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  const liveMembers = useMemo(() => {
-    if (!checkedIn && !taskDone) return []
-    return realMembers.filter(member => member.checked_in || member.task_done)
-  }, [checkedIn, taskDone, realMembers])
+  const liveMembers = useMemo(() => realMembers, [realMembers])
   const visiblePosts = useMemo(() => (
     safeArray(feedPosts)
       .map(post => ({
@@ -3414,7 +3328,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const showMentionSuggestions = /(^|\s)@\w*$/.test(commentDraft)
   const rankedMembers = useMemo(() => {
     return [...realMembers]
-      .filter(member => !isPlaceholderMember(member))
+      .filter(member => !isPlaceholderMember(member) && member.display_name && member.display_name !== 'User')
       .map(member => ({
         ...member,
         streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
@@ -3426,10 +3340,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [activeTab, realMembers, profile.id])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
-  const isPillarRoom = detectRoomNameFromBoard() === selectedRoom
-  const roomBannerText = selectedRoom && activeTab === 'live' && !taskDone
-    ? (checkedIn ? 'Session active. Make it count.' : "You're in. Tap Check In to start your session.")
-    : ''
+  const roomEnergy = useMemo(() => getRoomEnergyState(completedCount), [completedCount])
+  const roomBannerText = !selectedRoom && joinedRoomName
+    ? `You're in ${joinedRoomName} - back to finish?`
+    : toast
 
   if (!selectedRoom) {
     return (
@@ -3466,7 +3380,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             alignSelf: 'stretch',
           }}
         >
-          {toast ? <div className="showup-empty" style={{ marginBottom: 10 }}>{toast}</div> : null}
+          {roomBannerText ? <div className="showup-empty" style={{ marginBottom: 10 }}>{roomBannerText}</div> : null}
           <div
             className="showup-list-header"
             style={{
@@ -3491,59 +3405,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             >
               All Rooms
             </p>
-            <button
-              type="button"
-              className="showup-create-link"
-              onClick={handleCreateRoomPress}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                color: '#f45f92',
-                fontSize: 15,
-                fontWeight: 800,
-                fontFamily: "'DM Sans',sans-serif",
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              <Plus size={16} strokeWidth={2.4} />
-              <span>Create room</span>
-            </button>
+            <p className="showup-list-meta" style={{ margin: 0 }}>One room per focus area</p>
           </div>
-
-          {showCreateForm ? (
-            <form className="showup-create-form" onSubmit={handleCreateRoomSubmit}>
-              <label className="showup-field">
-                <span className="showup-field-label">Room Name</span>
-                <input className="showup-input" value={createRoomName} onChange={event => setCreateRoomName(event.target.value)} placeholder="Enter room name" />
-              </label>
-              <label className="showup-field">
-                <span className="showup-field-label">Focus Area</span>
-                <select className="showup-select" value={createFocusAreaId} onChange={event => setCreateFocusAreaId(event.target.value)}>
-                  {ROOM_DEFINITIONS.map(room => (
-                    <option key={room.id} value={room.id}>{room.name}</option>
-                  ))}
-                </select>
-              </label>
-              <button type="submit" className="showup-create-btn">Create</button>
-            </form>
-          ) : null}
-
-          {showGate ? (
-            <div className="showup-gate-card">
-              <p className="showup-gate-title">Keep going. Creating rooms unlocks at 90 days.</p>
-              <p className="showup-gate-copy">
-                You are {daysStreak} days in. The rooms you can join right now are where your people already are.
-              </p>
-              <div className="showup-gate-actions">
-                <button type="button" className="showup-gate-btn" onClick={() => onGoToDailyStreaks?.()}>Go to Daily Streaks</button>
-                <button type="button" className="showup-gate-btn" onClick={() => setShowGate(false)}>Close</button>
-              </div>
-            </div>
-          ) : null}
 
           <div
             className="showup-list-panel"
@@ -3559,10 +3422,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           >
             {rooms.map((room, index) => {
               const joined = roomCounts[room.name] || 0
-              const spotsLeft = Math.max(0, MAX_ROOM_SIZE - joined)
-              const isJoined = joinedRoomNames.has(room.name)
-              const isFull = !isJoined && joined >= MAX_ROOM_SIZE
+              const spotsLeft = Math.max(0, room.maxSpots - joined)
+              const isJoined = joinedRoomName === room.name
+              const isFull = !isJoined && joined >= room.maxSpots
+              const blockedByAnotherRoom = Boolean(joinedRoomName && joinedRoomName !== room.name)
               const RoomIcon = ROOM_ICONS[room.id] || Sparkles
+              const roomMembers = safeRead(getMockMemberStorageKey(room.name), [])
+              const doneCount = safeArray(roomMembers).filter(member => !isPlaceholderMember(member) && member.task_done).length
+              const energy = getRoomEnergyState(doneCount)
               return (
                 <div
                   key={room.id}
@@ -3595,15 +3462,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   </div>
                   <div className="showup-list-content" style={{ minWidth: 0, display: 'grid', gap: 2 }}>
                     <p className="showup-list-name" style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 14, fontWeight: 700, color: '#25151f', lineHeight: 1.12 }}>{room.name}</p>
+                    {preferredRoomName === room.name ? <p className="showup-list-meta" style={{ margin: 0, color: '#f45f92', fontWeight: 800 }}>Your focus area</p> : null}
                     <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b29cab' }}>
-                      {isJoined ? `${joined} members` : `${spotsLeft} spots`}
+                      {isFull ? 'Full · Waitlist' : `${spotsLeft}/${room.maxSpots} spots`}
+                    </p>
+                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#9a7088' }}>
+                      {energy.emoji} {energy.label}
                     </p>
                   </div>
                   <div className="showup-list-action" style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                     <button
                       type="button"
-                      onClick={() => handleJoinRoom(room.name)}
-                      disabled={isFull}
+                      onClick={() => {
+                        if (isJoined) {
+                          setSelectedRoom(room.name)
+                          setActiveTab('live')
+                          return
+                        }
+                        if (isFull) {
+                          handleJoinWaitlist(room.name)
+                          return
+                        }
+                        handleJoinRoom(room.name)
+                      }}
+                      disabled={blockedByAnotherRoom}
                       className={`showup-join-pill ${isJoined ? 'is-joined' : ''}`}
                       style={{
                         minHeight: 30,
@@ -3616,11 +3498,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         fontSize: 12,
                         fontWeight: 800,
                         border: isJoined ? '1px solid rgba(233,224,229,0.95)' : 'none',
-                        background: isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)',
-                        color: isJoined ? '#9a7088' : '#f45f92',
+                        background: blockedByAnotherRoom ? '#f6f2f4' : (isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)'),
+                        color: blockedByAnotherRoom ? '#b29cab' : (isJoined ? '#9a7088' : '#f45f92'),
                         fontFamily: "'DM Sans',sans-serif",
-                        cursor: isFull ? 'not-allowed' : 'pointer',
-                        opacity: isFull ? 0.6 : 1,
+                        cursor: blockedByAnotherRoom ? 'not-allowed' : 'pointer',
+                        opacity: blockedByAnotherRoom ? 0.7 : 1,
                       }}
                     >
                       {isJoined ? (
@@ -3628,8 +3510,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           <Check size={14} strokeWidth={2.5} color="#b5adb2" />
                           <span>Joined</span>
                         </span>
+                      ) : blockedByAnotherRoom ? (
+                        <span>Leave your current room to join another</span>
                       ) : (
-                        <span>{isFull ? 'Full' : 'Join'}</span>
+                        <span>{isFull ? 'Waitlist' : 'Join'}</span>
                       )}
                     </button>
                     <ChevronRight size={16} strokeWidth={2.3} color="#c89aab" />
@@ -3660,38 +3544,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       ) : null}
 
       <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180, minWidth: 0, overflowX: 'hidden' }}>
-        {roomBannerText ? <div className="showup-empty" style={{ marginBottom: 10 }}>{roomBannerText}</div> : null}
         {pulseBanner ? <div className="showup-sync-notice" style={{ marginBottom: 10 }}>{pulseBanner}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">
-            <button type="button" className="showup-header-btn" onClick={() => setExitPromptOpen(true)}>{'\u2190'}</button>
+            <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'\u2190'}</button>
             <h1 className="showup-room-title">{formatRoomTitle(selectedRoom)}</h1>
-            <div style={{ width: 44, flexShrink: 0 }} aria-hidden="true" />
+            <button type="button" className="showup-header-btn" onClick={() => setRoomSettingsOpen(true)}>
+              <MoreHorizontal size={18} strokeWidth={2.3} />
+            </button>
           </div>
-
-          {activeTab === 'live' && !checkedIn && !taskDone ? (
-            <div className="showup-checkin-actions">
-              <button
-                type="button"
-                className="showup-checkin-btn"
-                onClick={handleCheckIn}
-              >
-                Check In
-              </button>
-              <button
-                type="button"
-                className="showup-done-btn"
-                onClick={handleMarkDone}
-                disabled
-              >
-                Mark Done
-              </button>
-            </div>
-          ) : null}
-          {activeTab === 'live' && checkedIn ? (
+          <div className="showup-empty" style={{ marginBottom: 12, background: 'rgba(255,255,255,0.72)' }}>
+            {roomEnergy.emoji} {roomEnergy.label} · {completedCount} done today
+          </div>
+          {activeTab === 'live' ? (
             <div className="showup-status-actions">
               {taskDone ? (
-                <p className="showup-entry-status">Done for today</p>
+                <p className="showup-entry-status">Done Today ✓</p>
               ) : (
                 <button
                   type="button"
@@ -3736,31 +3604,63 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ) : null}
 
         {activeTab === 'live' ? (
-          <div className="showup-member-grid">
-            {liveMembers.length === 0 ? (
-              <div className="showup-empty">You&apos;re in the room. Tap Check In to start your session.</div>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div className="showup-member-grid">
+              {liveMembers.length === 0 ? (
+                <div className="showup-empty">No one is in this room yet.</div>
+              ) : null}
+              {liveMembers.map(member => {
+                const presenceStatus = getPresenceStatus(selectedRoom, member)
+                const role = topRoleFor(member)
+                return (
+                  <div
+                    key={member.user_id}
+                    className="showup-member-card"
+                    style={{
+                      background: member.task_done ? 'rgba(47,182,109,0.10)' : (presenceStatus === 'active' ? 'rgba(255,255,255,0.9)' : 'transparent'),
+                      borderColor: member.task_done ? 'rgba(47,182,109,0.28)' : 'rgba(249,95,133,0.18)',
+                    }}
+                  >
+                    <div className="showup-avatar">
+                      {member.initials || buildInitials(member.display_name)}
+                    </div>
+                    <div style={{ minWidth: 0, maxWidth: '100%' }}>
+                      <p className="showup-member-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
+                      {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
+                      {member.task_done ? <p className="showup-list-meta" style={{ margin: '4px 0 0', color: '#2f8a59', fontWeight: 800 }}>✓ Done</p> : null}
+                    </div>
+                    {member.user_id !== profile.id ? (
+                      <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
+                        <MessageCircle size={13} strokeWidth={2.2} />
+                        <span>Nudge</span>
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+            {visiblePosts.filter(post => post.system || post.postStyle === 'pulse' || post.postStyle === 'recap').slice(0, 3).length ? (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {visiblePosts
+                  .filter(post => post.system || post.postStyle === 'pulse' || post.postStyle === 'recap')
+                  .slice(0, 3)
+                  .map(post => (
+                    <div key={`live-${post.id}`} className={`showup-feed-card ${post.postStyle === 'pulse' ? 'is-pulse' : ''} ${post.postStyle === 'recap' ? 'is-recap' : ''}`}>
+                      <div className="showup-feed-header">
+                        <div className="showup-feed-author">
+                          <div className="showup-avatar">{post.authorInitials || 'SG'}</div>
+                          <div className="showup-feed-header-main">
+                            <p className="showup-feed-name">{post.authorName}</p>
+                            <p className="showup-feed-time">{formatTimestamp(post.createdAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+                      {post.pulseLabel ? <p className="showup-pulse-label">{post.pulseLabel}</p> : null}
+                      <p className="showup-feed-text">{post.text}</p>
+                    </div>
+                  ))}
+              </div>
             ) : null}
-            {liveMembers.map(member => {
-              const isSelf = member.user_id === profile.id
-              const presenceStatus = getPresenceStatus(selectedRoom, member)
-              return (
-                <div key={member.user_id} className="showup-member-card">
-                  <div className="showup-avatar">
-                    {member.initials || buildInitials(member.display_name)}
-                    {presenceStatus !== 'none' ? <span className={`showup-member-dot ${presenceStatus === 'active' ? 'is-active' : 'is-inactive'}`} /> : null}
-                  </div>
-                  <div style={{ minWidth: 0, maxWidth: '100%' }}>
-                    <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                  </div>
-                  {!isSelf ? (
-                    <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
-                      <MessageCircle size={13} strokeWidth={2.2} />
-                      <span>Nudge</span>
-                    </button>
-                  ) : null}
-                </div>
-              )
-            })}
           </div>
         ) : null}
 
@@ -3900,13 +3800,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div>
                     <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                     <p className="showup-rank-streak">{member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}</p>
-                    {member.user_id === profile.id && roles.length > 1 ? (
-                      <div className="showup-rank-roles">
-                        {roles.map(role => (
-                          <span key={role} className={`showup-rank-role-chip ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</span>
-                        ))}
-                      </div>
-                    ) : null}
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
                     <span className="showup-rank-score-value">{member.streakValue}</span>
@@ -3920,6 +3813,24 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ) : null}
       </div>
 
+      {roomSettingsOpen ? (
+        <div className="showup-exit-backdrop" onClick={() => setRoomSettingsOpen(false)}>
+          <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
+            <h2 className="showup-exit-title">Room settings</h2>
+            <div className="showup-exit-options">
+              <button type="button" className="showup-exit-option" onClick={handleExitRoom}>
+                <strong>
+                  <LogOut size={15} strokeWidth={2.2} />
+                  <span>Exit room</span>
+                </strong>
+                <span>You'll lose your spot. Someone else may take it.</span>
+              </button>
+            </div>
+            <button type="button" className="showup-exit-cancel" onClick={() => setRoomSettingsOpen(false)}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
+
       {exitPromptOpen ? (
         <div className="showup-exit-backdrop" onClick={() => setExitPromptOpen(false)}>
           <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
@@ -3927,21 +3838,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             <div className="showup-exit-options">
               <button type="button" className="showup-exit-option" onClick={handleLeaveForNow}>
                 <strong>Leave for now</strong>
-                <span>Stay in this room and come back anytime.</span>
+                <span>Your progress is saved. Come back to mark done.</span>
               </button>
-              {isPillarRoom ? (
-                <p className="showup-sheet-subtitle" style={{ marginTop: -2 }}>This is your pillar room. Your spot is always here.</p>
-              ) : (
-                <button type="button" className="showup-exit-option" onClick={handleExitRoom}>
-                  <strong>
-                    <LogOut size={15} strokeWidth={2.2} />
-                    <span>Exit room</span>
-                  </strong>
-                  <span>You will lose your spot in this room.</span>
-                </button>
-              )}
             </div>
-            <button type="button" className="showup-exit-cancel" onClick={() => setExitPromptOpen(false)}>Cancel</button>
+            <button type="button" className="showup-exit-cancel" onClick={closeExitPrompt}>Cancel</button>
           </div>
         </div>
       ) : null}
