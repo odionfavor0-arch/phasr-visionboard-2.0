@@ -702,21 +702,6 @@ const SHOW_UP_STYLES = `
   text-transform:uppercase;
   color:#f95f85;
 }
-.showup-post-type{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:max-content;
-  margin:0 0 8px;
-  padding:5px 8px;
-  border-radius:999px;
-  color:#b98097;
-  background:rgba(249,95,133,0.08);
-  border:1px solid rgba(249,95,133,0.18);
-  font-size:10px;
-  font-weight:900;
-  line-height:1;
-}
 .showup-feed-author{
   display:flex;
   gap:10px;
@@ -807,12 +792,6 @@ const SHOW_UP_STYLES = `
   padding-top:12px;
   border-top:1px solid rgba(77,49,66,0.08);
   flex-wrap:nowrap;
-}
-.showup-feed-chip-row{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  min-width:0;
 }
 .showup-reaction-chip,
 .showup-comment-toggle{
@@ -1795,7 +1774,6 @@ function compactFeedPostsForStorage(posts) {
     .map(post => ({
       ...post,
       image: post?.image || '',
-      postType: post?.postType || '',
       system: Boolean(post?.system),
       pulseFormat: post?.pulseFormat || '',
       pulseLabel: post?.pulseLabel || '',
@@ -2705,7 +2683,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           anonymous: false,
           text: post.text || post.content || '',
           image: post.image_url || cached?.image || '',
-          postType: (!remotePulseFormat && !remoteRecap && !remoteTargetUserId) ? (post.post_type || cached?.postType || '') : '',
           system: cached?.system || (post.author_name || post.display_name) === 'Sage',
           pulseFormat: remotePulseFormat || (remoteRecap ? 'Weekly Recap' : cached?.pulseFormat || ''),
           pulseLabel: remotePulseFormat
@@ -2733,7 +2710,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
   }
 
-  async function createFeedPost({ text, image = '', anonymous = false, author = null, postType = '', system = false, pulseFormat = '', pulseLabel = '', targetUserId = '', postStyle = '' }) {
+  async function createFeedPost({ text, image = '', anonymous = false, author = null, system = false, pulseFormat = '', pulseLabel = '', targetUserId = '', postStyle = '' }) {
     const createdAt = new Date().toISOString()
     const postAuthor = author || {
       id: anonymous ? `anon-${uid()}` : profile.id,
@@ -2748,7 +2725,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       anonymous,
       text,
       image,
-      postType,
       system,
       pulseFormat,
       pulseLabel,
@@ -2764,12 +2740,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!supabase || !selectedRoom) return nextPost
 
     try {
-      const remotePostType = postType || (
+      const remotePostType =
         postStyle === 'recap' ? 'recap:Weekly Recap'
           : pulseFormat ? `pulse:${pulseFormat}`
             : targetUserId ? `nudge:${targetUserId}`
               : ''
-      )
       const { error: insertError } = await supabase
         .from('room_feed_posts')
         .insert({
@@ -3874,20 +3849,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       : <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'image' }) }} />
                   ) : null}
                   <div className="showup-feed-reactions">
-                    <div className="showup-feed-chip-row">
-                      <button
-                        type="button"
-                        className={`showup-reaction-chip ${likedByMe ? 'is-active' : ''}`}
-                        onClick={event => {
-                          event.stopPropagation()
-                          handleToggleReaction(post.id, 'like')
-                        }}
-                        aria-label={likedByMe ? 'Unlike post' : 'Like post'}
-                      >
-                        <ThumbsUp size={15} strokeWidth={2.2} />
-                        <span>{likeCount}</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className={`showup-reaction-chip ${likedByMe ? 'is-active' : ''}`}
+                      onClick={event => {
+                        event.stopPropagation()
+                        handleToggleReaction(post.id, 'like')
+                      }}
+                      aria-label={likedByMe ? 'Unlike post' : 'Like post'}
+                    >
+                      <ThumbsUp size={15} strokeWidth={2.2} />
+                      <span>{likeCount}</span>
+                    </button>
                     <button
                       type="button"
                       className="showup-comment-toggle"
