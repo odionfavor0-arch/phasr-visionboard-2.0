@@ -2201,6 +2201,13 @@ function getMediaKind(value) {
   return 'image'
 }
 
+function formatRoomTitle(value) {
+  return String(value || '')
+    .replace(/^["'`\s]+|["'`\s]+$/g, '')
+    .replace(/["'`]+/g, '')
+    .trim()
+}
+
 function dedupeByIdOrTimestamp(items) {
   const seen = new Set()
   return (Array.isArray(items) ? items : []).filter(item => {
@@ -3658,11 +3665,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={() => setExitPromptOpen(true)}>{'\u2190'}</button>
-            <h1 className="showup-room-title">{selectedRoom}</h1>
-            <div className="showup-live-pill">
-              <span className="showup-live-dot" />
-              <span>{activeCount} active</span>
-            </div>
+            <h1 className="showup-room-title">{formatRoomTitle(selectedRoom)}</h1>
+            <div style={{ width: 44, flexShrink: 0 }} aria-hidden="true" />
           </div>
 
           {activeTab === 'live' && !checkedIn && !taskDone ? (
