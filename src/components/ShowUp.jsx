@@ -577,9 +577,11 @@ const SHOW_UP_STYLES = `
   background:var(--bg, #fff);
   flex:1;
   width:100%;
+  min-width:0;
   max-width:none;
   margin:0 auto;
   padding-bottom:18px;
+  overflow-x:hidden;
 }
 .showup-feed-view{
   gap:12px;
@@ -605,6 +607,11 @@ const SHOW_UP_STYLES = `
   border:1px solid rgba(249,95,133,0.18);
   border-radius:14px;
   background:rgba(255,255,255,0.72);
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  overflow:hidden;
 }
 .showup-compose-top,
 .showup-feed-header,
@@ -667,6 +674,11 @@ const SHOW_UP_STYLES = `
   padding:14px;
   position:relative;
   box-shadow:0 10px 28px rgba(77,49,66,0.08);
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  overflow:hidden;
 }
 .showup-feed-card.is-anonymous{
   border:1px dashed rgba(249,95,133,0.38);
@@ -715,13 +727,17 @@ const SHOW_UP_STYLES = `
   gap:10px;
   align-items:center;
   min-width:0;
+  width:100%;
+  flex:1 1 auto;
 }
 .showup-feed-header-main{
   min-width:0;
   display:flex;
   align-items:baseline;
+  justify-content:space-between;
   gap:8px;
   width:100%;
+  overflow:hidden;
 }
 .showup-post-edit{
   display:grid;
@@ -751,6 +767,8 @@ const SHOW_UP_STYLES = `
   font-size:13px;
   font-weight:700;
   color:#4d3142;
+  flex:1 1 auto;
+  min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -767,6 +785,8 @@ const SHOW_UP_STYLES = `
   line-height:1.65;
   color:#4d3142;
   white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
 }
 .showup-feed-image{
   width:100%;
@@ -785,6 +805,9 @@ const SHOW_UP_STYLES = `
   align-items:center;
   justify-content:space-between;
   gap:10px;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
   margin-top:14px;
   padding-top:12px;
   border-top:1px solid rgba(77,49,66,0.08);
@@ -1497,6 +1520,12 @@ const SHOW_UP_STYLES = `
   .showup-feed-image{
     max-height:420px;
   }
+  .showup-feed-header-main{
+    gap:6px;
+  }
+  .showup-feed-time{
+    font-size:10px;
+  }
   .showup-bell-btn{
     min-height:28px;
     padding:0 8px;
@@ -2195,6 +2224,15 @@ function getReactionSummary(reactions) {
     .filter(reaction => reaction.count > 0)
 }
 
+function getMediaKind(value) {
+  const media = String(value || '').trim().toLowerCase()
+  if (!media) return ''
+  if (media.startsWith('data:video/')) return 'video'
+  if (media.startsWith('data:image/')) return 'image'
+  if (/\.(mp4|webm|ogg|mov)(\?|#|$)/i.test(media)) return 'video'
+  return 'image'
+}
+
 function dedupeByIdOrTimestamp(items) {
   const seen = new Set()
   return (Array.isArray(items) ? items : []).filter(item => {
@@ -2319,7 +2357,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [pulseBanner, setPulseBanner] = useState('')
   const [commentSheetPostId, setCommentSheetPostId] = useState('')
   const [commentImage, setCommentImage] = useState('')
-  const [lightboxImage, setLightboxImage] = useState('')
+  const [lightboxMedia, setLightboxMedia] = useState({ url: '', kind: '' })
   const [nudgeToast, setNudgeToast] = useState(null)
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
@@ -3768,7 +3806,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   placeholder="Share what you are working on..."
                 />
               </div>
-              {postImage ? <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" onClick={() => setLightboxImage(postImage)} /> : null}
+              {postImage ? (
+                getMediaKind(postImage) === 'video'
+                  ? <video className="showup-feed-image" src={postImage} controls playsInline onClick={event => { event.stopPropagation(); setLightboxMedia({ url: postImage, kind: 'video' }) }} />
+                  : <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: postImage, kind: 'image' }) }} />
+              ) : null}
               <div className="showup-compose-actions">
                 <button type="button" className="showup-photo-btn" onClick={() => fileInputRef.current?.click()}>
                   <ImageIcon size={15} strokeWidth={2.2} />
@@ -3779,7 +3821,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <span>Post</span>
                 </button>
               </div>
-              <input ref={fileInputRef} type="file" accept="image/*" className="showup-hidden-input" onChange={handlePhotoPick} />
+              <input ref={fileInputRef} type="file" accept="image/*,video/*" className="showup-hidden-input" onChange={handlePhotoPick} />
             </div>
 
             {visiblePosts.length === 0 ? (
@@ -3835,7 +3877,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   ) : (
                     <p className="showup-feed-text">{post.text}</p>
                   )}
-                  {post.image ? <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxImage(post.image) }} /> : null}
+                  {post.image ? (
+                    getMediaKind(post.image) === 'video'
+                      ? <video className="showup-feed-image" src={post.image} controls playsInline onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'video' }) }} />
+                      : <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'image' }) }} />
+                  ) : null}
                   <div className="showup-feed-reactions">
                     <div className="showup-feed-chip-row">
                       <button
@@ -3932,10 +3978,32 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         </div>
       ) : null}
 
-      {lightboxImage ? (
-        <div className="showup-lightbox" onClick={() => setLightboxImage('')}>
-          <button type="button" className="showup-lightbox-close" onClick={() => setLightboxImage('')} aria-label="Close image">×</button>
-          <img src={lightboxImage} alt="Expanded feed upload" onClick={event => event.stopPropagation()} />
+      {lightboxMedia.url ? (
+        <div className="showup-lightbox" onClick={() => setLightboxMedia({ url: '', kind: '' })}>
+          <button
+            type="button"
+            className="showup-lightbox-close"
+            onClick={() => setLightboxMedia({ url: '', kind: '' })}
+            aria-label={lightboxMedia.kind === 'video' ? 'Close video' : 'Close image'}
+          >
+            ×
+          </button>
+          {lightboxMedia.kind === 'video' ? (
+            <video
+              src={lightboxMedia.url}
+              controls
+              autoPlay
+              playsInline
+              onClick={event => event.stopPropagation()}
+              style={{ maxWidth: 'min(100%, 880px)', maxHeight: '88vh', borderRadius: 20, background: '#000' }}
+            />
+          ) : (
+            <img
+              src={lightboxMedia.url}
+              alt="Expanded feed upload"
+              onClick={event => event.stopPropagation()}
+            />
+          )}
         </div>
       ) : null}
 
