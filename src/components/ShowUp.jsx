@@ -329,18 +329,10 @@ const SHOW_UP_STYLES = `
   background:rgba(255,255,255,0.9);
 }
 .showup-room-subtitle{
-  margin:-8px 0 10px;
-  text-align:center;
-  font-size:11px;
-  font-weight:800;
-  color:#b98097;
+  display:none;
 }
 .showup-room-streak{
-  margin:0 auto 12px;
-  text-align:center;
-  font-size:12px;
-  font-weight:800;
-  color:#b98097;
+  display:none;
 }
 .showup-live-dot{
   width:8px;
@@ -628,6 +620,9 @@ const SHOW_UP_STYLES = `
   padding:10px 0;
   background:transparent;
   font-size:15px;
+  flex:1 1 auto;
+  min-width:0;
+  width:100%;
 }
 .showup-sheet-textarea{
   min-height:96px;
@@ -1315,6 +1310,11 @@ const SHOW_UP_STYLES = `
   line-height:1.6;
   background:var(--bg, #fff);
   padding:22px 12px;
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+  overflow:hidden;
+  overflow-wrap:anywhere;
 }
 .showup-rank-roles{
   display:flex;
@@ -1667,16 +1667,6 @@ const REACTION_OPTIONS = [
   { key: 'love', label: 'Love', emoji: '\u2764\uFE0F' },
   { key: 'laugh', label: 'Laugh', emoji: '\u{1F602}' },
   { key: 'smile', label: 'Smile', emoji: '\u{1F60A}' },
-]
-
-const PROOF_TYPES = [
-  '\u{1F3CB}\uFE0F Workout done',
-  '\u{1F4DA} Study session',
-  '\u{1F957} Meal prep',
-  '\u{1F4BB} Deep work',
-  '\u{1F4D3} Journaled',
-  '\u{1F3C6} Small win',
-  '\u2705 Showed up',
 ]
 
 const confessionByPillar = {
@@ -2352,7 +2342,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [feedReady, setFeedReady] = useState(true)
   const [postDraft, setPostDraft] = useState('')
   const [postImage, setPostImage] = useState('')
-  const [selectedPostType, setSelectedPostType] = useState('')
   const [toast, setToast] = useState('')
   const [pulseBanner, setPulseBanner] = useState('')
   const [commentSheetPostId, setCommentSheetPostId] = useState('')
@@ -3166,10 +3155,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!text && !imageDraft) return
     setPostDraft('')
     setPostImage('')
-    setSelectedPostType('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     const uploadedImage = await uploadRoomFeedImage(imageDraft)
-    const nextPost = await createFeedPost({ text, image: uploadedImage, anonymous: false, postType: selectedPostType })
+    const nextPost = await createFeedPost({ text, image: uploadedImage, anonymous: false })
     if (uploadedImage && nextPost?.id) {
       setCommentSheetPostId(nextPost.id)
     }
@@ -3674,7 +3662,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   return (
-    <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%' }}>
+    <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', overflowX: 'hidden' }}>
       <style>{SHOW_UP_STYLES}</style>
       {nudgeToast ? (
         <div className="showup-toast-stack" role="status" aria-live="polite">
@@ -3689,7 +3677,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         </div>
       ) : null}
 
-      <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180 }}>
+      <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180, minWidth: 0, overflowX: 'hidden' }}>
         {roomBannerText ? <div className="showup-empty" style={{ marginBottom: 10 }}>{roomBannerText}</div> : null}
         {pulseBanner ? <div className="showup-sync-notice" style={{ marginBottom: 10 }}>{pulseBanner}</div> : null}
         <div className="showup-sticky-header">
@@ -3723,9 +3711,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           ) : null}
           {activeTab === 'live' && checkedIn ? (
             <div className="showup-status-actions">
-              <p className="showup-entry-status">Checked in {formatTime(currentMember?.check_in_time)}</p>
               {taskDone ? (
-                <p className="showup-entry-status">Done {formatTime(doneTime || currentMember?.task_done_time) || 'today'}</p>
+                <p className="showup-entry-status">Done for today</p>
               ) : (
                 <button
                   type="button"
@@ -3776,18 +3763,22 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             ) : null}
             {liveMembers.map(member => {
               const isSelf = member.user_id === profile.id
-              const role = topRoleFor(member)
               const presenceStatus = getPresenceStatus(selectedRoom, member)
               return (
-                <div key={member.user_id} className="showup-member-card" onClick={() => { if (!isSelf) openNotifySheet(member) }}>
+                <div key={member.user_id} className="showup-member-card">
                   <div className="showup-avatar">
                     {member.initials || buildInitials(member.display_name)}
                     {presenceStatus !== 'none' ? <span className={`showup-member-dot ${presenceStatus === 'active' ? 'is-active' : 'is-inactive'}`} /> : null}
                   </div>
                   <div style={{ minWidth: 0, maxWidth: '100%' }}>
                     <p className="showup-member-name">{isSelf ? 'You' : member.display_name}</p>
-                    {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
                   </div>
+                  {!isSelf ? (
+                    <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
+                      <MessageCircle size={13} strokeWidth={2.2} />
+                      <span>Nudge</span>
+                    </button>
+                  ) : null}
                 </div>
               )
             })}
