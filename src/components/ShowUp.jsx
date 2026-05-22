@@ -3082,6 +3082,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setDoneBusy(true)
     setTaskDone(true)
     setDoneTime(nowIso)
+    setActiveTab('feed')
     setToast('')
     setStoredActiveRoom('')
     safeWrite(getLastDoneDateStorageKey(roomName, profile.id), getTodayKey())
@@ -3906,15 +3907,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
             <h2 className="showup-exit-title">Room settings</h2>
             <div className="showup-exit-options">
-              {!isPillarRoom ? (
-                <button type="button" className="showup-exit-option" style={{ background: '#fff', borderColor: '#c86f8f', color: '#c86f8f' }} onClick={handleExitRoom}>
-                  <strong>
-                    <LogOut size={15} strokeWidth={2.2} />
-                    <span>Exit room</span>
-                  </strong>
-                  <span>You'll lose your spot. Someone else may take it.</span>
-                </button>
-              ) : null}
+              <button type="button" className="showup-exit-option" style={{ background: '#fff', borderColor: '#c86f8f', color: '#c86f8f' }} onClick={handleExitRoom}>
+                <strong>
+                  <LogOut size={15} strokeWidth={2.2} />
+                  <span>Exit room</span>
+                </strong>
+                <span>You'll lose your spot. Someone else may take it.</span>
+              </button>
             </div>
             <button type="button" className="showup-exit-cancel" aria-label="Close room settings" onClick={() => setRoomSettingsOpen(false)}>Close</button>
           </div>
