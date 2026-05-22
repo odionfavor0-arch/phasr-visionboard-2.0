@@ -391,8 +391,15 @@ const SHOW_UP_STYLES = `
   cursor:pointer;
 }
 .showup-checkin-btn.is-complete,
+.showup-checkin-btn:disabled{
+  border:none;
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+  opacity:.86;
+  box-shadow:none;
+  cursor:default;
+}
 .showup-done-btn.is-complete,
-.showup-checkin-btn:disabled,
 .showup-done-btn:disabled{
   border:1px solid rgba(249,95,133,0.24);
   background:rgba(255,255,255,0.72);
@@ -1875,6 +1882,13 @@ function persistFeedPosts(key, posts) {
   safeWrite(key, compactPosts)
 }
 
+function cacheRoomFeedPost(roomName, post) {
+  if (!roomName || !post?.id) return
+  const key = getFeedStorageKey(roomName)
+  const cachedPosts = safeArray(safeRead(key, []))
+  persistFeedPosts(key, mergeFeedPosts([post], cachedPosts))
+}
+
 function persistMockMembers(key, members) {
   const cleanMembers = (Array.isArray(members) ? members : [])
     .filter(member => !isPlaceholderMember(member))
@@ -2218,11 +2232,11 @@ function getCreatedRoomsKey() {
 }
 
 function getJoinedRoomsKey(userId) {
-  return `phasr_showup_joined_rooms_${userId || 'local-user'}`
+  return `showup_joined_rooms_${userId || 'local-user'}`
 }
 
 function getNotificationStorageKey(userId) {
-  return `phasr_showup_notifications_${userId || 'local-user'}`
+  return `showup_notifications_${userId || 'local-user'}`
 }
 
 function getRoomNudgesStorageKey(roomName, userId) {
@@ -2590,13 +2604,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   useEffect(() => {
     if (!profile?.id) return undefined
     const poll = window.setInterval(async () => {
-      if (!selectedRoom) return
+      const nudgeRoom = selectedRoom || joinedRoomName
+      if (!nudgeRoom) return
       try {
         if (supabase) {
           const { data, error } = await supabase
             .from('room_nudges')
             .select('*')
-            .eq('room_id', selectedRoom)
+            .eq('room_id', nudgeRoom)
             .eq('to_user_id', profile.id)
             .eq('seen', false)
             .order('created_at', { ascending: false })
@@ -2618,7 +2633,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         console.error('Show Up nudge poll failed', nextError)
       }
 
-      const localNudges = safeArray(safeRead(getRoomNudgesStorageKey(selectedRoom, profile.id), []))
+      const localNudges = safeArray(safeRead(getRoomNudgesStorageKey(nudgeRoom, profile.id), []))
       const nextLocal = localNudges.find(item => !item.seen)
       if (!nextLocal) return
       setNudgeToast({
@@ -2627,12 +2642,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         text: nextLocal.text,
         anonymous: Boolean(nextLocal.anonymous),
       })
-      safeWrite(getRoomNudgesStorageKey(selectedRoom, profile.id), localNudges.map(item => (
+      safeWrite(getRoomNudgesStorageKey(nudgeRoom, profile.id), localNudges.map(item => (
         item.id === nextLocal.id ? { ...item, seen: true } : item
       )))
     }, 15000)
     return () => window.clearInterval(poll)
-  }, [profile.id, selectedRoom])
+  }, [joinedRoomName, profile.id, selectedRoom])
 
   useEffect(() => {
     if (selectedRoom || !profile.id) return
@@ -2887,8 +2902,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
   }
 
-  async function createFeedPost({ text, image = '', anonymous = false, author = null, system = false, pulseFormat = '', pulseLabel = '', targetUserId = '', postStyle = '' }) {
+  async function createFeedPost({ text, image = '', anonymous = false, author = null, system = false, pulseFormat = '', pulseLabel = '', targetUserId = '', postStyle = '', roomName = '' }) {
     const createdAt = new Date().toISOString()
+    const targetRoom = roomName || selectedRoom
     const postAuthor = author || {
       id: anonymous ? `anon-${uid()}` : profile.id,
       name: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
@@ -2912,8 +2928,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       comments: [],
     }
 
-    if (!supabase || !selectedRoom) {
-      addFeedPost(nextPost)
+    const showLocally = !selectedRoom || targetRoom === selectedRoom
+
+    if (!supabase || !targetRoom) {
+      cacheRoomFeedPost(targetRoom, nextPost)
+      if (showLocally) addFeedPost(nextPost)
+      setFeedReady(false)
       return nextPost
     }
 
@@ -2923,21 +2943,33 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           : pulseFormat ? `pulse:${pulseFormat}`
             : targetUserId ? `nudge:${targetUserId}`
               : ''
-      const { data, error: insertError } = await supabase
+      const insertPayload = {
+        id: nextPost.id,
+        room_id: targetRoom,
+        author_id: postAuthor.id === 'sage' ? 'sage' : postAuthor.id,
+        author_name: postAuthor.name,
+        text,
+        image_url: image || null,
+        post_type: remotePostType,
+        is_system_post: Boolean(system),
+        created_at: createdAt,
+      }
+      let { data, error: insertError } = await supabase
         .from('room_feed_posts')
-        .insert({
-          id: nextPost.id,
-          room_id: selectedRoom,
-          author_id: postAuthor.id === 'sage' ? profile.id : postAuthor.id,
-          author_name: postAuthor.name,
-          text,
-          image_url: image || null,
-          post_type: remotePostType,
-          is_system_post: Boolean(system),
-          created_at: createdAt,
-        })
+        .insert(insertPayload)
         .select()
         .single()
+
+      if (insertError && /is_system_post/i.test(String(insertError.message || insertError.details || ''))) {
+        const { is_system_post: _ignored, ...compatiblePayload } = insertPayload
+        const retry = await supabase
+          .from('room_feed_posts')
+          .insert(compatiblePayload)
+          .select()
+          .single()
+        data = retry.data
+        insertError = retry.error
+      }
 
       if (insertError) throw insertError
 
@@ -2948,13 +2980,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         createdAt: data?.created_at || nextPost.createdAt,
         system: Boolean(data?.is_system_post ?? nextPost.system),
       }
-      addFeedPost(persistedPost)
+      cacheRoomFeedPost(targetRoom, persistedPost)
+      if (showLocally) addFeedPost(persistedPost)
       setFeedReady(true)
       return persistedPost
     } catch (nextError) {
       console.error('Show Up feed post failed', nextError)
       setFeedReady(false)
-      addFeedPost(nextPost)
+      cacheRoomFeedPost(targetRoom, nextPost)
+      if (showLocally) addFeedPost(nextPost)
       return nextPost
     }
   }
@@ -2965,6 +2999,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       image: '',
       anonymous: false,
       system: true,
+      roomName: options.roomName || selectedRoom,
       author: {
         id: 'sage',
         name: 'Sage',
@@ -2991,6 +3026,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     safeWrite(getPulseStorageKey(roomName), today)
     const pulsePost = await createRoomActivityPost(text, {
+      roomName,
       pulseFormat: pulse.format,
       pulseLabel: `\u{1F4C5} ${pulse.format.toUpperCase()}`,
       postStyle: 'pulse',
@@ -3083,6 +3119,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       task_done: false,
       task_done_time: '',
       streak_count: getCurrentStreakCount(),
+      created_at: new Date().toISOString(),
     }
 
     try {
@@ -3595,8 +3632,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
-  const completedCount = useMemo(() => realMembers.filter(member => getMemberStatus(member) === 'done').length, [realMembers])
-  const activeCount = useMemo(() => realMembers.filter(member => getPresenceStatus(selectedRoom, member) === 'active').length, [presenceTick, realMembers, selectedRoom])
   const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const liveMembers = useMemo(() => realMembers, [realMembers])
@@ -3628,8 +3663,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [activeTab, realMembers, profile.id])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
-  const roomEnergy = useMemo(() => getRoomEnergyState(completedCount), [completedCount])
-  const isPillarRoom = detectRoomNameFromBoard() === selectedRoom
   const joinedRoomMember = useMemo(() => {
     if (!joinedRoomName) return null
     return safeArray(safeRead(getMockMemberStorageKey(joinedRoomName), [])).find(member => member.user_id === profile.id) || null
@@ -3890,11 +3923,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   return (
     <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', overflowX: 'hidden' }}>
       <style>{SHOW_UP_STYLES}</style>
-      {progressToast ? (
-        <div className="showup-progress-toast" role="status" aria-live="polite">
-          {progressToast}
-        </div>
-      ) : null}
       {nudgeToast ? (
         <div className="showup-toast-stack" role="status" aria-live="polite">
           <div
@@ -3908,8 +3936,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           >
             <div className="showup-avatar">{nudgeToast.anonymous ? 'AN' : buildInitials(nudgeToast.fromName || 'Someone')}</div>
             <div className="showup-nudge-toast-text">
-              <p className="showup-nudge-toast-name">{nudgeToast.anonymous ? 'Someone' : nudgeToast.fromName || 'Someone'}</p>
-              <p className="showup-nudge-toast-message">{nudgeToast.text}</p>
+              <p className="showup-nudge-toast-name">{nudgeToast.anonymous ? 'Someone' : nudgeToast.fromName || 'Someone'} nudged you</p>
+              <p className="showup-nudge-toast-message">"{nudgeToast.text}"</p>
             </div>
           </div>
         </div>
@@ -4000,6 +4028,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {activeTab === 'feed' ? (
           <div className="showup-feed-view" ref={feedViewRef}>
+            {progressToast ? (
+              <div className="showup-progress-toast" role="status" aria-live="polite">
+                {progressToast}
+              </div>
+            ) : null}
             <div className="showup-compose-card">
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>
