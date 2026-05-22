@@ -1,7 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreHorizontal, Plus, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
-import { calculateUserPoints, getStoredUserLevel } from '../lib/userLevel'
-import { getLockInSummary, loadLockInState } from '../lib/lockIn'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
@@ -448,8 +446,8 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fill, 146px);
-  justify-content:center;
+  grid-template-columns:repeat(auto-fit, minmax(138px, 1fr));
+  justify-content:stretch;
   gap:10px;
   border:none;
   border-radius:0;
@@ -457,7 +455,7 @@ const SHOW_UP_STYLES = `
   background:transparent;
   margin:6px auto 0;
   width:100%;
-  max-width:760px;
+  max-width:860px;
   box-shadow:none;
 }
 .showup-member-grid .showup-empty{
@@ -466,8 +464,8 @@ const SHOW_UP_STYLES = `
   box-sizing:border-box;
 }
 .showup-member-card{
-  width:146px;
-  min-height:108px;
+  width:100%;
+  min-height:124px;
   padding:10px;
   display:grid;
   grid-template-columns:1fr;
@@ -713,9 +711,10 @@ const SHOW_UP_STYLES = `
 .showup-feed-header-main{
   min-width:0;
   display:flex;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:8px;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:2px;
   width:100%;
   overflow:hidden;
 }
@@ -1486,13 +1485,13 @@ const SHOW_UP_STYLES = `
     max-height:75dvh;
   }
   .showup-member-grid{
-    grid-template-columns:repeat(2, minmax(0, 146px));
-    justify-content:center;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    justify-content:stretch;
     gap:8px;
   }
   .showup-member-card{
-    width:146px;
-    min-height:108px;
+    width:100%;
+    min-height:118px;
     padding:9px 6px;
     border-radius:12px;
   }
@@ -1613,12 +1612,12 @@ const SHOW_UP_STYLES = `
 `
 
 const ROOM_DEFINITIONS = [
-  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', maxSpots: 12, description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
-  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', maxSpots: 12, description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
-  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', maxSpots: 12, description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
-  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', maxSpots: 12, description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
-  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', maxSpots: 12, description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
-  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', maxSpots: 12, description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
+  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', maxSpots: 20, description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
+  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', maxSpots: 20, description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
+  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', maxSpots: 20, description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
+  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', maxSpots: 20, description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
+  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', maxSpots: 20, description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
+  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', maxSpots: 20, description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
 ]
 
 const ROOM_ICONS = {
@@ -1727,7 +1726,7 @@ const WEEKLY_PULSE = {
   },
 }
 
-const MAX_ROOM_SIZE = 12
+const MAX_ROOM_SIZE = 20
 
 function safeRead(key, fallback) {
   try {
@@ -2160,6 +2159,8 @@ function buildMockMember(profile, roomName) {
     user_id: profile.id,
     display_name: profile.name,
     initials: profile.initials,
+    checked_in: false,
+    check_in_time: '',
     task_done: false,
     task_done_time: '',
     streak_count: getCurrentStreakCount(),
@@ -2198,7 +2199,7 @@ function clearPresence(roomName, userId) {
 }
 
 function getPresenceStatus(roomName, member) {
-  if (!roomName || !member?.user_id) return 'none'
+  if (!roomName || !member?.user_id || !member?.checked_in) return 'none'
   return readPresence(roomName, member.user_id).status
 }
 
@@ -2330,12 +2331,12 @@ function computeRoomRoles(members, roomName) {
 }
 
 export default function ShowUp({ user, onGoToDailyStreaks }) {
-  const [lockInState] = useState(() => loadLockInState())
   const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
   const [selectedRoom, setSelectedRoom] = useState(null)
   const [activeTab, setActiveTab] = useState('live')
   const [members, setMembers] = useState([])
   const [roomCounts, setRoomCounts] = useState({})
+  const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
   const [doneTime, setDoneTime] = useState('')
   const [loading, setLoading] = useState(true)
@@ -2581,7 +2582,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
       const nextMembers = (data || []).map(member => ({
         ...member,
-        checked_in: false,
         streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
 
@@ -2607,7 +2607,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     const withStreaks = nextMembers.map(member => ({
       ...member,
-      checked_in: false,
       streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
     }))
     persistMockMembers(getMockMemberStorageKey(roomName), withStreaks)
@@ -2617,8 +2616,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   function hydrateCurrentMember(nextMembers, nextProfile = profile) {
     const myMember = nextMembers.find(member => member.user_id === nextProfile.id)
+    const nextCheckedIn = Boolean(myMember?.checked_in)
     const nextTaskDone = Boolean(myMember?.task_done)
+    setCheckedIn(nextCheckedIn)
     setTaskDone(nextTaskDone)
+    if (myMember?.check_in_time && !nextTaskDone) setDoneTime('')
     if (myMember?.task_done_time) setDoneTime(myMember.task_done_time)
     if (!nextTaskDone) setDoneTime('')
   }
@@ -2879,6 +2881,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
+      checked_in: false,
+      check_in_time: '',
       task_done: false,
       task_done_time: '',
       streak_count: getCurrentStreakCount(),
@@ -2925,6 +2929,50 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setToast('')
     await postWeeklyPulseIfNeeded(roomName)
     setLoading(false)
+  }
+
+  async function handleCheckIn() {
+    if (!selectedRoom || checkedIn) return
+    const nowIso = new Date().toISOString()
+    const patch = {
+      room_name: selectedRoom,
+      user_id: profile.id,
+      display_name: profile.name,
+      initials: profile.initials,
+      checked_in: true,
+      check_in_time: nowIso,
+      task_done: false,
+      task_done_time: '',
+      streak_count: currentMember?.streak_count || getCurrentStreakCount(),
+    }
+    setCheckedIn(true)
+    setTaskDone(false)
+    setDoneTime('')
+    setStoredActiveRoom(selectedRoom)
+    writePresence(selectedRoom, profile.id, 'active')
+    setPresenceTick(current => current + 1)
+    addRoomActivity(selectedRoom, {
+      type: 'checkin',
+      userId: profile.id,
+      displayName: profile.name,
+      date: getTodayKey(),
+      time: new Date(nowIso).toTimeString().slice(0, 5),
+    })
+    setMembers(current => (
+      current.some(member => member.user_id === profile.id)
+        ? current.map(member => (member.user_id === profile.id ? { ...member, ...patch } : member))
+        : [patch, ...current]
+    ))
+    upsertLocalMember(selectedRoom, patch)
+
+    try {
+      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
+      const { error: upsertError } = await supabase.from('show_up_checkins').upsert(patch, { onConflict: 'room_name,user_id' })
+      if (upsertError) throw upsertError
+      await loadRoomCounts(profile)
+    } catch (nextError) {
+      console.error('Show Up check-in failed', nextError)
+    }
   }
 
   function handleJoinWaitlist(roomName) {
@@ -2984,6 +3032,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     safeWrite(getJoinedRoomsKey(profile.id), [])
     safeRemove(getActiveRoomStorageKey(profile.id))
     setMembers([])
+    setCheckedIn(false)
     setTaskDone(false)
     setDoneTime('')
     setExitPromptOpen(false)
@@ -2993,7 +3042,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }
 
   async function handleMarkDone() {
-    if (!selectedRoom || taskDone || doneBusy) return
+    if (!selectedRoom || !checkedIn || taskDone || doneBusy) return
     const nowIso = new Date().toISOString()
     const roomName = selectedRoom
     const lastDoneDate = localStorage.getItem(getLastDoneDateStorageKey(roomName, profile.id))
@@ -3004,6 +3053,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
+      checked_in: true,
+      check_in_time: currentMember?.check_in_time || nowIso,
       task_done: true,
       task_done_time: nowIso,
       streak_count: nextStreakCount,
@@ -3508,7 +3559,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       {isJoined ? (
                         <span className="showup-list-state" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <Check size={14} strokeWidth={2.5} color="#b5adb2" />
-                          <span>Joined</span>
+                          <span>Enter</span>
                         </span>
                       ) : blockedByAnotherRoom ? (
                         <span>Leave your current room to join another</span>
@@ -3548,30 +3599,47 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'\u2190'}</button>
-            <h1 className="showup-room-title">{formatRoomTitle(selectedRoom)}</h1>
+            <h1 className="showup-room-title" style={{ textAlign: 'left' }}>{formatRoomTitle(selectedRoom)}</h1>
             <button type="button" className="showup-header-btn" onClick={() => setRoomSettingsOpen(true)}>
               <MoreHorizontal size={18} strokeWidth={2.3} />
             </button>
           </div>
-          <div className="showup-empty" style={{ marginBottom: 12, background: 'rgba(255,255,255,0.72)' }}>
-            {roomEnergy.emoji} {roomEnergy.label} · {completedCount} done today
-          </div>
-          {activeTab === 'live' ? (
-            <div className="showup-status-actions">
-              {taskDone ? (
-                <p className="showup-entry-status">Done Today ✓</p>
-              ) : (
-                <button
-                  type="button"
-                  className="showup-mini-done-btn"
-                  onClick={handleMarkDone}
-                  disabled={doneBusy}
-                >
-                  {doneBusy ? 'Saving...' : 'Mark Done'}
-                </button>
-              )}
+          <div className="showup-feed-card" style={{ marginBottom: 12, background: 'rgba(255,255,255,0.82)', boxShadow: 'none' }}>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <p className="showup-room-title" style={{ margin: 0, textAlign: 'left', whiteSpace: 'normal' }}>{formatRoomTitle(selectedRoom)}</p>
+                  <p className="showup-list-meta" style={{ margin: '6px 0 0' }}>{roomEnergy.emoji} {roomEnergy.label} · {completedCount} done today</p>
+                  {checkedIn && !taskDone ? <p className="showup-list-meta" style={{ margin: '4px 0 0' }}>Checked in {formatTime(currentMember?.check_in_time)}</p> : null}
+                </div>
+                <div style={{ flexShrink: 0 }}>
+                  {taskDone ? (
+                    <p className="showup-entry-status" style={{ margin: 0 }}>Done Today ✓</p>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {!checkedIn ? (
+                        <button
+                          type="button"
+                          className="showup-done-btn"
+                          onClick={handleCheckIn}
+                        >
+                          Check In
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="showup-mini-done-btn"
+                        onClick={handleMarkDone}
+                        disabled={!checkedIn || doneBusy}
+                      >
+                        {doneBusy ? 'Saving...' : 'Mark Done'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          ) : null}
+          </div>
         </div>
 
         <div className="showup-tabs">
@@ -3597,8 +3665,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-sync-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <span>Nice work. Post a progress photo?</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="showup-mini-link" onClick={() => fileInputRef.current?.click()}>Add photo</button>
-              <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)}>Dismiss</button>
+              <button type="button" className="showup-mini-link" onClick={() => fileInputRef.current?.click()} aria-label="Add photo">
+                <ImageIcon size={15} strokeWidth={2.2} />
+              </button>
+              <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)} aria-label="Close prompt">×</button>
             </div>
           </div>
         ) : null}
@@ -3655,7 +3725,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           </div>
                         </div>
                       </div>
-                      {post.pulseLabel ? <p className="showup-pulse-label">{post.pulseLabel}</p> : null}
                       <p className="showup-feed-text">{post.text}</p>
                     </div>
                   ))}
@@ -3714,7 +3783,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   className={feedClass}
                   onClick={() => {
                     if (!targetMember) return
-                    openNotifySheet(targetMember, `Room's here when you're ready. One small check-in still counts.`)
+                    openNotifySheet(targetMember, `Room's here when you're ready. One small step still counts.`)
                   }}
                   style={{ cursor: targetMember ? 'pointer' : undefined }}
                 >
@@ -3727,7 +3796,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       </div>
                     </div>
                   </div>
-                  {post.pulseLabel ? <p className="showup-pulse-label">{post.pulseLabel}</p> : null}
                   {editingPostId === post.id ? (
                     <div className="showup-post-edit">
                       <input
@@ -3740,7 +3808,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         autoFocus
                       />
                       <div className="showup-post-edit-actions">
-                        <button type="button" onClick={() => { setEditingPostId(''); setEditPostDraft('') }}>Cancel</button>
+                        <button type="button" aria-label="Close edit" onClick={() => { setEditingPostId(''); setEditPostDraft('') }}>×</button>
                         <button type="button" onClick={() => handleSavePostEdit(post.id)}>Save</button>
                       </div>
                     </div>
@@ -3826,7 +3894,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 <span>You'll lose your spot. Someone else may take it.</span>
               </button>
             </div>
-            <button type="button" className="showup-exit-cancel" onClick={() => setRoomSettingsOpen(false)}>Cancel</button>
+            <button type="button" className="showup-exit-cancel" aria-label="Close room settings" onClick={() => setRoomSettingsOpen(false)}>×</button>
           </div>
         </div>
       ) : null}
@@ -3841,7 +3909,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 <span>Your progress is saved. Come back to mark done.</span>
               </button>
             </div>
-            <button type="button" className="showup-exit-cancel" onClick={closeExitPrompt}>Cancel</button>
+            <button type="button" className="showup-exit-cancel" aria-label="Close leave modal" onClick={closeExitPrompt}>×</button>
           </div>
         </div>
       ) : null}
@@ -4027,7 +4095,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             </label>
             <div className="showup-sheet-actions">
               <button type="button" className="showup-sheet-send" onClick={handleSendNotification}>Send</button>
-              <button type="button" className="showup-sheet-cancel" onClick={() => setSheetState({ open: false, member: null })}>Cancel</button>
+              <button type="button" className="showup-sheet-cancel" aria-label="Close nudge sheet" onClick={() => setSheetState({ open: false, member: null })}>×</button>
             </div>
           </div>
         </div>
