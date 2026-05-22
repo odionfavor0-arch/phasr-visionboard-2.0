@@ -446,9 +446,9 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(138px, 1fr));
+  grid-template-columns:repeat(2, 1fr);
   justify-content:stretch;
-  gap:10px;
+  gap:12px;
   border:none;
   border-radius:0;
   overflow:visible;
@@ -466,15 +466,15 @@ const SHOW_UP_STYLES = `
 .showup-member-card{
   width:100%;
   min-height:124px;
-  padding:10px;
+  padding:20px;
   display:grid;
   grid-template-columns:1fr;
   justify-items:center;
   align-content:center;
   gap:8px;
-  background:var(--bg, #fff);
-  border:1px solid rgba(249,95,133,0.18);
-  border-radius:14px;
+  background:#fff;
+  border:1px solid rgba(249,95,133,0.14);
+  border-radius:16px;
   text-align:center;
   cursor:pointer;
 }
@@ -492,8 +492,8 @@ const SHOW_UP_STYLES = `
 .showup-member-dot.is-done{background:#f95f85}
 .showup-member-dot.is-idle{background:#c9b2be}
 .showup-avatar{
-  width:40px;
-  height:40px;
+  width:48px;
+  height:48px;
   border-radius:50%;
   border:1px solid rgba(249,95,133,0.25);
   display:grid;
@@ -564,7 +564,7 @@ const SHOW_UP_STYLES = `
   display:grid;
   gap:10px;
   align-content:start;
-  background:var(--bg, #fff);
+  background:#fff;
   flex:1;
   width:100%;
   min-width:0;
@@ -666,7 +666,7 @@ const SHOW_UP_STYLES = `
   background:#fff;
   padding:14px;
   position:relative;
-  box-shadow:0 10px 28px rgba(77,49,66,0.08);
+  box-shadow:0 1px 4px rgba(0,0,0,0.07);
   width:100%;
   max-width:100%;
   min-width:0;
@@ -680,7 +680,7 @@ const SHOW_UP_STYLES = `
   margin-top:12px;
 }
 .showup-feed-card.is-sage{
-  background:linear-gradient(135deg,rgba(255,245,248,0.96),rgba(255,234,242,0.9));
+  background:rgba(249,95,133,0.06);
   border-color:rgba(249,95,133,0.28);
 }
 .showup-feed-card.is-pulse{
@@ -1146,18 +1146,21 @@ const SHOW_UP_STYLES = `
 .showup-exit-title{
   margin:0 0 14px;
   font-family:'Syne',sans-serif;
-  font-size:22px;
+  font-size:20px;
+  font-weight:800;
   color:#4d3142;
+  text-align:left;
 }
 .showup-exit-options{
   display:grid;
-  gap:10px;
+  gap:8px;
 }
 .showup-exit-option{
+  width:100%;
   border:1px solid rgba(249,95,133,0.18);
-  border-radius:14px;
-  background:rgba(255,248,249,0.72);
-  padding:14px;
+  border-radius:12px;
+  background:#fff;
+  padding:16px;
   text-align:left;
   cursor:pointer;
   font-family:'DM Sans',sans-serif;
@@ -1183,11 +1186,11 @@ const SHOW_UP_STYLES = `
 }
 .showup-exit-cancel{
   width:100%;
-  min-height:40px;
-  margin-top:10px;
-  border:1px solid rgba(249,95,133,0.18);
+  min-height:48px;
+  margin-top:0;
+  border:1px solid rgba(226,221,224,1);
   border-radius:12px;
-  background:transparent;
+  background:#f3f1f2;
   color:#9a7088;
   font-weight:800;
   font-family:'DM Sans',sans-serif;
@@ -1487,12 +1490,12 @@ const SHOW_UP_STYLES = `
   .showup-member-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
     justify-content:stretch;
-    gap:8px;
+    gap:12px;
   }
   .showup-member-card{
     width:100%;
     min-height:118px;
-    padding:9px 6px;
+    padding:20px 12px;
     border-radius:12px;
   }
   .showup-feed-image{
@@ -1612,12 +1615,12 @@ const SHOW_UP_STYLES = `
 `
 
 const ROOM_DEFINITIONS = [
-  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', maxSpots: 20, description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
-  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', maxSpots: 20, description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
-  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', maxSpots: 20, description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
-  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', maxSpots: 20, description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
-  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', maxSpots: 20, description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
-  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', maxSpots: 20, description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
+  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', maxSpots: 12, description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
+  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', maxSpots: 12, description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
+  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', maxSpots: 12, description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
+  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', maxSpots: 12, description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
+  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', maxSpots: 12, description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
+  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', maxSpots: 12, description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
 ]
 
 const ROOM_ICONS = {
@@ -1726,7 +1729,7 @@ const WEEKLY_PULSE = {
   },
 }
 
-const MAX_ROOM_SIZE = 20
+const MAX_ROOM_SIZE = 12
 
 function safeRead(key, fallback) {
   try {
@@ -2002,6 +2005,10 @@ function incrementCurrentStreak() {
 
 function getFeedStorageKey(roomName) {
   return `showup_feed_${normalize(roomName)}`
+}
+
+function getRanksStorageKey(roomName) {
+  return `showup_ranks_${normalize(roomName)}`
 }
 
 function getWaitlistStorageKey(roomName) {
@@ -2395,6 +2402,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
   useEffect(() => {
     if (!selectedRoom) return
+    setMembers([])
+    setFeedPosts([])
+    setCommentSheetPostId('')
     loadFeedPosts(selectedRoom)
     setRoomStreak(readRoomStreak(selectedRoom))
   }, [selectedRoom])
@@ -2536,17 +2546,27 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
 
     try {
-      const { data, error: countsError } = await supabase
-        .from('show_up_checkins')
-        .select('room_name,display_name')
-
-      if (countsError) throw countsError
-
       const counts = {}
-      ;(data || []).forEach(row => {
-        if (isPlaceholderMember(row)) return
-        counts[row.room_name] = (counts[row.room_name] || 0) + 1
-      })
+      try {
+        const { data: roomsData, error: roomsError } = await supabase
+          .from('rooms')
+          .select('id,current_members')
+        if (roomsError) throw roomsError
+        ;(roomsData || []).forEach(row => {
+          const room = ROOM_DEFINITIONS.find(item => item.id === row.id)
+          if (!room) return
+          counts[room.name] = Number(row.current_members || 0)
+        })
+      } catch {
+        const { data, error: countsError } = await supabase
+          .from('show_up_checkins')
+          .select('room_name,display_name')
+        if (countsError) throw countsError
+        ;(data || []).forEach(row => {
+          if (isPlaceholderMember(row)) return
+          counts[row.room_name] = (counts[row.room_name] || 0) + 1
+        })
+      }
       setRoomCounts(counts)
     } catch (nextError) {
       console.error('Show Up room counts failed', nextError)
@@ -2558,8 +2578,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const counts = {}
     rooms.forEach(room => {
       const stored = safeRead(getMockMemberStorageKey(room.name), [])
-      const fallbackMember = buildMockMember(nextProfile, room.name)
-      const nextMembers = Array.isArray(stored) && stored.length ? stored : (fallbackMember ? [fallbackMember] : [])
+      const nextMembers = Array.isArray(stored) ? stored : []
       counts[room.name] = nextMembers.filter(member => !isPlaceholderMember(member)).length
     })
     setRoomCounts(counts)
@@ -3392,9 +3411,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
   const roomEnergy = useMemo(() => getRoomEnergyState(completedCount), [completedCount])
+  const isPillarRoom = detectRoomNameFromBoard() === selectedRoom
   const roomBannerText = !selectedRoom && joinedRoomName
     ? `You're in ${joinedRoomName} - back to finish?`
     : toast
+
+  useEffect(() => {
+    if (!selectedRoom) return
+    safeWrite(getRanksStorageKey(selectedRoom), rankedMembers)
+  }, [rankedMembers, selectedRoom])
 
   if (!selectedRoom) {
     return (
@@ -3514,9 +3539,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div className="showup-list-content" style={{ minWidth: 0, display: 'grid', gap: 2 }}>
                     <p className="showup-list-name" style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 14, fontWeight: 700, color: '#25151f', lineHeight: 1.12 }}>{room.name}</p>
                     {preferredRoomName === room.name ? <p className="showup-list-meta" style={{ margin: 0, color: '#f45f92', fontWeight: 800 }}>Your focus area</p> : null}
-                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b29cab' }}>
-                      {isFull ? 'Full · Waitlist' : `${spotsLeft}/${room.maxSpots} spots`}
+                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: spotsLeft <= 3 && !isFull ? '#b7772b' : '#b29cab' }}>
+                      {isFull ? 'Full · Waitlist →' : `${spotsLeft}/${room.maxSpots} spots`}
                     </p>
+                    {!isFull && spotsLeft <= 3 ? <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b7772b', fontWeight: 800 }}>{spotsLeft} spots left</p> : null}
                     <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#9a7088' }}>
                       {energy.emoji} {energy.label}
                     </p>
@@ -3604,37 +3630,38 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <MoreHorizontal size={18} strokeWidth={2.3} />
             </button>
           </div>
-          <div className="showup-feed-card" style={{ marginBottom: 12, background: 'rgba(255,255,255,0.82)', boxShadow: 'none' }}>
+          <div className="showup-feed-card" style={{ marginBottom: 12, background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
             <div style={{ display: 'grid', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <p className="showup-room-title" style={{ margin: 0, textAlign: 'left', whiteSpace: 'normal' }}>{formatRoomTitle(selectedRoom)}</p>
                   <p className="showup-list-meta" style={{ margin: '6px 0 0' }}>{roomEnergy.emoji} {roomEnergy.label} · {completedCount} done today</p>
-                  {checkedIn && !taskDone ? <p className="showup-list-meta" style={{ margin: '4px 0 0' }}>Checked in {formatTime(currentMember?.check_in_time)}</p> : null}
                 </div>
                 <div style={{ flexShrink: 0 }}>
                   {taskDone ? (
                     <p className="showup-entry-status" style={{ margin: 0 }}>Done Today ✓</p>
                   ) : (
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {!checkedIn ? (
-                        <button
-                          type="button"
-                          className="showup-done-btn"
-                          onClick={handleCheckIn}
-                        >
-                          Check In
-                        </button>
-                      ) : null}
+                    !checkedIn ? (
                       <button
                         type="button"
-                        className="showup-mini-done-btn"
-                        onClick={handleMarkDone}
-                        disabled={!checkedIn || doneBusy}
+                        className="showup-done-btn"
+                        onClick={handleCheckIn}
                       >
-                        {doneBusy ? 'Saving...' : 'Mark Done'}
+                        Check In
                       </button>
-                    </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 8, minWidth: 260 }}>
+                        <p className="showup-list-meta" style={{ margin: 0, textAlign: 'left' }}>Checked in at {formatTime(currentMember?.check_in_time)}</p>
+                        <button
+                          type="button"
+                          className="showup-mini-done-btn"
+                          onClick={handleMarkDone}
+                          disabled={doneBusy}
+                        >
+                          {doneBusy ? 'Saving...' : 'Mark Done'}
+                        </button>
+                      </div>
+                    )
                   )}
                 </div>
               </div>
@@ -3697,14 +3724,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <div style={{ minWidth: 0, maxWidth: '100%' }}>
                       <p className="showup-member-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                       {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
-                      {member.task_done ? <p className="showup-list-meta" style={{ margin: '4px 0 0', color: '#2f8a59', fontWeight: 800 }}>✓ Done</p> : null}
                     </div>
-                    {member.user_id !== profile.id ? (
-                      <button type="button" className="showup-bell-btn" onClick={() => openNotifySheet(member)}>
-                        <MessageCircle size={13} strokeWidth={2.2} />
-                        <span>Nudge</span>
-                      </button>
-                    ) : null}
                   </div>
                 )
               })}
@@ -3886,15 +3906,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
             <h2 className="showup-exit-title">Room settings</h2>
             <div className="showup-exit-options">
-              <button type="button" className="showup-exit-option" onClick={handleExitRoom}>
-                <strong>
-                  <LogOut size={15} strokeWidth={2.2} />
-                  <span>Exit room</span>
-                </strong>
-                <span>You'll lose your spot. Someone else may take it.</span>
-              </button>
+              {!isPillarRoom ? (
+                <button type="button" className="showup-exit-option" style={{ background: '#fff', borderColor: '#c86f8f', color: '#c86f8f' }} onClick={handleExitRoom}>
+                  <strong>
+                    <LogOut size={15} strokeWidth={2.2} />
+                    <span>Exit room</span>
+                  </strong>
+                  <span>You'll lose your spot. Someone else may take it.</span>
+                </button>
+              ) : null}
             </div>
-            <button type="button" className="showup-exit-cancel" aria-label="Close room settings" onClick={() => setRoomSettingsOpen(false)}>×</button>
+            <button type="button" className="showup-exit-cancel" aria-label="Close room settings" onClick={() => setRoomSettingsOpen(false)}>Close</button>
           </div>
         </div>
       ) : null}
@@ -3904,12 +3926,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
             <h2 className="showup-exit-title">Leave room?</h2>
             <div className="showup-exit-options">
-              <button type="button" className="showup-exit-option" onClick={handleLeaveForNow}>
+              <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff' }} onClick={handleLeaveForNow}>
                 <strong>Leave for now</strong>
-                <span>Your progress is saved. Come back to mark done.</span>
+                <span style={{ color: 'rgba(255,255,255,0.92)' }}>Your progress is saved. Come back to mark done.</span>
               </button>
             </div>
-            <button type="button" className="showup-exit-cancel" aria-label="Close leave modal" onClick={closeExitPrompt}>×</button>
+            <button type="button" className="showup-exit-cancel" aria-label="Close leave modal" onClick={closeExitPrompt}>Cancel</button>
           </div>
         </div>
       ) : null}
