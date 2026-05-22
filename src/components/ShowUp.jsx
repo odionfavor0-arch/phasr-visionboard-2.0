@@ -300,7 +300,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-topbar{
   display:grid;
-  grid-template-columns:44px 1fr auto;
+  grid-template-columns:44px minmax(0,1fr);
   align-items:center;
   gap:10px;
   padding-bottom:14px;
@@ -318,7 +318,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-room-title{
   margin:0;
-  text-align:center;
+  text-align:left;
   font-family:'Syne',sans-serif;
   font-size:16px;
   font-weight:700;
@@ -1367,6 +1367,19 @@ const SHOW_UP_STYLES = `
   z-index:40;
   pointer-events:none;
 }
+.showup-progress-toast{
+  width:100%;
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:10px;
+  background:rgba(249,95,133,0.12);
+  color:#f95f85;
+  padding:10px 16px;
+  font-size:13px;
+  font-weight:700;
+  box-shadow:0 10px 24px rgba(77,49,66,0.12);
+  animation:showup-toast-in .24s ease both, showup-toast-out .24s ease 2.76s forwards;
+  pointer-events:none;
+}
 .showup-nudge-toast{
   width:100%;
   border:1px solid rgba(249,95,133,0.34);
@@ -1413,6 +1426,37 @@ const SHOW_UP_STYLES = `
 @keyframes showup-toast-in{
   from{opacity:0;transform:translateY(-14px)}
   to{opacity:1;transform:translateY(0)}
+}
+@keyframes showup-toast-out{
+  from{opacity:1;transform:translateY(0)}
+  to{opacity:0;transform:translateY(-10px)}
+}
+.showup-bottom-toast{
+  position:fixed;
+  left:50%;
+  bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+  transform:translateX(-50%);
+  width:min(420px, calc(100% - 24px));
+  border-radius:12px;
+  background:#4d3142;
+  color:#fff;
+  padding:12px 16px;
+  font-size:13px;
+  font-weight:700;
+  text-align:center;
+  box-shadow:0 14px 34px rgba(77,49,66,0.22);
+  z-index:45;
+  animation:showup-toast-in .24s ease both, showup-toast-out .24s ease 1.76s forwards;
+}
+.showup-create-modal{
+  width:min(420px, 100%);
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:18px;
+  background:#fff;
+  padding:20px;
+  box-shadow:0 22px 58px rgba(77,49,66,0.18);
+  display:grid;
+  gap:14px;
 }
 .showup-lightbox{
   position:fixed;
@@ -1481,7 +1525,7 @@ const SHOW_UP_STYLES = `
     font-size:11px;
   }
   .showup-topbar{
-    grid-template-columns:42px minmax(0,1fr) auto;
+    grid-template-columns:42px minmax(0,1fr);
     gap:8px;
   }
   .showup-room-title{
@@ -1923,6 +1967,17 @@ function formatTimestamp(value) {
   })
 }
 
+function getUuid() {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch {
+    // Fallback below.
+  }
+  return `showup-${uid()}-${Date.now()}`
+}
+
 function dataUrlToFile(dataUrl, fallbackName = 'room-progress.png') {
   const [meta = '', data = ''] = String(dataUrl || '').split(',')
   const mime = meta.match(/data:(.*?);base64/)?.[1] || 'image/png'
@@ -2159,7 +2214,7 @@ function getMockMemberStorageKey(roomName) {
 }
 
 function getCreatedRoomsKey() {
-  return 'phasr_showup_created_rooms'
+  return 'showup_created_rooms'
 }
 
 function getJoinedRoomsKey(userId) {
@@ -2168,6 +2223,10 @@ function getJoinedRoomsKey(userId) {
 
 function getNotificationStorageKey(userId) {
   return `phasr_showup_notifications_${userId || 'local-user'}`
+}
+
+function getRoomNudgesStorageKey(roomName, userId) {
+  return `showup_nudges_${normalize(roomName)}_${normalize(userId || 'local-user')}`
 }
 
 function getPresenceStorageKey(roomName, userId) {
@@ -2206,6 +2265,7 @@ function buildMockMember(profile, roomName) {
     check_in_time: '',
     task_done: false,
     task_done_time: '',
+    joined_at: new Date().toISOString(),
     streak_count: getCurrentStreakCount(),
   }
 }
@@ -2394,6 +2454,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [commentImage, setCommentImage] = useState('')
   const [lightboxMedia, setLightboxMedia] = useState({ url: '', kind: '' })
   const [nudgeToast, setNudgeToast] = useState(null)
+  const [progressToast, setProgressToast] = useState('')
+  const [bottomToast, setBottomToast] = useState('')
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReplies, setExpandedReplies] = useState({})
@@ -2409,9 +2471,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [notifyAnonymous, setNotifyAnonymous] = useState(false)
   const [notifyPostToFeed, setNotifyPostToFeed] = useState(false)
   const [exitPromptOpen, setExitPromptOpen] = useState(false)
-  const [showProgressPhotoPrompt, setShowProgressPhotoPrompt] = useState(false)
+  const [createRoomModalOpen, setCreateRoomModalOpen] = useState(false)
+  const [createRoomLockedOpen, setCreateRoomLockedOpen] = useState(false)
+  const [createRoomName, setCreateRoomName] = useState('')
+  const [createFocusAreaId, setCreateFocusAreaId] = useState(ROOM_DEFINITIONS[0].id)
   const [roomStreak, setRoomStreak] = useState({ count: 0, lastActiveDate: '' })
   const [presenceTick, setPresenceTick] = useState(0)
+  const [replyTarget, setReplyTarget] = useState(null)
   const fileInputRef = useRef(null)
   const feedViewRef = useRef(null)
   const commentFileInputRef = useRef(null)
@@ -2469,6 +2535,18 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   }, [nudgeToast])
 
   useEffect(() => {
+    if (!progressToast) return undefined
+    const timer = window.setTimeout(() => setProgressToast(''), 3000)
+    return () => window.clearTimeout(timer)
+  }, [progressToast])
+
+  useEffect(() => {
+    if (!bottomToast) return undefined
+    const timer = window.setTimeout(() => setBottomToast(''), 2000)
+    return () => window.clearTimeout(timer)
+  }, [bottomToast])
+
+  useEffect(() => {
     if (!pulseBanner) return undefined
     const timer = window.setTimeout(() => setPulseBanner(''), 5000)
     return () => window.clearTimeout(timer)
@@ -2508,6 +2586,53 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       window.removeEventListener('storage', handleStorageEvent)
     }
   }, [profile.id])
+
+  useEffect(() => {
+    if (!profile?.id) return undefined
+    const poll = window.setInterval(async () => {
+      if (!selectedRoom) return
+      try {
+        if (supabase) {
+          const { data, error } = await supabase
+            .from('room_nudges')
+            .select('*')
+            .eq('room_id', selectedRoom)
+            .eq('to_user_id', profile.id)
+            .eq('seen', false)
+            .order('created_at', { ascending: false })
+            .limit(1)
+          if (error) throw error
+          const next = safeArray(data)[0]
+          if (next) {
+            setNudgeToast({
+              toUserId: profile.id,
+              fromName: next.from_user_name,
+              text: next.message,
+              anonymous: false,
+            })
+            await supabase.from('room_nudges').update({ seen: true }).eq('id', next.id)
+            return
+          }
+        }
+      } catch (nextError) {
+        console.error('Show Up nudge poll failed', nextError)
+      }
+
+      const localNudges = safeArray(safeRead(getRoomNudgesStorageKey(selectedRoom, profile.id), []))
+      const nextLocal = localNudges.find(item => !item.seen)
+      if (!nextLocal) return
+      setNudgeToast({
+        toUserId: profile.id,
+        fromName: nextLocal.fromName,
+        text: nextLocal.text,
+        anonymous: Boolean(nextLocal.anonymous),
+      })
+      safeWrite(getRoomNudgesStorageKey(selectedRoom, profile.id), localNudges.map(item => (
+        item.id === nextLocal.id ? { ...item, seen: true } : item
+      )))
+    }, 15000)
+    return () => window.clearInterval(poll)
+  }, [profile.id, selectedRoom])
 
   useEffect(() => {
     if (selectedRoom || !profile.id) return
@@ -2735,7 +2860,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           anonymous: false,
           text: post.text || post.content || '',
           image: post.image_url || cached?.image || '',
-          system: cached?.system || (post.author_name || post.display_name) === 'Sage',
+          system: Boolean(post.is_system_post) || cached?.system || (post.author_name || post.display_name) === 'Sage',
           pulseFormat: remotePulseFormat || (remoteRecap ? 'Weekly Recap' : cached?.pulseFormat || ''),
           pulseLabel: remotePulseFormat
             ? `\u{1F4C5} ${remotePulseFormat.toUpperCase()}`
@@ -2770,7 +2895,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       initials: anonymous ? 'AN' : profile.initials,
     }
     const nextPost = {
-      id: `${postAuthor.id || 'room'}-${createdAt}`,
+      id: getUuid(),
       authorId: postAuthor.id,
       authorName: postAuthor.name,
       authorInitials: postAuthor.initials,
@@ -2787,9 +2912,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       comments: [],
     }
 
-    addFeedPost(nextPost)
-
-    if (!supabase || !selectedRoom) return nextPost
+    if (!supabase || !selectedRoom) {
+      addFeedPost(nextPost)
+      return nextPost
+    }
 
     try {
       const remotePostType =
@@ -2797,26 +2923,40 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           : pulseFormat ? `pulse:${pulseFormat}`
             : targetUserId ? `nudge:${targetUserId}`
               : ''
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from('room_feed_posts')
         .insert({
+          id: nextPost.id,
           room_id: selectedRoom,
           author_id: postAuthor.id === 'sage' ? profile.id : postAuthor.id,
           author_name: postAuthor.name,
           text,
-          image_url: image || '',
+          image_url: image || null,
           post_type: remotePostType,
+          is_system_post: Boolean(system),
           created_at: createdAt,
         })
+        .select()
+        .single()
 
       if (insertError) throw insertError
+
+      const persistedPost = {
+        ...nextPost,
+        id: data?.id || nextPost.id,
+        image: data?.image_url || nextPost.image || '',
+        createdAt: data?.created_at || nextPost.createdAt,
+        system: Boolean(data?.is_system_post ?? nextPost.system),
+      }
+      addFeedPost(persistedPost)
       setFeedReady(true)
+      return persistedPost
     } catch (nextError) {
       console.error('Show Up feed post failed', nextError)
       setFeedReady(false)
+      addFeedPost(nextPost)
+      return nextPost
     }
-
-    return nextPost
   }
 
   function createRoomActivityPost(text, options = {}) {
@@ -2850,12 +2990,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       text = pulse.prompt(pillar)
     }
     safeWrite(getPulseStorageKey(roomName), today)
-    await createRoomActivityPost(text, {
+    const pulsePost = await createRoomActivityPost(text, {
       pulseFormat: pulse.format,
       pulseLabel: `\u{1F4C5} ${pulse.format.toUpperCase()}`,
       postStyle: 'pulse',
     })
-    setPulseBanner(`${pulse.format} just dropped in ${roomName}.`)
+    if (pulsePost) {
+      setPulseBanner(`${pulse.format} just dropped in ${roomName}.`)
+    }
   }
 
   async function postSilentAccountability(roomName, nextMembers) {
@@ -2968,7 +3110,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const joined = safeArray(safeRead(getJoinedRoomsKey(profile.id), []))[0] || ''
     const roomCount = roomCounts[roomName] || 0
     if (joined && joined !== roomName) {
-      setToast(`You're already in ${joined}. Leave it before joining ${roomName}.`)
+      setBottomToast(`You're already in a room. Leave it first to join another.`)
       return
     }
     if (joined !== roomName && roomCount >= MAX_ROOM_SIZE) {
@@ -3112,7 +3254,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setDoneBusy(true)
     setTaskDone(true)
     setDoneTime(nowIso)
-    setActiveTab('feed')
     setToast('')
     setStoredActiveRoom('')
     safeWrite(getLastDoneDateStorageKey(roomName, profile.id), getTodayKey())
@@ -3123,7 +3264,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       date: getTodayKey(),
       time: new Date(nowIso).toTimeString().slice(0, 5),
     })
-    setShowProgressPhotoPrompt(true)
     const nextMembers = members.some(member => member.user_id === profile.id)
       ? members.map(member => (member.user_id === profile.id ? { ...member, ...donePatch } : member))
       : [donePatch, ...members]
@@ -3149,6 +3289,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     await createRoomActivityPost(`${profile.name} marked done. Room completions today: ${completedMembers}/${MAX_ROOM_SIZE}.`)
     await postSundayRecapIfNeeded(roomName, nextRoomStreak, nextMembers)
     await postSilentAccountability(roomName, nextMembers)
+    window.setTimeout(() => {
+      setActiveTab('feed')
+      setProgressToast('Nice work. Post a progress photo.')
+    }, 1500)
   }
 
   function closeExitPrompt() {
@@ -3384,8 +3528,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       createdAt: new Date().toISOString(),
       read: false,
     }
+    const roomNudgesKey = getRoomNudgesStorageKey(selectedRoom, target.user_id)
     const saved = safeRead(getNotificationStorageKey(target.user_id), [])
     safeWrite(getNotificationStorageKey(target.user_id), [notification, ...(Array.isArray(saved) ? saved : [])].slice(0, 50))
+    safeWrite(roomNudgesKey, [notification, ...safeArray(safeRead(roomNudgesKey, []))].slice(0, 30))
     addRoomActivity(selectedRoom, {
       type: 'nudge',
       userId: profile.id,
@@ -3395,6 +3541,20 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       time: new Date().toTimeString().slice(0, 5),
     })
     window.dispatchEvent(new CustomEvent('phasr-showup-notification', { detail: notification }))
+    try {
+      if (supabase) {
+        await supabase.from('room_nudges').insert({
+          room_id: selectedRoom,
+          from_user_name: notification.fromName,
+          to_user_id: target.user_id,
+          message: text,
+          created_at: notification.createdAt,
+          seen: false,
+        })
+      }
+    } catch (nextError) {
+      console.error('Show Up nudge insert failed', nextError)
+    }
     if (notifyPostToFeed) {
       const senderName = notifyAnonymous ? 'Someone' : profile.name
       await createRoomActivityPost(`${senderName} nudged ${target.display_name}: ${text}`)
@@ -3404,6 +3564,34 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setNotifyText('')
     setNotifyAnonymous(false)
     setNotifyPostToFeed(false)
+  }
+
+  function handleCreateRoomStart() {
+    if (!createRoomUnlocked) {
+      setCreateRoomLockedOpen(true)
+      return
+    }
+    setCreateRoomModalOpen(true)
+  }
+
+  function handleSaveCreatedRoom() {
+    const trimmedName = String(createRoomName || '').trim()
+    if (!trimmedName) return
+    const current = safeArray(safeRead(getCreatedRoomsKey(), []))
+    safeWrite(getCreatedRoomsKey(), [
+      {
+        id: `custom-${normalize(trimmedName)}-${uid()}`,
+        name: trimmedName,
+        focusAreaId: createFocusAreaId,
+        created_by: profile.id,
+        created_at: new Date().toISOString(),
+      },
+      ...current,
+    ])
+    setCreateRoomName('')
+    setCreateFocusAreaId(ROOM_DEFINITIONS[0].id)
+    setCreateRoomModalOpen(false)
+    setBottomToast('Room request saved.')
   }
 
   const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
@@ -3442,6 +3630,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
   const roomEnergy = useMemo(() => getRoomEnergyState(completedCount), [completedCount])
   const isPillarRoom = detectRoomNameFromBoard() === selectedRoom
+  const joinedRoomMember = useMemo(() => {
+    if (!joinedRoomName) return null
+    return safeArray(safeRead(getMockMemberStorageKey(joinedRoomName), [])).find(member => member.user_id === profile.id) || null
+  }, [joinedRoomName, profile.id, selectedRoom])
+  const createRoomUnlocked = useMemo(() => {
+    if (getCurrentStreakCount() >= 7) return true
+    const joinedAt = joinedRoomMember?.joined_at || joinedRoomMember?.created_at || ''
+    if (!joinedAt) return false
+    return (Date.now() - new Date(joinedAt).getTime()) >= 7 * 24 * 60 * 60 * 1000
+  }, [joinedRoomMember])
+  const showPostMentionSuggestions = /(^|\s)@\w*$/.test(postDraft)
   const roomBannerText = !selectedRoom && joinedRoomName
     ? `You're in ${joinedRoomName} — tap Enter to continue.`
     : toast
@@ -3464,14 +3663,26 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <style>{SHOW_UP_STYLES}</style>
         {nudgeToast ? (
           <div className="showup-toast-stack" role="status" aria-live="polite">
-            <div className="showup-nudge-toast">
+            <div
+              className="showup-nudge-toast"
+              onClick={() => setNudgeToast(null)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') setNudgeToast(null)
+              }}
+            >
               <div className="showup-avatar">{nudgeToast.anonymous ? 'AN' : buildInitials(nudgeToast.fromName || 'Someone')}</div>
               <div className="showup-nudge-toast-text">
                 <p className="showup-nudge-toast-name">{nudgeToast.anonymous ? 'Someone' : nudgeToast.fromName || 'Someone'}</p>
                 <p className="showup-nudge-toast-message">{nudgeToast.text}</p>
               </div>
-              <button type="button" className="showup-nudge-toast-close" onClick={() => setNudgeToast(null)} aria-label="Dismiss nudge">×</button>
             </div>
+          </div>
+        ) : null}
+        {bottomToast ? (
+          <div className="showup-bottom-toast" role="status" aria-live="polite">
+            {bottomToast}
           </div>
         ) : null}
         <div
@@ -3511,6 +3722,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             >
               All Rooms
             </p>
+            <button type="button" className="showup-create-link" onClick={handleCreateRoomStart}>
+              + Create room
+            </button>
           </div>
 
           <div
@@ -3584,7 +3798,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           return
                         }
                         if (blockedByAnotherRoom) {
-                          setToast(`You're already in ${joinedRoomName}. Leave it before joining ${room.name}.`)
+                          setBottomToast(`You're already in a room. Leave it first to join another.`)
                           return
                         }
                         handleJoinRoom(room.name)
@@ -3623,6 +3837,51 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               )
             })}
           </div>
+
+          {createRoomLockedOpen ? (
+            <div className="showup-exit-backdrop" onClick={() => setCreateRoomLockedOpen(false)}>
+              <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
+                <h2 className="showup-exit-title">Create your own room</h2>
+                <p className="showup-sheet-subtitle" style={{ fontSize: 14, lineHeight: 1.6 }}>
+                  You'll unlock this when you've been consistent for 7 days. Keep showing up.
+                </p>
+                <button type="button" className="showup-exit-cancel" onClick={() => setCreateRoomLockedOpen(false)}>Close</button>
+              </div>
+            </div>
+          ) : null}
+
+          {createRoomModalOpen ? (
+            <div className="showup-exit-backdrop" onClick={() => setCreateRoomModalOpen(false)}>
+              <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
+                <h2 className="showup-exit-title">Create your own room</h2>
+                <div className="showup-create-form" style={{ marginBottom: 0 }}>
+                  <label className="showup-field">
+                    <span className="showup-field-label">Room name</span>
+                    <input
+                      className="showup-input"
+                      value={createRoomName}
+                      onChange={event => setCreateRoomName(event.target.value)}
+                      placeholder="Enter room name"
+                    />
+                  </label>
+                  <label className="showup-field">
+                    <span className="showup-field-label">Focus area</span>
+                    <select className="showup-select" value={createFocusAreaId} onChange={event => setCreateFocusAreaId(event.target.value)}>
+                      {ROOM_DEFINITIONS.map(room => (
+                        <option key={room.id} value={room.id}>{room.pillar}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="showup-exit-options" style={{ marginTop: 12 }}>
+                  <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff' }} onClick={handleSaveCreatedRoom}>
+                    <strong>Create room</strong>
+                  </button>
+                  <button type="button" className="showup-exit-cancel" onClick={() => setCreateRoomModalOpen(false)}>Close</button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     )
@@ -3631,16 +3890,33 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   return (
     <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', overflowX: 'hidden' }}>
       <style>{SHOW_UP_STYLES}</style>
+      {progressToast ? (
+        <div className="showup-progress-toast" role="status" aria-live="polite">
+          {progressToast}
+        </div>
+      ) : null}
       {nudgeToast ? (
         <div className="showup-toast-stack" role="status" aria-live="polite">
-          <div className="showup-nudge-toast">
+          <div
+            className="showup-nudge-toast"
+            onClick={() => setNudgeToast(null)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') setNudgeToast(null)
+            }}
+          >
             <div className="showup-avatar">{nudgeToast.anonymous ? 'AN' : buildInitials(nudgeToast.fromName || 'Someone')}</div>
             <div className="showup-nudge-toast-text">
               <p className="showup-nudge-toast-name">{nudgeToast.anonymous ? 'Someone' : nudgeToast.fromName || 'Someone'}</p>
               <p className="showup-nudge-toast-message">{nudgeToast.text}</p>
             </div>
-            <button type="button" className="showup-nudge-toast-close" onClick={() => setNudgeToast(null)} aria-label="Dismiss nudge">×</button>
           </div>
+        </div>
+      ) : null}
+      {bottomToast ? (
+        <div className="showup-bottom-toast" role="status" aria-live="polite">
+          {bottomToast}
         </div>
       ) : null}
 
@@ -3649,38 +3925,26 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'\u2190'}</button>
-            <div className="showup-room-title-block">
-              <h1 className="showup-room-title" style={{ textAlign: 'left' }}>{formatRoomTitle(selectedRoom)}</h1>
-              {checkedIn && currentMember?.check_in_time ? (
-                <p className="showup-room-checkin-time">Checked in at {formatTime(currentMember.check_in_time)}</p>
-              ) : null}
-            </div>
-            <div className="showup-live-pill" style={{ justifySelf: 'end' }}>
-              <span>{roomEnergy.label} · {completedCount} done</span>
-            </div>
+            <h1 className="showup-room-title" style={{ textAlign: 'left' }}>{formatRoomTitle(selectedRoom)}</h1>
           </div>
-          {!taskDone ? (
-            <div className="showup-checkin-actions">
-              <button
-                type="button"
-                className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
-                onClick={handleCheckIn}
-                disabled={checkedIn}
-              >
-                {checkedIn ? 'Checked In' : 'Check In'}
-              </button>
-              <button
-                type="button"
-                className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
-                onClick={handleMarkDone}
-                disabled={!checkedIn || taskDone || doneBusy}
-              >
-                {doneBusy ? 'Saving...' : 'Mark Done'}
-              </button>
-            </div>
-          ) : (
-            <p className="showup-entry-status" style={{ margin: '0 auto 14px' }}>Completed ✓</p>
-          )}
+          <div className="showup-checkin-actions">
+            <button
+              type="button"
+              className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
+              onClick={handleCheckIn}
+              disabled={checkedIn}
+            >
+              {checkedIn && currentMember?.check_in_time ? `Checked in ${formatTime(currentMember.check_in_time)}` : 'Check In'}
+            </button>
+            <button
+              type="button"
+              className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
+              onClick={handleMarkDone}
+              disabled={!checkedIn || taskDone || doneBusy}
+            >
+              {taskDone ? 'Done ✓' : (doneBusy ? 'Saving...' : 'Mark Done')}
+            </button>
+          </div>
         </div>
 
         <div className="showup-tabs">
@@ -3702,18 +3966,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {error ? <div className="showup-empty">{error}</div> : null}
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
-        {showProgressPhotoPrompt ? (
-          <div className="showup-sync-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <span>Nice work. Post a progress photo?</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" className="showup-mini-link" onClick={() => fileInputRef.current?.click()} aria-label="Add photo">
-                <ImageIcon size={15} strokeWidth={2.2} />
-              </button>
-              <button type="button" className="showup-mini-link" onClick={() => setShowProgressPhotoPrompt(false)} aria-label="Close prompt">×</button>
-            </div>
-          </div>
-        ) : null}
-
         {activeTab === 'live' ? (
           <div style={{ display: 'grid', gap: 16 }}>
             <div className="showup-member-grid">
@@ -3738,9 +3990,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <div style={{ minWidth: 0, maxWidth: '100%' }}>
                       <p className="showup-member-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                       {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
-                      {member.check_in_time ? (
-                        <p className="showup-member-checkin-time">Checked in {formatTime(member.check_in_time)}</p>
-                      ) : null}
                     </div>
                   </div>
                 )
@@ -3761,6 +4010,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   placeholder="Share what you are working on..."
                 />
               </div>
+              {showPostMentionSuggestions ? (
+                <div className="showup-mention-list">
+                  {realMembers.slice(0, 6).map(member => (
+                    <button
+                      key={member.user_id}
+                      type="button"
+                      onClick={() => setPostDraft(`${postDraft.replace(/@\w*$/, '')}@${String(member.display_name || '').split(' ')[0]} `)}
+                    >
+                      @{String(member.display_name || '').split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {postImage ? (
                 <div className="showup-feed-media-wrapper">
                   {getMediaKind(postImage) === 'video'
@@ -3961,15 +4223,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             onTouchEnd={handleCommentSheetTouchEnd}
           >
             <div className="showup-sheet-handle" />
-            <h2 className="showup-sheet-title">
-              <MessageCircle size={18} strokeWidth={2.3} />
-              <span>Comments</span>
-            </h2>
             <div className="showup-comment-sheet-list">
               {safeArray(commentSheetPost.comments).length ? dedupeByIdOrTimestamp(safeArray(commentSheetPost.comments)).map(comment => {
                 const ownComment = comment.authorId === profile.id
                 const replyKey = `${commentSheetPost.id}:${comment.id}`
-                const repliesExpanded = Boolean(expandedReplies[replyKey])
                 const replies = dedupeByIdOrTimestamp(safeArray(comment.replies))
                 return (
                 <div
@@ -3991,9 +4248,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         <Heart size={12} strokeWidth={2.1} />
                         <span>{safeArray(comment.reactions?.love).length}</span>
                       </button>
-                      <button type="button" className="showup-comment-action" onClick={() => setExpandedReplies(current => ({ ...current, [replyKey]: !current[replyKey] }))}>
+                      <button
+                        type="button"
+                        className="showup-comment-action"
+                        onClick={() => {
+                          const mentionName = `@${String(comment.authorName || '').split(' ')[0]} `
+                          setReplyTarget({ postId: commentSheetPost.id, commentId: comment.id })
+                          setReplyDrafts(current => ({ ...current, [replyKey]: mentionName }))
+                        }}
+                      >
                         <Reply size={12} strokeWidth={2.1} />
-                        <span>{repliesExpanded ? 'Hide replies' : `View replies${replies.length ? ` (${replies.length})` : ''}`}</span>
+                        <span>Reply</span>
                       </button>
                       {ownComment && heldCommentId === comment.id ? (
                         <button type="button" className="showup-comment-action showup-comment-delete" onClick={() => handleDeleteComment(commentSheetPost.id, comment.id)}>
@@ -4001,14 +4266,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         </button>
                       ) : null}
                     </div>
-                    {repliesExpanded ? (
-                      <div className="showup-replies">
-                        {replies.map(reply => (
-                          <div key={reply.id} className="showup-reply-bubble">
-                            <p className="showup-comment-author">{reply.authorName}</p>
-                            <p className="showup-comment-text">{reply.text}</p>
-                          </div>
-                        ))}
+                    <div className="showup-replies">
+                      {replies.map(reply => (
+                        <div key={reply.id} className="showup-reply-bubble" style={{ marginLeft: 16 }}>
+                          <p className="showup-comment-author">{reply.authorName}</p>
+                          <p className="showup-comment-text">{reply.text}</p>
+                        </div>
+                      ))}
+                      {replyTarget?.postId === commentSheetPost.id && replyTarget?.commentId === comment.id ? (
                         <div className="showup-comment-compose">
                           <input
                             className="showup-comment-input"
@@ -4016,10 +4281,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                             onChange={event => setReplyDrafts(current => ({ ...current, [replyKey]: event.target.value }))}
                             placeholder="Reply..."
                           />
-                          <button type="button" className="showup-comment-send" onClick={() => handleAddReply(commentSheetPost.id, comment.id)}>Send</button>
+                          <button
+                            type="button"
+                            className="showup-comment-send"
+                            onClick={() => {
+                              handleAddReply(commentSheetPost.id, comment.id)
+                              setReplyTarget(null)
+                            }}
+                          >
+                            Send
+                          </button>
                         </div>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               )}) : (
@@ -4105,6 +4379,51 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             <div className="showup-sheet-actions">
               <button type="button" className="showup-sheet-send" onClick={handleSendNotification}>Send</button>
               <button type="button" className="showup-sheet-cancel" aria-label="Close nudge sheet" onClick={() => setSheetState({ open: false, member: null })}>×</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {createRoomLockedOpen ? (
+        <div className="showup-exit-backdrop" onClick={() => setCreateRoomLockedOpen(false)}>
+          <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
+            <h2 className="showup-exit-title">Create your own room</h2>
+            <p className="showup-sheet-subtitle" style={{ fontSize: 14, lineHeight: 1.6 }}>
+              You'll unlock this when you've been consistent for 7 days. Keep showing up.
+            </p>
+            <button type="button" className="showup-exit-cancel" onClick={() => setCreateRoomLockedOpen(false)}>Close</button>
+          </div>
+        </div>
+      ) : null}
+
+      {createRoomModalOpen ? (
+        <div className="showup-exit-backdrop" onClick={() => setCreateRoomModalOpen(false)}>
+          <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
+            <h2 className="showup-exit-title">Create your own room</h2>
+            <div className="showup-create-form" style={{ marginBottom: 0 }}>
+              <label className="showup-field">
+                <span className="showup-field-label">Room name</span>
+                <input
+                  className="showup-input"
+                  value={createRoomName}
+                  onChange={event => setCreateRoomName(event.target.value)}
+                  placeholder="Enter room name"
+                />
+              </label>
+              <label className="showup-field">
+                <span className="showup-field-label">Focus area</span>
+                <select className="showup-select" value={createFocusAreaId} onChange={event => setCreateFocusAreaId(event.target.value)}>
+                  {ROOM_DEFINITIONS.map(room => (
+                    <option key={room.id} value={room.id}>{room.pillar}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="showup-exit-options" style={{ marginTop: 12 }}>
+              <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff' }} onClick={handleSaveCreatedRoom}>
+                <strong>Create room</strong>
+              </button>
+              <button type="button" className="showup-exit-cancel" onClick={() => setCreateRoomModalOpen(false)}>Close</button>
             </div>
           </div>
         </div>
