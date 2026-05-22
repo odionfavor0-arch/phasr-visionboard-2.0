@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreHorizontal, Plus, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
@@ -53,6 +53,16 @@ const SHOW_UP_STYLES = `
   font-family:'DM Sans',sans-serif;
   cursor:pointer;
   padding:0;
+}
+.showup-room-inline-banner{
+  margin-bottom:10px;
+  border-radius:12px;
+  padding:12px 16px;
+  background:rgba(249,95,133,0.08);
+  color:#f95f85;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.35;
 }
 .showup-list-panel{
   border:1px solid rgba(232,64,122,0.14);
@@ -314,6 +324,18 @@ const SHOW_UP_STYLES = `
   font-weight:700;
   color:#4d3142;
 }
+.showup-room-title-block{
+  min-width:0;
+  display:grid;
+  gap:4px;
+}
+.showup-room-checkin-time{
+  margin:0;
+  color:#b98097;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.2;
+}
 .showup-live-pill{
   display:inline-flex;
   align-items:center;
@@ -517,6 +539,13 @@ const SHOW_UP_STYLES = `
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.showup-member-checkin-time{
+  margin:5px 0 0;
+  color:#b98097;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.2;
+}
 .showup-role-badge{
   display:inline-flex;
   align-items:center;
@@ -666,7 +695,7 @@ const SHOW_UP_STYLES = `
   background:#fff;
   padding:14px;
   position:relative;
-  box-shadow:0 1px 4px rgba(0,0,0,0.07);
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
   width:100%;
   max-width:100%;
   min-width:0;
@@ -680,8 +709,8 @@ const SHOW_UP_STYLES = `
   margin-top:12px;
 }
 .showup-feed-card.is-sage{
-  background:rgba(249,95,133,0.06);
-  border-color:rgba(249,95,133,0.28);
+  background:rgba(249,95,133,0.05);
+  border-color:rgba(249,95,133,0.14);
 }
 .showup-feed-card.is-pulse{
   background:linear-gradient(135deg,rgba(255,250,252,0.98),rgba(255,239,245,0.94));
@@ -754,7 +783,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-time{
   margin:0;
-  font-size:11px;
+  font-size:12px;
   color:#9a7088;
   white-space:nowrap;
 }
@@ -767,16 +796,23 @@ const SHOW_UP_STYLES = `
   overflow-wrap:anywhere;
   word-break:break-word;
 }
+.showup-feed-media-wrapper{
+  width:100%;
+  overflow:hidden;
+  border-radius:8px;
+  margin-top:12px;
+  background:#fff;
+}
 .showup-feed-image{
   width:100%;
   max-width:100%;
-  max-height:520px;
+  max-height:420px;
   object-fit:contain;
-  border-radius:12px;
-  border:1px solid rgba(249,95,133,0.25);
-  margin-top:12px;
+  border-radius:8px;
+  border:none;
+  margin-top:0;
   cursor:pointer;
-  background:#f8f0f4;
+  background:#fff;
   display:block;
 }
 .showup-feed-reactions{
@@ -1505,7 +1541,7 @@ const SHOW_UP_STYLES = `
     gap:6px;
   }
   .showup-feed-time{
-    font-size:10px;
+    font-size:12px;
   }
   .showup-bell-btn{
     min-height:28px;
@@ -2376,8 +2412,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [showProgressPhotoPrompt, setShowProgressPhotoPrompt] = useState(false)
   const [roomStreak, setRoomStreak] = useState({ count: 0, lastActiveDate: '' })
   const [presenceTick, setPresenceTick] = useState(0)
-  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false)
   const fileInputRef = useRef(null)
+  const feedViewRef = useRef(null)
   const commentFileInputRef = useRef(null)
   const commentHoldTimerRef = useRef(null)
   const commentSheetTouchStartRef = useRef(null)
@@ -2932,11 +2968,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     const joined = safeArray(safeRead(getJoinedRoomsKey(profile.id), []))[0] || ''
     const roomCount = roomCounts[roomName] || 0
     if (joined && joined !== roomName) {
-      setError('Leave your current room to join another.')
+      setToast(`You're already in ${joined}. Leave it before joining ${roomName}.`)
       return
     }
     if (joined !== roomName && roomCount >= MAX_ROOM_SIZE) {
-      setError('This room is full.')
+      setToast('This room is full.')
       return
     }
     setError('')
@@ -3015,16 +3051,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
     setExitPromptOpen(false)
     setSelectedRoom(null)
-    setToast(selectedRoom ? `You're in ${selectedRoom} - back to finish?` : '')
+    setToast(selectedRoom ? `You're still checked in — come back to mark done.` : '')
   }
 
   function handleBackPress() {
     if (!selectedRoom) return
-    if (taskDone) {
-      setSelectedRoom(null)
-      setToast(`You're in ${selectedRoom} - back to finish?`)
-      return
-    }
     setExitPromptOpen(true)
   }
 
@@ -3055,7 +3086,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setTaskDone(false)
     setDoneTime('')
     setExitPromptOpen(false)
-    setRoomSettingsOpen(false)
     setSelectedRoom(null)
     loadRoomCountsFromLocal(profile)
   }
@@ -3121,11 +3151,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     await postSilentAccountability(roomName, nextMembers)
   }
 
-  function handleRoomExitRequest() {
-    setRoomSettingsOpen(false)
-    setExitPromptOpen(true)
-  }
-
   function closeExitPrompt() {
     setExitPromptOpen(false)
   }
@@ -3162,6 +3187,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (uploadedImage && nextPost?.id) {
       setCommentSheetPostId(nextPost.id)
     }
+    window.requestAnimationFrame(() => {
+      feedViewRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })
+      feedViewRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+    })
   }
 
   function handleToggleReaction(postId, reactionKey = 'like') {
@@ -3414,7 +3443,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const roomEnergy = useMemo(() => getRoomEnergyState(completedCount), [completedCount])
   const isPillarRoom = detectRoomNameFromBoard() === selectedRoom
   const roomBannerText = !selectedRoom && joinedRoomName
-    ? `You're in ${joinedRoomName} - back to finish?`
+    ? `You're in ${joinedRoomName} — tap Enter to continue.`
     : toast
 
   useEffect(() => {
@@ -3457,7 +3486,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             alignSelf: 'stretch',
           }}
         >
-          {roomBannerText ? <div className="showup-empty" style={{ marginBottom: 10 }}>{roomBannerText}</div> : null}
+          {roomBannerText ? <div className="showup-room-inline-banner">{roomBannerText}</div> : null}
           <div
             className="showup-list-header"
             style={{
@@ -3482,7 +3511,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             >
               All Rooms
             </p>
-            <p className="showup-list-meta" style={{ margin: 0 }}>One room per focus area</p>
           </div>
 
           <div
@@ -3504,9 +3532,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               const isFull = !isJoined && joined >= room.maxSpots
               const blockedByAnotherRoom = Boolean(joinedRoomName && joinedRoomName !== room.name)
               const RoomIcon = ROOM_ICONS[room.id] || Sparkles
-              const roomMembers = safeRead(getMockMemberStorageKey(room.name), [])
-              const doneCount = safeArray(roomMembers).filter(member => !isPlaceholderMember(member) && member.task_done).length
-              const energy = getRoomEnergyState(doneCount)
               return (
                 <div
                   key={room.id}
@@ -3544,9 +3569,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       {isFull ? 'Full · Waitlist →' : `${spotsLeft}/${room.maxSpots} spots`}
                     </p>
                     {!isFull && spotsLeft <= 3 ? <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b7772b', fontWeight: 800 }}>{spotsLeft} spots left</p> : null}
-                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#9a7088' }}>
-                      {energy.emoji} {energy.label}
-                    </p>
                   </div>
                   <div className="showup-list-action" style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                     <button
@@ -3561,9 +3583,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           handleJoinWaitlist(room.name)
                           return
                         }
+                        if (blockedByAnotherRoom) {
+                          setToast(`You're already in ${joinedRoomName}. Leave it before joining ${room.name}.`)
+                          return
+                        }
                         handleJoinRoom(room.name)
                       }}
-                      disabled={blockedByAnotherRoom}
                       className={`showup-join-pill ${isJoined ? 'is-joined' : ''}`}
                       style={{
                         minHeight: 30,
@@ -3576,11 +3601,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         fontSize: 12,
                         fontWeight: 800,
                         border: isJoined ? '1px solid rgba(233,224,229,0.95)' : 'none',
-                        background: blockedByAnotherRoom ? '#f6f2f4' : (isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)'),
-                        color: blockedByAnotherRoom ? '#b29cab' : (isJoined ? '#9a7088' : '#f45f92'),
+                        background: isJoined ? '#fff' : 'linear-gradient(135deg,#ffd9e6,#ffeaf1)',
+                        color: isJoined ? '#9a7088' : '#f45f92',
                         fontFamily: "'DM Sans',sans-serif",
-                        cursor: blockedByAnotherRoom ? 'not-allowed' : 'pointer',
-                        opacity: blockedByAnotherRoom ? 0.7 : 1,
+                        cursor: 'pointer',
+                        opacity: 1,
                       }}
                     >
                       {isJoined ? (
@@ -3588,8 +3613,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           <Check size={14} strokeWidth={2.5} color="#b5adb2" />
                           <span>Enter</span>
                         </span>
-                      ) : blockedByAnotherRoom ? (
-                        <span>Leave your current room to join another</span>
                       ) : (
                         <span>{isFull ? 'Waitlist' : 'Join'}</span>
                       )}
@@ -3626,48 +3649,38 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         <div className="showup-sticky-header">
           <div className="showup-topbar">
             <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'\u2190'}</button>
-            <h1 className="showup-room-title" style={{ textAlign: 'left' }}>{formatRoomTitle(selectedRoom)}</h1>
-            <button type="button" className="showup-header-btn" onClick={() => setRoomSettingsOpen(true)}>
-              <MoreHorizontal size={18} strokeWidth={2.3} />
-            </button>
-          </div>
-          <div className="showup-feed-card" style={{ marginBottom: 12, background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
-            <div style={{ display: 'grid', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <p className="showup-room-title" style={{ margin: 0, textAlign: 'left', whiteSpace: 'normal' }}>{formatRoomTitle(selectedRoom)}</p>
-                  <p className="showup-list-meta" style={{ margin: '6px 0 0' }}>{roomEnergy.emoji} {roomEnergy.label} · {completedCount} done today</p>
-                </div>
-                <div style={{ flexShrink: 0 }}>
-                  {taskDone ? (
-                    <p className="showup-entry-status" style={{ margin: 0 }}>Done Today ✓</p>
-                  ) : (
-                    !checkedIn ? (
-                      <button
-                        type="button"
-                        className="showup-done-btn"
-                        onClick={handleCheckIn}
-                      >
-                        Check In
-                      </button>
-                    ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 8, minWidth: 260 }}>
-                        <p className="showup-list-meta" style={{ margin: 0, textAlign: 'left' }}>Checked in at {formatTime(currentMember?.check_in_time)}</p>
-                        <button
-                          type="button"
-                          className="showup-mini-done-btn"
-                          onClick={handleMarkDone}
-                          disabled={doneBusy}
-                        >
-                          {doneBusy ? 'Saving...' : 'Mark Done'}
-                        </button>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
+            <div className="showup-room-title-block">
+              <h1 className="showup-room-title" style={{ textAlign: 'left' }}>{formatRoomTitle(selectedRoom)}</h1>
+              {checkedIn && currentMember?.check_in_time ? (
+                <p className="showup-room-checkin-time">Checked in at {formatTime(currentMember.check_in_time)}</p>
+              ) : null}
+            </div>
+            <div className="showup-live-pill" style={{ justifySelf: 'end' }}>
+              <span>{roomEnergy.label} · {completedCount} done</span>
             </div>
           </div>
+          {!taskDone ? (
+            <div className="showup-checkin-actions">
+              <button
+                type="button"
+                className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
+                onClick={handleCheckIn}
+                disabled={checkedIn}
+              >
+                {checkedIn ? 'Checked In' : 'Check In'}
+              </button>
+              <button
+                type="button"
+                className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
+                onClick={handleMarkDone}
+                disabled={!checkedIn || taskDone || doneBusy}
+              >
+                {doneBusy ? 'Saving...' : 'Mark Done'}
+              </button>
+            </div>
+          ) : (
+            <p className="showup-entry-status" style={{ margin: '0 auto 14px' }}>Completed ✓</p>
+          )}
         </div>
 
         <div className="showup-tabs">
@@ -3725,37 +3738,19 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <div style={{ minWidth: 0, maxWidth: '100%' }}>
                       <p className="showup-member-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
                       {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
+                      {member.check_in_time ? (
+                        <p className="showup-member-checkin-time">Checked in {formatTime(member.check_in_time)}</p>
+                      ) : null}
                     </div>
                   </div>
                 )
               })}
             </div>
-            {visiblePosts.filter(post => post.system || post.postStyle === 'pulse' || post.postStyle === 'recap').slice(0, 3).length ? (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {visiblePosts
-                  .filter(post => post.system || post.postStyle === 'pulse' || post.postStyle === 'recap')
-                  .slice(0, 3)
-                  .map(post => (
-                    <div key={`live-${post.id}`} className={`showup-feed-card ${post.postStyle === 'pulse' ? 'is-pulse' : ''} ${post.postStyle === 'recap' ? 'is-recap' : ''}`}>
-                      <div className="showup-feed-header">
-                        <div className="showup-feed-author">
-                          <div className="showup-avatar">{post.authorInitials || 'SG'}</div>
-                          <div className="showup-feed-header-main">
-                            <p className="showup-feed-name">{post.authorName}</p>
-                            <p className="showup-feed-time">{formatTimestamp(post.createdAt)}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="showup-feed-text">{post.text}</p>
-                    </div>
-                  ))}
-              </div>
-            ) : null}
           </div>
         ) : null}
 
         {activeTab === 'feed' ? (
-          <div className="showup-feed-view">
+          <div className="showup-feed-view" ref={feedViewRef}>
             <div className="showup-compose-card">
               <div className="showup-compose-top">
                 <div className="showup-avatar">{profile.initials}</div>
@@ -3767,9 +3762,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 />
               </div>
               {postImage ? (
-                getMediaKind(postImage) === 'video'
-                  ? <video className="showup-feed-image" src={postImage} controls playsInline onClick={event => { event.stopPropagation(); setLightboxMedia({ url: postImage, kind: 'video' }) }} />
-                  : <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: postImage, kind: 'image' }) }} />
+                <div className="showup-feed-media-wrapper">
+                  {getMediaKind(postImage) === 'video'
+                    ? <video className="showup-feed-image" src={postImage} controls playsInline onClick={event => { event.stopPropagation(); setLightboxMedia({ url: postImage, kind: 'video' }) }} />
+                    : <img className="showup-feed-image" src={postImage} alt="Upload preview" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: postImage, kind: 'image' }) }} />}
+                </div>
               ) : null}
               <div className="showup-compose-actions">
                 <button type="button" className="showup-photo-btn" onClick={() => fileInputRef.current?.click()}>
@@ -3837,9 +3834,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                     <p className="showup-feed-text">{post.text}</p>
                   )}
                   {post.image ? (
-                    getMediaKind(post.image) === 'video'
-                      ? <video className="showup-feed-image" src={post.image} controls playsInline onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'video' }) }} />
-                      : <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'image' }) }} />
+                    <div className="showup-feed-media-wrapper">
+                      {getMediaKind(post.image) === 'video'
+                        ? <video className="showup-feed-image" src={post.image} controls playsInline onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'video' }) }} />
+                        : <img className="showup-feed-image" src={post.image} alt="Feed upload" loading="lazy" onClick={event => { event.stopPropagation(); setLightboxMedia({ url: post.image, kind: 'image' }) }} />}
+                    </div>
                   ) : null}
                   <div className="showup-feed-reactions">
                     <button
@@ -3902,24 +3901,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         ) : null}
       </div>
 
-      {roomSettingsOpen ? (
-        <div className="showup-exit-backdrop" onClick={() => setRoomSettingsOpen(false)}>
-          <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
-            <h2 className="showup-exit-title">Room settings</h2>
-            <div className="showup-exit-options">
-              <button type="button" className="showup-exit-option" style={{ background: '#fff', borderColor: '#c86f8f', color: '#c86f8f' }} onClick={handleExitRoom}>
-                <strong>
-                  <LogOut size={15} strokeWidth={2.2} />
-                  <span>Exit room</span>
-                </strong>
-                <span>You'll lose your spot. Someone else may take it.</span>
-              </button>
-            </div>
-            <button type="button" className="showup-exit-cancel" aria-label="Close room settings" onClick={() => setRoomSettingsOpen(false)}>Close</button>
-          </div>
-        </div>
-      ) : null}
-
       {exitPromptOpen ? (
         <div className="showup-exit-backdrop" onClick={() => setExitPromptOpen(false)}>
           <div className="showup-exit-modal" onClick={event => event.stopPropagation()}>
@@ -3928,6 +3909,13 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff' }} onClick={handleLeaveForNow}>
                 <strong>Leave for now</strong>
                 <span style={{ color: 'rgba(255,255,255,0.92)' }}>Your progress is saved. Come back to mark done.</span>
+              </button>
+              <button type="button" className="showup-exit-option" style={{ background: '#fff', borderColor: '#f95f85', color: '#c84f73' }} onClick={handleExitRoom}>
+                <strong>
+                  <LogOut size={15} strokeWidth={2.2} />
+                  <span>Exit room</span>
+                </strong>
+                <span>You'll lose your spot. Someone else may take it.</span>
               </button>
             </div>
             <button type="button" className="showup-exit-cancel" aria-label="Close leave modal" onClick={closeExitPrompt}>Cancel</button>
