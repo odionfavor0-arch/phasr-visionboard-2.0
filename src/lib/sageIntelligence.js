@@ -1,4 +1,4 @@
-const ACTIVE_USER_KEY = 'phasr_active_user'
+﻿const ACTIVE_USER_KEY = 'phasr_active_user'
 const NEXT_WEEK_PLAN_KEY = 'phasr_next_week_plan'
 const SAGE_PLANS_KEY = 'phasr_sage_plans'
 const BRIEFING_DISMISS_KEY = 'phasr_sage_briefing_dismissed'
@@ -260,12 +260,12 @@ export function getSageWeeklyMessage() {
   if (!plan) return ''
 
   if (plan.difficulty === 'up') {
-    return `You hit ${plan.completionRate}% last week and kept your streak going for ${plan.streakDays} days. I’m increasing the load a little this week because you’re ready for it.`
+    return `You hit ${plan.completionRate}% last week and kept your streak going for ${plan.streakDays} days. I'm increasing the load a little this week because you're ready for it.`
   }
   if (plan.difficulty === 'down') {
     return `Last week landed at ${plan.completionRate}% with ${plan.streakDays} streak days kept. I simplified this week so you can rebuild momentum and focus on consistency first.`
   }
-  return `You closed last week at ${plan.completionRate}% and held ${plan.streakDays} streak days. I’m keeping the main load steady this week and adding one easier habit to keep you moving.`
+  return `You closed last week at ${plan.completionRate}% and held ${plan.streakDays} streak days. I'm keeping the main load steady this week and adding one easier habit to keep you moving.`
 }
 
 function normalizePlanJson(rawText) {
@@ -348,47 +348,47 @@ function normalizeGroqJson(rawText) {
 }
 
 export async function fetchPillarPlanWithGroq({
-  planPrompt = ‘’,
-  systemPrompt: systemPromptOverride = ‘’,
-  userPrompt: userPromptOverride = ‘’,
+  planPrompt = '',
+  systemPrompt: systemPromptOverride = '',
+  userPrompt: userPromptOverride = '',
   pillarName,
   beforeState,
   beforeDesc,
   afterState,
   afterDesc,
 } = {}) {
-  const systemPrompt = ‘You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.’
-  const userPrompt = String(planPrompt || ‘’).trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || ‘’).trim()}\nTheir before state: ${String(beforeState || ‘’).trim()}\nTheir before description: ${String(beforeDesc || ‘’).trim()}\nTheir after goal: ${String(afterState || ‘’).trim()}\nTheir after description: ${String(afterDesc || ‘’).trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
+  const systemPrompt = `You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user's actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.`
+  const userPrompt = String(planPrompt || '').trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || '').trim()}\nTheir before state: ${String(beforeState || '').trim()}\nTheir before description: ${String(beforeDesc || '').trim()}\nTheir after goal: ${String(afterState || '').trim()}\nTheir after description: ${String(afterDesc || '').trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
 
-  console.log(‘[Sage Plan] System prompt length:’, String(systemPromptOverride || systemPrompt).length)
-  console.log(‘[Sage Plan] User prompt length:’, String(userPromptOverride || userPrompt).length)
+  console.log('[Sage Plan] System prompt length:', String(systemPromptOverride || systemPrompt).length)
+  console.log('[Sage Plan] User prompt length:', String(userPromptOverride || userPrompt).length)
 
   let res
   try {
-    res = await fetch(‘/api/plan/generate’, {
-      method: ‘POST’,
-      headers: { ‘Content-Type’: ‘application/json’ },
+    res = await fetch('/api/plan/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_prompt: String(systemPromptOverride || ‘’).trim() || systemPrompt,
-        user_message: String(userPromptOverride || ‘’).trim() || userPrompt,
+        system_prompt: String(systemPromptOverride || '').trim() || systemPrompt,
+        user_message: String(userPromptOverride || '').trim() || userPrompt,
       }),
     })
   } catch (networkErr) {
-    console.error(‘[Sage Plan] Network error calling /api/plan/generate:’, networkErr)
-    throw new Error(‘groq_network_error’)
+    console.error('[Sage Plan] Network error calling /api/plan/generate:', networkErr)
+    throw new Error('groq_network_error')
   }
 
-  console.log(‘[Sage Plan] API status:’, res.status, res.ok ? ‘OK’ : ‘FAILED’)
+  console.log('[Sage Plan] API status:', res.status, res.ok ? 'OK' : 'FAILED')
 
   if (!res.ok) {
-    let errorBody = ‘’
+    let errorBody = ''
     try { errorBody = await res.text() } catch { /* ignore */ }
-    console.error(‘[Sage Plan] API error response:’, errorBody)
-    throw new Error(‘groq_error’)
+    console.error('[Sage Plan] API error response:', errorBody)
+    throw new Error('groq_error')
   }
 
   const data = await res.json()
-  const text = data?.content || ‘’
+  const text = data?.content || ''
   console.log('[Sage Plan] Raw Groq content:', text.slice(0, 300))
   const normalized = normalizeGroqJson(text)
 
