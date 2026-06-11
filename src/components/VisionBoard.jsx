@@ -386,7 +386,11 @@ function load(user) {
 }
 function save(d, user) {
   const key = getBoardStorageKey(user)
-  localStorage.setItem(key, JSON.stringify(d))
+  try {
+    localStorage.setItem(key, JSON.stringify(d))
+  } catch (e) {
+    console.warn('[Phasr] Board save skipped (storage quota):', e)
+  }
 }
 
 const FREE_PILLAR_LIMIT = 2
