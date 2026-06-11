@@ -348,60 +348,47 @@ function normalizeGroqJson(rawText) {
 }
 
 export async function fetchPillarPlanWithGroq({
-  planPrompt = '',
-  systemPrompt: systemPromptOverride = '',
-  userPrompt: userPromptOverride = '',
+  planPrompt = ‘’,
+  systemPrompt: systemPromptOverride = ‘’,
+  userPrompt: userPromptOverride = ‘’,
   pillarName,
   beforeState,
   beforeDesc,
   afterState,
   afterDesc,
 } = {}) {
-  const apiKey = import.meta.env.VITE_GROQ_KEY
-  if (!apiKey) throw new Error('missing_groq_key')
-  const model = 'llama-3.3-70b-versatile'
+  const systemPrompt = ‘You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.’
+  const userPrompt = String(planPrompt || ‘’).trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || ‘’).trim()}\nTheir before state: ${String(beforeState || ‘’).trim()}\nTheir before description: ${String(beforeDesc || ‘’).trim()}\nTheir after goal: ${String(afterState || ‘’).trim()}\nTheir after description: ${String(afterDesc || ‘’).trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
 
-  const systemPrompt = 'You are Sage, an AI life coach inside Phasr. Generate a specific, realistic plan based on the user’s actual goal. Do not use generic templates. Read their before and after descriptions carefully and generate advice that is specific to their situation.'
-  const userPrompt = String(planPrompt || '').trim() || `You are generating a structured plan for a Phasr user.\n\nTheir pillar: ${String(pillarName || '').trim()}\nTheir before state: ${String(beforeState || '').trim()}\nTheir before description: ${String(beforeDesc || '').trim()}\nTheir after goal: ${String(afterState || '').trim()}\nTheir after description: ${String(afterDesc || '').trim()}\n\nReturn JSON only:\n{\n  \"resources\": [\"...\", \"...\", \"...\", \"...\"],\n  \"activities\": [\"...\", \"...\", \"...\", \"...\"],\n  \"weeklyNonNegotiables\": [\"...\", \"...\", \"...\", \"...\"],\n  \"outcome\": \"...\"\n}\n`
-
-  console.log('[Sage Plan] VITE_GROQ_KEY present:', Boolean(apiKey))
-  console.log('[Sage Plan] System prompt length:', String(systemPromptOverride || systemPrompt).length)
-  console.log('[Sage Plan] User prompt length:', String(userPromptOverride || userPrompt).length)
+  console.log(‘[Sage Plan] System prompt length:’, String(systemPromptOverride || systemPrompt).length)
+  console.log(‘[Sage Plan] User prompt length:’, String(userPromptOverride || userPrompt).length)
 
   let res
   try {
-    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+    res = await fetch(‘/api/plan/generate’, {
+      method: ‘POST’,
+      headers: { ‘Content-Type’: ‘application/json’ },
       body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 1200,
-        messages: [
-          { role: 'system', content: String(systemPromptOverride || '').trim() || systemPrompt },
-          { role: 'user', content: String(userPromptOverride || '').trim() || userPrompt },
-        ],
+        system_prompt: String(systemPromptOverride || ‘’).trim() || systemPrompt,
+        user_message: String(userPromptOverride || ‘’).trim() || userPrompt,
       }),
     })
   } catch (networkErr) {
-    console.error('[Sage Plan] Network error calling Groq:', networkErr)
-    throw new Error('groq_network_error')
+    console.error(‘[Sage Plan] Network error calling /api/plan/generate:’, networkErr)
+    throw new Error(‘groq_network_error’)
   }
 
-  console.log('[Sage Plan] Groq HTTP status:', res.status, res.ok ? 'OK' : 'FAILED')
+  console.log(‘[Sage Plan] API status:’, res.status, res.ok ? ‘OK’ : ‘FAILED’)
 
   if (!res.ok) {
-    let errorBody = ''
+    let errorBody = ‘’
     try { errorBody = await res.text() } catch { /* ignore */ }
-    console.error('[Sage Plan] Groq error response body:', errorBody)
-    throw new Error('groq_error')
+    console.error(‘[Sage Plan] API error response:’, errorBody)
+    throw new Error(‘groq_error’)
   }
 
   const data = await res.json()
-  const text = data?.choices?.[0]?.message?.content || ''
+  const text = data?.content || ‘’
   console.log('[Sage Plan] Raw Groq content:', text.slice(0, 300))
   const normalized = normalizeGroqJson(text)
 

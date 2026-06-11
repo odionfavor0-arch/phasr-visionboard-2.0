@@ -388,8 +388,25 @@ function save(d, user) {
   const key = getBoardStorageKey(user)
   try {
     localStorage.setItem(key, JSON.stringify(d))
-  } catch (e) {
-    console.warn('[Phasr] Board save skipped (storage quota):', e)
+  } catch {
+    // Storage is full (usually base64 images). Strip images and retry so text/plans still persist.
+    try {
+      const stripped = {
+        ...d,
+        phases: (d.phases || []).map(ph => ({
+          ...ph,
+          pillars: (ph.pillars || []).map(pl => ({
+            ...pl,
+            beforeImage: null,
+            afterImage: null,
+          })),
+        })),
+      }
+      localStorage.setItem(key, JSON.stringify(stripped))
+      console.warn('[Phasr] Board saved without images (storage quota reached).')
+    } catch (e2) {
+      console.warn('[Phasr] Board save failed even without images:', e2)
+    }
   }
 }
 
@@ -1387,6 +1404,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [showReview, setShowReview] = useState(false)
   const [revealedDeleteTarget, setRevealedDeleteTarget] = useState(null)
   const [uploadMessage, setUploadMessage] = useState('')
+  const [generatingPillarId, setGeneratingPillarId] = useState(null)
   const [selectedExportPillarId, setSelectedExportPillarId] = useState(null)
   const [exportNotice, setExportNotice] = useState('')
   const [showExportModal, setShowExportModal] = useState(false)
@@ -1628,7 +1646,12 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       return
     }
 
+    setGeneratingPillarId(plId)
     setUploadMessage('Sage is generating your plan...')
+    if (isMobile) {
+      const el = document.getElementById('vb-status-message')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
     try {
       const focusAreaName = String(targetPillar.name || '').trim()
       const territory = getFocusAreaTerritory(focusAreaName)
@@ -1808,12 +1831,12 @@ Return JSON only:
       console.error('[Sage Plan] CAUGHT ERROR:', error?.message, error)
       const message = String(error?.message || '')
       setUploadMessage(
-        message.includes('missing_groq_key')
-          ? 'Sage plan generation is not configured yet. Add VITE_GROQ_KEY and reload.'
-          : message.includes('groq_network_error')
-            ? 'Network error reaching Groq. Check your connection.'
-            : `Sage plan error: ${message || 'unknown'}. Check console for details.`,
+        message.includes('groq_network_error')
+          ? 'Could not reach the server. Check your connection and try again.'
+          : `Sage plan error: ${message || 'unknown'}. Check console for details.`,
       )
+    } finally {
+      setGeneratingPillarId(null)
     }
   }
   const toggleReviewCollapse = () => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.reviewCollapsed = !ph.reviewCollapsed; return d })
@@ -2411,7 +2434,7 @@ Return JSON only:
     <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
         {uploadMessage && (
-          <div style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
+          <div id="vb-status-message" style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
             {uploadMessage}
           </div>
         )}
@@ -2748,6 +2771,7 @@ Return JSON only:
               onPreset={() => setPresetOpen(presetOpen === pl.id ? null : pl.id)}
                 onGeneratePlan={(options) => forceGeneratePlan(pl.id, options)}
               isPro={isPro}
+              isGenerating={generatingPillarId === pl.id}
             />
           ))}
           {editing && (
@@ -3124,7 +3148,7 @@ Return JSON only:
 }
 
 /* â”€â”€ Pillar Card â”€â”€ */
-  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro }) {
+  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const calendarWindowStart = useMemo(() => {
       const base = new Date()
@@ -3259,17 +3283,19 @@ Return JSON only:
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
+                disabled={isGenerating}
                 onClick={event => {
                   event.stopPropagation()
+                  if (isGenerating) return
                   if (hasPlan) {
                     regeneratePlan()
                     return
                   }
                   onGeneratePlan()
                 }}
-                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: isGenerating ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif", opacity: isGenerating ? 0.7 : 1, transition: 'opacity 0.2s' }}
               >
-                {buttonLabel}
+                {isGenerating ? 'Generating...' : buttonLabel}
               </button>
             </div>
           )}
