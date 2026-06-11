@@ -1,0 +1,65 @@
+---
+name: ui-ux-pro-max
+description: Professional UI/UX design intelligence for interface refinement, responsive polish, interaction quality, spacing systems, hierarchy, accessibility, and emotional UX.
+---
+
+# UI UX Pro Max
+
+Use this skill whenever the user asks for UI/UX work, including:
+- design
+- redesign
+- polish
+- improve layout
+- improve spacing
+- improve responsiveness
+- refine mobile experience
+- refine desktop experience
+- improve feed, ranking, room, or dashboard UI
+- improve emotional UX
+
+## Purpose
+Provide strong UI/UX reasoning for building polished, production-quality interfaces without changing app structure unless the user explicitly asks.
+
+## Core Rules
+- Do not redesign the whole app structure unless requested.
+- Preserve existing product logic and flows.
+- Prioritize clarity, spacing, hierarchy, consistency, responsiveness, and interaction feedback.
+- Make the interface feel intentional, calm, premium, and emotionally supportive.
+- Improve mobile first, then desktop responsiveness.
+- Keep tap targets comfortable and accessible.
+- Maintain strong text contrast and visible focus states.
+- Use consistent spacing rhythm across sections.
+- Prefer icons for interface controls.
+- Avoid clutter, visual noise, and unnecessary containers.
+- Avoid generic AI-looking layouts.
+- Respect the existing product language unless the user asks for a stronger visual shift.
+
+## Design Priorities
+When refining UI, focus on:
+1. Visual hierarchy
+2. Spacing consistency
+3. Responsive behavior
+4. Interaction states
+5. Accessibility
+6. Emotional UX
+7. Clean component balance
+8. Premium but simple presentation
+
+## Interaction Rules
+- Buttons should feel clearly tappable.
+- Active states must be visually obvious.
+- Hover states should be subtle and smooth.
+- Loading, empty, success, and done states should feel intentional.
+- Avoid awkward empty space, especially on mobile.
+- Important actions should stay visible without overwhelming the screen.
+
+## For This Project
+Prioritize refinement of:
+- showroom
+- feed system
+- ranking layout
+- check-in interactions
+- mobile polish
+- desktop responsiveness
+- spacing consistency
+- emotional UX

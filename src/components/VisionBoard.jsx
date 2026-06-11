@@ -1608,12 +1608,17 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }
   const delPillar  = (plId) => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph && ph.pillars.length > 1) ph.pillars = ph.pillars.filter(p => p.id !== plId); return d })
   const forceGeneratePlan = async (plId, options = {}) => {
-    console.log('Generate plan triggered.')
+    console.log('[Sage Plan] forceGeneratePlan called. plId:', plId, 'phaseId:', phaseId)
     const targetPhase = data.phases.find(p => p.id === phaseId)
     const targetPillar = targetPhase?.pillars.find(p => p.id === plId)
-    if (!targetPillar) return
+    console.log('[Sage Plan] targetPillar found:', Boolean(targetPillar), targetPillar?.name)
+    if (!targetPillar) {
+      console.error('[Sage Plan] No targetPillar found for plId:', plId, 'in phaseId:', phaseId)
+      return
+    }
     const beforeOk = cleanText(targetPillar.beforeState) || cleanText(targetPillar.beforeDesc)
     const afterOk = cleanText(targetPillar.afterState) || cleanText(targetPillar.afterDesc)
+    console.log('[Sage Plan] beforeOk:', Boolean(beforeOk), 'afterOk:', Boolean(afterOk))
     if (!beforeOk || !afterOk) {
       setUploadMessage('Add your Before and After details first, then generate your plan.')
       return
@@ -1646,7 +1651,7 @@ Focus area territories:
 	•	Travel: trip planning, travel savings, destination research, booking, travel habits
 The pillar tells you which territory you are in. The user’s description tells you specifically what they are working on within that territory. Use both together. The description is the most important input — read it carefully and make the plan specific to what they actually wrote, not a generic version of the focus area.
 Generate:
-	•	3 specific resources they need to achieve this goal
+	•	3 specific resources they need to achieve this goal — each must be a named app, tool, book, platform, or course. Examples: MyFitnessPal, Notion, Atomic Habits by James Clear, YNAB, Strava, Duolingo, Coursera, Insight Timer, YouTube channel name. Never list generic types like "a journal" or "a gym" without naming the specific product or title.
 	•	3 to 4 daily activities that directly serve their goal and can be tracked as daily streaks
 	•	3 to 4 weekly non-negotiables that build momentum toward the goal each week
 	•	1 outcome statement describing what they will have achieved by the end of this phase
@@ -1709,9 +1714,6 @@ Return JSON only:
         const genericHits = combined.filter(item => /\b(stay consistent|keep it simple|be consistent|try your best|take it one day at a time)\b/i.test(item)).length
         if (genericHits >= 2) return { ok: false, reason: 'too_generic' }
 
-        const hasRealWorld = combined.some(item => /\b(app|tool|tracker|notion|trello|asana|myfitnesspal|cronometer|strava|ynab|copilot|insight timer)\b/i.test(item))
-        if (!hasRealWorld) return { ok: false, reason: 'no_real_world_resource' }
-
         const normalizedFocus = normalizeFocusAreaName(focusAreaName)
         if (normalizedFocus === 'personal growth') {
           const hasFitnessLeak = combined.some(item => /\b(gym|workout|cardio|protein|calorie|lift|lifting|run|running|strength training)\b/i.test(item))
@@ -1721,15 +1723,20 @@ Return JSON only:
         return { ok: true, reason: '' }
       }
 
+      console.log('[Sage Plan] Calling fetchPillarPlanWithGroq...')
       let plan = await fetchPillarPlanWithGroq({ systemPrompt, userPrompt })
-      console.log('Generate plan Groq response:', plan)
+      console.log('[Sage Plan] Raw plan from Groq:', plan)
       const firstCheck = validatePlan(plan)
+      console.log('[Sage Plan] First validation:', firstCheck)
       if (!firstCheck.ok) {
+        console.log('[Sage Plan] Validation failed:', firstCheck.reason, '— attempting repair...')
         const repairSystem = `${systemPrompt}\n\nValidation failed: ${firstCheck.reason}. Fix it. Return JSON only.`
         plan = await fetchPillarPlanWithGroq({ systemPrompt: repairSystem, userPrompt })
-        console.log('Generate plan Groq repair response:', plan)
+        console.log('[Sage Plan] Repair plan from Groq:', plan)
         const secondCheck = validatePlan(plan)
+        console.log('[Sage Plan] Second validation:', secondCheck)
         if (!secondCheck.ok) {
+          console.error('[Sage Plan] Both validation attempts failed. Reason:', secondCheck.reason)
           setUploadMessage('Sage plan error. Please try again.')
           return
         }
@@ -1742,14 +1749,24 @@ Return JSON only:
         outcome: plan.outcome || '',
       }
 
-      localStorage.setItem(
-        `phasr_last_plan_${targetPillar.id}`,
-        JSON.stringify(result)
-      )
+      try {
+        const currentKey = `phasr_last_plan_${targetPillar.id}`
+        // Clear stale plan keys for other pillars to free quota before saving
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('phasr_last_plan_') && k !== currentKey)
+          .forEach(k => localStorage.removeItem(k))
+        localStorage.setItem(currentKey, JSON.stringify(result))
+      } catch (e) {
+        console.warn('[Sage Plan] localStorage quota exceeded — plan is in React state, skipping cache write.', e)
+      }
 
+      console.log('[Sage Plan] Writing plan to state. result:', result)
       upd(d => {
         const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
-        if (!pl) return d
+        if (!pl) {
+          console.error('[Sage Plan] upd: pillar not found in state. phaseId:', phaseId, 'plId:', plId)
+          return d
+        }
         pl.planGenerationCount = Number(pl.planGenerationCount || 0) + 1
         pl.resources = result.resources
         pl.activities = result.activities
@@ -1760,6 +1777,7 @@ Return JSON only:
         pl.planGeneratedFrom = getPlanSignature(pl)
         pl.planGenerationTier = 'groq'
         pl.planWasEdited = false
+        console.log('[Sage Plan] upd: pillar updated. resources:', pl.resources)
         return d
       })
       try {
@@ -1783,12 +1801,14 @@ Return JSON only:
 
       setUploadMessage('Plan updated. Your progress stays.')
     } catch (error) {
-      console.error(error)
+      console.error('[Sage Plan] CAUGHT ERROR:', error?.message, error)
       const message = String(error?.message || '')
       setUploadMessage(
         message.includes('missing_groq_key')
-          ? 'Sage plan generation is not configured yet. Add `VITE_GROQ_KEY` and reload.'
-          : 'Sage plan error. Please try again.',
+          ? 'Sage plan generation is not configured yet. Add VITE_GROQ_KEY and reload.'
+          : message.includes('groq_network_error')
+            ? 'Network error reaching Groq. Check your connection.'
+            : `Sage plan error: ${message || 'unknown'}. Check console for details.`,
       )
     }
   }

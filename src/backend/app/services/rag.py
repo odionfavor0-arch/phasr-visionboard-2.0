@@ -4,6 +4,7 @@ import json
 import os
 from typing import Any
 from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "")
 PINECONE_INDEX_HOST = os.getenv("PINECONE_INDEX_HOST", "")
@@ -12,6 +13,7 @@ PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "__default__")
 PINECONE_EMBED_MODE = os.getenv("PINECONE_EMBED_MODE", "integrated").strip().lower()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY", "")
 
 
 def _pinecone_request(path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -59,21 +61,76 @@ def query_pinecone(question: str, top_k: int = 6) -> list[dict[str, Any]]:
     return result.get("matches", [])
 
 
-def build_context(matches: list[dict[str, Any]]) -> str:
-    blocks: list[str] = []
-    for match in matches:
-        metadata = match.get("metadata") or {}
-        if not metadata and isinstance(match.get("fields"), dict):
-            metadata = match.get("fields", {})
-        title = metadata.get("title", "Untitled source")
-        url = metadata.get("url", "")
-        text = metadata.get("text", "") or metadata.get("chunk_text", "")
-        domain = metadata.get("domain", "general")
-        blocks.append(f"[{domain}] {title}\nURL: {url}\n{text}")
-    return "\n\n---\n\n".join(blocks)
+def search_firecrawl(query: str, limit: int = 3) -> list[dict[str, Any]]:
+    """Search the live web via Firecrawl and return simplified result dicts."""
+    if not FIRECRAWL_API_KEY:
+        return []
+
+    payload = json.dumps({"query": query, "limit": limit}).encode("utf-8")
+
+    request = Request(
+        "https://api.firecrawl.dev/v1/search",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {FIRECRAWL_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=15) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except (URLError, TimeoutError):
+        return []
+
+    results = []
+    for item in data.get("data", []):
+        results.append({
+            "title": item.get("title", ""),
+            "url": item.get("url", ""),
+            "text": item.get("description", "") or item.get("markdown", "")[:500],
+        })
+    return results
 
 
-def call_groq_with_context(system_prompt: str, question: str, context: str, messages: list[dict[str, str]] | None = None) -> str:
+def build_context(
+    pinecone_matches: list[dict[str, Any]],
+    firecrawl_results: list[dict[str, Any]] | None = None,
+) -> str:
+    sections: list[str] = []
+
+    if pinecone_matches:
+        blocks: list[str] = []
+        for match in pinecone_matches:
+            metadata = match.get("metadata") or {}
+            if not metadata and isinstance(match.get("fields"), dict):
+                metadata = match.get("fields", {})
+            title = metadata.get("title", "Untitled source")
+            url = metadata.get("url", "")
+            text = metadata.get("text", "") or metadata.get("chunk_text", "")
+            domain = metadata.get("domain", "general")
+            blocks.append(f"[{domain}] {title}\nURL: {url}\n{text}")
+        sections.append("## Stored Knowledge\n\n" + "\n\n---\n\n".join(blocks))
+
+    if firecrawl_results:
+        blocks = []
+        for item in firecrawl_results:
+            title = item.get("title", "Web result")
+            url = item.get("url", "")
+            text = item.get("text", "")
+            blocks.append(f"{title}\nURL: {url}\n{text}")
+        sections.append("## Live Web Results\n\n" + "\n\n---\n\n".join(blocks))
+
+    return "\n\n====\n\n".join(sections)
+
+
+def call_groq_with_context(
+    system_prompt: str,
+    question: str,
+    context: str,
+    messages: list[dict[str, str]] | None = None,
+) -> str:
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY is required.")
 
@@ -89,9 +146,12 @@ def call_groq_with_context(system_prompt: str, question: str, context: str, mess
         f"User question: {question}\n\n"
         f"Relevant context:\n{context}\n\n"
         "Instructions:\n"
-        "- Use the context above to answer.\n"
-        "- If you don't know, say that honestly.\n"
-        "- Don't make things up.\n"
+        "- Use the context above to answer. Prioritize Live Web Results for current resources.\n"
+        "- Give concrete, specific, actionable advice — not generic guidance.\n"
+        "- When referencing a resource from the context, wrap it as readable anchor text in markdown: "
+        "e.g. [Watch this](url) or [Read this guide](url). Never paste raw URLs.\n"
+        "- If no relevant URL is available, do not fabricate one.\n"
+        "- If you don't know something, say so honestly.\n"
         "- Keep the answer practical and specific."
     )
 
@@ -119,12 +179,19 @@ def call_groq_with_context(system_prompt: str, question: str, context: str, mess
         return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
 
-def answer_with_rag(question: str, system_prompt: str, messages: list[dict[str, str]] | None = None, top_k: int = 6) -> dict[str, Any]:
-    matches = query_pinecone(question, top_k=top_k)
-    context = build_context(matches)
+def answer_with_rag(
+    question: str,
+    system_prompt: str,
+    messages: list[dict[str, str]] | None = None,
+    top_k: int = 6,
+) -> dict[str, Any]:
+    pinecone_matches = query_pinecone(question, top_k=top_k)
+    firecrawl_results = search_firecrawl(question)
+    context = build_context(pinecone_matches, firecrawl_results)
     answer = call_groq_with_context(system_prompt, question, context, messages=messages)
     return {
         "answer": answer,
-        "matches": matches,
+        "matches": pinecone_matches,
+        "web_results": firecrawl_results,
         "index": PINECONE_INDEX_NAME,
     }

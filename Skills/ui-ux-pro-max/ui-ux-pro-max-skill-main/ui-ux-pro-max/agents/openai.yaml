@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI/UX Pro Max"
+  short_description: "Polish UI/UX with responsive, accessible design"
+  default_prompt: "Use $ui-ux-pro-max to refine this interface for clarity, spacing, accessibility, and responsive polish."
