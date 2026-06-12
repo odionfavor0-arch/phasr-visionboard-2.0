@@ -2473,8 +2473,9 @@ function mergeFeedPosts(remotePosts, cachedPosts) {
       ...localMatch,
       ...post,
       image: post?.image || localMatch?.image || '',
-      reactions: localMatch?.reactions || post?.reactions || {},
-      comments: safeArray(localMatch?.comments).map(comment => ({
+      // Remote wins — Supabase has the authoritative cross-user state
+      reactions: post?.reactions || localMatch?.reactions || {},
+      comments: safeArray(post?.comments || localMatch?.comments).map(comment => ({
         ...comment,
         reactions: comment.reactions || { love: [] },
         replies: safeArray(comment.replies),
@@ -2659,10 +2660,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         schema: 'public',
         table: 'room_feed_posts',
         filter: `room_id=eq.${selectedRoom}`,
-      }, () => {
+      }, payload => {
+        console.log('[ShowUp] realtime feed event', payload.eventType, payload.new)
         loadFeedPosts(selectedRoom)
       })
-      .subscribe()
+      .subscribe(status => {
+        console.log('[ShowUp] feed channel status', status, selectedRoom)
+      })
     return () => {
       supabase.removeChannel(channel)
     }
@@ -2678,10 +2682,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         schema: 'public',
         table: 'show_up_checkins',
         filter: `room_name=eq.${selectedRoom}`,
-      }, () => {
+      }, payload => {
+        console.log('[ShowUp] realtime checkin event', payload.eventType, payload.new?.display_name || payload.new?.user_id)
         loadMembers(selectedRoom)
       })
-      .subscribe()
+      .subscribe(status => {
+        console.log('[ShowUp] checkins channel status', status, selectedRoom)
+      })
     return () => { supabase.removeChannel(channel) }
   }, [selectedRoom])
 
@@ -2952,6 +2959,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       if (membersError) throw membersError
 
+      console.log('[ShowUp] loadMembers', roomName, 'rows:', data?.length, data?.map(m => m.display_name || m.user_id))
+
       const nextMembers = (data || []).map(member => ({
         ...member,
         streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
@@ -2965,7 +2974,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setMembers(nextMembers)
       hydrateCurrentMember(nextMembers, nextProfile)
     } catch (nextError) {
-      console.error('Show Up members failed', nextError)
+      console.error('[ShowUp] loadMembers failed', nextError.message || nextError)
       loadMembersFromLocal(roomName, nextProfile)
     }
   }
@@ -3038,6 +3047,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       if (feedError) throw feedError
 
+      console.log('[ShowUp] loadFeedPosts', roomName, 'rows:', data?.length, data?.map(p => ({ id: p.id, author: p.author_name, reactions: p.reactions, comments: Array.isArray(p.comments) ? p.comments.length : p.comments })))
+
       const cachedPosts = Array.isArray(localPosts) ? localPosts : []
       const remotePosts = (data || []).map((post, index) => {
         const remoteId = String(post.id || `${post.author_id || post.user_id || 'room'}-${post.created_at || index}`)
@@ -3082,7 +3093,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setFeedReady(true)
       setFeedPosts(mergeFeedPosts(remotePosts, cachedPosts))
     } catch (nextError) {
-      console.error('Show Up feed load failed', nextError)
+      console.error('[ShowUp] loadFeedPosts failed', nextError.message || nextError)
       setFeedReady(false)
       setFeedPosts(Array.isArray(localPosts) ? localPosts : [])
     }
