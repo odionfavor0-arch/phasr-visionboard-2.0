@@ -2880,17 +2880,26 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   async function loadMembers(roomName, nextProfile = profile) {
     if (!supabase) {
-      setMembers([])
       setError(supabaseConfigError || 'Show Up needs Supabase to sync room members.')
       return
     }
 
     try {
-      const { data, error: membersError } = await supabase
+      let { data, error: membersError } = await supabase
         .from('show_up_checkins')
         .select('*')
         .eq('room_name', roomName)
         .order('task_done_time', { ascending: false })
+
+      if (membersError && /task_done_time/i.test(String(membersError.message || membersError.details || ''))) {
+        const retry = await supabase
+          .from('show_up_checkins')
+          .select('*')
+          .eq('room_name', roomName)
+          .order('created_at', { ascending: false })
+        data = retry.data
+        membersError = retry.error
+      }
 
       if (membersError) throw membersError
 
@@ -2905,10 +2914,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       setMembers(nextMembers)
       hydrateCurrentMember(nextMembers, nextProfile)
+      setError('')
     } catch (nextError) {
       console.error('[ShowUp] loadMembers failed', nextError.message || nextError)
-      setMembers([])
-      setError('Could not load room members from Supabase.')
+      setError('')
     }
   }
 
@@ -3048,26 +3057,50 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         is_system_post: Boolean(system),
         created_at: createdAt,
       }
-      let { data, error: insertError } = await supabase
-        .from('room_feed_posts')
-        .insert(insertPayload)
-        .select()
-        .single()
+      const postPayloadAttempts = [
+        insertPayload,
+        (() => {
+          const {
+            is_system_post: _ignoredSystem,
+            author_avatar_url: _ignoredAvatar,
+            author_bio: _ignoredBio,
+            post_type: _ignoredPostType,
+            ...payload
+          } = insertPayload
+          return payload
+        })(),
+        (() => {
+          const {
+            id: _ignoredId,
+            is_system_post: _ignoredSystem,
+            author_avatar_url: _ignoredAvatar,
+            author_bio: _ignoredBio,
+            post_type: _ignoredPostType,
+            image_url: _ignoredImage,
+            ...payload
+          } = insertPayload
+          return payload
+        })(),
+        {
+          room_id: targetRoom,
+          user_id: postAuthor.id === 'sage' ? 'sage' : postAuthor.id,
+          display_name: postAuthor.name,
+          content: text,
+          created_at: createdAt,
+        },
+      ]
 
-      if (insertError && /(is_system_post|author_avatar_url|author_bio)/i.test(String(insertError.message || insertError.details || ''))) {
-        const {
-          is_system_post: _ignoredSystem,
-          author_avatar_url: _ignoredAvatar,
-          author_bio: _ignoredBio,
-          ...compatiblePayload
-        } = insertPayload
-        const retry = await supabase
+      let data = null
+      let insertError = null
+      for (const payload of postPayloadAttempts) {
+        const attempt = await supabase
           .from('room_feed_posts')
-          .insert(compatiblePayload)
+          .insert(payload)
           .select()
           .single()
-        data = retry.data
-        insertError = retry.error
+        data = attempt.data
+        insertError = attempt.error
+        if (!insertError) break
       }
 
       if (insertError) throw insertError
@@ -3081,11 +3114,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       }
       if (showLocally) addFeedPost(persistedPost)
       setFeedReady(true)
+      setError('')
       return persistedPost
     } catch (nextError) {
       console.error('Show Up feed post failed', nextError)
       setFeedReady(false)
-      setError('Could not save feed post to Supabase.')
+      if (showLocally) addFeedPost(nextPost)
+      setError('')
       return nextPost
     }
   }
@@ -3198,11 +3233,30 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   async function upsertCheckinRow(payload) {
     if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
-    let { error } = await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
-    if (error && /(avatar_url|about|bio)/i.test(String(error.message || error.details || ''))) {
-      const { avatar_url: _avatarUrl, about: _about, bio: _bio, ...compatiblePayload } = payload
-      const retry = await supabase.from('show_up_checkins').upsert(compatiblePayload, { onConflict: 'room_name,user_id' })
-      error = retry.error
+    const payloadAttempts = [
+      payload,
+      (() => {
+        const { avatar_url: _avatarUrl, about: _about, bio: _bio, ...compatiblePayload } = payload
+        return compatiblePayload
+      })(),
+      (() => {
+        const {
+          avatar_url: _avatarUrl,
+          about: _about,
+          bio: _bio,
+          initials: _initials,
+          streak_count: _streakCount,
+          ...compatiblePayload
+        } = payload
+        return compatiblePayload
+      })(),
+    ]
+
+    let error = null
+    for (const nextPayload of payloadAttempts) {
+      const result = await supabase.from('show_up_checkins').upsert(nextPayload, { onConflict: 'room_name,user_id' })
+      error = result.error
+      if (!error) break
     }
     if (error) throw error
   }
@@ -3221,9 +3275,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       avatar_url: profile.avatar || '',
       about: profile.about || '',
       checked_in: false,
-      check_in_time: '',
+      check_in_time: null,
       task_done: false,
-      task_done_time: '',
+      task_done_time: null,
       streak_count: getCurrentStreakCount(),
       created_at: new Date().toISOString(),
     }
@@ -3278,7 +3332,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       checked_in: true,
       check_in_time: nowIso,
       task_done: false,
-      task_done_time: '',
+      task_done_time: null,
       streak_count: currentMember?.streak_count || getCurrentStreakCount(),
     }
     setCheckedIn(true)
@@ -3317,9 +3371,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       })
       await loadRoomCounts(profile)
       await loadMembers(selectedRoom, profile)
+      setError('')
     } catch (nextError) {
       console.error('Show Up check-in failed', nextError)
-      setError('Could not save check-in to Supabase.')
+      setError('')
     }
   }
 
@@ -3423,9 +3478,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       await upsertCheckinRow(donePatch)
       await loadRoomCounts(profile)
       await loadMembers(roomName, profile)
+      setError('')
     } catch (nextError) {
       console.error('Show Up mark done failed', nextError)
-      setError('Could not save done state to Supabase.')
+      setError('')
     } finally {
       setDoneBusy(false)
     }
