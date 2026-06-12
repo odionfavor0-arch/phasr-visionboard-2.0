@@ -2580,6 +2580,24 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }, [activeTab, selectedRoom])
 
   useEffect(() => {
+    if (!supabase || !selectedRoom) return undefined
+    const channel = supabase
+      .channel(`room-feed-${selectedRoom}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'room_feed_posts',
+        filter: `room_id=eq.${selectedRoom}`,
+      }, () => {
+        loadFeedPosts(selectedRoom)
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [selectedRoom])
+
+  useEffect(() => {
     if (!selectedRoom) return
     persistFeedPosts(getFeedStorageKey(selectedRoom), feedPosts)
   }, [feedPosts, selectedRoom])
@@ -2872,8 +2890,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   function hydrateCurrentMember(nextMembers, nextProfile = profile) {
     const myMember = nextMembers.find(member => member.user_id === nextProfile.id)
-    const nextCheckedIn = Boolean(myMember?.checked_in)
-    const nextTaskDone = Boolean(myMember?.task_done)
+    const checkInDate = myMember?.check_in_time ? new Date(myMember.check_in_time).toDateString() : ''
+    const todayString = new Date().toDateString()
+    const nextCheckedIn = Boolean(myMember?.checked_in) && checkInDate === todayString
+    const taskDoneDate = myMember?.task_done_time ? new Date(myMember.task_done_time).toDateString() : ''
+    const nextTaskDone = Boolean(myMember?.task_done) && taskDoneDate === todayString
     setCheckedIn(nextCheckedIn)
     setTaskDone(nextTaskDone)
     if (myMember?.check_in_time && !nextTaskDone) setDoneTime('')
@@ -2891,7 +2912,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       next.unshift({ ...(fallbackMember || {}), ...patch })
     }
     persistMockMembers(getMockMemberStorageKey(roomName), next)
-    loadMembersFromLocal(roomName, profile)
+    // Update in-memory state without replacing other members loaded from Supabase
+    setMembers(current => {
+      const idx = current.findIndex(m => m.user_id === patch.user_id)
+      if (idx >= 0) return current.map(m => m.user_id === patch.user_id ? { ...m, ...patch } : m)
+      const fallbackMember = buildMockMember(profile, roomName)
+      return [{ ...(fallbackMember || {}), ...patch }, ...current]
+    })
     loadRoomCountsFromLocal(profile)
   }
 
@@ -4172,6 +4199,16 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
         {activeTab === 'live' ? (
           <div style={{ display: 'grid', gap: 16 }}>
+            {!checkedIn ? (
+              <div style={{ background: 'rgba(249,95,133,0.07)', border: '1px solid rgba(249,95,133,0.18)', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 20 }}>👋</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#4d3142' }}>You haven't checked in yet today</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a7088' }}>Check in to be visible to the room and access the feed.</p>
+                </div>
+                <button type="button" className="showup-checkin-btn" onClick={handleCheckIn} style={{ flexShrink: 0, padding: '7px 14px', fontSize: 12 }}>Check In</button>
+              </div>
+            ) : null}
             <div className="showup-member-grid">
               {liveMembers.length === 0 ? (
                 <div className="showup-empty">No one is in this room yet.</div>
@@ -4259,6 +4296,21 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         ) : null}
 
         {activeTab === 'feed' ? (
+          !checkedIn ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 36 }}>🔒</div>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#4d3142' }}>Check in to access the feed</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#9a7088', maxWidth: 260, lineHeight: 1.5 }}>Let your room know you showed up today before reading and posting.</p>
+              <button
+                type="button"
+                className="showup-checkin-btn"
+                onClick={handleCheckIn}
+                style={{ marginTop: 8 }}
+              >
+                Check In Now
+              </button>
+            </div>
+          ) : (
           <div className="showup-feed-view" ref={feedViewRef}>
             {progressToast ? (
               <div className="showup-progress-toast" role="status" aria-live="polite">
@@ -4429,9 +4481,25 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               })
             )}
           </div>
+          )
         ) : null}
 
         {activeTab === 'ranks' ? (
+          !checkedIn ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 36 }}>🏆</div>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#4d3142' }}>Check in to see the leaderboard</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#9a7088', maxWidth: 260, lineHeight: 1.5 }}>You need to show up today before you can see how the room stacks up.</p>
+              <button
+                type="button"
+                className="showup-checkin-btn"
+                onClick={handleCheckIn}
+                style={{ marginTop: 8 }}
+              >
+                Check In Now
+              </button>
+            </div>
+          ) : (
           <div className="showup-ranks-view">
             {rankedMembers.length === 0 ? (
               <div className="showup-empty">No members ranked yet.</div>
@@ -4477,6 +4545,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               )
             })}
           </div>
+          )
         ) : null}
       </div>
 
