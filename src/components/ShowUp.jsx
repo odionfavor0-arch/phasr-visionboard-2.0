@@ -537,6 +537,75 @@ const SHOW_UP_STYLES = `
   font-weight:700;
   line-height:1.35;
 }
+.showup-live-session-strip{
+  width:100%;
+  max-width:860px;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:18px;
+  background:rgba(255,255,255,0.86);
+  box-shadow:0 14px 34px rgba(88,37,61,0.06);
+  box-sizing:border-box;
+}
+.showup-live-session-meta{
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.showup-live-session-name{
+  margin:0;
+  color:#3a2030;
+  font-family:'Syne',sans-serif;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.2;
+}
+.showup-live-session-bio{
+  margin:0;
+  color:#9a7088;
+  font-size:12px;
+  line-height:1.35;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.showup-live-session-time{
+  margin:0;
+  color:#b98097;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.2;
+}
+.showup-live-session-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.showup-live-done-btn{
+  min-height:34px;
+  border-radius:999px;
+  border:1px solid rgba(249,95,133,0.22);
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+  padding:0 14px;
+  font-size:12px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.showup-live-done-btn.is-complete,
+.showup-live-done-btn:disabled{
+  background:rgba(255,255,255,0.72);
+  color:#f95f85;
+  box-shadow:none;
+  cursor:default;
+}
 .showup-live-checkin-strip .showup-checkin-btn{
   min-height:30px;
   border-radius:999px;
@@ -2783,7 +2852,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         if (alive) {
           const fallbackProfile = getProfile(user, null)
           setProfile(fallbackProfile)
-          setError(supabaseConfigError || 'Show Up needs Supabase to sync room members and feed posts.')
+          setError('')
         }
       } finally {
         if (alive) setLoading(false)
@@ -2819,7 +2888,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   async function loadRoomCounts(nextProfile = profile) {
     if (!supabase) {
       setRoomCounts({})
-      setError(supabaseConfigError || 'Show Up rooms need Supabase to sync members.')
+      setError('')
       return
     }
 
@@ -2849,7 +2918,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     } catch (nextError) {
       console.error('Show Up room counts failed', nextError)
       setRoomCounts({})
-      setError('Could not load room counts from Supabase.')
+      setError('')
     }
   }
 
@@ -2880,7 +2949,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   async function loadMembers(roomName, nextProfile = profile) {
     if (!supabase) {
-      setError(supabaseConfigError || 'Show Up needs Supabase to sync room members.')
+      setError('')
       return
     }
 
@@ -2911,6 +2980,22 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         about: member.about || member.bio || '',
         streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
+      if (checkedIn && !nextMembers.some(member => member.user_id === nextProfile.id)) {
+        nextMembers.unshift({
+          room_name: roomName,
+          user_id: nextProfile.id,
+          display_name: nextProfile.name,
+          initials: nextProfile.initials,
+          avatar_url: nextProfile.avatar || '',
+          about: nextProfile.about || '',
+          checked_in: true,
+          check_in_time: currentMember?.check_in_time || new Date().toISOString(),
+          task_done: taskDone,
+          task_done_time: currentMember?.task_done_time || null,
+          streak_count: getCurrentStreakCount(),
+          created_at: new Date().toISOString(),
+        })
+      }
 
       setMembers(nextMembers)
       hydrateCurrentMember(nextMembers, nextProfile)
@@ -2939,7 +3024,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (!supabase) {
       setFeedReady(false)
       setFeedPosts([])
-      setError(supabaseConfigError || 'Show Up needs Supabase to sync feed posts.')
       return
     }
 
@@ -2997,7 +3081,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       console.error('[ShowUp] loadFeedPosts failed', nextError.message || nextError)
       setFeedReady(false)
       setFeedPosts([])
-      setError('Could not load feed posts from Supabase.')
+      setError('')
     }
   }
 
@@ -3034,7 +3118,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
     if (!supabase || !targetRoom) {
       setFeedReady(false)
-      setError(supabaseConfigError || 'Show Up feed posts need Supabase.')
+      setError('')
       return nextPost
     }
 
@@ -3263,7 +3347,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   async function ensureRoomMembership(roomName) {
     if (!supabase) {
-      setError(supabaseConfigError || 'Show Up needs Supabase to join rooms.')
+      setError('')
       return
     }
 
@@ -3840,8 +3924,28 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
   const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
+  const selfSessionMember = useMemo(() => {
+    if (currentMember) return currentMember
+    if (!checkedIn) return null
+    return {
+      room_name: selectedRoom,
+      user_id: profile.id,
+      display_name: profile.name,
+      initials: profile.initials,
+      avatar_url: profile.avatar || '',
+      about: profile.about || '',
+      checked_in: true,
+      check_in_time: new Date().toISOString(),
+      task_done: taskDone,
+      task_done_time: null,
+      streak_count: getCurrentStreakCount(),
+    }
+  }, [checkedIn, currentMember, profile, selectedRoom, taskDone])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  const liveMembers = useMemo(() => realMembers, [realMembers])
+  const liveMembers = useMemo(() => {
+    if (!selfSessionMember || realMembers.some(member => member.user_id === profile.id)) return realMembers
+    return [selfSessionMember, ...realMembers]
+  }, [profile.id, realMembers, selfSessionMember])
   const visiblePosts = useMemo(() => (
     safeArray(feedPosts)
       .map(post => ({
@@ -3857,7 +3961,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const commentDraft = commentSheetPost ? String(commentDrafts[commentSheetPost.id] || '') : ''
   const showMentionSuggestions = /(^|\s)@\w*$/.test(commentDraft)
   const rankedMembers = useMemo(() => {
-    return [...realMembers]
+    const rankSource = selfSessionMember && !realMembers.some(member => member.user_id === profile.id)
+      ? [selfSessionMember, ...realMembers]
+      : realMembers
+    return [...rankSource]
       .filter(member => !isPlaceholderMember(member) && member.display_name && member.display_name !== 'User')
       .map(member => ({
         ...member,
@@ -3867,7 +3974,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         b.streakValue - a.streakValue ||
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
-  }, [activeTab, realMembers, profile.id])
+  }, [activeTab, realMembers, profile.id, selfSessionMember])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
   const joinedRoomMember = useMemo(() => (
@@ -4305,8 +4412,37 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                 <p className="showup-live-checkin-text">You haven't checked in yet today</p>
                 <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
               </div>
-            ) : currentMember?.check_in_time ? (
-              <p className="showup-live-checkin-time">Checked in at {formatTime(currentMember.check_in_time)}</p>
+            ) : selfSessionMember ? (
+              <div className="showup-live-session-strip">
+                <button
+                  type="button"
+                  className="showup-avatar"
+                  style={{ overflow: 'hidden', padding: 0, border: '1px solid rgba(249,95,133,0.25)' }}
+                  onClick={() => {
+                    if (profile.avatar) setLightboxMedia({ url: profile.avatar, kind: 'image' })
+                  }}
+                  aria-label="View your profile photo"
+                >
+                  {profile.avatar
+                    ? <img src={profile.avatar} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                    : profile.initials}
+                </button>
+                <div className="showup-live-session-meta">
+                  <p className="showup-live-session-name">You</p>
+                  {profile.about ? <p className="showup-live-session-bio">{profile.about}</p> : <p className="showup-live-session-bio">Tap your card to add a bio.</p>}
+                  <p className="showup-live-session-time">Checked in at {formatTime(selfSessionMember.check_in_time)}</p>
+                </div>
+                <div className="showup-live-session-actions">
+                  <button
+                    type="button"
+                    className={`showup-live-done-btn ${taskDone ? 'is-complete' : ''}`}
+                    onClick={handleMarkDone}
+                    disabled={taskDone || doneBusy}
+                  >
+                    {taskDone ? 'Done' : (doneBusy ? 'Saving...' : 'Done')}
+                  </button>
+                </div>
+              </div>
             ) : null}
             <div className="showup-member-grid">
               {liveMembers.length === 0 ? (
@@ -4337,12 +4473,22 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       }
                     }}
                   >
-                    <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                    <button
+                      type="button"
+                      className="showup-avatar"
+                      style={{ overflow: 'hidden', padding: 0, border: '1px solid rgba(249,95,133,0.25)' }}
+                      onClick={event => {
+                        if (!memberAvatarUrl) return
+                        event.stopPropagation()
+                        setLightboxMedia({ url: memberAvatarUrl, kind: 'image' })
+                      }}
+                      aria-label={`View ${isMe ? 'your' : member.display_name + "'s"} profile photo`}
+                    >
                       {memberAvatarUrl
                         ? <img src={memberAvatarUrl} alt={member.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
                         : avatarInitials
                       }
-                    </div>
+                    </button>
                     <div style={{ minWidth: 0, maxWidth: '100%' }}>
                       <p className="showup-member-name">{isMe ? 'You' : member.display_name}</p>
                       {aboutText ? (
@@ -4351,6 +4497,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                         <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p>
                       ) : isMe ? (
                         <p style={{ margin: '3px 0 0', fontSize: 10, color: '#f95f85', fontWeight: 700 }}>Tap to edit</p>
+                      ) : null}
+                      {isMe && member.check_in_time ? (
+                        <p className="showup-member-checkin-time">Checked in {formatTime(member.check_in_time)}</p>
                       ) : null}
                     </div>
                   </div>
