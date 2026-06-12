@@ -411,12 +411,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-cta.is-hidden{display:none}
 .showup-checkin-actions{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  width:100%;
-  max-width:760px;
-  margin:0 auto 14px;
+  display:none;
 }
 .showup-checkin-btn,
 .showup-done-btn{
@@ -508,6 +503,46 @@ const SHOW_UP_STYLES = `
   text-align:center;
   font-size:12px;
   color:#9a7088;
+}
+.showup-live-checkin-strip{
+  background:rgba(249,95,133,0.07);
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:999px;
+  padding:8px 10px 8px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  max-width:860px;
+  width:100%;
+  margin:0 auto;
+  box-sizing:border-box;
+}
+.showup-live-checkin-text{
+  margin:0;
+  min-width:0;
+  color:#4d3142;
+  font-size:13px;
+  font-weight:800;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.showup-live-checkin-time{
+  margin:0 auto;
+  max-width:860px;
+  color:#b98097;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+}
+.showup-live-checkin-strip .showup-checkin-btn{
+  min-height:30px;
+  border-radius:999px;
+  padding:0 13px;
+  font-size:12px;
+  white-space:nowrap;
 }
 .showup-member-grid{
   display:grid;
@@ -733,53 +768,39 @@ const SHOW_UP_STYLES = `
   box-shadow:none;
 }
 .showup-feed-card{
-  border:none;
-  border-radius:0;
-  background:transparent;
-  padding:12px 0;
+  border:1px solid rgba(249,95,133,0.12);
+  border-radius:16px;
+  background:#fff;
+  padding:14px;
   position:relative;
-  border-bottom:1px solid rgba(77,49,66,0.07);
   width:100%;
   max-width:100%;
   min-width:0;
   box-sizing:border-box;
-  overflow:hidden;
+  overflow:visible;
+  box-shadow:0 14px 34px rgba(88,37,61,0.07);
+  margin:0 0 12px;
 }
-.showup-feed-card:last-child{border-bottom:none}
+.showup-feed-card:last-child{margin-bottom:0}
 .showup-feed-card.is-anonymous{
-  background:rgba(249,95,133,0.03);
-  border-radius:12px;
-  padding:12px;
-  border:1px dashed rgba(249,95,133,0.28);
-  margin:2px 0;
+  background:#fff;
+  border-style:dashed;
 }
 .showup-feed-card.is-sage{
-  background:rgba(249,95,133,0.04);
-  border-radius:12px;
-  padding:12px;
-  border:1px solid rgba(249,95,133,0.12);
-  margin:2px 0;
+  background:linear-gradient(135deg,#fff,#fff7fb);
+  border:1px solid rgba(249,95,133,0.16);
 }
 .showup-feed-card.is-pulse{
   background:linear-gradient(135deg,rgba(255,250,252,0.98),rgba(255,239,245,0.94));
-  border-radius:12px;
-  padding:12px;
   border:1px solid rgba(249,95,133,0.28);
-  margin:2px 0;
 }
 .showup-feed-card.is-recap{
-  padding:14px;
-  border-radius:14px;
   background:linear-gradient(135deg,#fff0f6,#ffe0eb);
   border:1px solid rgba(249,95,133,0.32);
-  margin:2px 0;
 }
 .showup-feed-card.is-activity{
-  padding:7px 0;
-  background:transparent;
-  border:none;
-  border-bottom:1px solid rgba(77,49,66,0.06);
-  border-radius:0;
+  background:#fff;
+  border:1px solid rgba(249,95,133,0.10);
 }
 .showup-pulse-label{
   margin:0 0 8px;
@@ -800,10 +821,10 @@ const SHOW_UP_STYLES = `
 .showup-feed-header-main{
   min-width:0;
   display:flex;
-  flex-direction:row;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:2px;
   width:100%;
   overflow:hidden;
 }
@@ -832,7 +853,7 @@ const SHOW_UP_STYLES = `
 .showup-feed-name{
   margin:0;
   font-family:'Syne',sans-serif;
-  font-size:13px;
+  font-size:14px;
   font-weight:700;
   color:#3a2030;
   flex:1 1 auto;
@@ -849,7 +870,7 @@ const SHOW_UP_STYLES = `
   flex-shrink:0;
 }
 .showup-feed-text{
-  margin:6px 0 0 58px;
+  margin:10px 0 0 58px;
   font-size:14px;
   line-height:1.65;
   color:#4d3142;
@@ -867,7 +888,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-card.is-activity .showup-feed-text,
 .showup-feed-card.is-activity .showup-feed-reactions{
-  margin-left:0;
+  margin-left:58px;
 }
 .showup-feed-image{
   width:100%;
@@ -890,14 +911,15 @@ const SHOW_UP_STYLES = `
   box-sizing:border-box;
   margin-top:8px;
   margin-left:58px;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
   justify-content:flex-start;
 }
 .showup-reaction-chip,
-.showup-comment-toggle{
+.showup-comment-toggle,
+.showup-nudge-post-btn{
   min-height:32px;
   border-radius:999px;
-  padding:0;
+  padding:0 12px;
   color:#4d3142;
   font-size:12px;
   font-weight:700;
@@ -922,6 +944,61 @@ const SHOW_UP_STYLES = `
 .showup-reaction-chip.is-active svg{
   fill:#3b82f6;
   stroke:#3b82f6;
+}
+.showup-comment-toggle,
+.showup-nudge-post-btn{
+  border:1px solid rgba(249,95,133,0.14);
+  background:rgba(249,95,133,0.045);
+  color:#9a7088;
+}
+.showup-nudge-post-btn{
+  color:#f95f85;
+  margin-left:auto;
+}
+.showup-nudge-post-btn:disabled{
+  opacity:.45;
+  cursor:default;
+}
+.showup-compact-modal{
+  width:min(420px, calc(100vw - 32px));
+  border-radius:18px;
+  padding:18px;
+  background:#fff;
+  box-shadow:0 24px 80px rgba(77,49,66,0.22);
+}
+.showup-toggle-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border:1px solid rgba(249,95,133,0.16);
+  border-radius:14px;
+  padding:10px 12px;
+}
+.showup-toggle-pill{
+  border:none;
+  border-radius:999px;
+  background:rgba(249,95,133,0.08);
+  padding:4px;
+  display:flex;
+  gap:4px;
+}
+.showup-toggle-pill button{
+  border:none;
+  border-radius:999px;
+  min-height:28px;
+  padding:0 12px;
+  background:transparent;
+  color:#9a7088;
+  font-size:12px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+}
+.showup-toggle-pill button.is-active{
+  background:#fff;
+  color:#f95f85;
+  box-shadow:0 6px 18px rgba(77,49,66,0.10);
 }
 .showup-reaction-picker{
   position:absolute;
@@ -1933,47 +2010,6 @@ function safeJsonParse(value, fallback = null) {
   }
 }
 
-function compactFeedPostsForStorage(posts) {
-  return (Array.isArray(posts) ? posts : [])
-    .slice(0, 100)
-    .map(post => ({
-      ...post,
-      image: post?.image || '',
-      system: Boolean(post?.system),
-      pulseFormat: post?.pulseFormat || '',
-      pulseLabel: post?.pulseLabel || '',
-      targetUserId: post?.targetUserId || '',
-      postStyle: post?.postStyle || '',
-      comments: safeArray(post?.comments).slice(0, 40).map(comment => ({
-        ...comment,
-        replies: safeArray(comment?.replies).slice(0, 20),
-      })),
-    }))
-}
-
-function persistFeedPosts(key, posts) {
-  const compactPosts = compactFeedPostsForStorage(posts)
-  if (safeWrite(key, compactPosts)) return
-  safeRemove(key)
-  safeWrite(key, compactPosts)
-}
-
-function cacheRoomFeedPost(roomName, post) {
-  if (!roomName || !post?.id) return
-  const key = getFeedStorageKey(roomName)
-  const cachedPosts = safeArray(safeRead(key, []))
-  persistFeedPosts(key, mergeFeedPosts([post], cachedPosts))
-}
-
-function persistMockMembers(key, members) {
-  const cleanMembers = (Array.isArray(members) ? members : [])
-    .filter(member => !isPlaceholderMember(member))
-    .slice(0, 24)
-  if (safeWrite(key, cleanMembers)) return
-  safeRemove(key)
-  safeWrite(key, cleanMembers.slice(0, 12))
-}
-
 function uid() {
   return Math.random().toString(36).slice(2, 10)
 }
@@ -1984,14 +2020,6 @@ function getTodayKey() {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-function getStoredActiveRoom() {
-  try {
-    return localStorage.getItem('showup_active_room') || ''
-  } catch {
-    return ''
-  }
 }
 
 function setStoredActiveRoom(roomName) {
@@ -2184,10 +2212,6 @@ function incrementCurrentStreak() {
   return next
 }
 
-function getFeedStorageKey(roomName) {
-  return `showup_feed_${normalize(roomName)}`
-}
-
 function getRanksStorageKey(roomName) {
   return `showup_ranks_${normalize(roomName)}`
 }
@@ -2212,16 +2236,8 @@ function getPulseIndexStorageKey(roomName) {
   return `showup_knowledge_${normalize(roomName)}_index`
 }
 
-function getAbsentPostStorageKey(roomName, dateKey) {
-  return `showup_absent_posts_${normalize(roomName)}_${dateKey}`
-}
-
 function getWeeklyRecapStorageKey(roomName) {
   return `showup_recap_${normalize(roomName)}_week`
-}
-
-function getActiveRoomStorageKey(userId) {
-  return `showup_active_room_${normalize(userId || 'local-user')}`
 }
 
 function getLastDoneDateStorageKey(roomName, userId) {
@@ -2230,10 +2246,6 @@ function getLastDoneDateStorageKey(roomName, userId) {
 
 function getDailyAbsencePromptKey(roomName, dateKey) {
   return `showup_daily_absence_${normalize(roomName)}_${dateKey}`
-}
-
-function getCheckInPostStorageKey(roomName, userId, checkInTime) {
-  return `showup_checkin_posted_${normalize(roomName)}_${normalize(userId)}_${normalize(checkInTime)}`
 }
 
 function getRoomId(roomName) {
@@ -2299,16 +2311,8 @@ function getRoomActivity(roomName) {
   return safeArray(safeRead(getRoomActivityStorageKey(roomName), []))
 }
 
-function getMockMemberStorageKey(roomName) {
-  return `showup_members_${normalize(roomName)}`
-}
-
 function getCreatedRoomsKey() {
   return 'showup_created_rooms'
-}
-
-function getJoinedRoomsKey(userId) {
-  return `showup_joined_rooms_${userId || 'local-user'}`
 }
 
 function getNotificationStorageKey(userId) {
@@ -2367,22 +2371,6 @@ function saveDmMessage(idA, idB, msg) {
   const next = [...current, msg].slice(-200)
   safeWrite(getDmKey(idA, idB), next)
   return next
-}
-
-function buildMockMember(profile, roomName) {
-  if (profile.name === 'User') return null
-  return {
-    room_name: roomName,
-    user_id: profile.id,
-    display_name: profile.name,
-    initials: profile.initials,
-    checked_in: false,
-    check_in_time: '',
-    task_done: false,
-    task_done_time: '',
-    joined_at: new Date().toISOString(),
-    streak_count: getCurrentStreakCount(),
-  }
 }
 
 function getMemberStatus(member) {
@@ -2456,54 +2444,6 @@ function dedupeByIdOrTimestamp(items) {
   })
 }
 
-function mergeFeedPosts(remotePosts, cachedPosts) {
-  const merged = new Map()
-  const localItems = Array.isArray(cachedPosts) ? cachedPosts : []
-
-  remotePosts.forEach(post => {
-    const localMatch = localItems.find(item => (
-      item?.id === post?.id ||
-      (
-        item?.createdAt === post?.createdAt &&
-        item?.authorId === post?.authorId &&
-        item?.text === post?.text
-      )
-    ))
-    merged.set(post.id, {
-      ...localMatch,
-      ...post,
-      image: post?.image || localMatch?.image || '',
-      // Remote wins — Supabase has the authoritative cross-user state
-      reactions: post?.reactions || localMatch?.reactions || {},
-      comments: safeArray(post?.comments || localMatch?.comments).map(comment => ({
-        ...comment,
-        reactions: comment.reactions || { love: [] },
-        replies: safeArray(comment.replies),
-      })),
-    })
-  })
-
-  localItems.forEach(post => {
-    const existing = [...merged.values()].find(item => (
-      item?.id === post?.id ||
-      (
-        item?.createdAt === post?.createdAt &&
-        item?.authorId === post?.authorId &&
-        item?.text === post?.text
-      )
-    ))
-    if (existing) {
-      if (!existing.image && post?.image) {
-        merged.set(existing.id, { ...existing, image: post.image })
-      }
-      return
-    }
-    merged.set(post.id, post)
-  })
-
-  return [...merged.values()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-}
-
 function computeRoomRoles(members, roomName) {
   const activity = getRoomActivity(roomName)
   const weekDates = new Set(getCurrentWeekDateKeys())
@@ -2552,6 +2492,7 @@ function computeRoomRoles(members, roomName) {
 export default function ShowUp({ user, profileData: externalProfileData, onGoToDailyStreaks }) {
   const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
   const [selectedRoom, setSelectedRoom] = useState(null)
+  const [joinedRoomName, setJoinedRoomName] = useState('')
   const [activeTab, setActiveTab] = useState('live')
   const [members, setMembers] = useState([])
   const [roomCounts, setRoomCounts] = useState({})
@@ -2602,8 +2543,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [dmDraft, setDmDraft] = useState('')
   const [h2hMember, setH2hMember] = useState(null)
   const [roomMenuOpen, setRoomMenuOpen] = useState(false)
-  const [subRooms, setSubRooms] = useState([])
-  const [activeSubRoom, setActiveSubRoom] = useState(null)
   const [createSubRoomOpen, setCreateSubRoomOpen] = useState(false)
   const [subRoomName, setSubRoomName] = useState('')
   const [subRoomDesc, setSubRoomDesc] = useState('')
@@ -2624,21 +2563,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     const preferredRoom = nextRooms[preferredIndex]
     return [preferredRoom, ...nextRooms.filter((_, index) => index !== preferredIndex)]
   }, [preferredRoomName])
-  const joinedRoomName = useMemo(() => {
-    const joined = safeArray(safeRead(getJoinedRoomsKey(profile.id), []))[0] || ''
-    if (joined) return joined
-    const localRoom = rooms.find(room => {
-      const stored = safeRead(getMockMemberStorageKey(room.name), [])
-      return Array.isArray(stored) && stored.some(member => member?.user_id === profile.id)
-    })
-    return localRoom?.name || ''
-  }, [profile.id, rooms, selectedRoom, roomCounts])
-
   useEffect(() => {
     if (!selectedRoom) return
     setMembers([])
     setFeedPosts([])
     setCommentSheetPostId('')
+    loadMembers(selectedRoom)
     loadFeedPosts(selectedRoom)
     setRoomStreak(readRoomStreak(selectedRoom))
   }, [selectedRoom])
@@ -2701,11 +2631,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }, 5000)
     return () => window.clearInterval(interval)
   }, [activeTab, selectedRoom])
-
-  useEffect(() => {
-    if (!selectedRoom) return
-    persistFeedPosts(getFeedStorageKey(selectedRoom), feedPosts)
-  }, [feedPosts, selectedRoom])
 
   useEffect(() => () => {
     if (commentHoldTimerRef.current) window.clearTimeout(commentHoldTimerRef.current)
@@ -2834,21 +2759,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }, [joinedRoomName, profile.id, selectedRoom])
 
   useEffect(() => {
-    if (selectedRoom || !profile.id) return
-    const rememberedRoom = getStoredActiveRoom() || localStorage.getItem(getActiveRoomStorageKey(profile.id))
-    if (!rememberedRoom) return
-    const storedMembers = safeRead(getMockMemberStorageKey(rememberedRoom), [])
-    const activeMember = safeArray(storedMembers).find(member => (
-      member?.user_id === profile.id
-    ))
-    if (!activeMember) return
-    setSelectedRoom(rememberedRoom)
-    setActiveTab('live')
-    writePresence(rememberedRoom, profile.id, 'active')
-    setPresenceTick(current => current + 1)
-  }, [profile.id, selectedRoom])
-
-  useEffect(() => {
     let alive = true
 
     async function bootstrap() {
@@ -2859,14 +2769,21 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         if (!alive) return
         setProfile(nextProfile)
         await loadRoomCounts(nextProfile)
+        const remoteJoinedRoom = await loadJoinedRoom(nextProfile)
+        if (!alive) return
+        if (remoteJoinedRoom && !selectedRoom) {
+          setSelectedRoom(remoteJoinedRoom)
+          setActiveTab('live')
+          writePresence(remoteJoinedRoom, nextProfile.id, 'active')
+          setPresenceTick(current => current + 1)
+        }
         if (selectedRoom) await loadMembers(selectedRoom, nextProfile)
       } catch (nextError) {
         console.error('Show Up bootstrap failed', nextError)
         if (alive) {
           const fallbackProfile = getProfile(user, null)
           setProfile(fallbackProfile)
-          loadRoomCountsFromLocal(fallbackProfile)
-          if (selectedRoom) loadMembersFromLocal(selectedRoom, fallbackProfile)
+          setError(supabaseConfigError || 'Show Up needs Supabase to sync room members and feed posts.')
         }
       } finally {
         if (alive) setLoading(false)
@@ -2901,7 +2818,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   async function loadRoomCounts(nextProfile = profile) {
     if (!supabase) {
-      loadRoomCountsFromLocal(nextProfile)
+      setRoomCounts({})
+      setError(supabaseConfigError || 'Show Up rooms need Supabase to sync members.')
       return
     }
 
@@ -2930,23 +2848,40 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setRoomCounts(counts)
     } catch (nextError) {
       console.error('Show Up room counts failed', nextError)
-      loadRoomCountsFromLocal(nextProfile)
+      setRoomCounts({})
+      setError('Could not load room counts from Supabase.')
     }
   }
 
-  function loadRoomCountsFromLocal(nextProfile = profile) {
-    const counts = {}
-    rooms.forEach(room => {
-      const stored = safeRead(getMockMemberStorageKey(room.name), [])
-      const nextMembers = Array.isArray(stored) ? stored : []
-      counts[room.name] = nextMembers.filter(member => !isPlaceholderMember(member)).length
-    })
-    setRoomCounts(counts)
+  async function loadJoinedRoom(nextProfile = profile) {
+    if (!supabase || !nextProfile?.id) {
+      setJoinedRoomName('')
+      return ''
+    }
+
+    try {
+      const { data, error: joinedError } = await supabase
+        .from('show_up_checkins')
+        .select('room_name,created_at,check_in_time')
+        .eq('user_id', nextProfile.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (joinedError) throw joinedError
+      const roomName = data?.[0]?.room_name || ''
+      setJoinedRoomName(roomName)
+      return roomName
+    } catch (nextError) {
+      console.error('Show Up joined room failed', nextError)
+      setJoinedRoomName('')
+      return ''
+    }
   }
 
   async function loadMembers(roomName, nextProfile = profile) {
     if (!supabase) {
-      loadMembersFromLocal(roomName, nextProfile)
+      setMembers([])
+      setError(supabaseConfigError || 'Show Up needs Supabase to sync room members.')
       return
     }
 
@@ -2963,36 +2898,18 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       const nextMembers = (data || []).map(member => ({
         ...member,
+        avatar_url: member.avatar_url || member.avatar || '',
+        about: member.about || member.bio || '',
         streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
-
-      if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
-        const fallbackMember = buildMockMember(nextProfile, roomName)
-        if (fallbackMember) nextMembers.unshift(fallbackMember)
-      }
 
       setMembers(nextMembers)
       hydrateCurrentMember(nextMembers, nextProfile)
     } catch (nextError) {
       console.error('[ShowUp] loadMembers failed', nextError.message || nextError)
-      loadMembersFromLocal(roomName, nextProfile)
+      setMembers([])
+      setError('Could not load room members from Supabase.')
     }
-  }
-
-  function loadMembersFromLocal(roomName, nextProfile = profile) {
-    const stored = safeRead(getMockMemberStorageKey(roomName), [])
-    const fallbackMember = buildMockMember(nextProfile, roomName)
-    const nextMembers = Array.isArray(stored) && stored.length ? stored : (fallbackMember ? [fallbackMember] : [])
-    if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
-      if (fallbackMember) nextMembers.unshift(fallbackMember)
-    }
-    const withStreaks = nextMembers.map(member => ({
-      ...member,
-      streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
-    }))
-    persistMockMembers(getMockMemberStorageKey(roomName), withStreaks)
-    setMembers(withStreaks)
-    hydrateCurrentMember(withStreaks, nextProfile)
   }
 
   function hydrateCurrentMember(nextMembers, nextProfile = profile) {
@@ -3009,31 +2926,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (!nextTaskDone) setDoneTime('')
   }
 
-  function upsertLocalMember(roomName, patch) {
-    const current = safeRead(getMockMemberStorageKey(roomName), [])
-    const next = [...current]
-    const index = next.findIndex(member => member.user_id === patch.user_id)
-    if (index >= 0) next[index] = { ...next[index], ...patch }
-    else {
-      const fallbackMember = buildMockMember(profile, roomName)
-      next.unshift({ ...(fallbackMember || {}), ...patch })
-    }
-    persistMockMembers(getMockMemberStorageKey(roomName), next)
-    // Update in-memory state without replacing other members loaded from Supabase
-    setMembers(current => {
-      const idx = current.findIndex(m => m.user_id === patch.user_id)
-      if (idx >= 0) return current.map(m => m.user_id === patch.user_id ? { ...m, ...patch } : m)
-      const fallbackMember = buildMockMember(profile, roomName)
-      return [{ ...(fallbackMember || {}), ...patch }, ...current]
-    })
-    loadRoomCountsFromLocal(profile)
-  }
-
   async function loadFeedPosts(roomName) {
-    const localPosts = safeRead(getFeedStorageKey(roomName), [])
     if (!supabase) {
       setFeedReady(false)
-      setFeedPosts(Array.isArray(localPosts) ? localPosts : [])
+      setFeedPosts([])
+      setError(supabaseConfigError || 'Show Up needs Supabase to sync feed posts.')
       return
     }
 
@@ -3049,41 +2946,36 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       console.log('[ShowUp] loadFeedPosts', roomName, 'rows:', data?.length, data?.map(p => ({ id: p.id, author: p.author_name, reactions: p.reactions, comments: Array.isArray(p.comments) ? p.comments.length : p.comments })))
 
-      const cachedPosts = Array.isArray(localPosts) ? localPosts : []
       const remotePosts = (data || []).map((post, index) => {
         const remoteId = String(post.id || `${post.author_id || post.user_id || 'room'}-${post.created_at || index}`)
         const remoteType = String(post.post_type || '')
         const remotePulseFormat = remoteType.startsWith('pulse:') ? remoteType.slice(6) : ''
         const remoteRecap = remoteType.startsWith('recap:')
         const remoteTargetUserId = remoteType.startsWith('nudge:') ? remoteType.slice(6) : ''
-        const cached = cachedPosts.find(item => (
-          item.id === remoteId ||
-          (
-            item.createdAt === post.created_at &&
-            item.authorId === (post.author_id || post.user_id || `anon-${index}`) &&
-            item.text === (post.text || post.content || '')
-          )
-        ))
+        const authorId = post.author_id || post.user_id || `anon-${index}`
+        const memberMatch = members.find(member => member.user_id === authorId)
         return {
           id: remoteId,
-          authorId: post.author_id || post.user_id || `anon-${index}`,
+          authorId,
           authorName: post.author_name || post.display_name || 'Room member',
           authorInitials: buildInitials(post.author_name || post.display_name || 'Room member'),
+          authorAvatarUrl: post.author_avatar_url || memberMatch?.avatar_url || memberMatch?.avatar || (authorId === profile.id ? profile.avatar : '') || '',
+          authorBio: post.author_bio || memberMatch?.about || memberMatch?.bio || '',
           anonymous: false,
           text: post.text || post.content || '',
-          image: post.image_url || cached?.image || '',
-          system: Boolean(post.is_system_post) || cached?.system || (post.author_name || post.display_name) === 'Sage',
-          pulseFormat: remotePulseFormat || (remoteRecap ? 'Weekly Recap' : cached?.pulseFormat || ''),
+          image: post.image_url || '',
+          system: Boolean(post.is_system_post) || (post.author_name || post.display_name) === 'Sage',
+          pulseFormat: remotePulseFormat || (remoteRecap ? 'Weekly Recap' : ''),
           pulseLabel: remotePulseFormat
             ? `\u{1F4C5} ${remotePulseFormat.toUpperCase()}`
             : remoteRecap
               ? '\u{1F4C5} WEEKLY RECAP'
-              : (cached?.pulseLabel || ''),
-          targetUserId: remoteTargetUserId || cached?.targetUserId || '',
-          postStyle: remoteRecap ? 'recap' : (remotePulseFormat ? 'pulse' : (cached?.postStyle || '')),
+              : '',
+          targetUserId: remoteTargetUserId || '',
+          postStyle: remoteRecap ? 'recap' : (remotePulseFormat ? 'pulse' : ''),
           createdAt: post.created_at || new Date().toISOString(),
-          reactions: post.reactions || cached?.reactions || {},
-          comments: safeArray(post.comments || cached?.comments).map(comment => ({
+          reactions: post.reactions || {},
+          comments: safeArray(post.comments).map(comment => ({
             ...comment,
             reactions: comment.reactions || { love: [] },
             replies: safeArray(comment.replies),
@@ -3091,11 +2983,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         }
       })
       setFeedReady(true)
-      setFeedPosts(mergeFeedPosts(remotePosts, cachedPosts))
+      setFeedPosts(remotePosts)
     } catch (nextError) {
       console.error('[ShowUp] loadFeedPosts failed', nextError.message || nextError)
       setFeedReady(false)
-      setFeedPosts(Array.isArray(localPosts) ? localPosts : [])
+      setFeedPosts([])
+      setError('Could not load feed posts from Supabase.')
     }
   }
 
@@ -3107,6 +3000,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       name: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
       initials: anonymous ? 'AN' : profile.initials,
       avatarUrl: anonymous ? '' : (profile.avatar || ''),
+      bio: anonymous ? '' : (profile.about || ''),
     }
     const nextPost = {
       id: getUuid(),
@@ -3130,9 +3024,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     const showLocally = !selectedRoom || targetRoom === selectedRoom
 
     if (!supabase || !targetRoom) {
-      cacheRoomFeedPost(targetRoom, nextPost)
-      if (showLocally) addFeedPost(nextPost)
       setFeedReady(false)
+      setError(supabaseConfigError || 'Show Up feed posts need Supabase.')
       return nextPost
     }
 
@@ -3147,6 +3040,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         room_id: targetRoom,
         author_id: postAuthor.id === 'sage' ? 'sage' : postAuthor.id,
         author_name: postAuthor.name,
+        author_avatar_url: postAuthor.avatarUrl || null,
+        author_bio: postAuthor.bio || '',
         text,
         image_url: image || null,
         post_type: remotePostType,
@@ -3159,8 +3054,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         .select()
         .single()
 
-      if (insertError && /is_system_post/i.test(String(insertError.message || insertError.details || ''))) {
-        const { is_system_post: _ignored, ...compatiblePayload } = insertPayload
+      if (insertError && /(is_system_post|author_avatar_url|author_bio)/i.test(String(insertError.message || insertError.details || ''))) {
+        const {
+          is_system_post: _ignoredSystem,
+          author_avatar_url: _ignoredAvatar,
+          author_bio: _ignoredBio,
+          ...compatiblePayload
+        } = insertPayload
         const retry = await supabase
           .from('room_feed_posts')
           .insert(compatiblePayload)
@@ -3179,15 +3079,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         createdAt: data?.created_at || nextPost.createdAt,
         system: Boolean(data?.is_system_post ?? nextPost.system),
       }
-      cacheRoomFeedPost(targetRoom, persistedPost)
       if (showLocally) addFeedPost(persistedPost)
       setFeedReady(true)
       return persistedPost
     } catch (nextError) {
       console.error('Show Up feed post failed', nextError)
       setFeedReady(false)
-      cacheRoomFeedPost(targetRoom, nextPost)
-      if (showLocally) addFeedPost(nextPost)
+      setError('Could not save feed post to Supabase.')
       return nextPost
     }
   }
@@ -3298,13 +3196,20 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
   }
 
-  async function ensureRoomMembership(roomName) {
-    const existingLocal = safeRead(getMockMemberStorageKey(roomName), [])
-    const rememberJoinedRoom = () => {
-      safeWrite(getJoinedRoomsKey(profile.id), [roomName])
+  async function upsertCheckinRow(payload) {
+    if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
+    let { error } = await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
+    if (error && /(avatar_url|about|bio)/i.test(String(error.message || error.details || ''))) {
+      const { avatar_url: _avatarUrl, about: _about, bio: _bio, ...compatiblePayload } = payload
+      const retry = await supabase.from('show_up_checkins').upsert(compatiblePayload, { onConflict: 'room_name,user_id' })
+      error = retry.error
     }
-    if (Array.isArray(existingLocal) && existingLocal.some(member => member.user_id === profile.id)) {
-      rememberJoinedRoom()
+    if (error) throw error
+  }
+
+  async function ensureRoomMembership(roomName) {
+    if (!supabase) {
+      setError(supabaseConfigError || 'Show Up needs Supabase to join rooms.')
       return
     }
 
@@ -3313,6 +3218,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
+      avatar_url: profile.avatar || '',
+      about: profile.about || '',
       checked_in: false,
       check_in_time: '',
       task_done: false,
@@ -3331,20 +3238,19 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         .maybeSingle()
       if (lookupError) throw lookupError
       if (existingRemote) {
-        rememberJoinedRoom()
+        setJoinedRoomName(roomName)
         return
       }
-      await supabase.from('show_up_checkins').upsert(payload, { onConflict: 'room_name,user_id' })
+      await upsertCheckinRow(payload)
+      setJoinedRoomName(roomName)
     } catch (nextError) {
-      console.error('Show Up membership fallback', nextError)
-      upsertLocalMember(roomName, payload)
+      console.error('Show Up membership failed', nextError)
+      setError('Could not join room in Supabase.')
     }
-    rememberJoinedRoom()
   }
 
   async function handleJoinRoom(roomName) {
-    const joined = safeArray(safeRead(getJoinedRoomsKey(profile.id), []))[0] || ''
-    const roomCount = roomCounts[roomName] || 0
+    const joined = joinedRoomName || ''
     if (joined && joined !== roomName) {
       setBottomToast(`You're already in a room. Leave it first to join another.`)
       return
@@ -3354,7 +3260,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     await ensureRoomMembership(roomName)
     setSelectedRoom(roomName)
     setActiveTab('live')
-    safeWrite(getActiveRoomStorageKey(profile.id), roomName)
     setToast('')
     await postWeeklyPulseIfNeeded(roomName)
     setLoading(false)
@@ -3368,6 +3273,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
+      avatar_url: profile.avatar || '',
+      about: profile.about || '',
       checked_in: true,
       check_in_time: nowIso,
       task_done: false,
@@ -3392,17 +3299,27 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         ? current.map(member => (member.user_id === profile.id ? { ...member, ...patch } : member))
         : [patch, ...current]
     ))
-    upsertLocalMember(selectedRoom, patch)
-
-    await createRoomActivityPost(`${profile.name} just showed up 🙌`, { postStyle: 'activity' })
 
     try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
-      const { error: upsertError } = await supabase.from('show_up_checkins').upsert(patch, { onConflict: 'room_name,user_id' })
-      if (upsertError) throw upsertError
+      await upsertCheckinRow(patch)
+      await createFeedPost({
+        text: profile.about || `${profile.name} checked in for today's challenge.`,
+        image: '',
+        anonymous: false,
+        postStyle: '',
+        author: {
+          id: profile.id,
+          name: profile.name,
+          initials: profile.initials,
+          avatarUrl: profile.avatar || '',
+          bio: profile.about || '',
+        },
+      })
       await loadRoomCounts(profile)
+      await loadMembers(selectedRoom, profile)
     } catch (nextError) {
       console.error('Show Up check-in failed', nextError)
+      setError('Could not save check-in to Supabase.')
     }
   }
 
@@ -3451,19 +3368,14 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
     clearPresence(roomName, profile.id)
     setStoredActiveRoom('')
-    const current = safeRead(getMockMemberStorageKey(roomName), [])
-    if (Array.isArray(current)) {
-      persistMockMembers(getMockMemberStorageKey(roomName), current.filter(member => member.user_id !== profile.id))
-    }
-    safeWrite(getJoinedRoomsKey(profile.id), [])
-    safeRemove(getActiveRoomStorageKey(profile.id))
+    setJoinedRoomName('')
     setMembers([])
     setCheckedIn(false)
     setTaskDone(false)
     setDoneTime('')
     setExitPromptOpen(false)
     setSelectedRoom(null)
-    loadRoomCountsFromLocal(profile)
+    loadRoomCounts(profile)
   }
 
   async function handleMarkDone() {
@@ -3478,6 +3390,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       user_id: profile.id,
       display_name: profile.name,
       initials: profile.initials,
+      avatar_url: profile.avatar || '',
+      about: profile.about || '',
       checked_in: true,
       check_in_time: currentMember?.check_in_time || nowIso,
       task_done: true,
@@ -3502,19 +3416,16 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       ? members.map(member => (member.user_id === profile.id ? { ...member, ...donePatch } : member))
       : [donePatch, ...members]
     setMembers(nextMembers)
-    upsertLocalMember(roomName, donePatch)
     const nextRoomStreak = updateRoomStreak(roomName)
     setRoomStreak(nextRoomStreak)
 
     try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
-      const { error: doneError } = await supabase
-        .from('show_up_checkins')
-        .upsert({ ...donePatch }, { onConflict: 'room_name,user_id' })
-      if (doneError) throw doneError
+      await upsertCheckinRow(donePatch)
       await loadRoomCounts(profile)
+      await loadMembers(roomName, profile)
     } catch (nextError) {
       console.error('Show Up mark done failed', nextError)
+      setError('Could not save done state to Supabase.')
     } finally {
       setDoneBusy(false)
     }
@@ -3903,10 +3814,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }, [activeTab, realMembers, profile.id])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
-  const joinedRoomMember = useMemo(() => {
-    if (!joinedRoomName) return null
-    return safeArray(safeRead(getMockMemberStorageKey(joinedRoomName), [])).find(member => member.user_id === profile.id) || null
-  }, [joinedRoomName, profile.id, selectedRoom])
+  const joinedRoomMember = useMemo(() => (
+    members.find(member => member.user_id === profile.id) || currentMember
+  ), [currentMember, members, profile.id])
   const createRoomUnlocked = useMemo(() => {
     if (getCurrentStreakCount() >= 7) return true
     const joinedAt = joinedRoomMember?.joined_at || joinedRoomMember?.created_at || ''
@@ -3922,13 +3832,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (!selectedRoom) return
     safeWrite(getRanksStorageKey(selectedRoom), rankedMembers)
   }, [rankedMembers, selectedRoom])
-
-  useEffect(() => {
-    if (!selectedRoom || !supabase) return
-    supabase.from('sub_rooms').select('*').eq('parent_room_name', selectedRoom).order('created_at').then(({ data }) => {
-      if (data) setSubRooms(data)
-    })
-  }, [selectedRoom])
 
   useEffect(() => {
     if (!dmSheetMember) return
@@ -3973,9 +3876,15 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
     if (supabase) {
       const { data, error } = await supabase.from('sub_rooms').insert(row).select().single()
-      if (!error && data) setSubRooms(prev => [...prev, data])
+      if (error) {
+        console.error('Show Up sub-room create failed', error)
+        setError('Could not create sub-room in Supabase.')
+        return
+      }
+      if (data) setBottomToast('Sub-room created.')
     } else {
-      setSubRooms(prev => [...prev, { ...row, id: uid(), created_at: new Date().toISOString() }])
+      setError(supabaseConfigError || 'Sub-rooms need Supabase.')
+      return
     }
     setSubRoomName(''); setSubRoomDesc(''); setSubRoomLimit(20); setSubRoomPaid(false); setSubRoomPrice('')
     setCreateSubRoomOpen(false)
@@ -4312,26 +4221,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               ) : null}
             </div>
           </div>
-          {activeTab === 'live' ? (
-            <div className="showup-checkin-actions">
-              <button
-                type="button"
-                className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
-                onClick={handleCheckIn}
-                disabled={checkedIn}
-              >
-                {checkedIn && currentMember?.check_in_time ? `Checked in ${formatTime(currentMember.check_in_time)}` : 'Check In'}
-              </button>
-              <button
-                type="button"
-                className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
-                onClick={handleMarkDone}
-                disabled={!checkedIn || taskDone || doneBusy}
-              >
-                {taskDone ? 'Done ✓' : (doneBusy ? 'Saving...' : 'Mark Done')}
-              </button>
-            </div>
-          ) : null}
         </div>
 
         <div className="showup-tabs">
@@ -4356,14 +4245,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         {activeTab === 'live' ? (
           <div style={{ display: 'grid', gap: 16 }}>
             {!checkedIn ? (
-              <div style={{ background: 'rgba(249,95,133,0.07)', border: '1px solid rgba(249,95,133,0.18)', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 20 }}>👋</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#4d3142' }}>You haven't checked in yet today</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a7088' }}>Check in to be visible to the room and access the feed.</p>
-                </div>
-                <button type="button" className="showup-checkin-btn" onClick={handleCheckIn} style={{ flexShrink: 0, padding: '7px 14px', fontSize: 12 }}>Check In</button>
+              <div className="showup-live-checkin-strip">
+                <p className="showup-live-checkin-text">You haven't checked in yet today</p>
+                <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
               </div>
+            ) : currentMember?.check_in_time ? (
+              <p className="showup-live-checkin-time">Checked in at {formatTime(currentMember.check_in_time)}</p>
             ) : null}
             <div className="showup-member-grid">
               {liveMembers.length === 0 ? (
@@ -4413,27 +4300,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                   </div>
                 )
               })}
-            </div>
-
-            <div style={{ borderTop: '1px solid rgba(249,95,133,0.10)', paddingTop: 12, marginTop: 4 }}>
-              <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: '#b98097', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Sub-rooms</p>
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-                {subRooms.map(sr => (
-                  <button
-                    key={sr.id}
-                    type="button"
-                    onClick={() => setActiveSubRoom(activeSubRoom?.id === sr.id ? null : sr)}
-                    style={{ flex: '0 0 auto', minWidth: 130, maxWidth: 170, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.45)' : 'rgba(249,95,133,0.15)'}`, background: activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.07)' : '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
-                  >
-                    <p style={{ margin: 0, fontWeight: 800, fontSize: 12, color: '#4d3142', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.name}</p>
-                    {sr.description ? <p style={{ margin: '2px 0 4px', fontSize: 10, color: '#b98097', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.description}</p> : <div style={{ marginBottom: 4 }} />}
-                    <p style={{ margin: 0, fontSize: 10, color: '#b98097', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span>👥 {sr.member_limit}</span>
-                      {sr.is_paid ? <span style={{ marginLeft: 4, color: '#f97bb3', fontWeight: 700 }}>·  Paid{sr.price ? ` $${sr.price}` : ''}</span> : null}
-                    </p>
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         ) : null}
@@ -4582,6 +4448,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       aria-label={likedByMe ? 'Unlike post' : 'Like post'}
                     >
                       <ThumbsUp size={15} strokeWidth={2.2} />
+                      <span>Like</span>
                       <span>{likeCount}</span>
                     </button>
                     <button
@@ -4593,32 +4460,22 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       }}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
+                      <span>Comment</span>
                       <span>{safeArray(post.comments).length}</span>
                     </button>
+                    <button
+                      type="button"
+                      className="showup-nudge-post-btn"
+                      disabled={post.authorId === profile.id || !post.authorId || post.system}
+                      onClick={event => {
+                        event.stopPropagation()
+                        if (post.authorId === profile.id || !post.authorId || post.system) return
+                        handleRoomAction('nudge', post.authorId, post.authorName)
+                      }}
+                    >
+                      Nudge
+                    </button>
                   </div>
-                  {!post.system && !post.postStyle && post.authorId !== profile.id && post.authorId ? (
-                    <div style={{ display: 'flex', gap: 6, marginTop: 8, marginLeft: 58 }}>
-                      {[{ type: 'cheer', label: '🎉 Cheer' }, { type: 'nudge', label: '👋 Nudge' }, { type: 'taunt', label: '⚔️ Taunt' }].map(action => (
-                        <button
-                          key={action.type}
-                          type="button"
-                          onClick={event => {
-                            event.stopPropagation()
-                            handleRoomAction(action.type, post.authorId, post.authorName)
-                          }}
-                          style={{
-                            flex: 1, padding: '5px 0', borderRadius: 20,
-                            border: '1px solid rgba(249,95,133,0.22)',
-                            background: 'rgba(249,95,133,0.06)',
-                            color: '#c84f73', fontSize: 12, fontWeight: 700,
-                            cursor: 'pointer', fontFamily: 'inherit',
-                          }}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
                 )
               })
@@ -4710,6 +4567,66 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               </button>
             </div>
             <button type="button" className="showup-exit-cancel" aria-label="Close leave modal" onClick={closeExitPrompt}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
+
+      {createSubRoomOpen ? (
+        <div className="showup-exit-backdrop" onClick={() => setCreateSubRoomOpen(false)}>
+          <div className="showup-compact-modal" onClick={event => event.stopPropagation()}>
+            <h2 className="showup-exit-title" style={{ marginBottom: 4 }}>Create sub-room</h2>
+            <p className="showup-sheet-subtitle" style={{ marginBottom: 14 }}>
+              Keep it focused. Smaller rooms should have one clear challenge.
+            </p>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <label className="showup-field">
+                <span className="showup-field-label">Room name</span>
+                <input
+                  className="showup-input"
+                  value={subRoomName}
+                  onChange={event => setSubRoomName(event.target.value)}
+                  placeholder="Morning lifters"
+                />
+              </label>
+              <label className="showup-field">
+                <span className="showup-field-label">What is the challenge?</span>
+                <textarea
+                  className="showup-comment-input"
+                  value={subRoomDesc}
+                  onChange={event => setSubRoomDesc(event.target.value)}
+                  placeholder="Everyone checks in before 8am and posts proof after."
+                  rows={3}
+                  style={{ resize: 'none' }}
+                />
+              </label>
+              <label className="showup-field">
+                <span className="showup-field-label">Member limit</span>
+                <input
+                  type="number"
+                  className="showup-input"
+                  value={subRoomLimit}
+                  onChange={event => setSubRoomLimit(event.target.value)}
+                  min={2}
+                  max={100}
+                />
+              </label>
+              <div className="showup-toggle-row">
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#4d3142' }}>Access</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097' }}>{subRoomPaid ? 'Paid sub-room' : 'Free sub-room'}</p>
+                </div>
+                <div className="showup-toggle-pill" aria-label="Sub-room access">
+                  <button type="button" className={!subRoomPaid ? 'is-active' : ''} onClick={() => setSubRoomPaid(false)}>Free</button>
+                  <button type="button" className={subRoomPaid ? 'is-active' : ''} onClick={() => setSubRoomPaid(true)}>Paid</button>
+                </div>
+              </div>
+            </div>
+            <div className="showup-exit-options" style={{ marginTop: 14 }}>
+              <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff' }} onClick={handleCreateSubRoom}>
+                <strong>Create sub-room</strong>
+              </button>
+              <button type="button" className="showup-exit-cancel" onClick={() => setCreateSubRoomOpen(false)}>Cancel</button>
+            </div>
           </div>
         </div>
       ) : null}
