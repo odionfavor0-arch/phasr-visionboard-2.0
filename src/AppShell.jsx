@@ -522,26 +522,6 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
               cursor: 'pointer',
             }}
           >
-            {!isMobile && (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  marginRight: 2,
-                  padding: '0.26rem 0.55rem',
-                  borderRadius: 999,
-                  background: '#fff4f8',
-                  color: 'var(--app-accent)',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  flexShrink: 0,
-                }}
-              >
-                <Sparkles size={12} />
-                {lockSummary.currentStreak}
-              </span>
-            )}
             {profileAvatarUrl ? (
               <img
                 src={profileAvatarUrl}

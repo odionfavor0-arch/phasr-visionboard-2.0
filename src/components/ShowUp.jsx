@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
+import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreVertical, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const SHOW_UP_STYLES = `
@@ -300,7 +300,7 @@ const SHOW_UP_STYLES = `
 }
 .showup-topbar{
   display:grid;
-  grid-template-columns:44px minmax(0,1fr);
+  grid-template-columns:44px minmax(0,1fr) 44px;
   align-items:center;
   gap:10px;
   padding-bottom:14px;
@@ -318,12 +318,48 @@ const SHOW_UP_STYLES = `
 }
 .showup-room-title{
   margin:0;
-  text-align:left;
+  text-align:center;
   font-family:'Syne',sans-serif;
   font-size:16px;
   font-weight:700;
   color:#4d3142;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
+.showup-room-menu-wrap{
+  position:relative;
+  display:grid;
+  place-items:center;
+}
+.showup-room-menu{
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  background:#fff;
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(77,49,66,0.13);
+  z-index:40;
+  min-width:180px;
+  overflow:hidden;
+  padding:6px 0;
+}
+.showup-room-menu-item{
+  display:block;
+  width:100%;
+  padding:11px 16px;
+  text-align:left;
+  background:transparent;
+  border:none;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  color:#4d3142;
+  cursor:pointer;
+}
+.showup-room-menu-item:hover{background:rgba(249,95,133,0.06)}
+.showup-room-menu-item--danger{color:#f95f85}
 .showup-room-title-block{
   min-width:0;
   display:grid;
@@ -1554,7 +1590,7 @@ const SHOW_UP_STYLES = `
     font-size:11px;
   }
   .showup-topbar{
-    grid-template-columns:40px minmax(0,1fr);
+    grid-template-columns:40px minmax(0,1fr) 40px;
     gap:8px;
     padding-bottom:8px;
   }
@@ -2564,6 +2600,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [dmMessages, setDmMessages] = useState([])
   const [dmDraft, setDmDraft] = useState('')
   const [h2hMember, setH2hMember] = useState(null)
+  const [roomMenuOpen, setRoomMenuOpen] = useState(false)
   const [subRooms, setSubRooms] = useState([])
   const [activeSubRoom, setActiveSubRoom] = useState(null)
   const [createSubRoomOpen, setCreateSubRoomOpen] = useState(false)
@@ -2618,7 +2655,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     const channel = supabase
       .channel(`room-feed-${selectedRoom}`)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'room_feed_posts',
         filter: `room_id=eq.${selectedRoom}`,
@@ -2631,14 +2668,30 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
   }, [selectedRoom])
 
-  // Poll members every 10 s while in the live tab so both users see each other
-  // even if the real-time subscription is unavailable (replication not enabled).
+  // Room-scoped real-time subscription for checkins so members appear instantly.
+  useEffect(() => {
+    if (!supabase || !selectedRoom) return undefined
+    const channel = supabase
+      .channel(`room-checkins-${selectedRoom}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'show_up_checkins',
+        filter: `room_name=eq.${selectedRoom}`,
+      }, () => {
+        loadMembers(selectedRoom)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [selectedRoom])
+
+  // Poll members every 5 s while in the live tab as the real-time fallback.
   useEffect(() => {
     if (activeTab !== 'live' || !selectedRoom) return undefined
     loadMembers(selectedRoom)
     const interval = window.setInterval(() => {
       if (!doneBusy) loadMembers(selectedRoom)
-    }, 10000)
+    }, 5000)
     return () => window.clearInterval(interval)
   }, [activeTab, selectedRoom])
 
@@ -3018,8 +3071,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           targetUserId: remoteTargetUserId || cached?.targetUserId || '',
           postStyle: remoteRecap ? 'recap' : (remotePulseFormat ? 'pulse' : (cached?.postStyle || '')),
           createdAt: post.created_at || new Date().toISOString(),
-          reactions: cached?.reactions || {},
-          comments: safeArray(cached?.comments).map(comment => ({
+          reactions: post.reactions || cached?.reactions || {},
+          comments: safeArray(post.comments || cached?.comments).map(comment => ({
             ...comment,
             reactions: comment.reactions || { love: [] },
             replies: safeArray(comment.replies),
@@ -3511,17 +3564,19 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   function handleToggleReaction(postId, reactionKey = 'like') {
+    let nextReactionsForPost = {}
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
       const nextReactions = { ...(post.reactions || {}) }
       nextReactions[reactionKey] = safeArray(post.reactions?.[reactionKey]).filter(userId => userId !== profile.id)
       const alreadyReacted = safeArray(post.reactions?.[reactionKey]).includes(profile.id)
       if (!alreadyReacted) nextReactions[reactionKey] = [...(nextReactions[reactionKey] || []), profile.id]
-      return {
-        ...post,
-        reactions: nextReactions,
-      }
+      nextReactionsForPost = nextReactions
+      return { ...post, reactions: nextReactions }
     }))
+    if (supabase && postId) {
+      supabase.from('room_feed_posts').update({ reactions: nextReactionsForPost }).eq('id', postId).then(() => {}).catch(() => {})
+    }
   }
 
   function closeCommentSheet() {
@@ -3570,31 +3625,33 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   function handleAddComment(postId) {
     const draft = String(commentDrafts[postId] || '').trim()
     if (!draft) return
+    let nextComments = []
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
-      return {
-        ...post,
-        comments: [
-          ...safeArray(post.comments),
-          {
-            id: uid(),
-            authorId: profile.id,
-            authorName: profile.name,
-            authorInitials: profile.initials,
-            authorAvatarUrl: profile.avatar || '',
-            anonymous: false,
-            text: draft,
-            image: commentImage,
-            createdAt: new Date().toISOString(),
-            reactions: { love: [] },
-            replies: [],
-          },
-        ],
-      }
+      nextComments = [
+        ...safeArray(post.comments),
+        {
+          id: uid(),
+          authorId: profile.id,
+          authorName: profile.name,
+          authorInitials: profile.initials,
+          authorAvatarUrl: profile.avatar || '',
+          anonymous: false,
+          text: draft,
+          image: commentImage,
+          createdAt: new Date().toISOString(),
+          reactions: { love: [] },
+          replies: [],
+        },
+      ]
+      return { ...post, comments: nextComments }
     }))
     setCommentDrafts(current => ({ ...current, [postId]: '' }))
     setCommentImage('')
     if (commentFileInputRef.current) commentFileInputRef.current.value = ''
+    if (supabase && postId) {
+      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
+    }
   }
 
   function handleDeleteComment(postId, commentId) {
@@ -4200,27 +4257,70 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         {pulseBanner ? <div className="showup-sync-notice" style={{ marginBottom: 10 }}>{pulseBanner}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">
-            <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'\u2190'}</button>
-            <h1 className="showup-room-title" style={{ textAlign: 'left' }}>{formatRoomTitle(selectedRoom)}</h1>
+            <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'←'}</button>
+            <h1 className="showup-room-title">{formatRoomTitle(selectedRoom)}</h1>
+            <div className="showup-room-menu-wrap">
+              <button
+                type="button"
+                className="showup-header-btn"
+                onClick={() => setRoomMenuOpen(open => !open)}
+                aria-label="Room options"
+              >
+                <MoreVertical size={18} strokeWidth={2.2} />
+              </button>
+              {roomMenuOpen ? (
+                <>
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 39 }}
+                    onClick={() => setRoomMenuOpen(false)}
+                  />
+                  <div className="showup-room-menu">
+                    <button
+                      type="button"
+                      className="showup-room-menu-item"
+                      onClick={() => { setCreateSubRoomOpen(true); setRoomMenuOpen(false) }}
+                    >
+                      Create sub-room
+                    </button>
+                    <button
+                      type="button"
+                      className="showup-room-menu-item"
+                      onClick={() => setRoomMenuOpen(false)}
+                    >
+                      Room info
+                    </button>
+                    <button
+                      type="button"
+                      className="showup-room-menu-item showup-room-menu-item--danger"
+                      onClick={() => { setRoomMenuOpen(false); setExitPromptOpen(true) }}
+                    >
+                      Leave room
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
-          <div className="showup-checkin-actions">
-            <button
-              type="button"
-              className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
-              onClick={handleCheckIn}
-              disabled={checkedIn}
-            >
-              {checkedIn && currentMember?.check_in_time ? `Checked in ${formatTime(currentMember.check_in_time)}` : 'Check In'}
-            </button>
-            <button
-              type="button"
-              className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
-              onClick={handleMarkDone}
-              disabled={!checkedIn || taskDone || doneBusy}
-            >
-              {taskDone ? 'Done ✓' : (doneBusy ? 'Saving...' : 'Mark Done')}
-            </button>
-          </div>
+          {activeTab === 'live' ? (
+            <div className="showup-checkin-actions">
+              <button
+                type="button"
+                className={`showup-checkin-btn ${checkedIn ? 'is-complete' : ''}`}
+                onClick={handleCheckIn}
+                disabled={checkedIn}
+              >
+                {checkedIn && currentMember?.check_in_time ? `Checked in ${formatTime(currentMember.check_in_time)}` : 'Check In'}
+              </button>
+              <button
+                type="button"
+                className={`showup-done-btn ${taskDone ? 'is-complete' : ''}`}
+                onClick={handleMarkDone}
+                disabled={!checkedIn || taskDone || doneBusy}
+              >
+                {taskDone ? 'Done ✓' : (doneBusy ? 'Saving...' : 'Mark Done')}
+              </button>
+            </div>
+          ) : null}
         </div>
 
         <div className="showup-tabs">
@@ -4322,13 +4422,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     </p>
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setCreateSubRoomOpen(true)}
-                  style={{ flex: '0 0 auto', minWidth: 90, padding: '10px 14px', borderRadius: 12, border: '1.5px dashed rgba(249,95,133,0.28)', background: 'transparent', color: '#f95f85', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
-                >
-                  + Create
-                </button>
               </div>
             </div>
           </div>
