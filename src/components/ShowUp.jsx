@@ -2623,6 +2623,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const commentFileInputRef = useRef(null)
   const commentHoldTimerRef = useRef(null)
   const commentSheetTouchStartRef = useRef(null)
+  const membersRef = useRef([])
+  const checkedInRef = useRef(false)
+  const taskDoneRef = useRef(false)
+
+  membersRef.current = members
+  checkedInRef.current = checkedIn
+  taskDoneRef.current = taskDone
 
   const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const rooms = useMemo(() => {
@@ -2634,7 +2641,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }, [preferredRoomName])
   useEffect(() => {
     if (!selectedRoom) return
-    setMembers([])
+    setMembers(current => {
+      const selfMember = current.find(member => member.user_id === profile.id && member.checked_in)
+      return selfMember ? [selfMember] : []
+    })
     setFeedPosts([])
     setCommentSheetPostId('')
     loadMembers(selectedRoom)
@@ -2980,8 +2990,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         about: member.about || member.bio || '',
         streak_count: member?.user_id === nextProfile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
       }))
-      if (checkedIn && !nextMembers.some(member => member.user_id === nextProfile.id)) {
-        nextMembers.unshift({
+
+      if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
+        const existingSelf = membersRef.current.find(member => member.user_id === nextProfile.id && member.checked_in)
+        const shouldKeepSelf = Boolean(existingSelf) || checkedInRef.current
+        if (shouldKeepSelf) nextMembers.unshift(existingSelf || {
           room_name: roomName,
           user_id: nextProfile.id,
           display_name: nextProfile.name,
@@ -2989,9 +3002,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           avatar_url: nextProfile.avatar || '',
           about: nextProfile.about || '',
           checked_in: true,
-          check_in_time: currentMember?.check_in_time || new Date().toISOString(),
-          task_done: taskDone,
-          task_done_time: currentMember?.task_done_time || null,
+          check_in_time: new Date().toISOString(),
+          task_done: taskDoneRef.current,
+          task_done_time: null,
           streak_count: getCurrentStreakCount(),
           created_at: new Date().toISOString(),
         })
@@ -3990,6 +4003,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const roomBannerText = !selectedRoom && joinedRoomName
     ? `You're in ${joinedRoomName} — tap Enter to continue.`
     : toast
+  const visibleError = error && !/supabase|room members|room counts|feed posts|show up needs supabase/i.test(error)
+    ? error
+    : ''
 
   useEffect(() => {
     if (!selectedRoom) return
@@ -4403,7 +4419,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           ))}
         </div>
 
-        {error ? <div className="showup-empty">{error}</div> : null}
+        {visibleError ? <div className="showup-empty">{visibleError}</div> : null}
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
         {activeTab === 'live' ? (
           <div style={{ display: 'grid', gap: 16 }}>
