@@ -728,6 +728,12 @@ const SHOW_UP_STYLES = `
   background:linear-gradient(135deg,#fff0f6,#ffe0eb);
   border-color:rgba(249,95,133,0.36);
 }
+.showup-feed-card.is-activity{
+  padding:10px 14px;
+  background:rgba(249,95,133,0.04);
+  border-color:rgba(249,95,133,0.10);
+  border-radius:10px;
+}
 .showup-pulse-label{
   margin:0 0 8px;
   font-size:10px;
@@ -1702,12 +1708,12 @@ const SHOW_UP_STYLES = `
 `
 
 const ROOM_DEFINITIONS = [
-  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', maxSpots: 12, description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
-  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', maxSpots: 12, description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
-  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', maxSpots: 12, description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
-  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', maxSpots: 12, description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
-  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', maxSpots: 12, description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
-  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', maxSpots: 12, description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
+  { id: 'personal-growth', name: 'Personal Growth', pillar: 'Personal Growth', description: 'Learning, reading, creativity, self-development', roomColor: '#5e8f64' },
+  { id: 'health-fitness', name: 'Health & Fitness', pillar: 'Health & Fitness', description: 'Body, food, sleep, gym, energy', roomColor: '#f25e92' },
+  { id: 'career-business', name: 'Career & Business', pillar: 'Career & Business', description: 'Job search, entrepreneurship, income streams', roomColor: '#7a58b0' },
+  { id: 'wealth', name: 'Wealth', pillar: 'Wealth', description: 'Savings, investing, debt, budgeting', roomColor: '#d4773a' },
+  { id: 'relationships', name: 'Relationships', pillar: 'Relationships', description: 'Love, family, friendships, community', roomColor: '#e07b9f' },
+  { id: 'inner-life', name: 'Inner Life', pillar: 'Inner Life', description: 'Spirituality, mindfulness, mental health', roomColor: '#4a7fc1' },
 ]
 
 const ROOM_ICONS = {
@@ -1816,7 +1822,7 @@ const WEEKLY_PULSE = {
   },
 }
 
-const MAX_ROOM_SIZE = 12
+const MAX_ROOM_SIZE = 9999
 
 function safeRead(key, fallback) {
   try {
@@ -2261,11 +2267,35 @@ function getProfile(user, authUser) {
     user?.email?.split('@')[0] ||
     storedName ||
     'User'
+  const profileId = authUser?.id || user?.id || storedId || 'local-user'
+  const extra = safeJsonParse(localStorage.getItem(`phasr_showup_profile_${normalize(profileId)}`), {})
   return {
-    id: authUser?.id || user?.id || storedId || 'local-user',
+    id: profileId,
     name: displayName,
     initials: buildInitials(displayName),
+    avatar: extra.avatar || '',
+    about: extra.about || '',
   }
+}
+
+function saveProfileExtra(profileId, data) {
+  if (!profileId) return
+  safeWrite(`phasr_showup_profile_${normalize(profileId)}`, data)
+}
+
+function getDmKey(idA, idB) {
+  return `phasr_dm_${[normalize(idA), normalize(idB)].sort().join('_')}`
+}
+
+function loadDmMessages(idA, idB) {
+  return safeArray(safeRead(getDmKey(idA, idB), []))
+}
+
+function saveDmMessage(idA, idB, msg) {
+  const current = loadDmMessages(idA, idB)
+  const next = [...current, msg].slice(-200)
+  safeWrite(getDmKey(idA, idB), next)
+  return next
 }
 
 function buildMockMember(profile, roomName) {
@@ -2492,6 +2522,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [roomStreak, setRoomStreak] = useState({ count: 0, lastActiveDate: '' })
   const [presenceTick, setPresenceTick] = useState(0)
   const [replyTarget, setReplyTarget] = useState(null)
+  const [profileEditOpen, setProfileEditOpen] = useState(false)
+  const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
+  const [profileAboutDraft, setProfileAboutDraft] = useState('')
+  const [dmSheetMember, setDmSheetMember] = useState(null)
+  const [dmMessages, setDmMessages] = useState([])
+  const [dmDraft, setDmDraft] = useState('')
   const fileInputRef = useRef(null)
   const feedViewRef = useRef(null)
   const commentFileInputRef = useRef(null)
@@ -3150,10 +3186,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       setBottomToast(`You're already in a room. Leave it first to join another.`)
       return
     }
-    if (joined !== roomName && roomCount >= MAX_ROOM_SIZE) {
-      setToast('This room is full.')
-      return
-    }
     setError('')
     setLoading(true)
     await ensureRoomMembership(roomName)
@@ -3198,6 +3230,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
         : [patch, ...current]
     ))
     upsertLocalMember(selectedRoom, patch)
+
+    await createRoomActivityPost(`${profile.name} just showed up 🙌`, { postStyle: 'activity' })
 
     try {
       if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
@@ -3323,7 +3357,10 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }
 
     const completedMembers = nextMembers.filter(member => member.task_done).length
-    await createRoomActivityPost(`${profile.name} marked done. Room completions today: ${completedMembers}/${MAX_ROOM_SIZE}.`)
+    await createRoomActivityPost(`${profile.name} locked in their task ✅  (${completedMembers} done today)`, { postStyle: 'activity' })
+    if ([7, 14, 21, 30, 60, 90].includes(nextStreakCount)) {
+      await createRoomActivityPost(`${profile.name} hit a ${nextStreakCount}-day streak 🔥`, { postStyle: 'activity' })
+    }
     await postSundayRecapIfNeeded(roomName, nextRoomStreak, nextMembers)
     await postSilentAccountability(roomName, nextMembers)
     window.setTimeout(() => {
@@ -3774,9 +3811,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           >
             {rooms.map((room, index) => {
               const joined = roomCounts[room.name] || 0
-              const spotsLeft = Math.max(0, room.maxSpots - joined)
               const isJoined = joinedRoomName === room.name
-              const isFull = !isJoined && joined >= room.maxSpots
               const blockedByAnotherRoom = Boolean(joinedRoomName && joinedRoomName !== room.name)
               const RoomIcon = ROOM_ICONS[room.id] || Sparkles
               return (
@@ -3812,10 +3847,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   <div className="showup-list-content" style={{ minWidth: 0, display: 'grid', gap: 2 }}>
                     <p className="showup-list-name" style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 14, fontWeight: 700, color: '#25151f', lineHeight: 1.12 }}>{room.name}</p>
                     {preferredRoomName === room.name ? <p className="showup-list-meta" style={{ margin: 0, color: '#f45f92', fontWeight: 800 }}>Your focus area</p> : null}
-                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: spotsLeft <= 3 && !isFull ? '#b7772b' : '#b29cab' }}>
-                      {isFull ? 'Full · Waitlist →' : `${spotsLeft}/${room.maxSpots} spots`}
+                    <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b29cab' }}>
+                      {joined > 0 ? `${joined} member${joined === 1 ? '' : 's'} · Open` : 'Open · Be the first'}
                     </p>
-                    {!isFull && spotsLeft <= 3 ? <p className="showup-list-meta" style={{ margin: 0, fontSize: 11, color: '#b7772b', fontWeight: 800 }}>{spotsLeft} spots left</p> : null}
                   </div>
                   <div className="showup-list-action" style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                     <button
@@ -3824,10 +3858,6 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         if (isJoined) {
                           setSelectedRoom(room.name)
                           setActiveTab('live')
-                          return
-                        }
-                        if (isFull) {
-                          handleJoinWaitlist(room.name)
                           return
                         }
                         if (blockedByAnotherRoom) {
@@ -3861,7 +3891,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                           <span>Enter</span>
                         </span>
                       ) : (
-                        <span>{isFull ? 'Waitlist' : 'Join'}</span>
+                        <span>Join</span>
                       )}
                     </button>
                     <ChevronRight size={16} strokeWidth={2.3} color="#c89aab" />
@@ -4003,6 +4033,9 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               {liveMembers.map(member => {
                 const presenceStatus = getPresenceStatus(selectedRoom, member)
                 const role = topRoleFor(member)
+                const isMe = member.user_id === profile.id
+                const avatarDisplay = isMe ? (profile.avatar || member.initials || buildInitials(member.display_name)) : (member.avatar || member.initials || buildInitials(member.display_name))
+                const aboutText = isMe ? profile.about : (member.about || '')
                 return (
                   <div
                     key={member.user_id}
@@ -4011,13 +4044,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       background: member.task_done ? 'rgba(47,182,109,0.10)' : (presenceStatus === 'active' ? 'rgba(255,255,255,0.9)' : 'transparent'),
                       borderColor: member.task_done ? 'rgba(47,182,109,0.28)' : 'rgba(249,95,133,0.18)',
                     }}
+                    onClick={() => {
+                      if (isMe) {
+                        setProfileAvatarDraft(profile.avatar || '')
+                        setProfileAboutDraft(profile.about || '')
+                        setProfileEditOpen(true)
+                      } else {
+                        const msgs = loadDmMessages(profile.id, member.user_id)
+                        setDmMessages(msgs)
+                        setDmSheetMember(member)
+                      }
+                    }}
                   >
-                    <div className="showup-avatar">
-                      {member.initials || buildInitials(member.display_name)}
+                    <div className="showup-avatar" style={{ fontSize: avatarDisplay.length === 1 && /\p{Emoji}/u.test(avatarDisplay) ? 22 : undefined }}>
+                      {avatarDisplay}
                     </div>
                     <div style={{ minWidth: 0, maxWidth: '100%' }}>
-                      <p className="showup-member-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
-                      {role ? <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p> : null}
+                      <p className="showup-member-name">{isMe ? 'You' : member.display_name}</p>
+                      {aboutText ? (
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{aboutText}</p>
+                      ) : role ? (
+                        <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p>
+                      ) : isMe ? (
+                        <p style={{ margin: '3px 0 0', fontSize: 10, color: '#f95f85', fontWeight: 700 }}>Tap to edit profile</p>
+                      ) : null}
                     </div>
                   </div>
                 )
@@ -4086,7 +4136,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 const feedClass = [
                   'showup-feed-card',
                   post.anonymous ? 'is-anonymous' : '',
-                  post.system ? 'is-sage' : '',
+                  post.postStyle === 'activity' ? 'is-activity' : (post.system ? 'is-sage' : ''),
                   post.postStyle === 'pulse' ? 'is-pulse' : '',
                   post.postStyle === 'recap' ? 'is-recap' : '',
                 ].filter(Boolean).join(' ')
@@ -4169,26 +4219,49 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
 
         {activeTab === 'ranks' ? (
           <div className="showup-ranks-view">
-            {rankedMembers.map((member, index) => {
+            {rankedMembers.length === 0 ? (
+              <div className="showup-empty">No members ranked yet.</div>
+            ) : rankedMembers.map((member, index) => {
               const roles = roomRoles[member.user_id] || []
-              const topRole = roles[0] || (member.streakValue > 0 ? 'Starting' : 'Not yet')
-              const rowClass =
-                topRole === 'Room Leader' ? 'is-leader' : ''
-              const rankClass =
-                topRole === 'Room Leader' ? 'is-leader' : 'is-muted'
+              const topRole = roles[0] || ''
+              const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
+              const podiumStyle = index === 0
+                ? { background: 'linear-gradient(135deg,#fffae6,#fff3c4)', borderColor: 'rgba(220,170,30,0.35)' }
+                : index === 1
+                ? { background: 'linear-gradient(135deg,#f4f4f6,#eaeaee)', borderColor: 'rgba(180,180,190,0.40)' }
+                : index === 2
+                ? { background: 'linear-gradient(135deg,#fff2ec,#ffe8d8)', borderColor: 'rgba(200,130,80,0.30)' }
+                : {}
+              const isMe = member.user_id === profile.id
+              const avatarDisplay = isMe ? (profile.avatar || member.initials || buildInitials(member.display_name)) : (member.avatar || member.initials || buildInitials(member.display_name))
               return (
-                <div key={member.user_id} className={`showup-rank-row ${rowClass}`}>
-                  <div className={`showup-rank-number ${rankClass}`}>{index + 1}</div>
-                  <div className="showup-avatar">{member.initials || buildInitials(member.display_name)}</div>
+                <div
+                  key={member.user_id}
+                  className={`showup-rank-row ${index === 0 ? 'is-leader' : ''}`}
+                  style={podiumStyle}
+                  onClick={() => {
+                    if (!isMe) {
+                      const msgs = loadDmMessages(profile.id, member.user_id)
+                      setDmMessages(msgs)
+                      setDmSheetMember(member)
+                    }
+                  }}
+                >
+                  <div className={`showup-rank-number ${index === 0 ? 'is-leader' : 'is-muted'}`}>
+                    {medal || (index + 1)}
+                  </div>
+                  <div className="showup-avatar" style={{ fontSize: avatarDisplay.length === 1 && /\p{Emoji}/u.test(avatarDisplay) ? 20 : undefined }}>
+                    {avatarDisplay}
+                  </div>
                   <div>
-                    <p className="showup-rank-name">{member.user_id === profile.id ? 'You' : member.display_name}</p>
-                    <p className="showup-rank-streak">{member.streakValue > 0 ? `${member.streakValue} day streak` : 'No streak yet'}</p>
+                    <p className="showup-rank-name">{isMe ? 'You' : member.display_name}</p>
+                    <p className="showup-rank-streak">{member.streakValue > 0 ? `🔥 ${member.streakValue} day streak` : 'No streak yet'}</p>
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
                     <span className="showup-rank-score-value">{member.streakValue}</span>
                     <span className="showup-rank-score-label">days</span>
                   </div>
-                  <div className="showup-rank-badge">{topRole}</div>
+                  {topRole ? <div className="showup-rank-badge">{topRole}</div> : <div />}
                 </div>
               )
             })}
@@ -4214,6 +4287,110 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               </button>
             </div>
             <button type="button" className="showup-exit-cancel" aria-label="Close leave modal" onClick={closeExitPrompt}>Cancel</button>
+          </div>
+        </div>
+      ) : null}
+
+      {profileEditOpen ? (
+        <div className="showup-sheet-backdrop" onClick={() => setProfileEditOpen(false)}>
+          <div className="showup-sheet" onClick={event => event.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="showup-sheet-handle" />
+            <h2 className="showup-sheet-title" style={{ fontSize: 16 }}>Your profile</h2>
+            <p className="showup-sheet-subtitle">Visible to everyone in your room.</p>
+            <div style={{ display: 'grid', gap: 14, padding: '4px 0 12px' }}>
+              <div>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#b98097', letterSpacing: '.04em' }}>AVATAR (emoji)</p>
+                <input
+                  type="text"
+                  maxLength={2}
+                  placeholder="🙋 or leave empty"
+                  value={profileAvatarDraft}
+                  onChange={e => setProfileAvatarDraft(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', fontSize: 20, background: '#fff8f9', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#b98097', letterSpacing: '.04em' }}>ABOUT (1 line)</p>
+                <textarea
+                  maxLength={80}
+                  placeholder="Building something great..."
+                  value={profileAboutDraft}
+                  onChange={e => setProfileAboutDraft(e.target.value)}
+                  rows={2}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', fontSize: 13, background: '#fff8f9', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', resize: 'none' }}
+                />
+              </div>
+              <button
+                type="button"
+                style={{ padding: '12px', borderRadius: 999, background: 'linear-gradient(135deg,var(--app-accent2,#f97bb3),var(--app-accent,#f95f85))', color: '#fff', fontWeight: 800, fontSize: 14, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => {
+                  const next = { avatar: profileAvatarDraft.trim(), about: profileAboutDraft.trim() }
+                  saveProfileExtra(profile.id, next)
+                  setProfile(prev => ({ ...prev, ...next }))
+                  setProfileEditOpen(false)
+                }}
+              >
+                Save profile
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {dmSheetMember ? (
+        <div className="showup-sheet-backdrop" onClick={() => setDmSheetMember(null)}>
+          <div className="showup-sheet" onClick={event => event.stopPropagation()} style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', maxHeight: '80dvh' }}>
+            <div className="showup-sheet-handle" />
+            <h2 className="showup-sheet-title" style={{ fontSize: 15 }}>
+              <MessageCircle size={16} strokeWidth={2.3} />
+              <span>{dmSheetMember.display_name}</span>
+            </h2>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0 4px', minHeight: 80 }}>
+              {dmMessages.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#b98097', fontSize: 13, margin: 'auto' }}>No messages yet. Say something.</p>
+              ) : dmMessages.map((msg, i) => {
+                const mine = msg.from === profile.id
+                return (
+                  <div key={i} style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+                    <div style={{ maxWidth: '78%', padding: '8px 12px', borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: mine ? 'linear-gradient(135deg,var(--app-accent2,#f97bb3),var(--app-accent,#f95f85))' : 'rgba(249,95,133,0.08)', color: mine ? '#fff' : '#4d3142', fontSize: 13, lineHeight: 1.45 }}>
+                      {!mine && <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: '#b98097' }}>{msg.fromName}</p>}
+                      {msg.text}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, paddingTop: 10, borderTop: '1px solid rgba(249,95,133,0.12)' }}>
+              <input
+                type="text"
+                value={dmDraft}
+                onChange={e => setDmDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && dmDraft.trim()) {
+                    const msg = { from: profile.id, fromName: profile.name, text: dmDraft.trim(), createdAt: new Date().toISOString() }
+                    const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                    setDmMessages(next)
+                    setDmDraft('')
+                  }
+                }}
+                placeholder="Type a message..."
+                style={{ flex: 1, padding: '10px 12px', borderRadius: 999, border: '1px solid rgba(249,95,133,0.25)', fontSize: 13, outline: 'none', fontFamily: 'inherit', background: '#fff8f9' }}
+              />
+              <button
+                type="button"
+                disabled={!dmDraft.trim()}
+                style={{ padding: '10px 16px', borderRadius: 999, background: dmDraft.trim() ? 'linear-gradient(135deg,var(--app-accent2,#f97bb3),var(--app-accent,#f95f85))' : 'rgba(249,95,133,0.15)', color: dmDraft.trim() ? '#fff' : '#b98097', fontWeight: 800, fontSize: 13, border: 'none', cursor: dmDraft.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
+                onClick={() => {
+                  if (!dmDraft.trim()) return
+                  const msg = { from: profile.id, fromName: profile.name, text: dmDraft.trim(), createdAt: new Date().toISOString() }
+                  const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                  setDmMessages(next)
+                  setDmDraft('')
+                }}
+              >
+                <Send size={14} strokeWidth={2.3} />
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

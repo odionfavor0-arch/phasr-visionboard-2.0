@@ -1,9 +1,9 @@
 ﻿// src/components/VisionBoard.jsx
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Full vision board â€” phase lock, pillar presets,
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// Full vision board â€" phase lock, pillar presets,
 // independent collapse (max 3 open), Today's Target,
 // before/after upload, quarterly review, export
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
@@ -360,6 +360,8 @@ function freshPhase(n) {
     impact: 'Write your ultimate transformation for this phase.',
     reviewWorked: '', reviewDrained: '', reviewPaid: '', reviewStrategy: '',
     reviewCollapsed: false,
+    futureMessage: '',
+    futureMessageDate: '',
   }
 }
 
@@ -1361,7 +1363,7 @@ function buildGeneratedPlan(pillar, isPro) {
   }
 }
 
-/* â”€â”€ Shared input styles â”€â”€ */
+/* â"€â"€ Shared input styles â"€â"€ */
 const inp = (extra = {}) => ({
   width: '100%', padding: '0.38rem 0.6rem',
   border: '1.5px solid var(--app-border)', borderRadius: 8,
@@ -1411,6 +1413,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [exportStage, setExportStage] = useState('picker')
   const [exportBusy, setExportBusy] = useState(false)
   const [exportScriptsReady, setExportScriptsReady] = useState(false)
+  const [futureMessageDraft, setFutureMessageDraft] = useState('')
   const exportCardRef = useRef(null)
   const qrCodeRef = useRef(null)
   const editing = editingProp ?? editingState
@@ -1419,6 +1422,10 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   useEffect(() => {
     setPresetOpen(null)
   }, [editing])
+
+  useEffect(() => {
+    setFutureMessageDraft('')
+  }, [phaseId])
 
   useEffect(() => {
     if (!uploadMessage) return undefined
@@ -1560,7 +1567,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     })
   }, [showExportModal, exportStage, selectedExportPillar, exportScriptsReady])
 
-  /* â”€â”€ Mutations â”€â”€ */
+  /* â"€â"€ Mutations â"€â"€ */
   const updatePhase = (key, val) => upd(d => {
     const ph = d.phases.find(p => p.id === phaseId)
     if (ph) {
@@ -2477,7 +2484,7 @@ Return JSON only:
           </div>
         </div>
 
-        {/* â”€â”€ Header â”€â”€ */}
+        {/* â"€â"€ Header â"€â"€ */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '0.9rem' : '1.4rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
@@ -2497,7 +2504,7 @@ Return JSON only:
           }}>{editing ? 'Save' : 'Personalize'}</button>
         </div>
 
-        {/* â”€â”€ Phase Tabs â”€â”€ */}
+        {/* â"€â"€ Phase Tabs â"€â"€ */}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.2rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
           {data.phases.map((p, index) => {
             const activePhase = phaseId === p.id
@@ -2680,7 +2687,7 @@ Return JSON only:
         </div>
 
 
-        {/* â”€â”€ Affirmation â”€â”€ */}
+        {/* â"€â"€ Affirmation â"€â"€ */}
         <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
           <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
           {editing
@@ -2689,7 +2696,47 @@ Return JSON only:
           }
         </div>
 
-        {/* â”€â”€ Pillars â”€â”€ */}
+        {/* Future Self Message */}
+        {!phase?.futureMessage ? (
+          <div style={{ background: 'linear-gradient(135deg,#fff5f8,#ffeef4)', border: '1px solid rgba(249,95,133,0.22)', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '0.9rem 1rem' : '1rem 1.3rem', marginBottom: '1.2rem' }}>
+            <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f95f85', marginBottom: '0.35rem' }}>Letter to Future You</p>
+            <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: '#7a5266', lineHeight: 1.55, marginBottom: '0.75rem' }}>
+              Write a message to the version of you who finishes this phase. You will see it again at your quarterly review.
+            </p>
+            <textarea
+              rows={3}
+              value={futureMessageDraft}
+              onChange={e => setFutureMessageDraft(e.target.value)}
+              placeholder={'In 90 days, I want you to know...'}
+              style={{ width: '100%', boxSizing: 'border-box', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', background: 'rgba(255,255,255,0.72)', padding: '0.65rem 0.8rem', fontSize: '0.84rem', color: '#4d3142', fontFamily: "'DM Sans',sans-serif", resize: 'vertical', outline: 'none', lineHeight: 1.55, marginBottom: '0.65rem' }}
+            />
+            <button
+              type="button"
+              disabled={!futureMessageDraft.trim()}
+              onClick={() => {
+                const msg = futureMessageDraft.trim()
+                if (!msg) return
+                const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                updatePhase('futureMessage', msg)
+                updatePhase('futureMessageDate', dateStr)
+                setFutureMessageDraft('')
+              }}
+              style={{ minHeight: 36, padding: '0 1.1rem', borderRadius: 999, border: 'none', background: futureMessageDraft.trim() ? 'linear-gradient(135deg,#f97bb3,#f95f85)' : 'rgba(249,95,133,0.18)', color: futureMessageDraft.trim() ? '#fff' : '#b98097', fontWeight: 800, fontSize: '0.78rem', cursor: futureMessageDraft.trim() ? 'pointer' : 'default', fontFamily: "'DM Sans',sans-serif", transition: 'background 0.2s' }}
+            >
+              Seal this letter
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', background: 'rgba(249,95,133,0.06)', border: '1px solid rgba(249,95,133,0.16)', borderRadius: isMobile ? 10 : 12, padding: '0.65rem 0.9rem', marginBottom: '1.2rem' }}>
+            <span style={{ fontSize: '1rem' }}>&#9993;</span>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: '#f95f85' }}>Letter sealed &middot; {phase.futureMessageDate}</p>
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.7rem', color: '#b98097' }}>You will see this again at your quarterly review.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Pillars ── */}
         {editing && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.85rem' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: 'var(--app-bg2)', color: 'var(--app-muted)', fontSize: '0.78rem', fontWeight: 700 }}>
@@ -2785,7 +2832,7 @@ Return JSON only:
             ) : null
           )}
         </div>
-        {/* â”€â”€ Ultimate Impact â”€â”€ */}
+        {/* â"€â"€ Ultimate Impact â"€â"€ */}
         <div style={{ margin: '2rem 0 1.5rem', display: 'flex', justifyContent: 'center' }}>
           <div style={{ background: '#fffbfc', borderRadius: 6, padding: '2rem 3rem', textAlign: 'center', width: '100%', maxWidth: 820, boxShadow: '0 0 0 1.5px var(--app-border),0 0 0 5px var(--app-bg2),0 0 0 6.5px var(--app-border),0 12px 40px rgba(233,100,136,0.1)' }}>
             <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.1rem,3vw,1.6rem)', fontWeight: 700, background: 'linear-gradient(90deg,#ff6b9d,#ffb3c6,#ffa0bc,#ff6b9d)', backgroundSize: '300% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'vbFoil 4s linear infinite', marginBottom: '0.7rem' }}>Ultimate Impact</p>
@@ -2821,7 +2868,7 @@ Return JSON only:
           </div>
         </div>
 
-        {/* â”€â”€ Quarterly Review â”€â”€ */}
+        {/* â"€â"€ Quarterly Review â"€â"€ */}
         {!isMobile && (
           <div data-quarterly-review="true" style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--app-border)', boxShadow: 'none', overflow: 'hidden', marginBottom: '1rem' }}>
             <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.45rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', justifyContent: 'space-between' }}>
@@ -2831,6 +2878,16 @@ Return JSON only:
               </div>
               <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
             </div>
+            {!phase?.reviewCollapsed && phase?.futureMessage && (
+              <div style={{ margin: '1rem 1rem 0', padding: '1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 12 }}>
+                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f95f85', marginBottom: '0.5rem' }}>
+                  &#9993; A letter from you &middot; {phase.futureMessageDate}
+                </p>
+                <p style={{ fontSize: '0.84rem', fontStyle: 'italic', fontFamily: "'Playfair Display',serif", color: '#4d3142', lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>
+                  "{phase.futureMessage}"
+                </p>
+              </div>
+            )}
             {!phase?.reviewCollapsed && <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.85rem' }}>
               {[
                 { k: 'reviewWorked',  bg: '#f4fbf5', bc: '#b9dfc0', c: '#3a7d4d', l: 'What Worked?',     h: 'What brought results?' },
@@ -2852,7 +2909,7 @@ Return JSON only:
             </div>}
           </div>
         )}
-        {/* â”€â”€ Footer â”€â”€ */}
+        {/* â"€â"€ Footer â"€â"€ */}
         <div style={{ textAlign: 'center' }}>
           <button onClick={openExportModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.3rem', borderRadius: 99, border: '1.5px solid var(--app-border)', background: '#fff', color: 'var(--app-accent)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.7rem' }}>Save as image</button>
           <p style={{ color: 'var(--app-muted)', fontSize: '0.78rem' }}>Track weekly · Review quarterly · Transform your life</p>
@@ -3042,6 +3099,16 @@ Return JSON only:
           </div>
 
           <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {phase?.futureMessage && (
+              <div style={{ padding: '1rem 1.1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 14 }}>
+                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f95f85', marginBottom: '0.5rem' }}>
+                  &#9993; A letter from you &middot; {phase.futureMessageDate}
+                </p>
+                <p style={{ fontSize: '0.9rem', fontStyle: 'italic', fontFamily: "'Playfair Display',serif", color: '#4d3142', lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>
+                  "{phase.futureMessage}"
+                </p>
+              </div>
+            )}
             {[
               { key: 'reviewWorked', label: 'What worked this phase?', hint: 'Habits, routines, and behaviours that felt right', color: '#3a7d4d' },
               { key: 'reviewDrained', label: 'What drained you?', hint: 'What to drop or do less of next phase', color: '#c0445a' },
@@ -3147,7 +3214,7 @@ Return JSON only:
   )
 }
 
-/* â”€â”€ Pillar Card â”€â”€ */
+/* â"€â"€ Pillar Card â"€â"€ */
   function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const calendarWindowStart = useMemo(() => {
@@ -3157,7 +3224,10 @@ Return JSON only:
     }, [])
     const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
     const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
-    const hasBeforeAndAfter = Boolean(cleanText(pl.beforeDesc) && cleanText(pl.afterDesc))
+    const hasBeforeAndAfter = Boolean(
+      (cleanText(pl.beforeState) || cleanText(pl.beforeDesc)) &&
+      (cleanText(pl.afterState) || cleanText(pl.afterDesc))
+    )
     const hasPlan = Array.isArray(pl.activities) && pl.activities.filter(Boolean).length > 0
     const buttonLabel = !hasBeforeAndAfter
       ? null
@@ -3166,6 +3236,7 @@ Return JSON only:
         : 'Regenerate plan'
     const [regenerateCount, setRegenerateCount] = useState(0)
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
+    const generateTapRef = useRef(0)
 
     useEffect(() => {
       setLinkDrafts({
@@ -3201,6 +3272,20 @@ Return JSON only:
       attempt: regenerateCount + 1,
       previousPlan: lastPlan,
     })
+  }
+
+  const handleGenerateButton = event => {
+    event?.preventDefault?.()
+    event?.stopPropagation?.()
+    const now = Date.now()
+    if (now - generateTapRef.current < 450) return
+    generateTapRef.current = now
+    if (isGenerating) return
+    if (hasPlan) {
+      regeneratePlan()
+      return
+    }
+    onGeneratePlan()
   }
 
   return (
@@ -3284,16 +3369,11 @@ Return JSON only:
               <button
                 type="button"
                 disabled={isGenerating}
-                onClick={event => {
-                  event.stopPropagation()
-                  if (isGenerating) return
-                  if (hasPlan) {
-                    regeneratePlan()
-                    return
-                  }
-                  onGeneratePlan()
+                onPointerUp={event => {
+                  if (event.pointerType === 'touch') handleGenerateButton(event)
                 }}
-                style={{ minHeight: 38, padding: '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: isGenerating ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif", opacity: isGenerating ? 0.7 : 1, transition: 'opacity 0.2s' }}
+                onClick={handleGenerateButton}
+                style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: isGenerating ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: isGenerating ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation', position: 'relative', zIndex: 5, pointerEvents: 'auto' }}
               >
                 {isGenerating ? 'Generating...' : buttonLabel}
               </button>
