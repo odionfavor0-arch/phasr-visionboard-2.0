@@ -2472,7 +2472,7 @@ Return JSON only:
             <p style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: '0.1rem' }}>
               Today · {phaseDisplayName}
             </p>
-            <p style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', fontWeight: 600, color: '#fff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <p style={{ fontSize: isMobile ? '0.72rem' : '0.82rem', fontWeight: 600, color: '#fff', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>
               {todayTask}
             </p>
           </div>

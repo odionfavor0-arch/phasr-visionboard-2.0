@@ -598,9 +598,9 @@ const SHOW_UP_STYLES = `
 .showup-ranks-view{
   min-height:0;
   display:grid;
-  gap:10px;
+  gap:0;
   align-content:start;
-  background:#fff;
+  background:transparent;
   flex:1;
   width:100%;
   min-width:0;
@@ -610,7 +610,7 @@ const SHOW_UP_STYLES = `
   overflow-x:hidden;
 }
 .showup-feed-view{
-  gap:12px;
+  gap:0;
 }
 .showup-sync-notice{
   border:1px solid rgba(249,95,133,0.16);
@@ -629,15 +629,16 @@ const SHOW_UP_STYLES = `
   padding:14px;
 }
 .showup-compose-card{
-  padding:14px;
+  padding:12px 14px;
   border:1px solid rgba(249,95,133,0.18);
   border-radius:14px;
-  background:rgba(255,255,255,0.72);
+  background:#fff;
   width:100%;
   max-width:100%;
   min-width:0;
   box-sizing:border-box;
   overflow:hidden;
+  margin-bottom:6px;
 }
 .showup-compose-top,
 .showup-feed-header,
@@ -695,44 +696,54 @@ const SHOW_UP_STYLES = `
   opacity:.55;
   box-shadow:none;
 }
-.showup-feed-card.is-anonymous{border-style:dashed}
 .showup-feed-card{
-  border:1px solid rgba(77,49,66,0.08);
-  border-radius:12px;
-  background:#fff;
-  padding:14px;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  padding:12px 0;
   position:relative;
-  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+  border-bottom:1px solid rgba(77,49,66,0.07);
   width:100%;
   max-width:100%;
   min-width:0;
   box-sizing:border-box;
   overflow:hidden;
 }
+.showup-feed-card:last-child{border-bottom:none}
 .showup-feed-card.is-anonymous{
-  border:1px dashed rgba(249,95,133,0.38);
+  background:rgba(249,95,133,0.03);
   border-radius:12px;
-  padding:14px 12px;
-  margin-top:12px;
+  padding:12px;
+  border:1px dashed rgba(249,95,133,0.28);
+  margin:2px 0;
 }
 .showup-feed-card.is-sage{
-  background:rgba(249,95,133,0.05);
-  border-color:rgba(249,95,133,0.14);
+  background:rgba(249,95,133,0.04);
+  border-radius:12px;
+  padding:12px;
+  border:1px solid rgba(249,95,133,0.12);
+  margin:2px 0;
 }
 .showup-feed-card.is-pulse{
   background:linear-gradient(135deg,rgba(255,250,252,0.98),rgba(255,239,245,0.94));
-  border-color:rgba(249,95,133,0.32);
+  border-radius:12px;
+  padding:12px;
+  border:1px solid rgba(249,95,133,0.28);
+  margin:2px 0;
 }
 .showup-feed-card.is-recap{
-  padding:18px;
+  padding:14px;
+  border-radius:14px;
   background:linear-gradient(135deg,#fff0f6,#ffe0eb);
-  border-color:rgba(249,95,133,0.36);
+  border:1px solid rgba(249,95,133,0.32);
+  margin:2px 0;
 }
 .showup-feed-card.is-activity{
-  padding:10px 14px;
-  background:rgba(249,95,133,0.04);
-  border-color:rgba(249,95,133,0.10);
-  border-radius:10px;
+  padding:7px 0;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid rgba(77,49,66,0.06);
+  border-radius:0;
 }
 .showup-pulse-label{
   margin:0 0 8px;
@@ -753,10 +764,10 @@ const SHOW_UP_STYLES = `
 .showup-feed-header-main{
   min-width:0;
   display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  justify-content:center;
-  gap:2px;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
   width:100%;
   overflow:hidden;
 }
@@ -787,7 +798,7 @@ const SHOW_UP_STYLES = `
   font-family:'Syne',sans-serif;
   font-size:13px;
   font-weight:700;
-  color:#4d3142;
+  color:#3a2030;
   flex:1 1 auto;
   min-width:0;
   overflow:hidden;
@@ -796,12 +807,13 @@ const SHOW_UP_STYLES = `
 }
 .showup-feed-time{
   margin:0;
-  font-size:12px;
-  color:#9a7088;
+  font-size:11px;
+  color:#b98097;
   white-space:nowrap;
+  flex-shrink:0;
 }
 .showup-feed-text{
-  margin:12px 0 0;
+  margin:6px 0 0 58px;
   font-size:14px;
   line-height:1.65;
   color:#4d3142;
@@ -810,11 +822,16 @@ const SHOW_UP_STYLES = `
   word-break:break-word;
 }
 .showup-feed-media-wrapper{
-  width:100%;
+  width:calc(100% - 58px);
+  margin-left:58px;
   overflow:hidden;
-  border-radius:8px;
-  margin-top:12px;
-  background:#fff;
+  border-radius:10px;
+  margin-top:8px;
+  background:#f9f5f7;
+}
+.showup-feed-card.is-activity .showup-feed-text,
+.showup-feed-card.is-activity .showup-feed-reactions{
+  margin-left:0;
 }
 .showup-feed-image{
   width:100%;
@@ -831,15 +848,14 @@ const SHOW_UP_STYLES = `
 .showup-feed-reactions{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:10px;
+  gap:8px;
   width:100%;
   min-width:0;
   box-sizing:border-box;
-  margin-top:14px;
-  padding-top:12px;
-  border-top:1px solid rgba(77,49,66,0.08);
+  margin-top:8px;
+  margin-left:58px;
   flex-wrap:nowrap;
+  justify-content:flex-start;
 }
 .showup-reaction-chip,
 .showup-comment-toggle{
@@ -1538,26 +1554,33 @@ const SHOW_UP_STYLES = `
     font-size:11px;
   }
   .showup-topbar{
-    grid-template-columns:42px minmax(0,1fr);
+    grid-template-columns:40px minmax(0,1fr);
     gap:8px;
+    padding-bottom:8px;
+  }
+  .showup-sticky-header{
+    padding-bottom:8px;
+    margin-bottom:4px;
   }
   .showup-room-title{
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
+    font-size:15px;
   }
   .showup-live-pill{
-    padding:9px 10px;
+    padding:7px 10px;
     font-size:11px;
   }
   .showup-checkin-actions{
     grid-template-columns:1fr 1fr;
-    gap:8px;
+    gap:6px;
+    margin-bottom:8px;
   }
   .showup-checkin-btn,
   .showup-done-btn{
-    min-height:46px;
-    font-size:13px;
+    min-height:40px;
+    font-size:12px;
   }
   .showup-status-actions{
     grid-template-columns:1fr 1fr;
@@ -1583,13 +1606,24 @@ const SHOW_UP_STYLES = `
   .showup-member-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
     justify-content:stretch;
-    gap:12px;
+    gap:8px;
   }
   .showup-member-card{
     width:100%;
-    min-height:118px;
-    padding:20px 12px;
+    min-height:100px;
+    padding:14px 10px;
     border-radius:12px;
+  }
+  .showup-tabs{
+    gap:4px;
+    margin-bottom:10px;
+  }
+  .showup-feed-text,.showup-feed-reactions{
+    margin-left:46px;
+  }
+  .showup-feed-media-wrapper{
+    width:calc(100% - 46px);
+    margin-left:46px;
   }
   .showup-feed-image{
     max-height:420px;
@@ -2596,6 +2630,17 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       supabase.removeChannel(channel)
     }
   }, [selectedRoom])
+
+  // Poll members every 10 s while in the live tab so both users see each other
+  // even if the real-time subscription is unavailable (replication not enabled).
+  useEffect(() => {
+    if (activeTab !== 'live' || !selectedRoom) return undefined
+    loadMembers(selectedRoom)
+    const interval = window.setInterval(() => {
+      if (!doneBusy) loadMembers(selectedRoom)
+    }, 10000)
+    return () => window.clearInterval(interval)
+  }, [activeTab, selectedRoom])
 
   useEffect(() => {
     if (!selectedRoom) return
@@ -4259,38 +4304,32 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               })}
             </div>
 
-            <div style={{ borderTop: '1px solid rgba(249,95,133,0.12)', paddingTop: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#9a7088', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Sub-rooms</p>
+            <div style={{ borderTop: '1px solid rgba(249,95,133,0.10)', paddingTop: 12, marginTop: 4 }}>
+              <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 800, color: '#b98097', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Sub-rooms</p>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                {subRooms.map(sr => (
+                  <button
+                    key={sr.id}
+                    type="button"
+                    onClick={() => setActiveSubRoom(activeSubRoom?.id === sr.id ? null : sr)}
+                    style={{ flex: '0 0 auto', minWidth: 130, maxWidth: 170, padding: '10px 12px', borderRadius: 12, border: `1.5px solid ${activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.45)' : 'rgba(249,95,133,0.15)'}`, background: activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.07)' : '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 800, fontSize: 12, color: '#4d3142', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.name}</p>
+                    {sr.description ? <p style={{ margin: '2px 0 4px', fontSize: 10, color: '#b98097', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.description}</p> : <div style={{ marginBottom: 4 }} />}
+                    <p style={{ margin: 0, fontSize: 10, color: '#b98097', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span>👥 {sr.member_limit}</span>
+                      {sr.is_paid ? <span style={{ marginLeft: 4, color: '#f97bb3', fontWeight: 700 }}>·  Paid{sr.price ? ` $${sr.price}` : ''}</span> : null}
+                    </p>
+                  </button>
+                ))}
                 <button
                   type="button"
                   onClick={() => setCreateSubRoomOpen(true)}
-                  style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.06)', color: '#f95f85', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ flex: '0 0 auto', minWidth: 90, padding: '10px 14px', borderRadius: 12, border: '1.5px dashed rgba(249,95,133,0.28)', background: 'transparent', color: '#f95f85', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
                 >
                   + Create
                 </button>
               </div>
-              {subRooms.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: '#b98097', textAlign: 'center', padding: '12px 0' }}>No sub-rooms yet. Create one for a focused group.</p>
-              ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {subRooms.map(sr => (
-                    <button
-                      key={sr.id}
-                      type="button"
-                      onClick={() => setActiveSubRoom(activeSubRoom?.id === sr.id ? null : sr)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, border: `1px solid ${activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.4)' : 'rgba(249,95,133,0.18)'}`, background: activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.08)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#4d3142' }}>{sr.name}</p>
-                        {sr.description ? <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.description}</p> : null}
-                      </div>
-                      {sr.is_paid ? <span style={{ fontSize: 11, fontWeight: 700, color: '#f97bb3', background: 'rgba(249,95,133,0.1)', borderRadius: 8, padding: '2px 7px' }}>Paid{sr.price ? ` $${sr.price}` : ''}</span> : null}
-                      <span style={{ fontSize: 11, color: '#b98097' }}>👥 {sr.member_limit}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         ) : null}
@@ -4454,7 +4493,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     </button>
                   </div>
                   {!post.system && !post.postStyle && post.authorId !== profile.id && post.authorId ? (
-                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, marginLeft: 58 }}>
                       {[{ type: 'cheer', label: '🎉 Cheer' }, { type: 'nudge', label: '👋 Nudge' }, { type: 'taunt', label: '⚔️ Taunt' }].map(action => (
                         <button
                           key={action.type}
@@ -4575,43 +4614,46 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         <div className="showup-sheet-backdrop" onClick={() => setProfileEditOpen(false)}>
           <div className="showup-sheet" onClick={event => event.stopPropagation()} style={{ maxWidth: 420 }}>
             <div className="showup-sheet-handle" />
-            <h2 className="showup-sheet-title" style={{ fontSize: 16 }}>Your profile</h2>
-            <p className="showup-sheet-subtitle">Visible to everyone in your room.</p>
-            <div style={{ display: 'grid', gap: 14, padding: '4px 0 12px' }}>
-              <div>
-                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#b98097', letterSpacing: '.04em' }}>AVATAR (emoji)</p>
-                <input
-                  type="text"
-                  maxLength={2}
-                  placeholder="🙋 or leave empty"
-                  value={profileAvatarDraft}
-                  onChange={e => setProfileAvatarDraft(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', fontSize: 20, background: '#fff8f9', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
-                />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '8px 0 16px' }}>
+              <div
+                style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(249,95,133,0.25)', flexShrink: 0, display: 'grid', placeItems: 'center', background: '#fff8f9', cursor: profile.avatar ? 'pointer' : 'default' }}
+                onClick={() => { if (profile.avatar) setLightboxMedia({ url: profile.avatar, kind: 'image' }) }}
+              >
+                {profile.avatar
+                  ? <img src={profile.avatar} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  : <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 700, color: '#f95f85' }}>{profile.initials}</span>
+                }
               </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 16, fontWeight: 700, color: '#4d3142' }}>{profile.name}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097' }}>Visible to everyone in your room</p>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 12, padding: '0 0 12px' }}>
               <div>
-                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#b98097', letterSpacing: '.04em' }}>ABOUT (1 line)</p>
+                <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#b98097', letterSpacing: '.06em', textTransform: 'uppercase' }}>About</p>
                 <textarea
                   maxLength={80}
-                  placeholder="Building something great..."
+                  placeholder="What are you building?"
                   value={profileAboutDraft}
                   onChange={e => setProfileAboutDraft(e.target.value)}
                   rows={2}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', fontSize: 13, background: '#fff8f9', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', resize: 'none' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', fontSize: 13, background: '#fff8f9', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', resize: 'none', color: '#4d3142' }}
                 />
               </div>
               <button
                 type="button"
-                style={{ padding: '12px', borderRadius: 999, background: 'linear-gradient(135deg,var(--app-accent2,#f97bb3),var(--app-accent,#f95f85))', color: '#fff', fontWeight: 800, fontSize: 14, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '13px', borderRadius: 999, background: 'linear-gradient(135deg,#f97bb3,#f95f85)', color: '#fff', fontWeight: 800, fontSize: 14, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 onClick={() => {
-                  const next = { avatar: profileAvatarDraft.trim(), about: profileAboutDraft.trim() }
+                  const next = { avatar: profile.avatar || '', about: profileAboutDraft.trim() }
                   saveProfileExtra(profile.id, next)
                   setProfile(prev => ({ ...prev, ...next }))
                   setProfileEditOpen(false)
                 }}
               >
-                Save profile
+                Save
               </button>
+              <p style={{ margin: 0, fontSize: 11, color: '#b98097', textAlign: 'center' }}>Change your profile photo in Settings.</p>
             </div>
           </div>
         </div>
