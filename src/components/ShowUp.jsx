@@ -2269,12 +2269,13 @@ function getProfile(user, authUser) {
     'User'
   const profileId = authUser?.id || user?.id || storedId || 'local-user'
   const extra = safeJsonParse(localStorage.getItem(`phasr_showup_profile_${normalize(profileId)}`), {})
+  const globalCache = safeJsonParse(localStorage.getItem('phasr_profile_cache'), {})
   return {
     id: profileId,
-    name: displayName,
-    initials: buildInitials(displayName),
-    avatar: extra.avatar || '',
-    about: extra.about || '',
+    name: globalCache.display_name || displayName,
+    initials: buildInitials(globalCache.display_name || displayName),
+    avatar: globalCache.avatar_url || extra.avatar || '',
+    about: globalCache.bio || extra.about || '',
   }
 }
 
@@ -2477,7 +2478,7 @@ function computeRoomRoles(members, roomName) {
   return roles
 }
 
-export default function ShowUp({ user, onGoToDailyStreaks }) {
+export default function ShowUp({ user, profileData: externalProfileData, onGoToDailyStreaks }) {
   const [profile, setProfile] = useState({ id: 'local-user', name: 'User', initials: 'U' })
   const [selectedRoom, setSelectedRoom] = useState(null)
   const [activeTab, setActiveTab] = useState('live')
@@ -2528,6 +2529,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
   const [dmSheetMember, setDmSheetMember] = useState(null)
   const [dmMessages, setDmMessages] = useState([])
   const [dmDraft, setDmDraft] = useState('')
+  const [h2hMember, setH2hMember] = useState(null)
+  const [subRooms, setSubRooms] = useState([])
+  const [activeSubRoom, setActiveSubRoom] = useState(null)
+  const [createSubRoomOpen, setCreateSubRoomOpen] = useState(false)
+  const [subRoomName, setSubRoomName] = useState('')
+  const [subRoomDesc, setSubRoomDesc] = useState('')
+  const [subRoomLimit, setSubRoomLimit] = useState(20)
+  const [subRoomPaid, setSubRoomPaid] = useState(false)
+  const [subRoomPrice, setSubRoomPrice] = useState('')
   const fileInputRef = useRef(null)
   const feedViewRef = useRef(null)
   const commentFileInputRef = useRef(null)
@@ -2612,6 +2622,21 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     }, 60000)
     return () => window.clearInterval(interval)
   }, [members, profile.id, selectedRoom])
+
+  useEffect(() => {
+    const onProfileUpdate = e => {
+      if (!e.detail) return
+      setProfile(p => ({
+        ...p,
+        name: e.detail.display_name || p.name,
+        initials: buildInitials(e.detail.display_name || p.name),
+        avatar: e.detail.avatar_url || p.avatar,
+        about: e.detail.bio || p.about,
+      }))
+    }
+    window.addEventListener('phasr-profile-updated', onProfileUpdate)
+    return () => window.removeEventListener('phasr-profile-updated', onProfileUpdate)
+  }, [])
 
   useEffect(() => {
     function showRecipientNudge(notification) {
@@ -2945,12 +2970,14 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
       id: anonymous ? `anon-${uid()}` : profile.id,
       name: anonymous ? 'Anonymous \u00B7 Room' : profile.name,
       initials: anonymous ? 'AN' : profile.initials,
+      avatarUrl: anonymous ? '' : (profile.avatar || ''),
     }
     const nextPost = {
       id: getUuid(),
       authorId: postAuthor.id,
       authorName: postAuthor.name,
       authorInitials: postAuthor.initials,
+      authorAvatarUrl: postAuthor.avatarUrl || '',
       anonymous,
       text,
       image,
@@ -3482,6 +3509,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             authorId: profile.id,
             authorName: profile.name,
             authorInitials: profile.initials,
+            authorAvatarUrl: profile.avatar || '',
             anonymous: false,
             text: draft,
             image: commentImage,
@@ -3640,6 +3668,41 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     setNotifyPostToFeed(false)
   }
 
+  async function handleRoomAction(type, targetUserId, targetName) {
+    const emojiMap = { cheer: '🎉', nudge: '👋', taunt: '⚔️' }
+    const labelMap = { cheer: 'cheered on', nudge: 'nudged', taunt: 'taunted' }
+    const emoji = emojiMap[type] || '👋'
+    const label = labelMap[type] || 'nudged'
+    const notification = {
+      id: uid(),
+      roomName: selectedRoom,
+      toUserId: targetUserId,
+      toName: targetName,
+      fromUserId: profile.id,
+      fromName: profile.name,
+      anonymous: false,
+      text: `${profile.name} ${label} you ${emoji}`,
+      createdAt: new Date().toISOString(),
+      read: false,
+      type,
+    }
+    window.dispatchEvent(new CustomEvent('phasr-showup-notification', { detail: notification }))
+    try {
+      if (supabase) {
+        await supabase.from('room_nudges').insert({
+          room_id: selectedRoom,
+          from_user_name: profile.name,
+          to_user_id: targetUserId,
+          message: notification.text,
+          created_at: notification.createdAt,
+          seen: false,
+          type,
+        })
+      }
+    } catch {}
+    await createRoomActivityPost(`${profile.name} ${label} ${targetName} ${emoji}`)
+  }
+
   function handleCreateRoomStart() {
     if (!createRoomUnlocked) {
       setCreateRoomLockedOpen(true)
@@ -3719,6 +3782,64 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
     if (!selectedRoom) return
     safeWrite(getRanksStorageKey(selectedRoom), rankedMembers)
   }, [rankedMembers, selectedRoom])
+
+  useEffect(() => {
+    if (!selectedRoom || !supabase) return
+    supabase.from('sub_rooms').select('*').eq('parent_room_name', selectedRoom).order('created_at').then(({ data }) => {
+      if (data) setSubRooms(data)
+    })
+  }, [selectedRoom])
+
+  useEffect(() => {
+    if (!dmSheetMember) return
+    const otherId = dmSheetMember.user_id
+    const myId = profile.id
+    const fallback = loadDmMessages(myId, otherId)
+    setDmMessages(fallback)
+    if (!supabase) return
+    const sortedIds = [myId, otherId].sort()
+    supabase
+      .from('direct_messages')
+      .select('*')
+      .or(`and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`)
+      .order('created_at')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setDmMessages(data.map(row => ({ from: row.sender_id, fromName: row.sender_name || '', text: row.message, createdAt: row.created_at, id: row.id })))
+        }
+        supabase.from('direct_messages').update({ seen: true }).eq('receiver_id', myId).eq('sender_id', otherId).eq('seen', false).then(() => {})
+      })
+    const channel = supabase.channel(`dm_${sortedIds.join('_')}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, payload => {
+        const row = payload.new
+        if ((row.sender_id === myId && row.receiver_id === otherId) || (row.sender_id === otherId && row.receiver_id === myId)) {
+          setDmMessages(prev => [...prev, { from: row.sender_id, fromName: row.sender_name || '', text: row.message, createdAt: row.created_at, id: row.id }])
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [dmSheetMember])
+
+  async function handleCreateSubRoom() {
+    if (!subRoomName.trim()) return
+    const row = {
+      parent_room_name: selectedRoom,
+      name: subRoomName.trim(),
+      description: subRoomDesc.trim(),
+      creator_id: profile.id,
+      member_limit: Number(subRoomLimit) || 20,
+      is_paid: subRoomPaid,
+      price: subRoomPaid && subRoomPrice ? parseFloat(subRoomPrice) : null,
+    }
+    if (supabase) {
+      const { data, error } = await supabase.from('sub_rooms').insert(row).select().single()
+      if (!error && data) setSubRooms(prev => [...prev, data])
+    } else {
+      setSubRooms(prev => [...prev, { ...row, id: uid(), created_at: new Date().toISOString() }])
+    }
+    setSubRoomName(''); setSubRoomDesc(''); setSubRoomLimit(20); setSubRoomPaid(false); setSubRoomPrice('')
+    setCreateSubRoomOpen(false)
+  }
 
   if (!selectedRoom) {
     return (
@@ -3945,6 +4066,31 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
               </div>
             </div>
           ) : null}
+
+          {createSubRoomOpen ? (
+            <div className="showup-exit-backdrop" onClick={() => setCreateSubRoomOpen(false)}>
+              <div className="showup-exit-modal" onClick={e => e.stopPropagation()} style={{ gap: 10 }}>
+                <h2 className="showup-exit-title">Create Sub-room</h2>
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <input className="showup-input" value={subRoomName} onChange={e => setSubRoomName(e.target.value)} placeholder="Sub-room name" />
+                  <textarea className="showup-comment-input" value={subRoomDesc} onChange={e => setSubRoomDesc(e.target.value)} placeholder="Description (optional)" rows={2} style={{ resize: 'none' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#9a7088', fontWeight: 700, minWidth: 80 }}>Member limit</span>
+                    <input type="number" className="showup-input" value={subRoomLimit} onChange={e => setSubRoomLimit(e.target.value)} min={2} max={100} style={{ width: 70 }} />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#4d3142', fontWeight: 600 }}>
+                    <input type="checkbox" checked={subRoomPaid} onChange={e => setSubRoomPaid(e.target.checked)} />
+                    Paid sub-room
+                  </label>
+                  {subRoomPaid ? <input className="showup-input" type="number" value={subRoomPrice} onChange={e => setSubRoomPrice(e.target.value)} placeholder="Price (e.g. 9.99)" min={0} step={0.01} /> : null}
+                </div>
+                <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff', marginTop: 4 }} onClick={handleCreateSubRoom}>
+                  <strong>Create sub-room</strong>
+                </button>
+                <button type="button" className="showup-exit-cancel" onClick={() => setCreateSubRoomOpen(false)}>Cancel</button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     )
@@ -4009,7 +4155,7 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           {[
             { key: 'live', label: 'Live' },
             { key: 'feed', label: 'Feed' },
-            { key: 'ranks', label: 'Ranks' },
+            { key: 'ranks', label: 'Stacks' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -4034,7 +4180,8 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 const presenceStatus = getPresenceStatus(selectedRoom, member)
                 const role = topRoleFor(member)
                 const isMe = member.user_id === profile.id
-                const avatarDisplay = isMe ? (profile.avatar || member.initials || buildInitials(member.display_name)) : (member.avatar || member.initials || buildInitials(member.display_name))
+                const memberAvatarUrl = isMe ? profile.avatar : (member.avatar_url || member.avatar || '')
+                const avatarInitials = isMe ? profile.initials : (member.initials || buildInitials(member.display_name))
                 const aboutText = isMe ? profile.about : (member.about || '')
                 return (
                   <div
@@ -4050,14 +4197,15 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                         setProfileAboutDraft(profile.about || '')
                         setProfileEditOpen(true)
                       } else {
-                        const msgs = loadDmMessages(profile.id, member.user_id)
-                        setDmMessages(msgs)
-                        setDmSheetMember(member)
+                        setH2hMember(member)
                       }
                     }}
                   >
-                    <div className="showup-avatar" style={{ fontSize: avatarDisplay.length === 1 && /\p{Emoji}/u.test(avatarDisplay) ? 22 : undefined }}>
-                      {avatarDisplay}
+                    <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                      {memberAvatarUrl
+                        ? <img src={memberAvatarUrl} alt={member.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                        : avatarInitials
+                      }
                     </div>
                     <div style={{ minWidth: 0, maxWidth: '100%' }}>
                       <p className="showup-member-name">{isMe ? 'You' : member.display_name}</p>
@@ -4066,12 +4214,46 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       ) : role ? (
                         <p className={`showup-role-badge ${role === 'Room Leader' ? 'is-leader' : ''}`}>{role}</p>
                       ) : isMe ? (
-                        <p style={{ margin: '3px 0 0', fontSize: 10, color: '#f95f85', fontWeight: 700 }}>Tap to edit profile</p>
+                        <p style={{ margin: '3px 0 0', fontSize: 10, color: '#f95f85', fontWeight: 700 }}>Tap to edit</p>
                       ) : null}
                     </div>
                   </div>
                 )
               })}
+            </div>
+
+            <div style={{ borderTop: '1px solid rgba(249,95,133,0.12)', paddingTop: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#9a7088', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Sub-rooms</p>
+                <button
+                  type="button"
+                  onClick={() => setCreateSubRoomOpen(true)}
+                  style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.06)', color: '#f95f85', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  + Create
+                </button>
+              </div>
+              {subRooms.length === 0 ? (
+                <p style={{ margin: 0, fontSize: 13, color: '#b98097', textAlign: 'center', padding: '12px 0' }}>No sub-rooms yet. Create one for a focused group.</p>
+              ) : (
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {subRooms.map(sr => (
+                    <button
+                      key={sr.id}
+                      type="button"
+                      onClick={() => setActiveSubRoom(activeSubRoom?.id === sr.id ? null : sr)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, border: `1px solid ${activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.4)' : 'rgba(249,95,133,0.18)'}`, background: activeSubRoom?.id === sr.id ? 'rgba(249,95,133,0.08)' : 'transparent', cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#4d3142' }}>{sr.name}</p>
+                        {sr.description ? <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.description}</p> : null}
+                      </div>
+                      {sr.is_paid ? <span style={{ fontSize: 11, fontWeight: 700, color: '#f97bb3', background: 'rgba(249,95,133,0.1)', borderRadius: 8, padding: '2px 7px' }}>Paid{sr.price ? ` $${sr.price}` : ''}</span> : null}
+                      <span style={{ fontSize: 11, color: '#b98097' }}>👥 {sr.member_limit}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ) : null}
@@ -4085,7 +4267,11 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
             ) : null}
             <div className="showup-compose-card">
               <div className="showup-compose-top">
-                <div className="showup-avatar">{profile.initials}</div>
+                <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                  {profile.avatar
+                    ? <img src={profile.avatar} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                    : profile.initials}
+                </div>
                 <input
                   className="showup-compose-input"
                   value={postDraft}
@@ -4152,7 +4338,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 >
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
-                      <div className="showup-avatar">{post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName)}</div>
+                      <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                        {!post.anonymous && post.authorAvatarUrl
+                          ? <img src={post.authorAvatarUrl} alt={post.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                          : (post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName))
+                        }
+                      </div>
                       <div className="showup-feed-header-main">
                         <p className="showup-feed-name">{post.anonymous ? 'Anonymous \u00B7 Room' : post.authorName}</p>
                         <p className="showup-feed-time">{formatTimestamp(post.createdAt)}</p>
@@ -4210,6 +4401,29 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                       <span>{safeArray(post.comments).length}</span>
                     </button>
                   </div>
+                  {!post.system && !post.postStyle && post.authorId !== profile.id && post.authorId ? (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      {[{ type: 'cheer', label: '🎉 Cheer' }, { type: 'nudge', label: '👋 Nudge' }, { type: 'taunt', label: '⚔️ Taunt' }].map(action => (
+                        <button
+                          key={action.type}
+                          type="button"
+                          onClick={event => {
+                            event.stopPropagation()
+                            handleRoomAction(action.type, post.authorId, post.authorName)
+                          }}
+                          style={{
+                            flex: 1, padding: '5px 0', borderRadius: 20,
+                            border: '1px solid rgba(249,95,133,0.22)',
+                            background: 'rgba(249,95,133,0.06)',
+                            color: '#c84f73', fontSize: 12, fontWeight: 700,
+                            cursor: 'pointer', fontFamily: 'inherit',
+                          }}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 )
               })
@@ -4233,33 +4447,30 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 ? { background: 'linear-gradient(135deg,#fff2ec,#ffe8d8)', borderColor: 'rgba(200,130,80,0.30)' }
                 : {}
               const isMe = member.user_id === profile.id
-              const avatarDisplay = isMe ? (profile.avatar || member.initials || buildInitials(member.display_name)) : (member.avatar || member.initials || buildInitials(member.display_name))
+              const stackAvatarUrl = isMe ? profile.avatar : (member.avatar_url || member.avatar || '')
+              const stackInitials = isMe ? profile.initials : (member.initials || buildInitials(member.display_name))
               return (
                 <div
                   key={member.user_id}
                   className={`showup-rank-row ${index === 0 ? 'is-leader' : ''}`}
-                  style={podiumStyle}
-                  onClick={() => {
-                    if (!isMe) {
-                      const msgs = loadDmMessages(profile.id, member.user_id)
-                      setDmMessages(msgs)
-                      setDmSheetMember(member)
-                    }
-                  }}
+                  style={{ ...podiumStyle, cursor: isMe ? undefined : 'pointer' }}
+                  onClick={() => { if (!isMe) setH2hMember(member) }}
                 >
                   <div className={`showup-rank-number ${index === 0 ? 'is-leader' : 'is-muted'}`}>
                     {medal || (index + 1)}
                   </div>
-                  <div className="showup-avatar" style={{ fontSize: avatarDisplay.length === 1 && /\p{Emoji}/u.test(avatarDisplay) ? 20 : undefined }}>
-                    {avatarDisplay}
+                  <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0, flexShrink: 0 }}>
+                    {stackAvatarUrl
+                      ? <img src={stackAvatarUrl} alt={member.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                      : stackInitials}
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <p className="showup-rank-name">{isMe ? 'You' : member.display_name}</p>
                     <p className="showup-rank-streak">{member.streakValue > 0 ? `🔥 ${member.streakValue} day streak` : 'No streak yet'}</p>
                   </div>
-                  <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`}>
+                  <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`} style={{ textAlign: 'center' }}>
                     <span className="showup-rank-score-value">{member.streakValue}</span>
-                    <span className="showup-rank-score-label">days</span>
+                    <span className="showup-rank-score-label">streak</span>
                   </div>
                   {topRole ? <div className="showup-rank-badge">{topRole}</div> : <div />}
                 </div>
@@ -4365,12 +4576,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 type="text"
                 value={dmDraft}
                 onChange={e => setDmDraft(e.target.value)}
-                onKeyDown={e => {
+                onKeyDown={async e => {
                   if (e.key === 'Enter' && dmDraft.trim()) {
-                    const msg = { from: profile.id, fromName: profile.name, text: dmDraft.trim(), createdAt: new Date().toISOString() }
-                    const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
-                    setDmMessages(next)
+                    const text = dmDraft.trim()
                     setDmDraft('')
+                    const msg = { from: profile.id, fromName: profile.name, text, createdAt: new Date().toISOString() }
+                    if (supabase) {
+                      await supabase.from('direct_messages').insert({ room_name: selectedRoom, sender_id: profile.id, sender_name: profile.name, receiver_id: dmSheetMember.user_id, message: text })
+                    } else {
+                      const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                      setDmMessages(next)
+                    }
                   }
                 }}
                 placeholder="Type a message..."
@@ -4380,12 +4596,17 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                 type="button"
                 disabled={!dmDraft.trim()}
                 style={{ padding: '10px 16px', borderRadius: 999, background: dmDraft.trim() ? 'linear-gradient(135deg,var(--app-accent2,#f97bb3),var(--app-accent,#f95f85))' : 'rgba(249,95,133,0.15)', color: dmDraft.trim() ? '#fff' : '#b98097', fontWeight: 800, fontSize: 13, border: 'none', cursor: dmDraft.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
-                onClick={() => {
+                onClick={async () => {
                   if (!dmDraft.trim()) return
-                  const msg = { from: profile.id, fromName: profile.name, text: dmDraft.trim(), createdAt: new Date().toISOString() }
-                  const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
-                  setDmMessages(next)
+                  const text = dmDraft.trim()
                   setDmDraft('')
+                  const msg = { from: profile.id, fromName: profile.name, text, createdAt: new Date().toISOString() }
+                  if (supabase) {
+                    await supabase.from('direct_messages').insert({ room_name: selectedRoom, sender_id: profile.id, sender_name: profile.name, receiver_id: dmSheetMember.user_id, message: text })
+                  } else {
+                    const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                    setDmMessages(next)
+                  }
                 }}
               >
                 <Send size={14} strokeWidth={2.3} />
@@ -4394,6 +4615,86 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
           </div>
         </div>
       ) : null}
+
+      {h2hMember ? (() => {
+        const them = h2hMember
+        const theirAvatarUrl = them.avatar_url || them.avatar || ''
+        const theirInitials = them.initials || buildInitials(them.display_name)
+        const myAvatarUrl = profile.avatar || ''
+        const myInitials = profile.initials
+        const myStreak = liveMembers.find(m => m.user_id === profile.id)?.streak_count ?? 0
+        const theirStreak = them.streak_count ?? them.streakValue ?? 0
+        const myTasks = liveMembers.find(m => m.user_id === profile.id)?.total_tasks_done ?? 0
+        const theirTasks = them.total_tasks_done ?? 0
+        const statStyle = (mine, theirs) => ({
+          fontWeight: 800, fontSize: 22,
+          color: mine >= theirs ? '#2fb66d' : '#f95f85',
+        })
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(41,18,31,0.55)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}
+            onClick={() => setH2hMember(null)}
+          >
+            <div
+              style={{ width: '100%', maxWidth: 480, background: '#fff', borderRadius: '24px 24px 0 0', padding: '24px 20px calc(32px + env(safe-area-inset-bottom,0px))', boxShadow: '0 -22px 58px rgba(77,49,66,0.16)', maxHeight: '88dvh', overflowY: 'auto', boxSizing: 'border-box' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(249,95,133,0.25)', margin: '0 auto 20px' }} />
+              <p style={{ textAlign: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: '0.85rem', color: '#b98097', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 18px' }}>Head-to-Head</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center', marginBottom: 28 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(47,182,109,0.4)', background: 'rgba(249,95,133,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 18, color: '#f95f85' }}>
+                    {myAvatarUrl ? <img src={myAvatarUrl} alt="You" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : myInitials}
+                  </div>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#4d3142' }}>You</p>
+                </div>
+                <p style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontWeight: 900, fontSize: '1.1rem', color: '#f95f85' }}>VS</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 18, color: '#f95f85' }}>
+                    {theirAvatarUrl ? <img src={theirAvatarUrl} alt={them.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : theirInitials}
+                  </div>
+                  <p style={{ margin: 0, fontWeight: 800, fontSize: 13, color: '#4d3142', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{them.display_name}</p>
+                </div>
+              </div>
+
+              {[
+                { label: 'Streak', mine: myStreak, theirs: theirStreak, unit: 'days' },
+                { label: 'Tasks Done', mine: myTasks, theirs: theirTasks, unit: 'tasks' },
+                { label: 'Best Streak', mine: myStreak, theirs: theirStreak, unit: 'days' },
+              ].map(stat => (
+                <div key={stat.label} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, padding: '12px 0', borderBottom: '1px solid rgba(249,95,133,0.1)' }}>
+                  <p style={{ ...statStyle(stat.mine, stat.theirs), textAlign: 'right', margin: 0 }}>{stat.mine}<span style={{ fontWeight: 500, fontSize: 11, color: '#b98097', marginLeft: 3 }}>{stat.unit}</span></p>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#b98097', textAlign: 'center', minWidth: 70 }}>{stat.label}</p>
+                  <p style={{ ...statStyle(stat.theirs, stat.mine), textAlign: 'left', margin: 0 }}>{stat.theirs}<span style={{ fontWeight: 500, fontSize: 11, color: '#b98097', marginLeft: 3 }}>{stat.unit}</span></p>
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+                {[{ type: 'cheer', label: '🎉 Cheer' }, { type: 'nudge', label: '👋 Nudge' }, { type: 'taunt', label: '⚔️ Taunt' }].map(action => (
+                  <button
+                    key={action.type}
+                    type="button"
+                    onClick={() => { handleRoomAction(action.type, them.user_id, them.display_name); setH2hMember(null) }}
+                    style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1px solid rgba(249,95,133,0.22)', background: 'rgba(249,95,133,0.06)', color: '#c84f73', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { const msgs = loadDmMessages(profile.id, them.user_id); setDmMessages(msgs); setDmSheetMember(them); setH2hMember(null) }}
+                style={{ width: '100%', marginTop: 10, padding: '12px 0', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#f95f85,#ff8ca8)', color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                <MessageCircle size={14} strokeWidth={2.3} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                Message {them.display_name}
+              </button>
+            </div>
+          </div>
+        )
+      })() : null}
 
       {lightboxMedia.url ? (
         <div className="showup-lightbox" onClick={() => setLightboxMedia({ url: '', kind: '' })}>
@@ -4448,7 +4749,12 @@ export default function ShowUp({ user, onGoToDailyStreaks }) {
                   onTouchStart={() => startCommentHold(comment.id, ownComment)}
                   onTouchEnd={clearCommentHold}
                 >
-                  <div className="showup-avatar">{comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName)}</div>
+                  <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                    {!comment.anonymous && comment.authorAvatarUrl
+                      ? <img src={comment.authorAvatarUrl} alt={comment.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                      : (comment.anonymous ? 'AN' : comment.authorInitials || buildInitials(comment.authorName))
+                    }
+                  </div>
                   <div className="showup-comment-bubble">
                     <p className="showup-comment-author">{comment.anonymous ? 'Anonymous · Room' : comment.authorName}</p>
                     <p className="showup-comment-text">{comment.text}</p>

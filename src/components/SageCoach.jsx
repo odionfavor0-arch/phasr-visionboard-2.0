@@ -722,7 +722,7 @@ async function requestSageReply({ system, messages, mode = 'chat' }) {
 
   const latestQuestion = [...conversationHistory].reverse().find(message => message.role === 'user')?.content || ''
 
-  if (SAGE_RAG_URL && mode === 'think' && latestQuestion) {
+  if (SAGE_RAG_URL && latestQuestion && latestQuestion.length > 10) {
     const ragRes = await fetch(`${SAGE_RAG_URL.replace(/\/$/, '')}/api/sage/rag`, {
       method: 'POST',
       headers: {
@@ -732,7 +732,7 @@ async function requestSageReply({ system, messages, mode = 'chat' }) {
         question: latestQuestion,
         system_prompt: system,
         messages: conversationHistory,
-        top_k: 6,
+        top_k: mode === 'think' ? 6 : 3,
       }),
     })
 

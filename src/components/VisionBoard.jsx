@@ -1388,9 +1388,28 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const activeUserId = getActiveUserId(user)
   const weekStartKey = useMemo(() => getTodayKey(getWeekStartDate(new Date())), [])
 
-  const [data, setData] = useState(() =>
-    normalizeBoardData(load(user) || { boardTitle: 'My Vision Board', phases: [freshPhase(1)] })
-  )
+  const [data, setData] = useState(() => {
+    const saved = load(user)
+    const board = normalizeBoardData(saved || { boardTitle: 'My Vision Board', phases: [freshPhase(1)] })
+    if (!saved) {
+      try {
+        const onboardingPillars = JSON.parse(localStorage.getItem('phasr_onboarding_pillars') || 'null')
+        const letter = JSON.parse(localStorage.getItem('phasr_future_letter_p1') || 'null')
+        if (onboardingPillars?.length && board.phases[0]) {
+          board.phases[0].pillars = onboardingPillars.slice(0, 6).map((name, i) => ({
+            id: `pillar-${i + 1}`, name, details: '', emoji: '',
+            resources: [], activities: [], weeklyNonNegotiables: [], outcome: '', sageGenerated: false,
+            beforePhoto: '', afterPhoto: '', beforeCaption: '', afterCaption: '',
+          }))
+        }
+        if (letter && board.phases[0]) {
+          board.phases[0].futureMessage = letter.message || ''
+          board.phases[0].futureMessageDate = letter.date || ''
+        }
+      } catch {}
+    }
+    return board
+  })
   const [phaseId,    setPhaseId]    = useState(() => normalizeBoardData(load(user) || { phases: [freshPhase(1)] }).phases[0]?.id)
   const [editingState, setEditingState] = useState(false)
   const [checked,    setChecked]    = useState({})
@@ -1413,7 +1432,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [exportStage, setExportStage] = useState('picker')
   const [exportBusy, setExportBusy] = useState(false)
   const [exportScriptsReady, setExportScriptsReady] = useState(false)
-  const [futureMessageDraft, setFutureMessageDraft] = useState('')
   const exportCardRef = useRef(null)
   const qrCodeRef = useRef(null)
   const editing = editingProp ?? editingState
@@ -1422,10 +1440,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   useEffect(() => {
     setPresetOpen(null)
   }, [editing])
-
-  useEffect(() => {
-    setFutureMessageDraft('')
-  }, [phaseId])
 
   useEffect(() => {
     if (!uploadMessage) return undefined
@@ -2449,38 +2463,38 @@ Return JSON only:
         {/* Today's Task */}
         <div style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
-          borderRadius: 12, padding: isMobile ? '0.5rem 0.76rem' : '0.58rem 1rem',
+          borderRadius: 12, padding: isMobile ? '0.32rem 0.75rem' : '0.38rem 0.9rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: isMobile ? '0.75rem' : '1rem', flexWrap: 'wrap', gap: isMobile ? '0.3rem' : '0.45rem',
+          marginBottom: isMobile ? '0.5rem' : '0.7rem', gap: '0.6rem',
           boxShadow: '0 4px 16px rgba(233,100,136,0.25)',
-          position: 'relative',
         }}>
-          <div>
-            <p style={{ fontSize: isMobile ? '0.54rem' : '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: '0.14rem' }}>
-              Today's Task - {phaseDisplayName}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: '0.1rem' }}>
+              Today · {phaseDisplayName}
             </p>
-            <p style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 600, color: '#fff', lineHeight: isMobile ? 1.3 : 1.45, maxWidth: isMobile ? 190 : 'none' }}>
+            <p style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', fontWeight: 600, color: '#fff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {todayTask}
             </p>
           </div>
-          <div style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: isMobile ? 6 : 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-            {!scheduledThisWeek && (
+          <div style={{ flexShrink: 0 }}>
+            {scheduledThisWeek ? (
+              <button
+                type="button"
+                onClick={() => onOpenDailyStreak?.()}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
+              >
+                Start Now
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={addToCalendarPlan}
                 disabled={calendarBusy}
-                style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.68rem' : '0.82rem', boxShadow: '0 10px 22px rgba(105,33,63,0.16)' }}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem' }}
               >
-                {calendarBusy ? 'Scheduling...' : 'Schedule your week'}
+                {calendarBusy ? 'Scheduling...' : 'Schedule Your Week'}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => onOpenDailyStreak?.()}
-              style={{ minHeight: isMobile ? 30 : 38, display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: isMobile ? '0.42rem 0.68rem' : '0.55rem 0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.32)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", fontSize: isMobile ? '0.68rem' : '0.82rem' }}
-            >
-              {isMobile ? 'Start now' : 'Complete this task now'}
-            </button>
           </div>
         </div>
 
@@ -2695,46 +2709,6 @@ Return JSON only:
             : <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
           }
         </div>
-
-        {/* Future Self Message */}
-        {!phase?.futureMessage ? (
-          <div style={{ background: 'linear-gradient(135deg,#fff5f8,#ffeef4)', border: '1px solid rgba(249,95,133,0.22)', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '0.9rem 1rem' : '1rem 1.3rem', marginBottom: '1.2rem' }}>
-            <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f95f85', marginBottom: '0.35rem' }}>Letter to Future You</p>
-            <p style={{ fontSize: isMobile ? '0.78rem' : '0.82rem', color: '#7a5266', lineHeight: 1.55, marginBottom: '0.75rem' }}>
-              Write a message to the version of you who finishes this phase. You will see it again at your quarterly review.
-            </p>
-            <textarea
-              rows={3}
-              value={futureMessageDraft}
-              onChange={e => setFutureMessageDraft(e.target.value)}
-              placeholder={'In 90 days, I want you to know...'}
-              style={{ width: '100%', boxSizing: 'border-box', borderRadius: 10, border: '1px solid rgba(249,95,133,0.25)', background: 'rgba(255,255,255,0.72)', padding: '0.65rem 0.8rem', fontSize: '0.84rem', color: '#4d3142', fontFamily: "'DM Sans',sans-serif", resize: 'vertical', outline: 'none', lineHeight: 1.55, marginBottom: '0.65rem' }}
-            />
-            <button
-              type="button"
-              disabled={!futureMessageDraft.trim()}
-              onClick={() => {
-                const msg = futureMessageDraft.trim()
-                if (!msg) return
-                const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                updatePhase('futureMessage', msg)
-                updatePhase('futureMessageDate', dateStr)
-                setFutureMessageDraft('')
-              }}
-              style={{ minHeight: 36, padding: '0 1.1rem', borderRadius: 999, border: 'none', background: futureMessageDraft.trim() ? 'linear-gradient(135deg,#f97bb3,#f95f85)' : 'rgba(249,95,133,0.18)', color: futureMessageDraft.trim() ? '#fff' : '#b98097', fontWeight: 800, fontSize: '0.78rem', cursor: futureMessageDraft.trim() ? 'pointer' : 'default', fontFamily: "'DM Sans',sans-serif", transition: 'background 0.2s' }}
-            >
-              Seal this letter
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', background: 'rgba(249,95,133,0.06)', border: '1px solid rgba(249,95,133,0.16)', borderRadius: isMobile ? 10 : 12, padding: '0.65rem 0.9rem', marginBottom: '1.2rem' }}>
-            <span style={{ fontSize: '1rem' }}>&#9993;</span>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: '#f95f85' }}>Letter sealed &middot; {phase.futureMessageDate}</p>
-              <p style={{ margin: '0.15rem 0 0', fontSize: '0.7rem', color: '#b98097' }}>You will see this again at your quarterly review.</p>
-            </div>
-          </div>
-        )}
 
         {/* ── Pillars ── */}
         {editing && (
@@ -3463,7 +3437,7 @@ Return JSON only:
                                 }}
                                 title={`Schedule for ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
-                                📅 Schedule
+                                📅 Add
                               </a>
                             )
                           ) : null}

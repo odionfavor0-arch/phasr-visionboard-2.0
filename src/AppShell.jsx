@@ -15,6 +15,7 @@ import DailyCheckin from './components/DailyCheckin'
 import Analytics from './components/Analytics'
 import ShowUp from './components/ShowUp'
 import SettingsPanel from './components/SettingsPanel'
+import ProfilePage, { fetchProfile, loadCachedProfile } from './components/ProfilePage'
 import { QuickSageBubble } from './components/SageCoach'
 import { getLockInSummary, loadLockInState } from './lib/lockIn'
 
@@ -140,6 +141,11 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   const [autoOpenWeeklyPulse, setAutoOpenWeeklyPulse] = useState(false)
   const [autoOpenQuarterlyReviewPhaseId, setAutoOpenQuarterlyReviewPhaseId] = useState(null)
   const [openJournalTemplatesToken, setOpenJournalTemplatesToken] = useState(0)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileData, setProfileData] = useState(() => loadCachedProfile())
+  const [sageWelcomeVisible, setSageWelcomeVisible] = useState(() => {
+    try { return !localStorage.getItem('phasr_sage_welcome_shown') } catch { return false }
+  })
   const view = activeView
   const setView = setActiveView
   const [isMobile, setIsMobile] = useState(() => {
@@ -152,9 +158,11 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   })
   const [lockSummary, setLockSummary] = useState(() => getLockInSummary(loadLockInState()))
 
-  const displayName = getDisplayName(user)
+  const baseDisplayName = getDisplayName(user)
+  const displayName = profileData.display_name || baseDisplayName
   const avatarInitial = getInitial(displayName)
   const firstName = displayName.split(' ')[0] || displayName
+  const profileAvatarUrl = profileData.avatar_url || ''
 
   const navItems = useMemo(() => ([
     { id: 'board', label: 'Vision Board', title: 'Vision Board', icon: ImageIcon },
@@ -174,6 +182,15 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       ? `${firstName}'s Journal`
       : currentTitle
   const sidebarWidth = isMobile ? MOBILE_RAIL_WIDTH : DESKTOP_RAIL_WIDTH
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchProfile(user.id).then(p => { if (p && Object.keys(p).length) setProfileData(p) })
+    }
+    const onProfileUpdate = e => { if (e.detail) setProfileData(d => ({ ...d, ...e.detail })) }
+    window.addEventListener('phasr-profile-updated', onProfileUpdate)
+    return () => window.removeEventListener('phasr-profile-updated', onProfileUpdate)
+  }, [user?.id])
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
@@ -269,7 +286,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       />
     )
   } else if (view === 'showup') {
-    content = <ShowUp user={user} onGoToDailyStreaks={() => setView('checkin')} />
+    content = <ShowUp user={user} profileData={profileData} onGoToDailyStreaks={() => setView('checkin')} />
   } else if (view === 'analytics') {
     content = <Analytics />
   } else if (view === 'settings') {
@@ -485,21 +502,24 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             )}
           </div>
 
-          <div
+          <button
+            type="button"
             className="topbar-user-pill"
+            onClick={() => setProfileOpen(true)}
             style={{
               justifySelf: 'end',
               display: 'inline-flex',
               alignItems: 'center',
               gap: isMobile ? 0 : 10,
               padding: isMobile ? '0.3rem' : '0.4rem 0.7rem 0.4rem 0.4rem',
-              borderRadius: isMobile ? '999px' : '999px',
+              borderRadius: '999px',
               border: '1px solid var(--app-border)',
               background: '#fff',
               minWidth: 0,
               maxWidth: isMobile ? 44 : 'min(100%, 280px)',
               overflow: 'hidden',
               alignSelf: 'center',
+              cursor: 'pointer',
             }}
           >
             {!isMobile && (
@@ -522,21 +542,33 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                 {lockSummary.currentStreak}
               </span>
             )}
-            <span
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
-                color: '#fff',
-                display: 'grid',
-                placeItems: 'center',
-                fontWeight: 800,
-                flexShrink: 0,
-              }}
-            >
-              {avatarInitial}
-            </span>
+            {profileAvatarUrl ? (
+              <img
+                src={profileAvatarUrl}
+                alt="avatar"
+                style={{
+                  width: 34, height: 34, borderRadius: '50%',
+                  objectFit: 'cover', flexShrink: 0, display: 'block',
+                }}
+              />
+            ) : (
+              <span
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
+                  color: '#fff',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontWeight: 800,
+                  flexShrink: 0,
+                  fontSize: '0.82rem',
+                }}
+              >
+                {avatarInitial}
+              </span>
+            )}
             <span
               className="user-email-text"
               style={{
@@ -550,7 +582,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             >
               {displayName}
             </span>
-          </div>
+          </button>
         </header>
 
         <main style={{ minWidth: 0, width: '100%', flex: 1, overflowY: 'auto' }}>
@@ -559,6 +591,46 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       </div>
 
       <QuickSageBubble />
+
+      {sageWelcomeVisible && (
+        <div style={{
+          position: 'fixed', bottom: 'calc(90px + env(safe-area-inset-bottom,0px))', right: 20,
+          width: 'min(340px, calc(100vw - 40px))',
+          background: '#fff', borderRadius: 18,
+          border: '1px solid rgba(249,95,133,0.22)',
+          boxShadow: '0 18px 44px rgba(77,49,66,0.16)',
+          padding: '14px 16px', zIndex: 80,
+          fontFamily: "'DM Sans',sans-serif",
+          animation: 'sageWelcomeIn 0.35s cubic-bezier(0.22,1,0.36,1) both',
+        }}>
+          <style>{`@keyframes sageWelcomeIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}`}</style>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#f97bb3,#f95f85)', display: 'grid', placeItems: 'center', flexShrink: 0, fontSize: '1rem' }}>✨</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: '0 0 6px', fontSize: '0.76rem', fontWeight: 800, color: '#f95f85', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sage</p>
+              <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.55, color: '#4d3142' }}>
+                Hey, I&apos;m Sage &mdash; your coach inside PHASR. Every week I&apos;ll check in with you, reflect on what you&apos;ve been working on, and help you adjust your plan. Your first weekly check-in is in 7 days. Until then, let&apos;s focus on today.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                try { localStorage.setItem('phasr_sage_welcome_shown', '1') } catch {}
+                setSageWelcomeVisible(false)
+              }}
+              style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'rgba(249,95,133,0.1)', color: '#b98097', fontSize: '1rem', lineHeight: 1, display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+            >×</button>
+          </div>
+        </div>
+      )}
+
+      {profileOpen && (
+        <ProfilePage
+          user={user}
+          onClose={() => setProfileOpen(false)}
+          onProfileSaved={p => setProfileData(d => ({ ...d, ...p }))}
+        />
+      )}
 
       <style>{`
         @media (max-width: 768px) {
