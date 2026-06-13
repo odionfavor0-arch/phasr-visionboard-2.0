@@ -613,6 +613,33 @@ const SHOW_UP_STYLES = `
   font-size:12px;
   white-space:nowrap;
 }
+.showup-subrooms-panel{
+  width:100%;
+  max-width:860px;
+  margin:14px auto 0;
+  padding-top:18px;
+  border-top:1px solid rgba(249,95,133,0.12);
+}
+.showup-subrooms-title{
+  margin:0 0 12px;
+  color:#b98097;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.showup-subroom-create{
+  min-height:46px;
+  border-radius:14px;
+  border:1px dashed rgba(249,95,133,0.32);
+  background:#fff;
+  color:#f95f85;
+  padding:0 28px;
+  font-size:15px;
+  font-weight:900;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+}
 .showup-member-grid{
   display:grid;
   grid-template-columns:repeat(2, 1fr);
@@ -837,19 +864,21 @@ const SHOW_UP_STYLES = `
   box-shadow:none;
 }
 .showup-feed-card{
-  border:1px solid rgba(249,95,133,0.12);
-  border-radius:16px;
+  border:1px solid rgba(233,214,222,0.70);
+  border-radius:18px;
   background:#fff;
-  padding:14px;
+  padding:16px;
   position:relative;
   width:100%;
   max-width:100%;
   min-width:0;
   box-sizing:border-box;
   overflow:visible;
-  box-shadow:0 14px 34px rgba(88,37,61,0.07);
+  box-shadow:0 2px 10px rgba(77,49,66,0.06), 0 8px 28px rgba(77,49,66,0.05);
   margin:0 0 12px;
+  transition:box-shadow .18s;
 }
+.showup-feed-card:hover{box-shadow:0 4px 16px rgba(77,49,66,0.10), 0 12px 36px rgba(77,49,66,0.07)}
 .showup-feed-card:last-child{margin-bottom:0}
 .showup-feed-card.is-anonymous{
   background:#fff;
@@ -868,8 +897,13 @@ const SHOW_UP_STYLES = `
   border:1px solid rgba(249,95,133,0.32);
 }
 .showup-feed-card.is-activity{
-  background:#fff;
+  background:rgba(255,248,250,0.7);
   border:1px solid rgba(249,95,133,0.10);
+}
+.showup-feed-card.is-checkin{
+  background:linear-gradient(135deg,#fff,#fff4f8);
+  border:1px solid rgba(249,95,133,0.22);
+  box-shadow:0 2px 12px rgba(249,95,133,0.08), 0 8px 28px rgba(77,49,66,0.05);
 }
 .showup-pulse-label{
   margin:0 0 8px;
@@ -1000,33 +1034,41 @@ const SHOW_UP_STYLES = `
   flex-shrink:0;
 }
 .showup-reaction-chip{
-  border:none;
-  background:transparent;
-  padding:0;
+  border:1px solid rgba(233,214,222,0.8);
+  background:#fff8fa;
   color:#9a7088;
   min-width:auto;
+  transition:background .14s,color .14s;
 }
+.showup-reaction-chip:hover{background:#fff0f4;color:#f95f85}
 .showup-reaction-chip.is-active{
-  background:transparent;
+  background:rgba(59,130,246,0.08);
+  border-color:rgba(59,130,246,0.22);
   color:#3b82f6;
 }
 .showup-reaction-chip.is-active svg{
   fill:#3b82f6;
   stroke:#3b82f6;
 }
-.showup-comment-toggle,
-.showup-nudge-post-btn{
-  border:1px solid rgba(249,95,133,0.14);
-  background:rgba(249,95,133,0.045);
+.showup-comment-toggle{
+  border:1px solid rgba(233,214,222,0.8);
+  background:#fff8fa;
   color:#9a7088;
+  transition:background .14s;
 }
+.showup-comment-toggle:hover{background:#fff0f4;color:#f95f85}
 .showup-nudge-post-btn{
+  border:1px solid rgba(249,95,133,0.18);
+  background:rgba(249,95,133,0.06);
   color:#f95f85;
   margin-left:auto;
+  transition:background .14s;
 }
+.showup-nudge-post-btn:hover{background:rgba(249,95,133,0.13)}
 .showup-nudge-post-btn:disabled{
-  opacity:.45;
+  opacity:.38;
   cursor:default;
+  pointer-events:none;
 }
 .showup-compact-modal{
   width:min(420px, calc(100vw - 32px));
@@ -2567,6 +2609,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [roomCounts, setRoomCounts] = useState({})
   const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
+  const [localSessionMember, setLocalSessionMember] = useState(null)
   const [doneTime, setDoneTime] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -2626,10 +2669,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const membersRef = useRef([])
   const checkedInRef = useRef(false)
   const taskDoneRef = useRef(false)
+  const localSessionMemberRef = useRef(null)
 
   membersRef.current = members
   checkedInRef.current = checkedIn
   taskDoneRef.current = taskDone
+  localSessionMemberRef.current = localSessionMember
 
   const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const rooms = useMemo(() => {
@@ -2642,7 +2687,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   useEffect(() => {
     if (!selectedRoom) return
     setMembers(current => {
-      const selfMember = current.find(member => member.user_id === profile.id && member.checked_in)
+      const selfMember =
+        localSessionMemberRef.current ||
+        current.find(member => member.user_id === profile.id && member.checked_in)
       return selfMember ? [selfMember] : []
     })
     setFeedPosts([])
@@ -2992,7 +3039,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       }))
 
       if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
-        const existingSelf = membersRef.current.find(member => member.user_id === nextProfile.id && member.checked_in)
+        const existingSelf =
+          localSessionMemberRef.current ||
+          membersRef.current.find(member => member.user_id === nextProfile.id && member.checked_in)
         const shouldKeepSelf = Boolean(existingSelf) || checkedInRef.current
         if (shouldKeepSelf) nextMembers.unshift(existingSelf || {
           room_name: roomName,
@@ -3011,6 +3060,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       }
 
       setMembers(nextMembers)
+      const loadedSelf = nextMembers.find(member => member.user_id === nextProfile.id && member.checked_in)
+      if (loadedSelf) setLocalSessionMember(loadedSelf)
       hydrateCurrentMember(nextMembers, nextProfile)
       setError('')
     } catch (nextError) {
@@ -3020,7 +3071,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   function hydrateCurrentMember(nextMembers, nextProfile = profile) {
-    const myMember = nextMembers.find(member => member.user_id === nextProfile.id)
+    const myMember =
+      nextMembers.find(member => member.user_id === nextProfile.id) ||
+      localSessionMemberRef.current
     const checkInDate = myMember?.check_in_time ? new Date(myMember.check_in_time).toDateString() : ''
     const todayString = new Date().toDateString()
     const nextCheckedIn = Boolean(myMember?.checked_in) && checkInDate === todayString
@@ -3057,6 +3110,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         const remoteType = String(post.post_type || '')
         const remotePulseFormat = remoteType.startsWith('pulse:') ? remoteType.slice(6) : ''
         const remoteRecap = remoteType.startsWith('recap:')
+        const remoteCheckin = remoteType === 'checkin'
         const remoteTargetUserId = remoteType.startsWith('nudge:') ? remoteType.slice(6) : ''
         const authorId = post.author_id || post.user_id || `anon-${index}`
         const memberMatch = members.find(member => member.user_id === authorId)
@@ -3078,7 +3132,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               ? '\u{1F4C5} WEEKLY RECAP'
               : '',
           targetUserId: remoteTargetUserId || '',
-          postStyle: remoteRecap ? 'recap' : (remotePulseFormat ? 'pulse' : ''),
+          postStyle: remoteCheckin ? 'checkin' : (remoteRecap ? 'recap' : (remotePulseFormat ? 'pulse' : '')),
           createdAt: post.created_at || new Date().toISOString(),
           reactions: post.reactions || {},
           comments: safeArray(post.comments).map(comment => ({
@@ -3138,9 +3192,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     try {
       const remotePostType =
         postStyle === 'recap' ? 'recap:Weekly Recap'
-          : pulseFormat ? `pulse:${pulseFormat}`
-            : targetUserId ? `nudge:${targetUserId}`
-              : ''
+          : postStyle === 'checkin' ? 'checkin'
+            : pulseFormat ? `pulse:${pulseFormat}`
+              : targetUserId ? `nudge:${targetUserId}`
+                : ''
       const insertPayload = {
         id: nextPost.id,
         room_id: targetRoom,
@@ -3431,9 +3486,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       task_done: false,
       task_done_time: null,
       streak_count: currentMember?.streak_count || getCurrentStreakCount(),
+      created_at: currentMember?.created_at || new Date().toISOString(),
     }
     setCheckedIn(true)
     setTaskDone(false)
+    setLocalSessionMember(patch)
     setDoneTime('')
     setStoredActiveRoom(selectedRoom)
     writePresence(selectedRoom, profile.id, 'active')
@@ -3457,7 +3514,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         text: profile.about || `${profile.name} checked in for today's challenge.`,
         image: '',
         anonymous: false,
-        postStyle: '',
+        postStyle: 'checkin',
         author: {
           id: profile.id,
           name: profile.name,
@@ -3521,6 +3578,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     clearPresence(roomName, profile.id)
     setStoredActiveRoom('')
     setJoinedRoomName('')
+    setLocalSessionMember(null)
     setMembers([])
     setCheckedIn(false)
     setTaskDone(false)
@@ -3553,6 +3611,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
     setDoneBusy(true)
     setTaskDone(true)
+    setLocalSessionMember(current => ({ ...(current || donePatch), ...donePatch }))
     setDoneTime(nowIso)
     setToast('')
     setStoredActiveRoom('')
@@ -3936,8 +3995,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   const realMembers = useMemo(() => members.filter(member => !isPlaceholderMember(member)), [members])
-  const currentMember = useMemo(() => members.find(member => member.user_id === profile.id) || null, [members, profile.id])
+  const currentMember = useMemo(() => (
+    localSessionMember || members.find(member => member.user_id === profile.id) || null
+  ), [localSessionMember, members, profile.id])
   const selfSessionMember = useMemo(() => {
+    if (localSessionMember) return localSessionMember
     if (currentMember) return currentMember
     if (!checkedIn) return null
     return {
@@ -3953,7 +4015,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       task_done_time: null,
       streak_count: getCurrentStreakCount(),
     }
-  }, [checkedIn, currentMember, profile, selectedRoom, taskDone])
+  }, [checkedIn, currentMember, localSessionMember, profile, selectedRoom, taskDone])
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   const liveMembers = useMemo(() => {
     if (!selfSessionMember || realMembers.some(member => member.user_id === profile.id)) return realMembers
@@ -4433,10 +4495,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                 <button
                   type="button"
                   className="showup-avatar"
-                  style={{ overflow: 'hidden', padding: 0, border: '1px solid rgba(249,95,133,0.25)' }}
-                  onClick={() => {
-                    if (profile.avatar) setLightboxMedia({ url: profile.avatar, kind: 'image' })
-                  }}
+                  style={{ overflow: 'hidden', padding: 0, flexShrink: 0, cursor: profile.avatar ? 'pointer' : 'default' }}
+                  onClick={() => { if (profile.avatar) setLightboxMedia({ url: profile.avatar, kind: 'image' }) }}
                   aria-label="View your profile photo"
                 >
                   {profile.avatar
@@ -4444,18 +4504,18 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     : profile.initials}
                 </button>
                 <div className="showup-live-session-meta">
-                  <p className="showup-live-session-name">You</p>
-                  {profile.about ? <p className="showup-live-session-bio">{profile.about}</p> : <p className="showup-live-session-bio">Tap your card to add a bio.</p>}
-                  <p className="showup-live-session-time">Checked in at {formatTime(selfSessionMember.check_in_time)}</p>
+                  <p className="showup-live-session-name">{profile.name}</p>
+                  {profile.about ? <p className="showup-live-session-bio">{profile.about}</p> : null}
+                  <p className="showup-live-session-time">✓ {formatTime(selfSessionMember.check_in_time)}</p>
                 </div>
                 <div className="showup-live-session-actions">
                   <button
                     type="button"
-                    className={`showup-live-done-btn ${taskDone ? 'is-complete' : ''}`}
+                    className={`showup-live-done-btn${taskDone ? ' is-complete' : ''}`}
                     onClick={handleMarkDone}
                     disabled={taskDone || doneBusy}
                   >
-                    {taskDone ? 'Done' : (doneBusy ? 'Saving...' : 'Done')}
+                    {taskDone ? 'Done ✓' : (doneBusy ? 'Saving...' : 'Mark Done')}
                   </button>
                 </div>
               </div>
@@ -4604,7 +4664,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                 const feedClass = [
                   'showup-feed-card',
                   post.anonymous ? 'is-anonymous' : '',
-                  post.postStyle === 'activity' ? 'is-activity' : (post.system ? 'is-sage' : ''),
+                  post.postStyle === 'checkin' ? 'is-checkin' : (post.postStyle === 'activity' ? 'is-activity' : (post.system ? 'is-sage' : '')),
                   post.postStyle === 'pulse' ? 'is-pulse' : '',
                   post.postStyle === 'recap' ? 'is-recap' : '',
                 ].filter(Boolean).join(' ')
@@ -4620,12 +4680,23 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                 >
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
-                      <div className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                      <button
+                        type="button"
+                        className="showup-avatar"
+                        style={{ overflow: 'hidden', padding: 0, flexShrink: 0, cursor: (!post.anonymous && post.authorAvatarUrl) ? 'pointer' : 'default', border: 'none', background: 'transparent' }}
+                        onClick={event => {
+                          if (!post.anonymous && post.authorAvatarUrl) {
+                            event.stopPropagation()
+                            setLightboxMedia({ url: post.authorAvatarUrl, kind: 'image' })
+                          }
+                        }}
+                        aria-label={post.authorName ? `View ${post.authorName}'s photo` : undefined}
+                      >
                         {!post.anonymous && post.authorAvatarUrl
                           ? <img src={post.authorAvatarUrl} alt={post.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
                           : (post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName))
                         }
-                      </div>
+                      </button>
                       <div className="showup-feed-header-main">
                         <p className="showup-feed-name">{post.anonymous ? 'Anonymous \u00B7 Room' : post.authorName}</p>
                         <p className="showup-feed-time">{formatTimestamp(post.createdAt)}</p>
