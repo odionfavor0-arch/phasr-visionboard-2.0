@@ -360,6 +360,19 @@ const SHOW_UP_STYLES = `
 }
 .showup-room-menu-item:hover{background:rgba(249,95,133,0.06)}
 .showup-room-menu-item--danger{color:#f95f85}
+.showup-back-btn{
+  transition:background .2s cubic-bezier(0.4,0,0.2,1), color .2s, transform .22s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+}
+.showup-back-btn:hover{
+  background:rgba(249,95,133,0.12);
+  color:#f95f85;
+  transform:translateX(-3px);
+}
+@media (prefers-reduced-motion: reduce){
+  .showup-back-btn{ transition:background .2s, color .2s; }
+  .showup-back-btn:hover{ transform:none; }
+}
 .showup-room-title-block{
   min-width:0;
   display:grid;
@@ -544,12 +557,13 @@ const SHOW_UP_STYLES = `
   display:grid;
   grid-template-columns:auto minmax(0,1fr) auto;
   align-items:center;
-  gap:12px;
-  padding:12px 14px;
-  border:1px solid rgba(249,95,133,0.16);
-  border-radius:18px;
-  background:rgba(255,255,255,0.86);
-  box-shadow:0 14px 34px rgba(88,37,61,0.06);
+  gap:14px;
+  padding:10px 2px 14px;
+  border:none;
+  border-bottom:1px solid rgba(249,95,133,0.12);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
   box-sizing:border-box;
 }
 .showup-live-session-meta{
@@ -864,21 +878,21 @@ const SHOW_UP_STYLES = `
   box-shadow:none;
 }
 .showup-feed-card{
-  border:1px solid rgba(233,214,222,0.70);
-  border-radius:18px;
+  border:1px solid rgba(236,218,226,0.65);
+  border-radius:16px;
   background:#fff;
-  padding:16px;
+  padding:14px 16px 12px;
   position:relative;
   width:100%;
   max-width:100%;
   min-width:0;
   box-sizing:border-box;
   overflow:visible;
-  box-shadow:0 2px 10px rgba(77,49,66,0.06), 0 8px 28px rgba(77,49,66,0.05);
-  margin:0 0 12px;
-  transition:box-shadow .18s;
+  box-shadow:0 1px 4px rgba(77,49,66,0.05), 0 4px 16px rgba(77,49,66,0.06);
+  margin:0 0 10px;
+  transition:box-shadow .2s cubic-bezier(0.4,0,0.2,1);
 }
-.showup-feed-card:hover{box-shadow:0 4px 16px rgba(77,49,66,0.10), 0 12px 36px rgba(77,49,66,0.07)}
+.showup-feed-card:hover{box-shadow:0 2px 8px rgba(77,49,66,0.08), 0 8px 24px rgba(77,49,66,0.08)}
 .showup-feed-card:last-child{margin-bottom:0}
 .showup-feed-card.is-anonymous{
   background:#fff;
@@ -924,10 +938,10 @@ const SHOW_UP_STYLES = `
 .showup-feed-header-main{
   min-width:0;
   display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  justify-content:center;
-  gap:2px;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
   width:100%;
   overflow:hidden;
 }
@@ -2709,19 +2723,21 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   useEffect(() => {
     if (!supabase || !selectedRoom) return undefined
+    // Use unfiltered subscription to ensure delivery even without server-side filter support.
+    // We verify room_id client-side before reloading.
     const channel = supabase
       .channel(`room-feed-${selectedRoom}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'room_feed_posts',
-        filter: `room_id=eq.${selectedRoom}`,
       }, payload => {
-        console.log('[ShowUp] realtime feed event', payload.eventType, payload.new)
-        loadFeedPosts(selectedRoom)
+        const rowRoom = payload.new?.room_id || payload.old?.room_id
+        console.log('[ShowUp] realtime feed event', payload.eventType, 'room_id:', rowRoom, 'current:', selectedRoom)
+        if (!rowRoom || rowRoom === selectedRoom) loadFeedPosts(selectedRoom)
       })
       .subscribe(status => {
-        console.log('[ShowUp] feed channel status', status, selectedRoom)
+        console.log('[ShowUp] feed channel status', status, 'room:', selectedRoom)
       })
     return () => {
       supabase.removeChannel(channel)
@@ -2737,13 +2753,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         event: '*',
         schema: 'public',
         table: 'show_up_checkins',
-        filter: `room_name=eq.${selectedRoom}`,
       }, payload => {
-        console.log('[ShowUp] realtime checkin event', payload.eventType, payload.new?.display_name || payload.new?.user_id)
-        loadMembers(selectedRoom)
+        const rowRoom = payload.new?.room_name || payload.old?.room_name
+        console.log('[ShowUp] realtime checkin event', payload.eventType, 'room_name:', rowRoom, 'user:', payload.new?.display_name || payload.new?.user_id)
+        if (!rowRoom || rowRoom === selectedRoom) loadMembers(selectedRoom)
       })
       .subscribe(status => {
-        console.log('[ShowUp] checkins channel status', status, selectedRoom)
+        console.log('[ShowUp] checkins channel status', status, 'room:', selectedRoom)
       })
     return () => { supabase.removeChannel(channel) }
   }, [selectedRoom])
@@ -3029,7 +3045,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       if (membersError) throw membersError
 
-      console.log('[ShowUp] loadMembers', roomName, 'rows:', data?.length, data?.map(m => m.display_name || m.user_id))
+      console.log('[ShowUp] loadMembers room_name:', roomName, '→ rows returned:', data?.length, data?.map(m => (m.display_name || m.user_id) + (m.checked_in ? ' ✓' : '')))
 
       const nextMembers = (data || []).map(member => ({
         ...member,
@@ -3074,16 +3090,15 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     const myMember =
       nextMembers.find(member => member.user_id === nextProfile.id) ||
       localSessionMemberRef.current
-    const checkInDate = myMember?.check_in_time ? new Date(myMember.check_in_time).toDateString() : ''
+    // Presence in the room = active. No separate check-in step.
+    const nextCheckedIn = Boolean(myMember)
     const todayString = new Date().toDateString()
-    const nextCheckedIn = Boolean(myMember?.checked_in) && checkInDate === todayString
     const taskDoneDate = myMember?.task_done_time ? new Date(myMember.task_done_time).toDateString() : ''
     const nextTaskDone = Boolean(myMember?.task_done) && taskDoneDate === todayString
     setCheckedIn(nextCheckedIn)
     setTaskDone(nextTaskDone)
-    if (myMember?.check_in_time && !nextTaskDone) setDoneTime('')
-    if (myMember?.task_done_time) setDoneTime(myMember.task_done_time)
-    if (!nextTaskDone) setDoneTime('')
+    if (nextTaskDone && myMember?.task_done_time) setDoneTime(myMember.task_done_time)
+    else setDoneTime('')
   }
 
   async function loadFeedPosts(roomName) {
@@ -3098,12 +3113,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         .from('room_feed_posts')
         .select('*')
         .eq('room_id', roomName)
-        .order('created_at', { ascending: false })
-        .limit(50)
+        .order('created_at', { ascending: true })
+        .limit(100)
 
       if (feedError) throw feedError
 
-      console.log('[ShowUp] loadFeedPosts', roomName, 'rows:', data?.length, data?.map(p => ({ id: p.id, author: p.author_name, reactions: p.reactions, comments: Array.isArray(p.comments) ? p.comments.length : p.comments })))
+      console.log('[ShowUp] loadFeedPosts room_id:', roomName, '→ rows returned:', data?.length, data?.map(p => p.id + ':' + (p.author_name || '?')))
 
       const remotePosts = (data || []).map((post, index) => {
         const remoteId = String(post.id || `${post.author_id || post.user_id || 'room'}-${post.created_at || index}`)
@@ -3419,36 +3434,45 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       return
     }
 
-    const payload = {
-      room_name: roomName,
-      user_id: profile.id,
-      display_name: profile.name,
-      initials: profile.initials,
-      avatar_url: profile.avatar || '',
-      about: profile.about || '',
-      checked_in: false,
-      check_in_time: null,
-      task_done: false,
-      task_done_time: null,
-      streak_count: getCurrentStreakCount(),
-      created_at: new Date().toISOString(),
-    }
+    const nowIso = new Date().toISOString()
 
     try {
-      if (!supabase) throw new Error(supabaseConfigError || 'Supabase unavailable')
       const { data: existingRemote, error: lookupError } = await supabase
         .from('show_up_checkins')
-        .select('user_id')
+        .select('*')
         .eq('room_name', roomName)
         .eq('user_id', profile.id)
         .maybeSingle()
       if (lookupError) throw lookupError
-      if (existingRemote) {
-        setJoinedRoomName(roomName)
-        return
+
+      // Preserve task_done if already marked done today
+      const prevTaskDone = Boolean(existingRemote?.task_done)
+      const taskDoneDate = existingRemote?.task_done_time
+        ? new Date(existingRemote.task_done_time).toDateString()
+        : ''
+      const taskDoneToday = prevTaskDone && taskDoneDate === new Date().toDateString()
+
+      const payload = {
+        room_name: roomName,
+        user_id: profile.id,
+        display_name: profile.name,
+        initials: profile.initials,
+        avatar_url: profile.avatar || '',
+        about: profile.about || '',
+        checked_in: true,
+        check_in_time: nowIso,
+        task_done: taskDoneToday,
+        task_done_time: taskDoneToday ? existingRemote.task_done_time : null,
+        streak_count: getCurrentStreakCount(),
+        created_at: existingRemote?.created_at || nowIso,
       }
+
       await upsertCheckinRow(payload)
       setJoinedRoomName(roomName)
+      setCheckedIn(true)
+      setTaskDone(taskDoneToday)
+      setLocalSessionMember(payload)
+      console.log('[ShowUp] ensureRoomMembership: joined room', roomName, 'checked_in:true task_done:', taskDoneToday)
     } catch (nextError) {
       console.error('Show Up membership failed', nextError)
       setError('Could not join room in Supabase.')
@@ -3589,7 +3613,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   async function handleMarkDone() {
-    if (!selectedRoom || !checkedIn || taskDone || doneBusy) return
+    if (!selectedRoom || taskDone || doneBusy) return
     const nowIso = new Date().toISOString()
     const roomName = selectedRoom
     const lastDoneDate = localStorage.getItem(getLastDoneDateStorageKey(roomName, profile.id))
@@ -4039,17 +4063,22 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     const rankSource = selfSessionMember && !realMembers.some(member => member.user_id === profile.id)
       ? [selfSessionMember, ...realMembers]
       : realMembers
+    const roomActivity = selectedRoom ? getRoomActivity(selectedRoom) : []
     return [...rankSource]
       .filter(member => !isPlaceholderMember(member) && member.display_name && member.display_name !== 'User')
-      .map(member => ({
-        ...member,
-        streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
-      }))
+      .map(member => {
+        const memberTasksDone = roomActivity.filter(e => e.type === 'done' && e.userId === member.user_id).length
+        return {
+          ...member,
+          streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
+          tasksValue: memberTasksDone > 0 ? memberTasksDone : (member.task_done ? 1 : 0),
+        }
+      })
       .sort((a, b) => (
         b.streakValue - a.streakValue ||
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
-  }, [activeTab, realMembers, profile.id, selfSessionMember])
+  }, [activeTab, realMembers, profile.id, selfSessionMember, selectedRoom])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
   const joinedRoomMember = useMemo(() => (
@@ -4418,7 +4447,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         {pulseBanner ? <div className="showup-sync-notice" style={{ marginBottom: 10 }}>{pulseBanner}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">
-            <button type="button" className="showup-header-btn" onClick={handleBackPress}>{'←'}</button>
+            <button type="button" className="showup-header-btn showup-back-btn" onClick={handleBackPress} title="Leave room" aria-label="Leave room">{'←'}</button>
             <h1 className="showup-room-title">{formatRoomTitle(selectedRoom)}</h1>
             <div className="showup-room-menu-wrap">
               <button
@@ -4450,13 +4479,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     >
                       Room info
                     </button>
-                    <button
-                      type="button"
-                      className="showup-room-menu-item showup-room-menu-item--danger"
-                      onClick={() => { setRoomMenuOpen(false); setExitPromptOpen(true) }}
-                    >
-                      Leave room
-                    </button>
                   </div>
                 </>
               ) : null}
@@ -4485,12 +4507,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
         {activeTab === 'live' ? (
           <div style={{ display: 'grid', gap: 16 }}>
-            {!checkedIn ? (
-              <div className="showup-live-checkin-strip">
-                <p className="showup-live-checkin-text">You haven't checked in yet today</p>
-                <button type="button" className="showup-checkin-btn" onClick={handleCheckIn}>Check In</button>
-              </div>
-            ) : selfSessionMember ? (
+            {selfSessionMember ? (
               <div className="showup-live-session-strip">
                 <button
                   type="button"
@@ -4506,7 +4523,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                 <div className="showup-live-session-meta">
                   <p className="showup-live-session-name">{profile.name}</p>
                   {profile.about ? <p className="showup-live-session-bio">{profile.about}</p> : null}
-                  <p className="showup-live-session-time">✓ {formatTime(selfSessionMember.check_in_time)}</p>
                 </div>
                 <div className="showup-live-session-actions">
                   <button
@@ -4586,21 +4602,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         ) : null}
 
         {activeTab === 'feed' ? (
-          !checkedIn ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 36 }}>🔒</div>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#4d3142' }}>Check in to access the feed</p>
-              <p style={{ margin: 0, fontSize: 13, color: '#9a7088', maxWidth: 260, lineHeight: 1.5 }}>Let your room know you showed up today before reading and posting.</p>
-              <button
-                type="button"
-                className="showup-checkin-btn"
-                onClick={handleCheckIn}
-                style={{ marginTop: 8 }}
-              >
-                Check In Now
-              </button>
-            </div>
-          ) : (
           <div className="showup-feed-view" ref={feedViewRef}>
             {progressToast ? (
               <div className="showup-progress-toast" role="status" aria-live="polite">
@@ -4739,9 +4740,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       }}
                       aria-label={likedByMe ? 'Unlike post' : 'Like post'}
                     >
-                      <ThumbsUp size={15} strokeWidth={2.2} />
-                      <span>Like</span>
-                      <span>{likeCount}</span>
+                      <ThumbsUp size={14} strokeWidth={2.2} />
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{likeCount > 0 ? likeCount : 'Like'}</span>
                     </button>
                     <button
                       type="button"
@@ -4752,46 +4752,29 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       }}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
-                      <span>Comment</span>
-                      <span>{safeArray(post.comments).length}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{safeArray(post.comments).length > 0 ? safeArray(post.comments).length : 'Reply'}</span>
                     </button>
-                    <button
-                      type="button"
-                      className="showup-nudge-post-btn"
-                      disabled={post.authorId === profile.id || !post.authorId || post.system}
-                      onClick={event => {
-                        event.stopPropagation()
-                        if (post.authorId === profile.id || !post.authorId || post.system) return
-                        handleRoomAction('nudge', post.authorId, post.authorName)
-                      }}
-                    >
-                      Nudge
-                    </button>
+                    {!post.system && post.authorId && post.authorId !== profile.id ? (
+                      <button
+                        type="button"
+                        className="showup-nudge-post-btn"
+                        onClick={event => {
+                          event.stopPropagation()
+                          handleRoomAction('nudge', post.authorId, post.authorName)
+                        }}
+                      >
+                        Nudge
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 )
               })
             )}
           </div>
-          )
         ) : null}
 
         {activeTab === 'ranks' ? (
-          !checkedIn ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 36 }}>🏆</div>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#4d3142' }}>Check in to see the leaderboard</p>
-              <p style={{ margin: 0, fontSize: 13, color: '#9a7088', maxWidth: 260, lineHeight: 1.5 }}>You need to show up today before you can see how the room stacks up.</p>
-              <button
-                type="button"
-                className="showup-checkin-btn"
-                onClick={handleCheckIn}
-                style={{ marginTop: 8 }}
-              >
-                Check In Now
-              </button>
-            </div>
-          ) : (
           <div className="showup-ranks-view">
             {rankedMembers.length === 0 ? (
               <div className="showup-empty">No members ranked yet.</div>
@@ -4828,16 +4811,15 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     <p className="showup-rank-name">{isMe ? 'You' : member.display_name}</p>
                     <p className="showup-rank-streak">{member.streakValue > 0 ? `🔥 ${member.streakValue} day streak` : 'No streak yet'}</p>
                   </div>
-                  <div className="showup-rank-score" aria-label={`${member.streakValue} day streak`} style={{ textAlign: 'center' }}>
-                    <span className="showup-rank-score-value">{member.streakValue}</span>
-                    <span className="showup-rank-score-label">streak</span>
+                  <div className="showup-rank-score" aria-label={`${member.tasksValue} tasks completed`} style={{ textAlign: 'center' }}>
+                    <span className="showup-rank-score-value">{member.tasksValue}</span>
+                    <span className="showup-rank-score-label">tasks</span>
                   </div>
                   {topRole ? <div className="showup-rank-badge">{topRole}</div> : <div />}
                 </div>
               )
             })}
           </div>
-          )
         ) : null}
       </div>
 
