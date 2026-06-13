@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreVertical, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
+import { getSageAvatarUrl } from '../lib/userPreferences'
 
 const SHOW_UP_STYLES = `
 .showup-root{
@@ -1977,6 +1978,210 @@ const SHOW_UP_STYLES = `
     box-shadow:0 14px 28px rgba(249,95,133,0.22);
   }
 }
+
+/* ── Room info ────────────────────────────────────────────────── */
+.showup-info-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 14px;
+  background:#fff;
+  border-radius:10px;
+  border:1px solid rgba(232,64,122,0.1);
+}
+.showup-info-label{
+  font-size:13px;
+  font-weight:600;
+  color:#b98097;
+}
+.showup-info-value{
+  font-size:13px;
+  font-weight:800;
+  color:#4d3142;
+}
+
+/* ── Groups tab ───────────────────────────────────────────────── */
+.showup-groups-view{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  padding-bottom:18px;
+}
+.showup-groups-empty{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  padding:48px 24px;
+}
+.showup-group-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 16px;
+  background:#fff;
+  border:none;
+  border-bottom:1px solid rgba(77,49,66,0.07);
+  cursor:pointer;
+  width:100%;
+  font-family:inherit;
+  transition:background .15s;
+}
+.showup-group-row:first-of-type{ border-radius:12px 12px 0 0; }
+.showup-group-row:last-of-type{ border-radius:0 0 12px 12px; border-bottom:none; }
+.showup-group-row:only-of-type{ border-radius:12px; border-bottom:none; }
+.showup-group-row:hover{ background:#fff4f7; }
+.showup-group-icon{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  background:rgba(249,95,133,0.1);
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+}
+
+/* ── Sub-room WhatsApp chat overlay ──────────────────────────── */
+.showup-subroomchat-overlay{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  display:flex;
+  flex-direction:column;
+  background:#fff8f9;
+  font-family:'DM Sans',sans-serif;
+}
+.showup-subroomchat-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  background:#fff;
+  border-bottom:1px solid rgba(232,64,122,0.12);
+  flex-shrink:0;
+}
+.showup-subroomchat-messages{
+  flex:1;
+  overflow-y:auto;
+  padding:16px 12px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  -webkit-overflow-scrolling:touch;
+}
+.showup-chat-row{
+  display:flex;
+  align-items:flex-end;
+  gap:7px;
+  margin-bottom:2px;
+}
+.showup-chat-row.is-mine{
+  flex-direction:row-reverse;
+}
+.showup-chat-row.is-theirs{
+  flex-direction:row;
+}
+.showup-chat-avatar{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  background:rgba(249,95,133,0.14);
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  font-size:10px;
+  font-weight:800;
+  color:#f95f85;
+  overflow:hidden;
+}
+.showup-chat-avatar-spacer{
+  width:30px;
+  flex-shrink:0;
+}
+.showup-chat-bubble-col{
+  display:flex;
+  flex-direction:column;
+  max-width:72%;
+  min-width:0;
+}
+.showup-chat-sender-name{
+  margin:0 0 3px 4px;
+  font-size:11px;
+  font-weight:700;
+  color:#f95f85;
+}
+.showup-chat-bubble{
+  padding:9px 12px 6px;
+  border-radius:16px;
+  position:relative;
+  word-break:break-word;
+}
+.showup-chat-bubble.is-mine{
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+  border-bottom-right-radius:4px;
+}
+.showup-chat-bubble.is-theirs{
+  background:#fff;
+  color:#4d3142;
+  border-bottom-left-radius:4px;
+  border:1px solid rgba(232,64,122,0.12);
+}
+.showup-chat-text{
+  margin:0 0 4px;
+  font-size:14px;
+  line-height:1.45;
+}
+.showup-chat-time{
+  display:block;
+  font-size:10px;
+  opacity:.65;
+  text-align:right;
+}
+.showup-subroomchat-input-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  background:#fff;
+  border-top:1px solid rgba(232,64,122,0.12);
+  flex-shrink:0;
+}
+.showup-subroomchat-input{
+  flex:1;
+  border:1px solid rgba(232,64,122,0.22);
+  border-radius:24px;
+  padding:10px 16px;
+  font-size:14px;
+  font-family:inherit;
+  color:#4d3142;
+  background:#fff8f9;
+  outline:none;
+  min-width:0;
+}
+.showup-subroomchat-input:focus{
+  border-color:#f95f85;
+  box-shadow:0 0 0 3px rgba(249,95,133,0.15);
+}
+.showup-subroomchat-send{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  border:none;
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  flex-shrink:0;
+  transition:opacity .15s;
+}
+.showup-subroomchat-send:disabled{
+  opacity:.45;
+  cursor:default;
+}
 `
 
 const ROOM_DEFINITIONS = [
@@ -2667,6 +2872,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [dmSheetMember, setDmSheetMember] = useState(null)
   const [dmMessages, setDmMessages] = useState([])
   const [dmDraft, setDmDraft] = useState('')
+  const [sageAvatarUrl, setSageAvatarUrlState] = useState(() => getSageAvatarUrl())
+  const [roomInfoOpen, setRoomInfoOpen] = useState(false)
+  const [subRooms, setSubRooms] = useState([])
+  const [activeSubRoom, setActiveSubRoom] = useState(null)
+  const [subRoomMessages, setSubRoomMessages] = useState([])
+  const [subRoomMsgDraft, setSubRoomMsgDraft] = useState('')
   const [h2hMember, setH2hMember] = useState(null)
   const [roomMenuOpen, setRoomMenuOpen] = useState(false)
   const [createSubRoomOpen, setCreateSubRoomOpen] = useState(false)
@@ -2712,6 +2923,36 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     loadFeedPosts(selectedRoom)
     setRoomStreak(readRoomStreak(selectedRoom))
   }, [selectedRoom])
+
+  useEffect(() => {
+    if (!selectedRoom) return
+    loadSubRooms(selectedRoom)
+  }, [selectedRoom])
+
+  // Subscribe to sub-room messages when a sub-room is open
+  useEffect(() => {
+    if (!supabase || !activeSubRoom) return undefined
+    loadSubRoomMessages(activeSubRoom.id)
+    const channel = supabase
+      .channel(`sub-room-msgs-${activeSubRoom.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'sub_room_messages',
+        filter: `sub_room_id=eq.${activeSubRoom.id}`,
+      }, payload => {
+        const row = payload.new
+        if (!row) return
+        setSubRoomMessages(prev => {
+          const exists = prev.some(m => m.id === row.id)
+          return exists ? prev : [...prev, row]
+        })
+      })
+      .subscribe(status => {
+        console.log('[ShowUp] sub-room-msgs channel', status, activeSubRoom.id)
+      })
+    return () => { supabase.removeChannel(channel) }
+  }, [activeSubRoom])
 
   useEffect(() => {
     if (activeTab !== 'feed' || !selectedRoom) return undefined
@@ -3045,7 +3286,15 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       if (membersError) throw membersError
 
-      console.log('[ShowUp] loadMembers room_name:', roomName, '→ rows returned:', data?.length, data?.map(m => (m.display_name || m.user_id) + (m.checked_in ? ' ✓' : '')))
+      const rowCount = data?.length ?? 0
+      console.log(
+        '[ShowUp] loadMembers room_name:', roomName,
+        '→ rows returned:', rowCount,
+        rowCount === 1
+          ? '⚠️ Only 1 row — if you expect 2+ users, check Supabase RLS on show_up_checkins. Policy must allow SELECT where room_name matches.'
+          : '',
+        data?.map(m => (m.display_name || m.user_id) + (m.checked_in ? ' ✓' : '')),
+      )
 
       const nextMembers = (data || []).map(member => ({
         ...member,
@@ -3161,9 +3410,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setFeedPosts(remotePosts)
     } catch (nextError) {
       console.error('[ShowUp] loadFeedPosts failed', nextError.message || nextError)
-      setFeedReady(false)
-      setFeedPosts([])
-      setError('')
+      setFeedReady(true)
+      // Keep existing posts — never wipe the feed on a transient fetch error
     }
   }
 
@@ -3467,15 +3715,18 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         created_at: existingRemote?.created_at || nowIso,
       }
 
-      await upsertCheckinRow(payload)
+      // Optimistic: update local state immediately so the user appears in Live
       setJoinedRoomName(roomName)
       setCheckedIn(true)
       setTaskDone(taskDoneToday)
       setLocalSessionMember(payload)
       console.log('[ShowUp] ensureRoomMembership: joined room', roomName, 'checked_in:true task_done:', taskDoneToday)
+
+      // Persist to Supabase (non-blocking for UX — user is already visible locally)
+      await upsertCheckinRow(payload)
     } catch (nextError) {
-      console.error('Show Up membership failed', nextError)
-      setError('Could not join room in Supabase.')
+      console.error('[ShowUp] ensureRoomMembership failed — user visible locally but not in Supabase', nextError)
+      // Do NOT clear local state — the user should still see themselves in the room
     }
   }
 
@@ -4075,6 +4326,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         }
       })
       .sort((a, b) => (
+        b.tasksValue - a.tasksValue ||
         b.streakValue - a.streakValue ||
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
@@ -4158,6 +4410,64 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
     setSubRoomName(''); setSubRoomDesc(''); setSubRoomLimit(20); setSubRoomPaid(false); setSubRoomPrice('')
     setCreateSubRoomOpen(false)
+    // Reload sub-rooms list after creation
+    if (supabase && selectedRoom) loadSubRooms(selectedRoom)
+  }
+
+  async function loadSubRooms(roomName) {
+    if (!supabase || !roomName) return
+    try {
+      const { data, error } = await supabase
+        .from('sub_rooms')
+        .select('*')
+        .eq('parent_room_name', roomName)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      setSubRooms(data || [])
+    } catch (err) {
+      console.error('[ShowUp] loadSubRooms failed', err.message || err)
+    }
+  }
+
+  async function loadSubRoomMessages(subRoomId) {
+    if (!supabase || !subRoomId) return
+    try {
+      const { data, error } = await supabase
+        .from('sub_room_messages')
+        .select('*')
+        .eq('sub_room_id', subRoomId)
+        .order('created_at', { ascending: true })
+        .limit(200)
+      if (error) throw error
+      setSubRoomMessages(data || [])
+    } catch (err) {
+      console.error('[ShowUp] loadSubRoomMessages failed', err.message || err)
+    }
+  }
+
+  async function sendSubRoomMessage() {
+    const text = subRoomMsgDraft.trim()
+    if (!text || !activeSubRoom || !supabase) return
+    setSubRoomMsgDraft('')
+    const msg = {
+      sub_room_id: activeSubRoom.id,
+      sender_id: profile.id,
+      sender_name: profile.name,
+      sender_avatar_url: profile.avatar || '',
+      sender_initials: profile.initials || buildInitials(profile.name),
+      content: text,
+      created_at: new Date().toISOString(),
+    }
+    // Optimistic append
+    setSubRoomMessages(prev => [...prev, { ...msg, id: `local-${Date.now()}` }])
+    try {
+      const { data, error } = await supabase.from('sub_room_messages').insert(msg).select().single()
+      if (error) throw error
+      // Replace optimistic message with persisted one
+      setSubRoomMessages(prev => prev.map(m => m.id === `local-${Date.now()}` ? data : m))
+    } catch (err) {
+      console.error('[ShowUp] sendSubRoomMessage failed', err.message || err)
+    }
   }
 
   if (!selectedRoom) {
@@ -4475,7 +4785,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     <button
                       type="button"
                       className="showup-room-menu-item"
-                      onClick={() => setRoomMenuOpen(false)}
+                      onClick={() => { setRoomInfoOpen(true); setRoomMenuOpen(false) }}
                     >
                       Room info
                     </button>
@@ -4491,6 +4801,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
             { key: 'live', label: 'Live' },
             { key: 'feed', label: 'Feed' },
             { key: 'ranks', label: 'Stacks' },
+            { key: 'groups', label: 'Groups' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -4693,9 +5004,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                         }}
                         aria-label={post.authorName ? `View ${post.authorName}'s photo` : undefined}
                       >
-                        {!post.anonymous && post.authorAvatarUrl
-                          ? <img src={post.authorAvatarUrl} alt={post.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
-                          : (post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName))
+                        {post.system || post.authorId === 'sage'
+                          ? <img src={sageAvatarUrl} alt="Sage" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                          : (!post.anonymous && post.authorAvatarUrl
+                            ? <img src={post.authorAvatarUrl} alt={post.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                            : (post.anonymous ? '\u{1F464}' : post.authorInitials || buildInitials(post.authorName)))
                         }
                       </button>
                       <div className="showup-feed-header-main">
@@ -4821,7 +5134,136 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
             })}
           </div>
         ) : null}
+
+        {activeTab === 'groups' ? (
+          <div className="showup-groups-view">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#b98097', fontWeight: 600 }}>Sub-rooms · {subRooms.length}</p>
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', color: '#f95f85', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}
+                onClick={() => setCreateSubRoomOpen(true)}
+              >
+                + Create
+              </button>
+            </div>
+            {subRooms.length === 0 ? (
+              <div className="showup-groups-empty">
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#4d3142', marginBottom: 6 }}>No sub-rooms yet</p>
+                <p style={{ margin: 0, fontSize: 13, color: '#b98097', lineHeight: 1.5 }}>Create a focused challenge group for this room. Keep it small and specific.</p>
+                <button
+                  type="button"
+                  className="showup-exit-option"
+                  style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff', marginTop: 16 }}
+                  onClick={() => setCreateSubRoomOpen(true)}
+                >
+                  <strong>Create sub-room</strong>
+                </button>
+              </div>
+            ) : subRooms.map(sr => (
+              <button
+                key={sr.id}
+                type="button"
+                className="showup-group-row"
+                onClick={() => { setActiveSubRoom(sr); setSubRoomMessages([]) }}
+              >
+                <div className="showup-group-icon">
+                  <MessageCircle size={18} strokeWidth={2.1} color="#f95f85" />
+                </div>
+                <div style={{ minWidth: 0, flex: 1, textAlign: 'left' }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#4d3142', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.name}</p>
+                  {sr.description ? <p style={{ margin: '2px 0 0', fontSize: 12, color: '#b98097', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.description}</p> : null}
+                </div>
+                <ChevronRight size={16} strokeWidth={2.2} color="#cca8b8" />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
+
+      {/* Sub-room WhatsApp-style chat overlay */}
+      {activeSubRoom ? (() => {
+        const subRoomMsgRef = { current: null }
+        const isMyMessage = msg => msg.sender_id === profile.id
+        const formatMsgTime = ts => {
+          if (!ts) return ''
+          const d = new Date(ts)
+          return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        }
+        const groupedMessages = subRoomMessages.reduce((groups, msg, i) => {
+          const prev = subRoomMessages[i - 1]
+          const showSender = !prev || prev.sender_id !== msg.sender_id
+          groups.push({ ...msg, showSender })
+          return groups
+        }, [])
+        return (
+          <div className="showup-subroomchat-overlay">
+            <div className="showup-subroomchat-header">
+              <button
+                type="button"
+                className="showup-header-btn showup-back-btn"
+                onClick={() => { setActiveSubRoom(null); setSubRoomMessages([]) }}
+                aria-label="Back to groups"
+              >{'←'}</button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#4d3142', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeSubRoom.name}</p>
+                {activeSubRoom.description ? <p style={{ margin: 0, fontSize: 11, color: '#b98097', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeSubRoom.description}</p> : null}
+              </div>
+            </div>
+
+            <div className="showup-subroomchat-messages" ref={el => { if (el) el.scrollTop = el.scrollHeight }}>
+              {groupedMessages.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <p style={{ margin: 0, fontSize: 14, color: '#b98097', fontWeight: 600 }}>No messages yet.</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 12, color: '#cca8b8' }}>Be the first to say something.</p>
+                </div>
+              ) : groupedMessages.map((msg, i) => {
+                const mine = isMyMessage(msg)
+                return (
+                  <div key={msg.id || i} className={`showup-chat-row ${mine ? 'is-mine' : 'is-theirs'}`}>
+                    {!mine && msg.showSender ? (
+                      <div className="showup-chat-avatar">
+                        {msg.sender_avatar_url
+                          ? <img src={msg.sender_avatar_url} alt={msg.sender_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                          : (msg.sender_initials || buildInitials(msg.sender_name || 'U'))}
+                      </div>
+                    ) : !mine ? <div className="showup-chat-avatar-spacer" /> : null}
+                    <div className="showup-chat-bubble-col">
+                      {!mine && msg.showSender ? (
+                        <p className="showup-chat-sender-name">{msg.sender_name}</p>
+                      ) : null}
+                      <div className={`showup-chat-bubble ${mine ? 'is-mine' : 'is-theirs'}`}>
+                        <p className="showup-chat-text">{msg.content}</p>
+                        <span className="showup-chat-time">{formatMsgTime(msg.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="showup-subroomchat-input-bar">
+              <input
+                className="showup-subroomchat-input"
+                value={subRoomMsgDraft}
+                onChange={e => setSubRoomMsgDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendSubRoomMessage() } }}
+                placeholder="Message..."
+                aria-label="Type a message"
+              />
+              <button
+                type="button"
+                className="showup-subroomchat-send"
+                onClick={sendSubRoomMessage}
+                disabled={!subRoomMsgDraft.trim()}
+                aria-label="Send message"
+              >
+                <Send size={16} strokeWidth={2.3} />
+              </button>
+            </div>
+          </div>
+        )
+      })() : null}
 
       {exitPromptOpen ? (
         <div className="showup-exit-backdrop" onClick={() => setExitPromptOpen(false)}>
@@ -4904,6 +5346,49 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           </div>
         </div>
       ) : null}
+
+      {roomInfoOpen ? (() => {
+        const roomDef = ROOM_DEFINITIONS.find(r => r.id === selectedRoom || normalize(r.name) === normalize(selectedRoom || ''))
+        const roomCreatedAt = realMembers.length
+          ? realMembers.reduce((earliest, m) => (!earliest || (m.created_at && m.created_at < earliest)) ? m.created_at : earliest, '')
+          : ''
+        const createdLabel = roomCreatedAt
+          ? new Date(roomCreatedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : 'Unknown'
+        return (
+          <div className="showup-exit-backdrop" onClick={() => setRoomInfoOpen(false)}>
+            <div className="showup-compact-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+                {roomDef ? (() => { const Icon = ROOM_ICONS[roomDef.id] || Sparkles; return <div style={{ width: 44, height: 44, borderRadius: 12, background: `${roomDef.roomColor}18`, display: 'grid', placeItems: 'center', flexShrink: 0 }}><Icon size={22} color={roomDef.roomColor} strokeWidth={2} /></div> })() : null}
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#4d3142' }}>{roomDef?.name || formatRoomTitle(selectedRoom)}</h2>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#b98097', fontWeight: 600 }}>{roomDef?.pillar || selectedRoom}</p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div className="showup-info-row">
+                  <span className="showup-info-label">Members</span>
+                  <span className="showup-info-value">{realMembers.length}</span>
+                </div>
+                <div className="showup-info-row">
+                  <span className="showup-info-label">Created</span>
+                  <span className="showup-info-value">{createdLabel}</span>
+                </div>
+                <div className="showup-info-row">
+                  <span className="showup-info-label">Pillar</span>
+                  <span className="showup-info-value">{roomDef?.pillar || '—'}</span>
+                </div>
+                {roomDef?.description ? (
+                  <div style={{ padding: '12px 14px', background: 'rgba(249,95,133,0.06)', borderRadius: 12, border: '1px solid rgba(249,95,133,0.12)' }}>
+                    <p style={{ margin: 0, fontSize: 13, color: '#7a4560', lineHeight: 1.55 }}>{roomDef.description}</p>
+                  </div>
+                ) : null}
+              </div>
+              <button type="button" className="showup-exit-cancel" style={{ marginTop: 18, width: '100%' }} onClick={() => setRoomInfoOpen(false)}>Close</button>
+            </div>
+          </div>
+        )
+      })() : null}
 
       {profileEditOpen ? (
         <div className="showup-sheet-backdrop" onClick={() => setProfileEditOpen(false)}>
