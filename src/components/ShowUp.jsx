@@ -2182,6 +2182,79 @@ const SHOW_UP_STYLES = `
   opacity:.45;
   cursor:default;
 }
+
+/* ── Create sub-room full-page ───────────────────────────────── */
+.showup-createroom-overlay{
+  position:fixed;
+  inset:0;
+  z-index:200;
+  display:flex;
+  flex-direction:column;
+  background:#fff8f9;
+  font-family:'DM Sans',sans-serif;
+  overflow-y:auto;
+}
+.showup-createroom-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 16px;
+  background:#fff;
+  border-bottom:1px solid rgba(232,64,122,0.12);
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  z-index:1;
+}
+.showup-createroom-header h2{
+  margin:0;
+  font-family:'Syne',sans-serif;
+  font-size:16px;
+  font-weight:800;
+  color:#4d3142;
+}
+.showup-createroom-body{
+  flex:1;
+  padding:24px 16px 48px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  max-width:520px;
+  width:100%;
+  margin:0 auto;
+  box-sizing:border-box;
+}
+.showup-createroom-submit{
+  width:100%;
+  min-height:48px;
+  border-radius:14px;
+  border:none;
+  background:linear-gradient(135deg,#f95f85,#ff8ca8);
+  color:#fff;
+  font-size:15px;
+  font-weight:800;
+  font-family:'DM Sans',sans-serif;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition:opacity .18s,transform .12s;
+  margin-top:8px;
+}
+.showup-createroom-submit:hover{
+  opacity:.88;
+  transform:translateY(-1px);
+}
+.showup-createroom-submit:active{
+  transform:translateY(0);
+  opacity:.95;
+}
+.showup-createroom-submit:disabled{
+  opacity:.45;
+  cursor:default;
+  transform:none;
+}
 `
 
 const ROOM_DEFINITIONS = [
@@ -2884,8 +2957,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [subRoomName, setSubRoomName] = useState('')
   const [subRoomDesc, setSubRoomDesc] = useState('')
   const [subRoomLimit, setSubRoomLimit] = useState(20)
-  const [subRoomPaid, setSubRoomPaid] = useState(false)
-  const [subRoomPrice, setSubRoomPrice] = useState('')
+  const [subRoomAccess, setSubRoomAccess] = useState('open')
   const fileInputRef = useRef(null)
   const feedViewRef = useRef(null)
   const commentFileInputRef = useRef(null)
@@ -3267,6 +3339,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       return
     }
 
+    console.log(
+      '[ShowUp] loadMembers → SELECT room_name =', JSON.stringify(roomName),
+      '| auth uid:', (await supabase.auth.getUser().catch(() => ({ data: { user: null } }))).data?.user?.id || 'unauthenticated',
+      '| RLS policy should allow: room_name =', JSON.stringify(roomName), 'for all authenticated users',
+    )
+
     try {
       let { data, error: membersError } = await supabase
         .from('show_up_checkins')
@@ -3288,12 +3366,14 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       const rowCount = data?.length ?? 0
       console.log(
-        '[ShowUp] loadMembers room_name:', roomName,
+        '[ShowUp] loadMembers room_name:', JSON.stringify(roomName),
         '→ rows returned:', rowCount,
-        rowCount === 1
-          ? '⚠️ Only 1 row — if you expect 2+ users, check Supabase RLS on show_up_checkins. Policy must allow SELECT where room_name matches.'
-          : '',
-        data?.map(m => (m.display_name || m.user_id) + (m.checked_in ? ' ✓' : '')),
+        rowCount === 0
+          ? '❌ 0 rows — RLS is blocking cross-user reads. Ensure your SELECT policy on show_up_checkins allows authenticated users to read rows WHERE room_name = their joined room, not only WHERE user_id = auth.uid().'
+          : rowCount === 1
+            ? '⚠️ 1 row — if 2+ users joined, RLS is blocking the others. Policy must NOT filter by user_id on SELECT.'
+            : `✅ ${rowCount} rows`,
+        data?.map(m => ({ name: m.display_name || m.user_id, room: m.room_name, checked_in: m.checked_in })),
       )
 
       const nextMembers = (data || []).map(member => ({
@@ -3677,12 +3757,40 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   async function ensureRoomMembership(roomName) {
+    const nowIso = new Date().toISOString()
+
+    // Build optimistic payload immediately — user must appear in Live the instant they join.
+    // We do this before any Supabase await so the profile card renders without delay.
+    const optimisticPayload = {
+      room_name: roomName,
+      user_id: profile.id,
+      display_name: profile.name,
+      initials: profile.initials,
+      avatar_url: profile.avatar || '',
+      about: profile.about || '',
+      checked_in: true,
+      check_in_time: nowIso,
+      task_done: false,
+      task_done_time: null,
+      streak_count: getCurrentStreakCount(),
+      created_at: nowIso,
+    }
+
+    setJoinedRoomName(roomName)
+    setCheckedIn(true)
+    setTaskDone(false)
+    setLocalSessionMember(optimisticPayload)
+
+    console.log(
+      '[ShowUp] ensureRoomMembership → writing room_name:', JSON.stringify(roomName),
+      '| user_id:', profile.id,
+      '| SELECT policy must match room_name =', JSON.stringify(roomName),
+    )
+
     if (!supabase) {
       setError('')
       return
     }
-
-    const nowIso = new Date().toISOString()
 
     try {
       const { data: existingRemote, error: lookupError } = await supabase
@@ -3701,26 +3809,15 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       const taskDoneToday = prevTaskDone && taskDoneDate === new Date().toDateString()
 
       const payload = {
-        room_name: roomName,
-        user_id: profile.id,
-        display_name: profile.name,
-        initials: profile.initials,
-        avatar_url: profile.avatar || '',
-        about: profile.about || '',
-        checked_in: true,
-        check_in_time: nowIso,
+        ...optimisticPayload,
         task_done: taskDoneToday,
         task_done_time: taskDoneToday ? existingRemote.task_done_time : null,
-        streak_count: getCurrentStreakCount(),
         created_at: existingRemote?.created_at || nowIso,
       }
 
-      // Optimistic: update local state immediately so the user appears in Live
-      setJoinedRoomName(roomName)
-      setCheckedIn(true)
+      // Refine local state now that we have the real remote data
       setTaskDone(taskDoneToday)
       setLocalSessionMember(payload)
-      console.log('[ShowUp] ensureRoomMembership: joined room', roomName, 'checked_in:true task_done:', taskDoneToday)
 
       // Persist to Supabase (non-blocking for UX — user is already visible locally)
       await upsertCheckinRow(payload)
@@ -4316,7 +4413,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       : realMembers
     const roomActivity = selectedRoom ? getRoomActivity(selectedRoom) : []
     return [...rankSource]
-      .filter(member => !isPlaceholderMember(member) && member.display_name && member.display_name !== 'User')
+      .filter(member => !isPlaceholderMember(member) && member.display_name)
       .map(member => {
         const memberTasksDone = roomActivity.filter(e => e.type === 'done' && e.userId === member.user_id).length
         return {
@@ -4393,8 +4490,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       description: subRoomDesc.trim(),
       creator_id: profile.id,
       member_limit: Number(subRoomLimit) || 20,
-      is_paid: subRoomPaid,
-      price: subRoomPaid && subRoomPrice ? parseFloat(subRoomPrice) : null,
+      is_paid: false,
+      is_locked: subRoomAccess === 'locked',
     }
     if (supabase) {
       const { data, error } = await supabase.from('sub_rooms').insert(row).select().single()
@@ -4408,9 +4505,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setError(supabaseConfigError || 'Sub-rooms need Supabase.')
       return
     }
-    setSubRoomName(''); setSubRoomDesc(''); setSubRoomLimit(20); setSubRoomPaid(false); setSubRoomPrice('')
+    setSubRoomName(''); setSubRoomDesc(''); setSubRoomLimit(20); setSubRoomAccess('open')
     setCreateSubRoomOpen(false)
-    // Reload sub-rooms list after creation
     if (supabase && selectedRoom) loadSubRooms(selectedRoom)
   }
 
@@ -4696,30 +4792,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
             </div>
           ) : null}
 
-          {createSubRoomOpen ? (
-            <div className="showup-exit-backdrop" onClick={() => setCreateSubRoomOpen(false)}>
-              <div className="showup-exit-modal" onClick={e => e.stopPropagation()} style={{ gap: 10 }}>
-                <h2 className="showup-exit-title">Create Sub-room</h2>
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <input className="showup-input" value={subRoomName} onChange={e => setSubRoomName(e.target.value)} placeholder="Sub-room name" />
-                  <textarea className="showup-comment-input" value={subRoomDesc} onChange={e => setSubRoomDesc(e.target.value)} placeholder="Description (optional)" rows={2} style={{ resize: 'none' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: '#9a7088', fontWeight: 700, minWidth: 80 }}>Member limit</span>
-                    <input type="number" className="showup-input" value={subRoomLimit} onChange={e => setSubRoomLimit(e.target.value)} min={2} max={100} style={{ width: 70 }} />
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#4d3142', fontWeight: 600 }}>
-                    <input type="checkbox" checked={subRoomPaid} onChange={e => setSubRoomPaid(e.target.checked)} />
-                    Paid sub-room
-                  </label>
-                  {subRoomPaid ? <input className="showup-input" type="number" value={subRoomPrice} onChange={e => setSubRoomPrice(e.target.value)} placeholder="Price (e.g. 9.99)" min={0} step={0.01} /> : null}
-                </div>
-                <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff', marginTop: 4 }} onClick={handleCreateSubRoom}>
-                  <strong>Create sub-room</strong>
-                </button>
-                <button type="button" className="showup-exit-cancel" onClick={() => setCreateSubRoomOpen(false)}>Cancel</button>
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
     )
@@ -4801,7 +4873,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
             { key: 'live', label: 'Live' },
             { key: 'feed', label: 'Feed' },
             { key: 'ranks', label: 'Stacks' },
-            { key: 'groups', label: 'Groups' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -5288,61 +5359,79 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       ) : null}
 
       {createSubRoomOpen ? (
-        <div className="showup-exit-backdrop" onClick={() => setCreateSubRoomOpen(false)}>
-          <div className="showup-compact-modal" onClick={event => event.stopPropagation()}>
-            <h2 className="showup-exit-title" style={{ marginBottom: 4 }}>Create sub-room</h2>
-            <p className="showup-sheet-subtitle" style={{ marginBottom: 14 }}>
-              Keep it focused. Smaller rooms should have one clear challenge.
+        <div className="showup-createroom-overlay">
+          <div className="showup-createroom-header">
+            <button
+              type="button"
+              className="showup-header-btn showup-back-btn"
+              onClick={() => setCreateSubRoomOpen(false)}
+              aria-label="Back"
+            >{'←'}</button>
+            <h2>Create sub-room</h2>
+          </div>
+          <div className="showup-createroom-body">
+            <p style={{ margin: 0, fontSize: 13, color: '#b98097', lineHeight: 1.55 }}>
+              Keep it focused. Small rooms with one clear challenge work best.
             </p>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <label className="showup-field">
-                <span className="showup-field-label">Room name</span>
-                <input
-                  className="showup-input"
-                  value={subRoomName}
-                  onChange={event => setSubRoomName(event.target.value)}
-                  placeholder="Morning lifters"
-                />
-              </label>
-              <label className="showup-field">
-                <span className="showup-field-label">What is the challenge?</span>
-                <textarea
-                  className="showup-comment-input"
-                  value={subRoomDesc}
-                  onChange={event => setSubRoomDesc(event.target.value)}
-                  placeholder="Everyone checks in before 8am and posts proof after."
-                  rows={3}
-                  style={{ resize: 'none' }}
-                />
-              </label>
-              <label className="showup-field">
-                <span className="showup-field-label">Member limit</span>
-                <input
-                  type="number"
-                  className="showup-input"
-                  value={subRoomLimit}
-                  onChange={event => setSubRoomLimit(event.target.value)}
-                  min={2}
-                  max={100}
-                />
-              </label>
-              <div className="showup-toggle-row">
-                <div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#4d3142' }}>Access</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097' }}>{subRoomPaid ? 'Paid sub-room' : 'Free sub-room'}</p>
-                </div>
-                <div className="showup-toggle-pill" aria-label="Sub-room access">
-                  <button type="button" className={!subRoomPaid ? 'is-active' : ''} onClick={() => setSubRoomPaid(false)}>Free</button>
-                  <button type="button" className={subRoomPaid ? 'is-active' : ''} onClick={() => setSubRoomPaid(true)}>Paid</button>
-                </div>
+            <label className="showup-field">
+              <span className="showup-field-label">Room name</span>
+              <input
+                className="showup-input"
+                value={subRoomName}
+                onChange={event => setSubRoomName(event.target.value)}
+                placeholder="Morning lifters"
+              />
+            </label>
+            <label className="showup-field">
+              <span className="showup-field-label">About this room</span>
+              <textarea
+                className="showup-comment-input"
+                value={subRoomDesc}
+                onChange={event => setSubRoomDesc(event.target.value)}
+                placeholder="Everyone checks in before 8am and posts proof after."
+                rows={3}
+                style={{ resize: 'none' }}
+              />
+            </label>
+            <label className="showup-field">
+              <span className="showup-field-label">Member limit</span>
+              <input
+                type="number"
+                className="showup-input"
+                value={subRoomLimit}
+                onChange={event => setSubRoomLimit(event.target.value)}
+                min={2}
+                max={100}
+              />
+            </label>
+            <div className="showup-toggle-row">
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#4d3142' }}>Access</p>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: '#b98097' }}>
+                  {subRoomAccess === 'locked' ? 'Members must request to join' : 'Anyone can join freely'}
+                </p>
+              </div>
+              <div className="showup-toggle-pill" aria-label="Sub-room access">
+                <button
+                  type="button"
+                  className={subRoomAccess === 'open' ? 'is-active' : ''}
+                  onClick={() => setSubRoomAccess('open')}
+                >Open</button>
+                <button
+                  type="button"
+                  className={subRoomAccess === 'locked' ? 'is-active' : ''}
+                  onClick={() => setSubRoomAccess('locked')}
+                >Locked</button>
               </div>
             </div>
-            <div className="showup-exit-options" style={{ marginTop: 14 }}>
-              <button type="button" className="showup-exit-option" style={{ background: '#f95f85', borderColor: '#f95f85', color: '#fff' }} onClick={handleCreateSubRoom}>
-                <strong>Create sub-room</strong>
-              </button>
-              <button type="button" className="showup-exit-cancel" onClick={() => setCreateSubRoomOpen(false)}>Cancel</button>
-            </div>
+            <button
+              type="button"
+              className="showup-createroom-submit"
+              disabled={!subRoomName.trim()}
+              onClick={handleCreateSubRoom}
+            >
+              Create sub-room
+            </button>
           </div>
         </div>
       ) : null}
