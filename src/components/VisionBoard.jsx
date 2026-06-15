@@ -10,6 +10,7 @@ import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Spark
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
+import { supabase } from '../lib/supabase'
 import phasrMark from '../assets/phasr-mark.png'
 
 const PILLAR_PRESETS = [
@@ -2186,9 +2187,28 @@ Return JSON only:
           return
         }
         const r = new FileReader()
-        r.onload = ev => {
+        r.onload = async ev => {
+          const dataUrl = ev.target.result
+          let finalUrl = dataUrl
+          if (supabase) {
+            setUploadMessage('Uploading…')
+            try {
+              const ext = (f.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')
+              const path = `visionboard/${activeUserId || 'local'}/${plId}-${slot}-${Date.now()}.${ext}`
+              const byteStr = atob(dataUrl.split(',')[1])
+              const bytes = new Uint8Array(byteStr.length)
+              for (let j = 0; j < byteStr.length; j++) bytes[j] = byteStr.charCodeAt(j)
+              const { error: uploadError } = await supabase.storage
+                .from('room-feed')
+                .upload(path, new Blob([bytes], { type: f.type }), { contentType: f.type, upsert: true })
+              if (!uploadError) {
+                const { data: urlData } = supabase.storage.from('room-feed').getPublicUrl(path)
+                if (urlData?.publicUrl) finalUrl = urlData.publicUrl
+              }
+            } catch {}
+          }
           setUploadMessage('')
-          updatePillar(plId, slot, ev.target.result)
+          updatePillar(plId, slot, finalUrl)
         }
         r.readAsDataURL(f)
       }
@@ -2463,13 +2483,13 @@ Return JSON only:
         {/* Today's Task */}
         <div style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
-          borderRadius: 12, padding: isMobile ? '0.32rem 0.75rem' : '0.38rem 0.9rem',
+          borderRadius: 12, padding: isMobile ? '0.75rem 0.85rem' : '0.9rem 1.1rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginBottom: isMobile ? '0.5rem' : '0.7rem', gap: '0.6rem',
           boxShadow: '0 4px 16px rgba(233,100,136,0.25)',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: '0.1rem' }}>
+            <p style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: '0.45rem' }}>
               Today · {phaseDisplayName}
             </p>
             <p style={{ fontSize: isMobile ? '0.72rem' : '0.82rem', fontWeight: 600, color: '#fff', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>

@@ -2515,8 +2515,8 @@ function normalize(value) {
 }
 
 function buildInitials(name) {
-  const words = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (!words.length) return '?'
+  const words = String(name || 'User').trim().split(/\s+/).filter(Boolean)
+  if (!words.length) return 'U'
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
   return `${words[0][0] || ''}${words[1][0] || ''}`.toUpperCase()
 }
@@ -2739,21 +2739,18 @@ function getProfile(user, authUser) {
     ''
   const displayName =
     authUser?.user_metadata?.full_name ||
-    authUser?.user_metadata?.name ||
     authUser?.email?.split('@')[0] ||
     user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
     user?.email?.split('@')[0] ||
     storedName ||
-    ''
+    'User'
   const profileId = authUser?.id || user?.id || storedId || 'local-user'
   const extra = safeJsonParse(localStorage.getItem(`phasr_showup_profile_${normalize(profileId)}`), {})
   const globalCache = safeJsonParse(localStorage.getItem('phasr_profile_cache'), {})
-  const resolvedName = globalCache.display_name || displayName || 'Member'
   return {
     id: profileId,
-    name: resolvedName,
-    initials: buildInitials(resolvedName),
+    name: globalCache.display_name || displayName,
+    initials: buildInitials(globalCache.display_name || displayName),
     avatar: globalCache.avatar_url || extra.avatar || '',
     about: globalCache.bio || extra.about || '',
   }
@@ -3574,6 +3571,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
             author_avatar_url: _ignoredAvatar,
             author_bio: _ignoredBio,
             post_type: _ignoredPostType,
+            image_url: _ignoredImage,
             ...payload
           } = insertPayload
           return payload
@@ -3608,10 +3606,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         image: data?.image_url || nextPost.image || '',
         createdAt: data?.created_at || nextPost.createdAt,
         system: Boolean(data?.is_system_post ?? nextPost.system),
-      }
-      // If image_url wasn't persisted in the row but we have one, patch it now
-      if (data?.id && image && !data.image_url) {
-        supabase.from('room_feed_posts').update({ image_url: image }).eq('id', data.id).then(() => {})
       }
       if (showLocally) addFeedPost(persistedPost)
       setFeedReady(true)
@@ -3821,29 +3815,12 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         created_at: existingRemote?.created_at || nowIso,
       }
 
-      // If profile name is still a placeholder, resolve the freshest auth name
-      let resolvedName = payload.display_name
-      if (!resolvedName || resolvedName === 'Member' || resolvedName === 'User') {
-        try {
-          const { data: { user: freshUser } } = await supabase.auth.getUser()
-          const freshName =
-            freshUser?.user_metadata?.full_name ||
-            freshUser?.user_metadata?.name ||
-            freshUser?.email?.split('@')[0] ||
-            ''
-          if (freshName && freshName !== 'User' && freshName !== 'Member') {
-            resolvedName = freshName
-          }
-        } catch {}
-      }
-      const resolvedPayload = { ...payload, display_name: resolvedName }
-
       // Refine local state now that we have the real remote data
       setTaskDone(taskDoneToday)
-      setLocalSessionMember(resolvedPayload)
+      setLocalSessionMember(payload)
 
       // Persist to Supabase (non-blocking for UX — user is already visible locally)
-      await upsertCheckinRow(resolvedPayload)
+      await upsertCheckinRow(payload)
     } catch (nextError) {
       console.error('[ShowUp] ensureRoomMembership failed — user visible locally but not in Supabase', nextError)
       // Do NOT clear local state — the user should still see themselves in the room
@@ -4966,9 +4943,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                         setProfileAboutDraft(profile.about || '')
                         setProfileEditOpen(true)
                       } else {
-                        const msgs = loadDmMessages(profile.id, member.user_id)
-                        setDmMessages(msgs)
-                        setDmSheetMember(member)
+                        setH2hMember(member)
                       }
                     }}
                   >
@@ -5150,7 +5125,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       aria-label={likedByMe ? 'Unlike post' : 'Like post'}
                     >
                       <ThumbsUp size={14} strokeWidth={2.2} />
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{likeCount}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{likeCount > 0 ? likeCount : 'Like'}</span>
                     </button>
                     <button
                       type="button"
@@ -5161,7 +5136,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       }}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{safeArray(post.comments).length}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{safeArray(post.comments).length > 0 ? safeArray(post.comments).length : 'Reply'}</span>
                     </button>
                     {!post.system && post.authorId && post.authorId !== profile.id ? (
                       <button
@@ -5218,14 +5193,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                   </div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p className="showup-rank-name">{isMe ? 'You' : member.display_name}</p>
-                    <button
-                      type="button"
-                      className="showup-rank-streak"
-                      onClick={e => { e.stopPropagation(); onGoToDailyStreaks?.() }}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: onGoToDailyStreaks ? 'pointer' : 'default', fontFamily: 'inherit', textAlign: 'left', textDecoration: onGoToDailyStreaks && member.streakValue > 0 ? 'underline' : 'none', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
-                    >
-                      {member.streakValue > 0 ? `🔥 ${member.streakValue} day streak` : 'No streak yet'}
-                    </button>
+                    <p className="showup-rank-streak">{member.streakValue > 0 ? `🔥 ${member.streakValue} day streak` : 'No streak yet'}</p>
                   </div>
                   <div className="showup-rank-score" aria-label={`${member.tasksValue} tasks completed`} style={{ textAlign: 'center' }}>
                     <span className="showup-rank-score-value">{member.tasksValue}</span>
@@ -5505,28 +5473,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                   </div>
                 ) : null}
               </div>
-              {realMembers.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 700, color: '#b98097', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Members · {realMembers.length}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    {realMembers.slice(0, 12).map(m => {
-                      const avatarUrl = m.avatar_url || m.avatar || ''
-                      const initials = m.initials || buildInitials(m.display_name)
-                      const name = m.display_name && m.display_name !== 'User' && m.display_name !== 'Member' ? m.display_name : initials
-                      return (
-                        <div key={m.user_id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 48 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(249,95,133,0.2)', background: 'rgba(249,95,133,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700, fontSize: 13, color: '#f95f85' }}>
-                            {avatarUrl
-                              ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                              : initials}
-                          </div>
-                          <p style={{ margin: 0, fontSize: 10, color: '#7a4560', fontWeight: 600, textAlign: 'center', maxWidth: 48, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
               <button type="button" className="showup-exit-cancel" style={{ marginTop: 18, width: '100%' }} onClick={() => setRoomInfoOpen(false)}>Close</button>
             </div>
           </div>
@@ -5586,19 +5532,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         <div className="showup-sheet-backdrop" onClick={() => setDmSheetMember(null)}>
           <div className="showup-sheet" onClick={event => event.stopPropagation()} style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', maxHeight: '80dvh' }}>
             <div className="showup-sheet-handle" />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-              <h2 className="showup-sheet-title" style={{ fontSize: 15, margin: 0 }}>
-                <MessageCircle size={16} strokeWidth={2.3} />
-                <span>{dmSheetMember.display_name}</span>
-              </h2>
-              <button
-                type="button"
-                onClick={() => { const m = dmSheetMember; setDmSheetMember(null); setSheetState({ open: true, member: m }) }}
-                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 999, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.07)', color: '#c84f73', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-              >
-                👋 Nudge
-              </button>
-            </div>
+            <h2 className="showup-sheet-title" style={{ fontSize: 15 }}>
+              <MessageCircle size={16} strokeWidth={2.3} />
+              <span>{dmSheetMember.display_name}</span>
+            </h2>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0 4px', minHeight: 80 }}>
               {dmMessages.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#b98097', fontSize: 13, margin: 'auto' }}>No messages yet. Say something.</p>
@@ -5624,11 +5561,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     const text = dmDraft.trim()
                     setDmDraft('')
                     const msg = { from: profile.id, fromName: profile.name, text, createdAt: new Date().toISOString() }
-                    setDmMessages(prev => [...prev, msg])
                     if (supabase) {
-                      supabase.from('direct_messages').insert({ room_name: selectedRoom, sender_id: profile.id, sender_name: profile.name, receiver_id: dmSheetMember.user_id, message: text }).then(() => {})
+                      await supabase.from('direct_messages').insert({ room_name: selectedRoom, sender_id: profile.id, sender_name: profile.name, receiver_id: dmSheetMember.user_id, message: text })
                     } else {
-                      saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                      const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                      setDmMessages(next)
                     }
                   }
                 }}
@@ -5644,11 +5581,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                   const text = dmDraft.trim()
                   setDmDraft('')
                   const msg = { from: profile.id, fromName: profile.name, text, createdAt: new Date().toISOString() }
-                  setDmMessages(prev => [...prev, msg])
                   if (supabase) {
-                    supabase.from('direct_messages').insert({ room_name: selectedRoom, sender_id: profile.id, sender_name: profile.name, receiver_id: dmSheetMember.user_id, message: text }).then(() => {})
+                    await supabase.from('direct_messages').insert({ room_name: selectedRoom, sender_id: profile.id, sender_name: profile.name, receiver_id: dmSheetMember.user_id, message: text })
                   } else {
-                    saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                    const next = saveDmMessage(profile.id, dmSheetMember.user_id, msg)
+                    setDmMessages(next)
                   }
                 }}
               >
