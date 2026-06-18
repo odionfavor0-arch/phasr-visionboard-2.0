@@ -2,7 +2,6 @@
 import { BriefcaseBusiness, Check, ChevronRight, Dumbbell, HandCoins, Heart, HeartHandshake, Image as ImageIcon, LogOut, MessageCircle, MoreVertical, Reply, Send, Sparkles, Sprout, ThumbsUp, Trash2 } from 'lucide-react'
 import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 import { getSageAvatarUrl } from '../lib/userPreferences'
-import { readLocalPosts, writeLocalPosts, subscribeLocalFeed } from '../lib/feedStore'
 import { getCompletionRecords } from '../lib/lockIn'
 
 const SHOW_UP_STYLES = `
@@ -2477,6 +2476,7 @@ const WEEKLY_PULSE = {
 }
 
 const MAX_ROOM_SIZE = 9999
+const localFeedChannels = {}
 
 function safeRead(key, fallback) {
   try {
@@ -2499,6 +2499,43 @@ function safeWrite(key, value) {
     console.warn('Show Up storage write skipped', key, error)
     return false
   }
+}
+
+function getLocalFeedChannel(roomName) {
+  if (!roomName || typeof BroadcastChannel === 'undefined') return null
+  const key = normalize(roomName)
+  if (!localFeedChannels[key]) {
+    try {
+      localFeedChannels[key] = new BroadcastChannel(`showup_feed_${key}`)
+    } catch {
+      localFeedChannels[key] = null
+    }
+  }
+  return localFeedChannels[key]
+}
+
+function readLocalPosts(roomName) {
+  return safeArray(safeRead(getFeedStorageKey(roomName), []))
+}
+
+function writeLocalPosts(roomName, posts) {
+  if (!roomName) return
+  safeWrite(getFeedStorageKey(roomName), safeArray(posts))
+  try {
+    getLocalFeedChannel(roomName)?.postMessage({ type: 'sync', posts: safeArray(posts) })
+  } catch {
+    // BroadcastChannel is only a local realtime convenience.
+  }
+}
+
+function subscribeLocalFeed(roomName, callback) {
+  const channel = getLocalFeedChannel(roomName)
+  if (!channel) return () => {}
+  const handler = event => {
+    if (event.data?.type === 'sync') callback(safeArray(event.data.posts))
+  }
+  channel.addEventListener('message', handler)
+  return () => channel.removeEventListener('message', handler)
 }
 
 function safeRemove(key) {
@@ -4276,10 +4313,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       nextReactionsForPost = nextReactions
       return { ...post, reactions: nextReactions }
     }))
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => (
+        p.id === postId ? { ...p, reactions: nextReactionsForPost } : p
+      )))
+    }
     if (supabase && postId) {
       supabase.from('room_feed_posts').update({ reactions: nextReactionsForPost }).eq('id', postId).then(() => {}).catch(() => {})
-    } else if (!supabase && selectedRoom) {
-      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, reactions: nextReactionsForPost } : p))
     }
   }
 
@@ -4315,10 +4355,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     )))
     setEditingPostId('')
     setEditPostDraft('')
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, text: nextText } : p))
+    }
     if (supabase && postId) {
       supabase.from('room_feed_posts').update({ text: nextText }).eq('id', postId).then(() => {}).catch(() => {})
-    } else if (!supabase && selectedRoom) {
-      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, text: nextText } : p))
     }
   }
 
@@ -4329,10 +4370,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setEditingPostId('')
       setEditPostDraft('')
     }
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).filter(p => p.id !== postId))
+    }
     if (supabase && postId) {
       supabase.from('room_feed_posts').delete().eq('id', postId).then(() => {}).catch(() => {})
-    } else if (!supabase && selectedRoom) {
-      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).filter(p => p.id !== postId))
     }
   }
 
@@ -4363,10 +4405,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     setCommentDrafts(current => ({ ...current, [postId]: '' }))
     setCommentImage('')
     if (commentFileInputRef.current) commentFileInputRef.current.value = ''
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
+    }
     if (supabase && postId) {
       supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
-    } else if (!supabase && selectedRoom) {
-      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
   }
 
@@ -4378,10 +4421,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       return { ...post, comments: nextComments }
     }))
     setHeldCommentId(current => current === commentId ? '' : current)
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
+    }
     if (supabase && postId) {
       supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
-    } else if (!supabase && selectedRoom) {
-      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
   }
 
@@ -4401,55 +4445,71 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   function handleToggleCommentReaction(postId, commentId) {
+    let nextComments = []
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
+      nextComments = safeArray(post.comments).map(comment => {
+        if (comment.id !== commentId) return comment
+        const nextSet = new Set(safeArray(comment.reactions?.love))
+        if (nextSet.has(profile.id)) nextSet.delete(profile.id)
+        else nextSet.add(profile.id)
+        return {
+          ...comment,
+          reactions: {
+            ...comment.reactions,
+            love: [...nextSet],
+          },
+        }
+      })
       return {
         ...post,
-        comments: safeArray(post.comments).map(comment => {
-          if (comment.id !== commentId) return comment
-          const nextSet = new Set(safeArray(comment.reactions?.love))
-          if (nextSet.has(profile.id)) nextSet.delete(profile.id)
-          else nextSet.add(profile.id)
-          return {
-            ...comment,
-            reactions: {
-              ...comment.reactions,
-              love: [...nextSet],
-            },
-          }
-        }),
+        comments: nextComments,
       }
     }))
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
+    }
+    if (supabase && postId) {
+      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
+    }
   }
 
   function handleAddReply(postId, commentId) {
     const draftKey = `${postId}:${commentId}`
     const draft = (replyDrafts[draftKey] || '').trim()
     if (!draft) return
+    let nextComments = []
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
+      nextComments = safeArray(post.comments).map(comment => {
+        if (comment.id !== commentId) return comment
+        return {
+          ...comment,
+          replies: [
+            ...safeArray(comment.replies),
+            {
+              id: uid(),
+              authorId: profile.id,
+              authorName: profile.name,
+              authorInitials: profile.initials,
+              text: draft,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        }
+      })
       return {
         ...post,
-        comments: safeArray(post.comments).map(comment => {
-          if (comment.id !== commentId) return comment
-          return {
-            ...comment,
-            replies: [
-              ...safeArray(comment.replies),
-              {
-                id: uid(),
-                authorId: profile.id,
-                authorName: profile.name,
-                authorInitials: profile.initials,
-                text: draft,
-                createdAt: new Date().toISOString(),
-              },
-            ],
-          }
-        }),
+        comments: nextComments,
       }
     }))
     setReplyDrafts(current => ({ ...current, [draftKey]: '' }))
+    if (selectedRoom) {
+      writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
+    }
+    if (supabase && postId) {
+      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
+    }
   }
 
   function openNotifySheet(member, prefill = '') {
@@ -5352,7 +5412,6 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                       }}
                     >
                       <MessageCircle size={14} strokeWidth={2.1} />
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{safeArray(post.comments).length}</span>
                     </button>
                     {!post.system && post.authorId && post.authorId !== profile.id ? (
                       <button
