@@ -167,7 +167,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
 
           {/* Top bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: isPhone ? 30 : 38, marginBottom: isPhone ? 8 : 12 }}>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 600, letterSpacing: '-0.03em' }}>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 700, letterSpacing: '-0.03em' }}>
               {step === 0 ? `Welcome, ${firstName}` : 'Phasr'}
             </div>
             {!slide.isClose && (

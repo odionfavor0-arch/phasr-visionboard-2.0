@@ -297,7 +297,7 @@ export default function JournalEntries({ onBack }) {
       <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto', display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.9rem,4vw,2.7rem)', color: '#2e1e28' }}>All journal entries</h1>
+            <h1 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 'clamp(1.9rem,4vw,2.7rem)', color: '#2e1e28' }}>All journal entries</h1>
           </div>
           <button
             onClick={onBack}

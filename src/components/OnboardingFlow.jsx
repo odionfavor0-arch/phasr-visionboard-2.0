@@ -257,7 +257,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                   <Sparkles size={14} />
                   Welcome
                 </div>
-                <h1 style={{ margin: '1rem 0 0.75rem', fontFamily: "'Syne', sans-serif", fontSize: 'clamp(2.2rem, 5vw, 4rem)', lineHeight: 1.03, color: 'var(--app-text)' }}>
+                <h1 style={{ margin: '1rem 0 0.75rem', fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 'clamp(2.2rem, 5vw, 4rem)', lineHeight: 1.03, color: 'var(--app-text)' }}>
                   Hello, welcome to phasr.
                 </h1>
                 <p style={{ margin: 0, fontSize: '1rem', lineHeight: 1.8, color: 'var(--app-muted)', maxWidth: 540 }}>
@@ -324,7 +324,8 @@ export default function OnboardingFlow({ user, onComplete }) {
                   color: '#b74872',
                   fontFamily: "'DM Sans', sans-serif",
                   fontWeight: 800,
-                  fontSize: '0.95rem',
+                  fontSize: '1.05rem',
+                  letterSpacing: '0.01em',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -481,7 +482,8 @@ export default function OnboardingFlow({ user, onComplete }) {
                     color: '#fff',
                     fontFamily: "'DM Sans', sans-serif",
                     fontWeight: 800,
-                    fontSize: '0.95rem',
+                    fontSize: '1.05rem',
+                    letterSpacing: '0.01em',
                     cursor: busy ? 'wait' : 'pointer',
                   }}
                 >
@@ -498,7 +500,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                     background: '#fff',
                     color: 'var(--app-text)',
                     fontFamily: "'DM Sans', sans-serif",
-                    fontWeight: 800,
+                    fontWeight: 600,
                     fontSize: '0.95rem',
                     cursor: busy ? 'wait' : 'pointer',
                   }}

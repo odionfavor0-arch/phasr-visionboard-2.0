@@ -2992,6 +2992,20 @@ function dedupeByIdOrTimestamp(items) {
   })
 }
 
+function mergeReactionMaps(...maps) {
+  const merged = {}
+  maps.forEach(map => {
+    Object.entries(map || {}).forEach(([key, userIds]) => {
+      merged[key] = Array.from(new Set([...(merged[key] || []), ...safeArray(userIds)]))
+    })
+  })
+  return merged
+}
+
+function mergeCommentLists(...lists) {
+  return dedupeByIdOrTimestamp(lists.flatMap(list => safeArray(list)))
+}
+
 function computeRoomRoles(members, roomName) {
   const activity = getRoomActivity(roomName)
   const weekDates = new Set(getCurrentWeekDateKeys())
@@ -3113,11 +3127,13 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const checkedInRef = useRef(false)
   const taskDoneRef = useRef(false)
   const localSessionMemberRef = useRef(null)
+  const profileRef = useRef(profile)
 
   membersRef.current = members
   checkedInRef.current = checkedIn
   taskDoneRef.current = taskDone
   localSessionMemberRef.current = localSessionMember
+  profileRef.current = profile
 
   const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const rooms = useMemo(() => {
@@ -3482,7 +3498,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
   }
 
-  async function loadMembers(roomName, nextProfile = profile) {
+  async function loadMembers(roomName, nextProfile = profileRef.current) {
     if (!supabase) {
       setError('')
       return
@@ -3647,8 +3663,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           ...post,
           room_id: roomName,
           image: post.image || cached.image || existing.image || '',
-          reactions: post.reactions || cached.reactions || existing.reactions || {},
-          comments: safeArray(post.comments?.length ? post.comments : (cached.comments || existing.comments)).map(comment => ({
+          reactions: mergeReactionMaps(existing.reactions, cached.reactions, post.reactions),
+          comments: mergeCommentLists(existing.comments, cached.comments, post.comments).map(comment => ({
             ...comment,
             reactions: comment.reactions || { love: [] },
             replies: safeArray(comment.replies),
@@ -4302,6 +4318,19 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     })
   }
 
+  function syncFeedPostPatch(postId, patch) {
+    if (!supabase || !postId) return
+    supabase.from('room_feed_posts').update(patch).eq('id', postId).then(({ error }) => {
+      if (error) {
+        console.error('[ShowUp] feed post sync failed', error.message || error)
+        setBottomToast("Couldn't sync — check your connection")
+      }
+    }).catch(nextError => {
+      console.error('[ShowUp] feed post sync failed', nextError)
+      setBottomToast("Couldn't sync — check your connection")
+    })
+  }
+
   function handleToggleReaction(postId, reactionKey = 'like') {
     let nextReactionsForPost = {}
     setFeedPosts(current => current.map(post => {
@@ -4318,9 +4347,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         p.id === postId ? { ...p, reactions: nextReactionsForPost } : p
       )))
     }
-    if (supabase && postId) {
-      supabase.from('room_feed_posts').update({ reactions: nextReactionsForPost }).eq('id', postId).then(() => {}).catch(() => {})
-    }
+    syncFeedPostPatch(postId, { reactions: nextReactionsForPost })
   }
 
   function closeCommentSheet() {
@@ -4408,9 +4435,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    if (supabase && postId) {
-      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
-    }
+    syncFeedPostPatch(postId, { comments: nextComments })
   }
 
   function handleDeleteComment(postId, commentId) {
@@ -4424,9 +4449,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    if (supabase && postId) {
-      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
-    }
+    syncFeedPostPatch(postId, { comments: nextComments })
   }
 
   function startCommentHold(commentId, isOwnComment) {
@@ -4469,9 +4492,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    if (supabase && postId) {
-      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
-    }
+    syncFeedPostPatch(postId, { comments: nextComments })
   }
 
   function handleAddReply(postId, commentId) {
@@ -4507,9 +4528,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    if (supabase && postId) {
-      supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId).then(() => {}).catch(() => {})
-    }
+    syncFeedPostPatch(postId, { comments: nextComments })
   }
 
   function openNotifySheet(member, prefill = '') {

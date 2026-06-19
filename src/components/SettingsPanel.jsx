@@ -169,7 +169,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
               <p style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--app-text)' }}>Calendar</p>
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.84rem', color: 'var(--app-muted)' }}>{calendarStatus === 'allowed' ? 'Connected.' : 'Add your plan to your calendar.'}</p>
             </div>
-            <button type="button" onClick={connectCalendar} style={{ border: '1px solid var(--app-border)', borderRadius: 999, padding: '0.72rem 1rem', background: '#fff', color: 'var(--app-accent)', cursor: 'pointer', fontWeight: 800, fontFamily: "'DM Sans', sans-serif" }}>{calendarStatus === 'allowed' ? 'Connected' : 'Connect'}</button>
+            <button type="button" onClick={connectCalendar} style={{ border: '1px solid var(--app-border)', borderRadius: 999, padding: '0.72rem 1rem', background: '#fff', color: 'var(--app-accent)', cursor: 'pointer', fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>{calendarStatus === 'allowed' ? 'Connected' : 'Connect'}</button>
           </div>
         </AccordionItem>
 

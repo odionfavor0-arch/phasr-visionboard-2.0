@@ -684,7 +684,7 @@ function TemplatesPage({ onBack, onSelect }) {
               <div key={item.id} style={{ background: item.accent, borderRadius: 24, padding: '1.1rem', display: 'grid', gap: '0.55rem' }}>
                 <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#2f2530' }}>{item.name}</p>
                 <p style={{ margin: 0, fontSize: '0.84rem', color: '#5c5564', fontWeight: 700 }}>{item.useWhen}</p>
-                <button type="button" onClick={() => onSelect(item)} style={{ justifySelf: 'start', border: 'none', borderRadius: 14, padding: '0.72rem 1rem', background: '#fff', color: '#6f4fe6', fontWeight: 800, cursor: 'pointer' }}>START</button>
+                <button type="button" onClick={() => onSelect(item)} style={{ justifySelf: 'start', border: 'none', borderRadius: 14, padding: '0.72rem 1rem', background: '#fff', color: '#6f4fe6', fontWeight: 800, fontSize: '0.92rem', letterSpacing: '0.02em', cursor: 'pointer' }}>START</button>
               </div>
             ))}
           </div>
@@ -901,7 +901,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
       <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
           <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
-          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 500, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
+          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 700, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
         </div>
         {isWeeklyPulse ? (
           <>
@@ -1218,10 +1218,10 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
             {!draft.templateFields ? (
-              <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 500 }} />
+              <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 700 }} />
             ) : (
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '2rem', fontWeight: 500, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
+                <p style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
                 {draft.templateFields.map((field, index) => (
                   <div key={field.label} style={{ display: 'grid', gap: '0.42rem' }}>
                     <p style={{ margin: 0, color: '#4f9bff', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>

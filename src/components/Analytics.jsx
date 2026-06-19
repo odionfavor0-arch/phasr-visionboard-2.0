@@ -397,7 +397,7 @@ function SectionCard({ title, children, locked = false }) {
   return (
     <div style={{ background: '#fff', borderRadius: 24, padding: '1.1rem', border: '1px solid var(--app-border)', boxShadow: '0 14px 32px rgba(86,53,66,0.06)', position: 'relative', overflow: 'hidden', minHeight: 180 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.8rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: 0 }}>{title}</p>
+        <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: 0 }}>{title}</p>
       </div>
       <div className={locked ? 'pro-feature' : ''} style={{ opacity: locked ? 0.52 : 1, filter: locked ? 'blur(6px)' : 'none', userSelect: locked ? 'none' : 'auto', transform: locked ? 'scale(1.01)' : 'none', pointerEvents: locked ? 'none' : 'auto' }}>
         {children}
@@ -415,6 +415,8 @@ function SectionCard({ title, children, locked = false }) {
               cursor: 'pointer',
               border: 'none',
               fontWeight: 800,
+              fontSize: '1.05rem',
+              letterSpacing: '0.01em',
               fontFamily: "'DM Sans', sans-serif",
               transition: 'box-shadow 0.2s ease, transform 0.2s ease',
             }}
@@ -520,13 +522,13 @@ export default function Analytics() {
           <div style={{ display: 'grid', gap: '1rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.9rem' }}>
               <SectionCard title="Journal entries">
-                <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{totalEntries}</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.4rem, 2.6vw, 2.4rem)', fontWeight: 900, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{totalEntries}</p>
               </SectionCard>
               <SectionCard title="Weekly activity">
-                <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{weeklyActivity}</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.4rem, 2.6vw, 2.4rem)', fontWeight: 900, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{weeklyActivity}</p>
               </SectionCard>
               <SectionCard title="Current streak">
-                <p style={{ fontSize: 'clamp(1.28rem, 2.2vw, 2rem)', fontWeight: 800, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{getCurrentStreakCount()} day{getCurrentStreakCount() !== 1 ? 's' : ''}</p>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 'clamp(1.4rem, 2.6vw, 2.4rem)', fontWeight: 900, color: '#2e1e28', textAlign: 'center', margin: 0 }}>{getCurrentStreakCount()} day{getCurrentStreakCount() !== 1 ? 's' : ''}</p>
               </SectionCard>
             </div>
 
@@ -547,7 +549,7 @@ export default function Analytics() {
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '0.72fr 1.28fr', gap: '1rem' }}>
               <div style={{ background: '#fff', borderRadius: 24, padding: '1rem', border: '1px solid var(--app-border)', boxShadow: '0 14px 32px rgba(86,53,66,0.06)', display: 'grid', gap: '0.9rem', alignContent: 'start' }}>
-                <p style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: '0 0 0.2rem' }}>This Week</p>
+                <p style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: '0 0 0.2rem' }}>This Week</p>
                 <div>
                   <p style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.2rem', fontWeight: 800, color: '#2e1e28', margin: 0 }}>Week 1</p>
                   <div style={{ height: 5, width: '100%', borderRadius: 999, background: '#f8e7ee', overflow: 'hidden', marginTop: '0.65rem' }}>
@@ -563,14 +565,14 @@ export default function Analytics() {
                 </div>
                 <div style={{ display: 'grid', gap: '0.6rem' }}>
                   <div style={{ borderRadius: 14, background: 'var(--app-bg2)', padding: '0.72rem 0.8rem' }}>
-                    <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-muted)' }}>Tasks completed</p>
-                    <p style={{ margin: '0.28rem 0 0', fontFamily: "'Syne', sans-serif", fontSize: '1rem', fontWeight: 800, color: 'var(--app-accent)' }}>
+                    <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-muted)' }}>Tasks completed</p>
+                    <p style={{ margin: '0.28rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '1.3rem', fontWeight: 900, color: 'var(--app-accent)' }}>
                       {weeklyStats.tasksCompleted} out of {weeklyStats.tasksTotal}
                     </p>
                   </div>
                   <div style={{ borderRadius: 14, background: 'var(--app-bg2)', padding: '0.72rem 0.8rem' }}>
-                    <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-muted)' }}>Days checked in</p>
-                    <p style={{ margin: '0.28rem 0 0', fontFamily: "'Syne', sans-serif", fontSize: '1rem', fontWeight: 800, color: '#22c55e' }}>
+                    <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-muted)' }}>Days checked in</p>
+                    <p style={{ margin: '0.28rem 0 0', fontFamily: "'DM Sans', sans-serif", fontSize: '1.3rem', fontWeight: 900, color: '#22c55e' }}>
                       {weeklyStats.checkedDays} out of 7
                     </p>
                   </div>

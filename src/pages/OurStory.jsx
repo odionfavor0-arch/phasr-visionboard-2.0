@@ -140,7 +140,6 @@ export default function OurStory({ onGetStarted }) {
 }
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
     --bg:#05050a;--bg2:#0d0d16;

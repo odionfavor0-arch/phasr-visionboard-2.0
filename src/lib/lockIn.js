@@ -331,7 +331,7 @@ function ensureWeekRollover(phase, weeklyGoals, dateKey) {
   safeWrite(ENGINE_META_KEY, meta)
 }
 
-function getCompletionRecords() {
+export function getCompletionRecords() {
   return safeRead(COMPLETIONS_KEY, [])
 }
 

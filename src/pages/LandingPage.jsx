@@ -524,8 +524,6 @@ export default function LandingPage({ onGetStarted }) {
 }
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {

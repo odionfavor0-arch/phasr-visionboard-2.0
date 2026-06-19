@@ -916,8 +916,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   border: '1px solid rgba(232,64,122,0.32)',
                   background: 'linear-gradient(135deg, #e8407a, #f472a8)',
                   color: '#fff',
-                  fontSize: '0.68rem',
+                  fontSize: '0.82rem',
                   fontWeight: 800,
+                  letterSpacing: '0.01em',
                   cursor: 'pointer',
                   fontFamily: "'DM Sans', sans-serif",
                   boxShadow: reflectionHover ? '0 12px 26px rgba(232,64,122,0.32)' : '0 7px 16px rgba(232,64,122,0.18)',
@@ -1180,14 +1181,14 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             <div style={statCardInnerStyle}>
               <p style={{
                 fontSize: '0.56rem',
-                fontWeight: 800,
+                fontWeight: 700,
                 letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: '#059669',
                 margin: 0,
               }}>Phase</p>
               <p style={{
-                fontSize: '1.35rem', fontWeight: 800,
+                fontSize: '1.7rem', fontWeight: 900,
                 color: '#3d1f2b', lineHeight: 1, margin: 0,
               }}>{displayPhasePercent}%</p>
               <p style={{ fontSize: '0.6rem', color: '#7a5a66', margin: 0 }}>
@@ -1211,7 +1212,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 color: '#e8407a', margin: 0,
               }}>Streak</p>
               <p style={{
-                fontSize: '1.35rem', fontWeight: 800,
+                fontSize: '1.7rem', fontWeight: 900,
                 color: '#3d1f2b', lineHeight: 1, margin: 0,
               }}>{currentStreak}</p>
               <p style={{
