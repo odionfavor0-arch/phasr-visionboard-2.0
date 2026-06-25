@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Copy, Pencil, RotateCcw, Trash2, Volume2 } from 'lucide-react'
+// eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
+import { AnimatePresence, motion } from 'framer-motion'
+import { Copy, Globe, Pencil, RotateCcw, Trash2, Volume2 } from 'lucide-react'
 import { getLockInSummary, getTodayTask, loadBoardData, loadLockInState } from '../lib/lockIn'
 import { getUserAccess } from '../lib/access'
 import { getSageAvatarUrl, getVoicePreference } from '../lib/userPreferences'
@@ -1070,15 +1072,21 @@ function ChatBubble({ role, children, onSpeak, onCopy, onEdit, onRerun }) {
   return (
     <div style={{ display: 'flex', justifyContent: role === 'user' ? 'flex-end' : 'flex-start' }}>
       <div style={{ maxWidth: '88%', display: 'grid', gap: '0.28rem' }}>
-        <div
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 26 }}
           style={{
             padding: '0.72rem 0.9rem',
-            borderRadius: role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+            borderRadius: role === 'user'
+              ? `var(--app-radius-md) var(--app-radius-md) 4px var(--app-radius-md)`
+              : `var(--app-radius-md) var(--app-radius-md) var(--app-radius-md) 4px`,
             background:
               role === 'user'
                 ? 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))'
                 : '#fff',
             border: role === 'assistant' ? '1px solid var(--app-border)' : 'none',
+            boxShadow: 'var(--app-shadow-sm)',
             color: role === 'user' ? '#fff' : 'var(--app-text)',
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '0.84rem',
@@ -1087,7 +1095,7 @@ function ChatBubble({ role, children, onSpeak, onCopy, onEdit, onRerun }) {
           }}
         >
           {children}
-        </div>
+        </motion.div>
         {((role === 'assistant' && (typeof onSpeak === 'function' || onCopy || onRerun)) || (role === 'user' && (onCopy || onEdit))) && (
           <div
             style={{
@@ -1558,8 +1566,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           height: panelHeight,
           background: '#fffafc',
           border: '1px solid var(--app-border)',
-          borderRadius: 24,
-          boxShadow: '0 20px 42px rgba(86,53,66,0.18)',
+          borderRadius: 'var(--app-radius-lg)',
+          boxShadow: 'var(--app-shadow-lg)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -1581,11 +1589,11 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           <FemaleSageAvatar imageUrl={avatarUrl} />
         <div style={{ flex: 1 }}>
           <p
+            className="font-display"
             style={{
               margin: 0,
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: '0.92rem',
-              fontWeight: 800,
+              fontSize: '1rem',
+              fontWeight: 700,
               color: 'var(--app-text)',
             }}
           >
@@ -1633,22 +1641,24 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
               Ask about the blocker, the next step, or how to finish this task.
             </ChatBubble>
           )}
-          {displayMessages.map((message, index) => {
-            const role = sessionMode ? (message.role === 'sage' ? 'assistant' : 'user') : message.role
-            const text = sessionMode ? message.text : message.content
-            return (
-              <ChatBubble
-                key={`${role}-${index}`}
-                role={role}
-                onSpeak={!sessionMode && message.role === 'assistant' ? () => speakText(message.content, voicePreference) : undefined}
-                onCopy={() => copyText(text)}
-                onEdit={!sessionMode && message.role === 'user' ? () => editQuickMessage(message.content) : undefined}
-                onRerun={!sessionMode && message.role === 'assistant' ? () => rerunQuickAssistant(index) : undefined}
-              >
-                <MessageContent text={text} role={role} />
-              </ChatBubble>
-            )
-          })}
+          <AnimatePresence initial={false}>
+            {displayMessages.map((message, index) => {
+              const role = sessionMode ? (message.role === 'sage' ? 'assistant' : 'user') : message.role
+              const text = sessionMode ? message.text : message.content
+              return (
+                <ChatBubble
+                  key={`${role}-${index}`}
+                  role={role}
+                  onSpeak={!sessionMode && message.role === 'assistant' ? () => speakText(message.content, voicePreference) : undefined}
+                  onCopy={() => copyText(text)}
+                  onEdit={!sessionMode && message.role === 'user' ? () => editQuickMessage(message.content) : undefined}
+                  onRerun={!sessionMode && message.role === 'assistant' ? () => rerunQuickAssistant(index) : undefined}
+                >
+                  <MessageContent text={text} role={role} />
+                </ChatBubble>
+              )
+            })}
+          </AnimatePresence>
           {loading && (
             <ChatBubble role="assistant">
               <TypingDots />
@@ -1697,7 +1707,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             maxHeight: isMobile ? 180 : 84,
             overflowY: 'auto',
             border: '1.5px solid var(--app-border)',
-            borderRadius: 14,
+            borderRadius: 'var(--app-radius-sm)',
             padding: '0.55rem 0.75rem',
             outline: 'none',
             fontFamily: "'DM Sans', sans-serif",
@@ -1715,7 +1725,9 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             recording={recording}
             disabled={!getSpeechRecognition()}
           />
-        <button
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={sessionMode ? sendWeeklySessionMessage : sendQuickMessage}
           disabled={!input.trim() || loading || (sessionMode && (Boolean(weeklySessionCompletedAt) || sessionLimitReached))}
           style={{
@@ -1732,7 +1744,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
           }}
         >
           →
-        </button>
+        </motion.button>
       </div>
 
       {sessionMode ? (
@@ -1742,7 +1754,9 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
               Session limit reached. End it when you are ready.
             </p>
           ) : null}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={() => {
               if (!weeklySessionCompletedAt) endWeeklySession()
@@ -1753,7 +1767,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
               width: '100%',
               border: '1px solid #f2c4d0',
               background: '#fff',
-              borderRadius: 14,
+              borderRadius: 'var(--app-radius-sm)',
               padding: '0.78rem 0.9rem',
               fontWeight: 800,
               color: '#7a5a66',
@@ -1761,7 +1775,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             }}
           >
             {weeklySessionCompletedAt ? 'Close session' : 'End session'}
-          </button>
+          </motion.button>
         </div>
       ) : null}
     </div>
@@ -2077,7 +2091,9 @@ function VoiceButton({ listening, onClick, disabled = false }) {
 
 function VoiceRecorderButton({ recording, onClick, disabled = false }) {
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -2087,7 +2103,7 @@ function VoiceRecorderButton({ recording, onClick, disabled = false }) {
         height: 44,
         borderRadius: '50%',
         border: 'none',
-        background: recording ? '#d63f64' : '#f472a8',
+        background: recording ? 'var(--app-cta)' : 'var(--app-accent2)',
         color: '#fff',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.45 : 1,
@@ -2102,7 +2118,7 @@ function VoiceRecorderButton({ recording, onClick, disabled = false }) {
         <path d="M10 13.9v2.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         <path d="M7.7 16.5h4.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
-    </button>
+    </motion.button>
   )
 }
 
@@ -2632,18 +2648,20 @@ Action Steps
             msOverflowStyle: 'none',
           }}
         >
-          {session.map((message, index) => (
-            <ChatBubble
-              key={`${message.role}-${index}`}
-              role={message.role}
-              onSpeak={message.role === 'assistant' ? () => speakText(message.content, voicePreference) : undefined}
-              onCopy={() => copyText(message.content)}
-              onEdit={message.role === 'user' ? () => editFullMessage(message.content) : undefined}
-              onRerun={message.role === 'assistant' ? () => rerunAssistantMessage(index) : undefined}
-            >
-              <MessageContent text={message.content} role={message.role} />
-            </ChatBubble>
-          ))}
+          <AnimatePresence initial={false}>
+            {session.map((message, index) => (
+              <ChatBubble
+                key={`${message.role}-${index}`}
+                role={message.role}
+                onSpeak={message.role === 'assistant' ? () => speakText(message.content, voicePreference) : undefined}
+                onCopy={() => copyText(message.content)}
+                onEdit={message.role === 'user' ? () => editFullMessage(message.content) : undefined}
+                onRerun={message.role === 'assistant' ? () => rerunAssistantMessage(index) : undefined}
+              >
+                <MessageContent text={message.content} role={message.role} />
+              </ChatBubble>
+            ))}
+          </AnimatePresence>
           {loading && (
             <ChatBubble role="assistant">
               <TypingDots />

@@ -22,7 +22,17 @@
   --app-border: #f5c0cc;
   --app-accent: #f06090;
   --app-accent2: #f78fb0;
+  --app-cta: #c2185b;
+  --app-cta-hover: #a8124e;
   --app-glow: 0 4px 24px rgba(240, 96, 144, 0.15);
+
+  --app-shadow-sm: 0 2px 10px rgba(240, 96, 144, 0.12);
+  --app-shadow-md: 0 8px 28px rgba(240, 96, 144, 0.12);
+  --app-shadow-lg: 0 18px 48px rgba(240, 96, 144, 0.12);
+
+  --app-radius-sm: 12px;
+  --app-radius-md: 16px;
+  --app-radius-lg: 24px;
 
   --coach-bg: linear-gradient(160deg, #fff8fa, #fff);
   --coach-header: linear-gradient(135deg, #f78fb0, #f06090);
@@ -53,7 +63,17 @@
   --app-border: #c5ccf0;
   --app-accent: #4a6cf7;
   --app-accent2: #7b94f8;
+  --app-cta: #2a4ad7;
+  --app-cta-hover: #1f3aad;
   --app-glow: 0 4px 24px rgba(74, 108, 247, 0.12);
+
+  --app-shadow-sm: 0 2px 10px rgba(74, 108, 247, 0.12);
+  --app-shadow-md: 0 8px 28px rgba(74, 108, 247, 0.12);
+  --app-shadow-lg: 0 18px 48px rgba(74, 108, 247, 0.12);
+
+  --app-radius-sm: 12px;
+  --app-radius-md: 16px;
+  --app-radius-lg: 24px;
 
   --coach-bg: linear-gradient(160deg, #f5f7ff, #fff);
   --coach-header: linear-gradient(135deg, #7b94f8, #4a6cf7);
@@ -85,6 +105,10 @@ body {
 
 h1, h2, h3 {
   text-wrap: balance;
+}
+
+.font-display {
+  font-family: 'Playfair Display', 'Cormorant Garamond', serif;
 }
 
 .theme-switcher {

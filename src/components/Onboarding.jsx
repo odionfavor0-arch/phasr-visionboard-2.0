@@ -57,7 +57,7 @@ function PreviewCard({ slide, theme, isPhone }) {
   if (slide.id === 'sage') {
     return (
       <div style={commonCard}>
-        <div style={{ marginLeft: 'auto', width: 'fit-content', maxWidth: '86%', padding: isPhone ? '0.76rem 0.88rem' : '0.92rem 1rem', borderRadius: 18, fontSize: isPhone ? '0.8rem' : '0.88rem', lineHeight: 1.5, background: 'linear-gradient(135deg,#e8407a,#f472a8)', color: '#fff' }}>What should I do next?</div>
+        <div style={{ marginLeft: 'auto', width: 'fit-content', maxWidth: '86%', padding: isPhone ? '0.76rem 0.88rem' : '0.92rem 1rem', borderRadius: 18, fontSize: isPhone ? '0.8rem' : '0.88rem', lineHeight: 1.5, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', color: '#fff' }}>What should I do next?</div>
         <div style={{ marginTop: 12, width: 'fit-content', maxWidth: '86%', padding: isPhone ? '0.76rem 0.88rem' : '0.92rem 1rem', borderRadius: 18, fontSize: isPhone ? '0.8rem' : '0.88rem', lineHeight: 1.5, background: 'rgba(255,255,255,0.82)', color: '#451425' }}>Start with the smallest visible step today.</div>
         <div style={{ display: 'inline-flex', marginTop: isPhone ? 12 : 16, padding: '0.62rem 0.94rem', borderRadius: 999, background: 'rgba(240,96,144,0.14)', color: '#d14579', fontSize: isPhone ? '0.76rem' : '0.82rem', fontWeight: 700 }}>Think with Sage</div>
       </div>
@@ -212,7 +212,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                       onClick={() => togglePillar(p.id)}
                       style={{
                         padding: '14px 12px', borderRadius: 16, border: active ? 'none' : `1px solid ${theme.border}`,
-                        background: active ? 'linear-gradient(135deg,#e8407a,#f472a8)' : theme.panel,
+                        background: active ? 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))' : theme.panel,
                         color: theme.text, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center',
                         transition: 'all 0.18s', boxShadow: active ? '0 10px 24px rgba(232,64,122,0.28)' : 'none',
@@ -344,7 +344,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
 
 const primaryButton = {
   minHeight: 46, padding: '0.76rem 1.1rem', borderRadius: 999, border: 'none',
-  background: 'linear-gradient(135deg,#e8407a,#f472a8)', color: '#fff',
+  background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', color: '#fff',
   font: 'inherit', fontWeight: 700, cursor: 'pointer', boxShadow: '0 14px 30px rgba(232,64,122,0.28)',
 }
 

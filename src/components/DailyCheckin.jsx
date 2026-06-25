@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+// eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
+import { motion } from 'framer-motion'
 import { buildWeeklyGoals, loadBoardData, loadLockInState } from '../lib/lockIn'
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DAILY_STREAK_RESET_KEY = 'phasr_daily_streak_reset_2026_05_20_v1'
@@ -736,9 +738,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     transition: 'width 0.5s ease',
   }
   const unlockProgressTrackStyle = buildProgressTrackStyle('rgba(0,0,0,0.08)')
-  const unlockProgressFillStyle = buildProgressFillStyle(progressToNext, 'linear-gradient(90deg, #7c3aed, #a78bfa)')
+  const unlockProgressFillStyle = buildProgressFillStyle(progressToNext, 'linear-gradient(90deg, var(--app-accent), var(--app-accent2))')
   const statCardStyle = {
-    borderRadius: '14px',
+    borderRadius: 'var(--app-radius-md)',
     padding: '12px 12px 14px',
     minHeight: 110,
     display: 'flex',
@@ -747,6 +749,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     alignItems: 'center',
     textAlign: 'center',
     gap: 8,
+    boxShadow: 'var(--app-shadow-sm)',
   }
   const statCardInnerStyle = {
     width: '100%',
@@ -875,10 +878,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
       <div style={{ width: '100%', maxWidth: contentMaxWidth, margin: '0 auto', padding: pagePadding, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           {phases.map((phase, index) => (
-            <button
+            <motion.button
               key={phase.id}
               type="button"
               onClick={() => handlePhaseChange(phase.id)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               style={{
                 minHeight: 44,
                 padding: '10px 18px',
@@ -893,28 +898,30 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               }}
             >
               {`Phase ${index + 1}`}
-            </button>
+            </motion.button>
           ))}
         </div>
 
         <div style={{ height: 16 }} />
 
-        <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 14, padding: isMobile ? '0.95rem' : '1.1rem', marginBottom: '1rem', boxShadow: '0 14px 34px rgba(240, 96, 144, 0.07)' }}>
+        <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.95rem' : '1.1rem', marginBottom: '1rem', boxShadow: 'var(--app-shadow-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, #e8407a, #f472a8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
-            <p style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e8407a' }}>Live Score</p>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
+            <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--app-accent)' }}>Live Score</p>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <button
+              <motion.button
                 type="button"
                 onClick={openPulse}
                 onMouseEnter={() => setReflectionHover(true)}
                 onMouseLeave={() => setReflectionHover(false)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 style={{
                   minHeight: 32,
                   padding: '0.42rem 0.78rem',
                   borderRadius: 999,
                   border: '1px solid rgba(232,64,122,0.32)',
-                  background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                  background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))',
                   color: '#fff',
                   fontSize: '0.82rem',
                   fontWeight: 800,
@@ -927,7 +934,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 }}
               >
                 Weekly Reflection
-              </button>
+              </motion.button>
             </div>
           </div>
 
@@ -959,7 +966,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
                 Week {activeWeek} closed at {weekPercent}%. Complete Weekly Reflection before week {activeWeek + 1} opens.
               </p>
-              <button onClick={openPulse} style={{ width: '100%', minHeight: 46, padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
+              <button onClick={openPulse} style={{ width: '100%', minHeight: 46, padding: '0.7rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}>
                 Weekly Reflection
               </button>
             </>
@@ -972,7 +979,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && showReminder && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               You are {displayedDay} days into week {activeWeek}. Your week {activeWeek - 1} reflection with Sage is still pending.
-              <button type="button" onClick={openPulse} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: '#e8407a', fontWeight: 800, cursor: 'pointer', padding: '4px 0', font: 'inherit' }}>Complete now</button>
+              <button type="button" onClick={openPulse} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', padding: '4px 0', font: 'inherit' }}>Complete now</button>
             </p>
           )}
           {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && !showReminder && (
@@ -985,28 +992,33 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         </div>
 
         {!hasPillars && (
-          <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 14, background: '#fff6f9', marginBottom: '1rem' }}>
+          <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 'var(--app-radius-md)', background: '#fff6f9', marginBottom: '1rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>Set up your Vision Board first</p>
             <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
               Your daily tasks come from your pillar activities. Add them to your Vision Board to activate your streak.
             </p>
-            <button type="button" onClick={onOpenBoard} style={{ minHeight: 44, borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+            <motion.button type="button" onClick={onOpenBoard} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ minHeight: 44, borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
               Go to Vision Board
-            </button>
+            </motion.button>
           </div>
         )}
 
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7e5d68', marginBottom: 10 }}>All Weeks</div>
         <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
           <div style={{ display: 'flex', gap: 8, width: 'max-content', minWidth: '100%' }}>
-            {weeklyData.weeks.map(item => {
+            {weeklyData.weeks.map((item, i) => {
               const active = item.index === activeWeek
               const locked = !canAccessWeek(item.index)
               const pulseDone = weekStatuses.find(weekItem => weekItem.week === item.index)?.pulseDone || false
               return (
-                <button
+                <motion.button
                   key={item.id}
                   type="button"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     if (locked) {
                       setLockedWeekMessage(`Finish Week ${item.index - 1} and complete Weekly Reflection first.`)
@@ -1029,7 +1041,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   }}
                 >
                   {pulseDone ? `Week ${item.index} done` : `Week ${item.index}`}
-                </button>
+                </motion.button>
               )
             })}
           </div>
@@ -1038,7 +1050,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
         <div style={{ height: 14 }} />
 
         {lockedWeekMessage ? (
-          <div style={{ background: '#fff8ec', border: '1px solid #f3d38a', borderRadius: 14, padding: '0.9rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ background: '#fff8ec', border: '1px solid #f3d38a', borderRadius: 'var(--app-radius-md)', padding: '0.9rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#5a4310', lineHeight: 1.5 }}>
               {lockedWeekMessage}
             </p>
@@ -1062,12 +1074,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             zIndex: 2,
             pointerEvents: 'auto',
           }}>
-            {weekDayCards.map(day => (
-              <div
+            {weekDayCards.map((day, i) => (
+              <motion.div
                 key={`${activeWeek}-${day.day}`}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: day.isFuture ? 0.55 : 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
                 style={{
                   minHeight: isMobile ? 56 : 64,
-                  borderRadius: 12,
+                  borderRadius: 'var(--app-radius-sm)',
                   border: day.isCurrent ? `1.5px solid ${accent}` : '1px solid #f2c8d6',
                   background: day.isFuture ? '#fffafd' : day.done ? '#ffe4ee' : '#fff',
                   display: 'flex',
@@ -1075,8 +1090,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 4,
-                  opacity: day.isFuture ? 0.55 : 1,
-                  boxShadow: day.isCurrent ? '0 10px 22px rgba(240,96,144,0.13)' : 'none',
+                  boxShadow: day.isCurrent ? 'var(--app-shadow-sm)' : 'none',
                 }}
               >
                 <span style={{ fontSize: isMobile ? 10 : 11, fontWeight: 800, color: day.isCurrent ? accent : '#7e5d68' }}>{day.label}</span>
@@ -1086,15 +1100,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 <span style={{ fontSize: 9, fontWeight: 700, color: day.isFuture ? '#c39aaa' : day.isCurrent ? accent : '#b08090' }}>
                   {day.isFuture ? 'Locked' : day.isCurrent ? 'Today' : day.done ? 'Done' : day.isPast ? 'Open' : ''}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : null}
 
-        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 14, padding: isMobile ? 14 : 18, boxShadow: '0 14px 34px rgba(240, 96, 144, 0.06)', position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
+        <div style={{ background: '#fff', border: '1px solid #f2c8d6', borderRadius: 'var(--app-radius-md)', padding: isMobile ? 14 : 18, boxShadow: 'var(--app-shadow-md)', position: 'relative', zIndex: 2, pointerEvents: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3d1f2b' }}>Daily To-Do</div>
+              <div className="font-display" style={{ fontSize: '1.05rem', fontWeight: 700, color: '#3d1f2b' }}>Daily To-Do</div>
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>{completedToday}/{totalToday}</div>
           </div>
@@ -1109,14 +1123,19 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tasks.length === 0 && (
-              <div style={{ padding: '18px 16px', borderRadius: 14, border: '1px solid #f2c8d6', background: '#fff6f9', color: '#7e5d68', fontSize: 12 }}>
+              <div style={{ padding: '18px 16px', borderRadius: 'var(--app-radius-md)', border: '1px solid #f2c8d6', background: '#fff6f9', color: '#7e5d68', fontSize: 12 }}>
                 {hasPillars ? 'Add activities to your pillar so your daily to-do can load.' : 'Set up your vision board first to activate your daily tasks.'}
               </div>
             )}
-            {tasks.map(task => (
-              <button
+            {tasks.map((task, i) => (
+              <motion.button
                 key={task.id}
                 type="button"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => toggleTask(task.id)}
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -1138,7 +1157,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   padding: '14px 16px',
                   background: task.done ? '#ffe4ee' : '#fff6f9',
                   border: `1px solid ${task.done ? '#ef5d90' : '#f2c8d6'}`,
-                  borderRadius: 12,
+                  borderRadius: 'var(--app-radius-sm)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontFamily: "'DM Sans', sans-serif",
@@ -1154,7 +1173,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   </div>
                   <div style={{ fontSize: 12, color: '#7e5d68', marginTop: 4 }}>{task.pillar}</div>
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -1167,11 +1186,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           gap: isMobile ? '6px' : '10px',
           margin: isMobile ? '0.75rem 0 0' : '1rem 0',
         }}>
-          <div
+          <motion.div
             onClick={() => {
               if (props.setActiveView) props.setActiveView('board')
               else onOpenBoard?.()
             }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0 * 0.04 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             style={{
               background: '#f0fff4', border: '1px solid #b9dfc0',
               ...statCardStyle,
@@ -1198,18 +1222,24 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 <div style={phaseProgressFillStyle} />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div style={{
-            background: '#fff5f7',
-            border: '1px solid #f2c4d0',
-            ...statCardStyle,
-          }}>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 1 * 0.04 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={{
+              background: '#fff5f7',
+              border: '1px solid #f2c4d0',
+              ...statCardStyle,
+            }}>
             <div style={statCardInnerStyle}>
               <p style={{
                 fontSize: '0.52rem', fontWeight: 700,
                 letterSpacing: '0.1em', textTransform: 'uppercase',
-                color: '#e8407a', margin: 0,
+                color: 'var(--app-accent)', margin: 0,
               }}>Streak</p>
               <p style={{
                 fontSize: '1.7rem', fontWeight: 900,
@@ -1217,28 +1247,33 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               }}>{currentStreak}</p>
               <p style={{
                 fontSize: '0.58rem', fontWeight: 700,
-                color: '#e8407a',
+                color: 'var(--app-accent)',
                 margin: 0,
               }}>
                 {`Day ${daysIn} in`}
               </p>
             </div>
-          </div>
+          </motion.div>
 
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 2 * 0.04 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             style={{
-              background: '#f5f0ff', border: '1px solid #d0b9f0',
+              background: '#fff0f5', border: '1px solid #f2c4d0',
               ...statCardStyle,
             }}
           >
             <div style={statCardInnerStyle}>
-              <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c3aed', margin: 0 }}>
+              <p style={{ fontSize: '0.52rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent2)', margin: 0 }}>
                 Unlock Path
               </p>
               <p style={{
                 fontSize: '0.74rem',
                 fontWeight: 700,
-                color: '#7c3aed',
+                color: 'var(--app-accent2)',
                 lineHeight: 1.25,
                 minHeight: 18,
                 display: 'flex',
@@ -1253,18 +1288,22 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 <div style={unlockProgressFillStyle} />
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {showPhaseModal ? (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 500 }}>
-            <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: '1.5rem', width: '100%', maxWidth: 480 }}>
-              <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', marginBottom: 6 }}>Before you move forward</p>
-              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8, fontFamily: 'Playfair Display, serif' }}>Complete your phase review first.</p>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              style={{ background: '#fff', borderRadius: 'var(--app-radius-lg) var(--app-radius-lg) 0 0', padding: '1.5rem', width: '100%', maxWidth: 480, boxShadow: 'var(--app-shadow-lg)' }}>
+              <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--app-accent)', marginBottom: 6 }}>Before you move forward</p>
+              <p className="font-display" style={{ fontSize: '1.15rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>Complete your phase review first.</p>
               <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 16 }}>Before moving into the next phase, Sage needs your quarterly review from this phase so the next one starts with the right clarity.</p>
-              <button onClick={openQuarterlyReview} style={{ width: '100%', padding: '0.85rem', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', marginBottom: 8 }}>Open phase review</button>
-              <button onClick={() => setShowPhaseModal(false)} style={{ width: '100%', padding: '0.75rem', borderRadius: 12, border: '1.5px solid #f2c4d0', background: 'transparent', color: '#7a5a66', fontSize: '0.85rem', cursor: 'pointer' }}>I will do it later</button>
-            </div>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={openQuarterlyReview} style={{ width: '100%', padding: '0.85rem', borderRadius: 'var(--app-radius-sm)', border: 'none', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', marginBottom: 8 }}>Open phase review</motion.button>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setShowPhaseModal(false)} style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--app-radius-sm)', border: '1.5px solid #f2c4d0', background: 'transparent', color: '#7a5a66', fontSize: '0.85rem', cursor: 'pointer' }}>I will do it later</motion.button>
+            </motion.div>
           </div>
         ) : null}
       </div>

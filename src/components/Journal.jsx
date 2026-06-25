@@ -1,4 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
+// eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowUpDown,
   ArrowLeft,
@@ -77,12 +79,12 @@ const PROMPTS = [
 ]
 
 const MOODS = [
-  { emoji: '??', label: 'Calm', score: 8 },
-  { emoji: '??', label: 'Focused', score: 9 },
-  { emoji: '??', label: 'Reflective', score: 5 },
-  { emoji: '??', label: 'Stressed', score: 3 },
-  { emoji: '??', label: 'Confident', score: 8 },
-  { emoji: '??', label: 'Energised', score: 9 },
+  { emoji: '😌', label: 'Calm', score: 8 },
+  { emoji: '🎯', label: 'Focused', score: 9 },
+  { emoji: '🌙', label: 'Reflective', score: 5 },
+  { emoji: '😣', label: 'Stressed', score: 3 },
+  { emoji: '💪', label: 'Confident', score: 8 },
+  { emoji: '⚡', label: 'Energised', score: 9 },
 ]
 
 const TEMPLATES = [
@@ -166,14 +168,14 @@ const TEMPLATES = [
 
 const BACKGROUNDS = [
   { id: 'original', name: 'Original', style: { background: '#ffffff' }, deco: '' },
-  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '?? ? ??' },
-  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '? ? ?' },
-  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '?? ? ??' },
-  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '?? ? ??' },
+  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '🌸 ✨ 🌸' },
+  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '🌙 ✨ 🌙' },
+  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '🦋 ✨ 🦋' },
+  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '🎀 ✨ 🎀' },
 ]
 
-const STICKERS = ['??', '??', '??', '?', '??']
-const COLORS = ['#2f1e2a', '#7b243e', '#b03060', '#e8407a', '#ff7aaa', '#6e2fb8']
+const STICKERS = ['✨', '🌸', '🦋', '💗', '🌷']
+const COLORS = ['#2f1e2a', '#7b243e', '#b03060', 'var(--app-accent)', '#ff7aaa', '#6e2fb8']
 const FONTS = [
   { id: 'dm', name: 'Default', family: "'DM Sans', sans-serif" },
   { id: 'playfair', name: 'Playfair', family: "'Playfair Display', serif" },
@@ -586,21 +588,21 @@ Scoring rules:
 - clarityLabel must be one short emotional or mental-state label such as Calm, Focused, Stressed, Reflective, Avoidant, Productive, Angry, Happy, Confused, Clear, Heavy, Energised, Confident, or Decisive.
 - Do not judge only how organized the writing sounds. Rate the emotional and mental state underneath it too, including clarity, decision, stress, avoidance, productivity, anger, happiness, confidence, confusion, focus, emotional heaviness, and energy.
 
-HOW TO RESPOND â€” read this carefully.
+HOW TO RESPOND - read this carefully.
 Do not follow a formula. Do not validate then explain then suggest then ask a question then close. That pattern feels scripted and the user will feel it.
 Instead read what they wrote and respond the way a sharp, warm, honest friend would respond if they received this as a voice note. Not a therapist. Not a coach reading from a framework. A real person who actually absorbed what was said.
 Sometimes the right response is two sentences. Sometimes it is a paragraph. Let the content decide the length, not a template.
 Do not always end with a question. Questions at the end of every response feel like a technique. Only ask something if it genuinely opens something up. If the person just needed to be heard, hear them and close with something that lands, not something that probes.
 Do not use phrases like: "this is a common phenomenon", "it is likely that", "if it feels comfortable", "you might consider", "taking a brave step." These sound clinical.
-Do use: short sentences when something is heavy. Directness when something needs naming. Warmth without softening the truth. Silence when nothing needs to be added â€” meaning end the response when it is done, not when a checklist is complete.
-If someone writes something personal and emotional â€” match that energy first before anything else. Feel it with them before you move them.
-If someone writes something practical and goal-focused â€” be direct and action-oriented without emotional preamble.
+Do use: short sentences when something is heavy. Directness when something needs naming. Warmth without softening the truth. Silence when nothing needs to be added - meaning end the response when it is done, not when a checklist is complete.
+If someone writes something personal and emotional - match that energy first before anything else. Feel it with them before you move them.
+If someone writes something practical and goal-focused - be direct and action-oriented without emotional preamble.
 Read the room. Every time. That is the whole job.
 Never sound like you are running a session. Sound like you showed up.
 
-MULTI-TOPIC RULE â€” this is important.
+MULTI-TOPIC RULE - this is important.
 If the user wrote about more than one thing in their journal entry, address all of them. Do not pick the most prominent topic and ignore the rest. Do not summarize them into one theme. Each thing they wrote about deserves a response.
-If they wrote about their relationship, their business, and feeling tired â€” respond to all three. Not in a list. Not with headers. Just naturally, the way a conversation moves between topics.
+If they wrote about their relationship, their business, and feeling tired - respond to all three. Not in a list. Not with headers. Just naturally, the way a conversation moves between topics.
 Example of wrong approach: User writes about feeling overwhelmed with work, a fight with a friend, and excitement about a new idea. Sage only addresses the overwhelm and ignores the other two.
 Example of right approach: Move through all three naturally. Maybe the overwhelm connects to the fight. Maybe the new idea is the thing that is actually keeping them going underneath all of it. Find the thread if there is one. If there is not one, just address each thing on its own terms.
 The rule is simple: if they wrote it, it mattered enough to them to put it in their journal. Sage does not get to decide what was important and what was not. Respond to all of it.
@@ -639,7 +641,12 @@ function BottomSheet({ open, onClose, title, children }) {
   return (
     <>
       <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'fixed', inset: 0, border: 'none', background: 'rgba(32, 20, 28, 0.24)', zIndex: 40 }} />
-      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 41, background: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, boxShadow: '0 -10px 34px rgba(58, 28, 39, 0.15)', padding: '1rem 1rem 1.2rem', maxHeight: '62vh', overflowY: 'auto' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 41, background: '#fff', borderTopLeftRadius: 'var(--app-radius-lg)', borderTopRightRadius: 'var(--app-radius-lg)', boxShadow: 'var(--app-shadow-lg)', padding: '1rem 1rem 1.2rem', maxHeight: '62vh', overflowY: 'auto' }}
+      >
         {title ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
             <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#3c2430' }}>{title}</p>
@@ -647,7 +654,7 @@ function BottomSheet({ open, onClose, title, children }) {
           </div>
         ) : null}
         {children}
-      </div>
+      </motion.div>
     </>
   )
 }
@@ -675,17 +682,25 @@ function TemplatesPage({ onBack, onSelect }) {
       <div style={{ width: '100%', maxWidth: '100%', margin: 0, display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
           <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
-          <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1d2430' }}>Templates</h2>
+          <h2 className="font-display" style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1d2430' }}>Templates</h2>
         </div>
         {orderedGroups.filter(group => grouped[group]?.length).map(group => (
           <div key={group} style={{ display: 'grid', gap: '0.85rem' }}>
             <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6e7fa1' }}>{group}</p>
-            {grouped[group].map(item => (
-              <div key={item.id} style={{ background: item.accent, borderRadius: 24, padding: '1.1rem', display: 'grid', gap: '0.55rem' }}>
+            {grouped[group].map((item, i) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{ background: item.accent, borderRadius: 'var(--app-radius-lg)', padding: '1.1rem', display: 'grid', gap: '0.55rem', boxShadow: 'var(--app-shadow-md)' }}
+              >
                 <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#2f2530' }}>{item.name}</p>
                 <p style={{ margin: 0, fontSize: '0.84rem', color: '#5c5564', fontWeight: 700 }}>{item.useWhen}</p>
-                <button type="button" onClick={() => onSelect(item)} style={{ justifySelf: 'start', border: 'none', borderRadius: 14, padding: '0.72rem 1rem', background: '#fff', color: '#6f4fe6', fontWeight: 800, fontSize: '0.92rem', letterSpacing: '0.02em', cursor: 'pointer' }}>START</button>
-              </div>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={() => onSelect(item)} style={{ justifySelf: 'start', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.72rem 1rem', background: '#fff', color: '#6f4fe6', fontWeight: 800, fontSize: '0.92rem', letterSpacing: '0.02em', cursor: 'pointer' }}>START</motion.button>
+              </motion.div>
             ))}
           </div>
         ))}
@@ -708,28 +723,34 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
           <button type="button" onClick={onBack} style={{ ...ghostIconButtonStyle, background: 'rgba(255,255,255,0.86)' }}>
             <ArrowLeft size={20} />
           </button>
-          <h2 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 600, color: '#fff' }}>{template.name}</h2>
+          <h2 className="font-display" style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 600, color: '#fff' }}>{template.name}</h2>
         </div>
         <p style={{ margin: 0, color: '#fff6fb', fontSize: '1rem', lineHeight: 1.65 }}>{template.useWhen}</p>
 
         <div style={{ display: 'grid', gap: '1rem' }}>
-          {template.fields.map(field => (
-            <div key={field.label} style={{ background: 'rgba(255,255,255,0.93)', borderRadius: 22, padding: '1rem', display: 'grid', gap: '0.55rem' }}>
+          {template.fields.map((field, i) => (
+            <motion.div
+              key={field.label}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
+              style={{ background: 'rgba(255,255,255,0.93)', borderRadius: 'var(--app-radius-md)', padding: '1rem', display: 'grid', gap: '0.55rem', boxShadow: 'var(--app-shadow-md)' }}
+            >
               <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#342138' }}>{field.label}</p>
               <p style={{ margin: 0, color: '#6b5b6e', lineHeight: 1.6 }}>{field.subtext}</p>
               <textarea
                 value={answers[field.label] || ''}
                 onChange={event => onChange(field.label, event.target.value)}
                 placeholder="Enter your thoughts..."
-                style={{ width: '100%', minHeight: 86, border: '1px solid #ead8e7', borderRadius: 16, padding: '0.9rem', outline: 'none', resize: 'vertical', fontSize: '0.98rem', lineHeight: 1.6, color: '#2f1e2a', background: '#fff' }}
+                style={{ width: '100%', minHeight: 86, border: '1px solid #ead8e7', borderRadius: 'var(--app-radius-sm)', padding: '0.9rem', outline: 'none', resize: 'vertical', fontSize: '0.98rem', lineHeight: 1.6, color: '#2f1e2a', background: '#fff' }}
               />
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        <button type="button" onClick={onApply} style={{ width: '100%', border: 'none', borderRadius: 16, padding: '1rem', background: 'linear-gradient(135deg, #d35ac0, #8d59da)', color: '#fff', fontWeight: 800, fontSize: '1.05rem', boxShadow: '0 14px 28px rgba(141,89,218,0.26)' }}>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={onApply} style={{ width: '100%', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '1rem', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontWeight: 800, fontSize: '1.05rem', boxShadow: 'var(--app-shadow-lg)' }}>
           Save entry
-        </button>
+        </motion.button>
       </div>
     </div>
   )
@@ -755,7 +776,7 @@ function WeeklyPulseWriter({
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', borderBottom: '1px solid var(--app-border)' }}>
         <button type="button" onClick={onPrev} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
-        <p style={{ margin: 0, fontWeight: 800, color: '#3d1f2b' }}>Weekly Reflection</p>
+        <p className="font-display" style={{ margin: 0, fontWeight: 800, color: '#3d1f2b', fontSize: '1.05rem' }}>Weekly Reflection</p>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.38rem' }}>
           {questions.map((_, idx) => (
             <span
@@ -764,7 +785,7 @@ function WeeklyPulseWriter({
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: idx === questionIndex ? '#e8407a' : '#f2c4d0',
+                background: idx === questionIndex ? 'var(--app-accent)' : '#f2c4d0',
                 display: 'inline-block',
               }}
             />
@@ -774,7 +795,7 @@ function WeeklyPulseWriter({
       </div>
 
       <div style={{ padding: '20px 16px', display: 'grid', gap: '1rem', flex: 1 }}>
-        <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#e8407a', margin: 0 }}>
+        <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: 0 }}>
           Weekly Reflection {phaseName}
         </p>
         <p style={{ fontFamily: "'Cormorant Garamond, serif", fontSize: '1.15rem', fontWeight: 400, color: '#3d1f2b', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
@@ -788,7 +809,7 @@ function WeeklyPulseWriter({
             width: '100%',
             minHeight: '36vh',
             border: '1.5px solid #f2c4d0',
-            borderRadius: 12,
+            borderRadius: 'var(--app-radius-sm)',
             padding: '0.9rem',
             outline: 'none',
             resize: 'vertical',
@@ -799,18 +820,20 @@ function WeeklyPulseWriter({
           }}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             type="button"
             onClick={() => onVoiceCapture?.(questionIndex)}
             style={{ border: '1px solid #f2c4d0', background: '#fff', color: '#7a5567', borderRadius: 999, minHeight: 36, padding: '0.42rem 0.74rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700, fontSize: '0.82rem' }}
           >
             <Mic size={15} />
             Voice input
-          </button>
+          </motion.button>
         </div>
         {isLastQuestion ? (
-          <div style={{ background: '#fff5f7', border: '1px solid #f2c4d0', borderRadius: 10, padding: '10px 12px', marginTop: '0.2rem' }}>
-            <p style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#e8407a', margin: '0 0 4px 0' }}>
+          <div style={{ background: '#fff5f7', border: '1px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)', padding: '10px 12px', marginTop: '0.2rem', boxShadow: 'var(--app-shadow-sm)' }}>
+            <p style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--app-accent)', margin: '0 0 4px 0' }}>
               This week&apos;s practice
             </p>
             <p style={{ fontSize: '0.78rem', color: '#3d1f2b', lineHeight: 1.7, margin: 0 }}>{therapistMove}</p>
@@ -820,22 +843,26 @@ function WeeklyPulseWriter({
 
       <div style={{ borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.8rem 1rem max(0.9rem, env(safe-area-inset-bottom))' }}>
         {isLastQuestion ? (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onSave}
             disabled={isSaving}
-            style={{ width: '100%', border: 'none', borderRadius: 14, padding: '0.86rem 1rem', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: '0 10px 22px rgba(232,64,122,0.24)' }}
+            style={{ width: '100%', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.86rem 1rem', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: 'var(--app-shadow-md)' }}
           >
             {isSaving ? 'Saving...' : 'Save Weekly Reflection'}
-          </button>
+          </motion.button>
         ) : (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onNext}
-            style={{ width: '100%', border: 'none', borderRadius: 14, padding: '0.86rem 1rem', background: 'linear-gradient(135deg, #e8407a, #f472a8)', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: '0 10px 22px rgba(232,64,122,0.24)' }}
+            style={{ width: '100%', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.86rem 1rem', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: 'var(--app-shadow-md)' }}
           >
             Next
-          </button>
+          </motion.button>
         )}
       </div>
     </div>
@@ -910,27 +937,29 @@ function EntryDetail({ entry, onBack, onEdit }) {
                 <p style={sectionLabelStyle}>Sage's Response</p>
                 <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
               </div>
-               <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
+               <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ borderRadius: 'var(--app-radius-md)', background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75, boxShadow: 'var(--app-shadow-md)' }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</motion.div>
               {!sessionCtaHidden ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }} onPointerUp={handleWeeklySessionCtaPointerUp}>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={openWeeklySession}
                     style={{
                       justifySelf: 'start',
                       border: 'none',
-                      background: '#e8407a',
-                      borderRadius: 14,
+                      background: 'var(--app-cta)',
+                      borderRadius: 'var(--app-radius-sm)',
                       padding: '0.72rem 1rem',
                       fontWeight: 800,
                       color: '#fff',
                       cursor: 'pointer',
                       fontSize: '0.9rem',
-                      boxShadow: '0 10px 18px rgba(232,64,122,0.24)',
+                      boxShadow: 'var(--app-shadow-md)',
                     }}
                   >
                     {sessionCompleted ? 'View your session with Sage' : 'Talk it through with Sage'}
-                  </button>
+                  </motion.button>
                   <button
                     type="button"
                     onClick={hideWeeklySessionCtaForToday}
@@ -996,22 +1025,26 @@ function EntryDetail({ entry, onBack, onEdit }) {
                     if (!text) return null
                     return (
                       <div key={`${role}-${index}`} style={{ display: 'flex', justifyContent: role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <div
+                        <motion.div
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.04 }}
                           style={{
                             maxWidth: '88%',
                             padding: '0.72rem 0.9rem',
                             borderRadius: role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                            background: role === 'user' ? 'linear-gradient(135deg, #e8407a, #f472a8)' : '#fff',
+                            background: role === 'user' ? 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))' : '#fff',
                             border: role === 'user' ? 'none' : '1px solid var(--app-border)',
                             color: role === 'user' ? '#fff' : 'var(--app-text)',
                             fontFamily: "'DM Sans', sans-serif",
                             fontSize: '0.84rem',
                             lineHeight: 1.65,
                             whiteSpace: 'pre-wrap',
+                            boxShadow: 'var(--app-shadow-sm)',
                           }}
                         >
                           {text}
-                        </div>
+                        </motion.div>
                       </div>
                     )
                   })}
@@ -1048,7 +1081,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
                 <p style={sectionLabelStyle}>Sage's Response</p>
                 <button type="button" onClick={speakResponse} style={{ ...ghostMiniActionStyle, color: 'var(--app-accent)' }}><Volume2 size={16} /></button>
               </div>
-              <div style={{ borderRadius: 22, background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75 }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</div>
+              <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ borderRadius: 'var(--app-radius-md)', background: '#fff5fa', border: '1px solid #f2c4d0', padding: '1rem', color: '#4b3240', lineHeight: 1.75, boxShadow: 'var(--app-shadow-md)' }}>{entry.sageResponse || 'Sage will respond here once your reflection is saved.'}</motion.div>
             </div>
             <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
               <p style={sectionLabelStyle}>Clarity Score</p>
@@ -1202,7 +1235,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
         <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
         <div style={{ flex: 1 }} />
         <button type="button" onClick={() => setShowMenu(true)} style={{ border: 'none', background: 'transparent', color: '#6e4a58' }}><MoreHorizontal size={24} /></button>
-        <button type="button" onClick={onSave} disabled={isSaving} style={{ border: 'none', borderRadius: 999, padding: '0.8rem 1.25rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>{isSaving ? 'Saving...' : 'Save'}</button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={onSave} disabled={isSaving} style={{ border: 'none', borderRadius: 999, padding: '0.8rem 1.25rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>{isSaving ? 'Saving...' : 'Save'}</motion.button>
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', ...writerBackgroundStyle }}>
@@ -1211,9 +1244,9 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <button type="button" onClick={() => dateInputRef.current?.click()} style={{ border: 'none', background: 'transparent', padding: 0, color: '#7f6672', fontSize: '0.96rem' }}>{formatDate(draft.date)}</button>
           <input ref={dateInputRef} type="date" value={draft.date} onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
           <div style={{ flex: 1 }} />
-          <button type="button" onClick={() => setShowMoodPicker(true)} aria-label="Change emoji" title="Change emoji" style={{ border: 'none', background: 'transparent', padding: 0, color: '#4f9bff' }}>
-            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || MOODS[0]?.emoji || '??'}</span>
-          </button>
+          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} type="button" onClick={() => setShowMoodPicker(true)} aria-label="Change emoji" title="Change emoji" style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--app-accent)' }}>
+            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || MOODS[0]?.emoji || '😌'}</span>
+          </motion.button>
         </div>
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
@@ -1224,7 +1257,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                 <p style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
                 {draft.templateFields.map((field, index) => (
                   <div key={field.label} style={{ display: 'grid', gap: '0.42rem' }}>
-                    <p style={{ margin: 0, color: '#4f9bff', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>
+                    <p style={{ margin: 0, color: 'var(--app-accent)', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>
                       {index + 1}. {field.label}
                     </p>
                     <p style={{ margin: 0, color: '#6f7d8b', lineHeight: 1.55 }}>{field.subtext}</p>
@@ -1237,7 +1270,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                       onFocus={() => setEditorFocused(true)}
                       onBlur={() => setEditorFocused(false)}
                       placeholder="Enter your thoughts..."
-                      style={{ width: '100%', minHeight: 72, border: '1px solid var(--app-border)', borderRadius: 14, padding: '0.7rem 0.8rem', outline: 'none', resize: 'vertical', background: '#fff', color: draft.color, fontFamily: currentFont.family, fontSize: '1rem', lineHeight: 1.6 }}
+                      style={{ width: '100%', minHeight: 72, border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: '0.7rem 0.8rem', outline: 'none', resize: 'vertical', background: '#fff', color: draft.color, fontFamily: currentFont.family, fontSize: '1rem', lineHeight: 1.6 }}
                     />
                   </div>
                 ))}
@@ -1272,7 +1305,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                       return
                     }
                   }}
-                  style={{ width: 112, height: 148, borderRadius: 16, overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'absolute', left: image.x || 0, top: image.y || 0, boxShadow: '0 12px 20px rgba(80,52,65,0.12)', touchAction: 'none' }}
+                  style={{ width: 112, height: 148, borderRadius: 'var(--app-radius-md)', overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'absolute', left: image.x || 0, top: image.y || 0, boxShadow: 'var(--app-shadow-md)', touchAction: 'none' }}
                 >
                   <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {activeImageActionsId === image.id ? (
@@ -1294,13 +1327,13 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           {[{ id: 'background', icon: Paintbrush }, { id: 'image', icon: ImageIcon }, { id: 'emoji', icon: Smile }, { id: 'font', icon: Type }, { id: 'list', icon: List }, { id: 'tag', icon: Tag }, { id: 'mic', icon: Mic }].map(item => {
             const Icon = item.icon
             return (
-              <button key={item.id} type="button" onClick={() => {
+              <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} key={item.id} type="button" onClick={() => {
                 if (item.id === 'image') { fileInputRef.current?.click(); return }
                 if (item.id === 'mic') { startRecording(); return }
                 setActiveTray(current => (current === item.id ? null : item.id))
               }} style={{ border: 'none', background: '#fff', color: activeTray === item.id ? 'var(--app-accent)' : '#5d4450', display: 'grid', placeItems: 'center', padding: '0.25rem 0' }}>
                 <Icon size={18} />
-              </button>
+              </motion.button>
             )
           })}
         </div>
@@ -1317,10 +1350,10 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
       <BottomSheet open={activeTray === 'background'} onClose={() => setActiveTray(null)} title="Background">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
           {BACKGROUNDS.map(item => (
-            <button key={item.id} type="button" onClick={() => { setDraft(prev => ({ ...prev, backgroundId: item.id })); setActiveTray(null) }} style={{ border: item.id === draft.backgroundId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 18, overflow: 'hidden', padding: 0, background: '#fff' }}>
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={item.id} type="button" onClick={() => { setDraft(prev => ({ ...prev, backgroundId: item.id })); setActiveTray(null) }} style={{ border: item.id === draft.backgroundId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', overflow: 'hidden', padding: 0, background: '#fff' }}>
               <div style={{ height: 76, ...item.style }} />
               <div style={{ padding: '0.7rem', textAlign: 'left', fontWeight: 700, color: '#3c2430' }}>{item.name}</div>
-            </button>
+            </motion.button>
           ))}
         </div>
       </BottomSheet>
@@ -1330,8 +1363,8 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
           <div>
             <p style={sheetLabelStyle}>Emojis</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-                {['??', '??', '??', '??', '??', '??', '??', '?', '??', '??'].map(emoji => (
-                  <button key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</button>
+                {['😊', '😢', '😡', '😴', '🥰', '😤', '🙏', '✨', '💪', '🔥'].map(emoji => (
+                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</motion.button>
                 ))}
               </div>
           </div>
@@ -1339,7 +1372,7 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
             <p style={sheetLabelStyle}>Cute stickers</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
               {STICKERS.map(sticker => (
-                <button key={sticker} type="button" onClick={() => { insertText(sticker); setActiveTray(null) }} style={emojiButtonStyle}>{sticker}</button>
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={sticker} type="button" onClick={() => { insertText(sticker); setActiveTray(null) }} style={emojiButtonStyle}>{sticker}</motion.button>
               ))}
             </div>
           </div>
@@ -1350,12 +1383,12 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
         <div style={{ display: 'grid', gap: '0.9rem' }}>
           <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
             {COLORS.map(color => (
-              <button key={color} type="button" onClick={() => setDraft(prev => ({ ...prev, color }))} style={{ width: 30, height: 30, borderRadius: '50%', border: color === draft.color ? '2px solid #2f1e2a' : '1px solid #e5cdd8', background: color }} />
+              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={color} type="button" onClick={() => setDraft(prev => ({ ...prev, color }))} style={{ width: 30, height: 30, borderRadius: '50%', border: color === draft.color ? '2px solid #2f1e2a' : '1px solid #e5cdd8', background: color }} />
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
             {FONTS.map(font => (
-              <button key={font.id} type="button" onClick={() => setDraft(prev => ({ ...prev, fontId: font.id }))} style={{ border: font.id === draft.fontId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 16, background: '#fff', padding: '0.9rem', fontFamily: font.family, fontSize: '1.05rem', color: '#2f1e2a' }}>{font.name}</button>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={font.id} type="button" onClick={() => setDraft(prev => ({ ...prev, fontId: font.id }))} style={{ border: font.id === draft.fontId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', padding: '0.9rem', fontFamily: font.family, fontSize: '1.05rem', color: '#2f1e2a' }}>{font.name}</motion.button>
             ))}
           </div>
         </div>
@@ -1938,29 +1971,39 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     <>
       <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1rem 1rem 5.5rem' }}>
         <div style={{ width: '100%', maxWidth: '100%', margin: 0, display: 'grid', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 22, padding: '0.8rem 0.85rem', boxShadow: '0 12px 28px rgba(86,53,66,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#fff6fa', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-lg)', padding: '0.8rem 0.85rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <Search size={18} color="#8b6977" />
             <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search entries..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: '0.98rem', color: 'var(--app-text)', minWidth: 0 }} />
-              <button type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 16, background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></button>
+              <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></motion.button>
           </div>
 
           {daysIn < 7 ? (
-            <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ borderRadius: 'var(--app-radius-md)', border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem', boxShadow: 'var(--app-shadow-md)' }}>
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Weekly Reflection unlocks after your first 7 days</p>
-            </div>
+            </motion.div>
           ) : weeklyPulseDue ? (
-            <div style={{ borderRadius: 20, border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem' }}>
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ borderRadius: 'var(--app-radius-md)', border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem', boxShadow: 'var(--app-shadow-md)' }}>
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your Weekly Reflection.</p>
               <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Weekly Reflection. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
-              <button type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 12, padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
                 Weekly Reflection
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           ) : null}
 
           <div style={{ display: 'grid', gap: '0.6rem' }}>
-            {filteredEntries.map(entry => (
-              <button key={entry.id} type="button" onClick={() => { setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: '#fff', borderBottom: '1px solid var(--app-border)', padding: '0.55rem 0.1rem 1rem', textAlign: 'left', display: 'grid', gap: '0.42rem' }}>
+            {filteredEntries.map((entry, i) => (
+              <motion.button
+                key={entry.id}
+                type="button"
+                onClick={() => { setSelectedEntry(entry); setScreen('detail') }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: i * 0.04 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{ border: 'none', background: '#fff', borderRadius: 'var(--app-radius-sm)', boxShadow: 'var(--app-shadow-sm)', padding: '0.7rem 0.85rem 1rem', textAlign: 'left', display: 'grid', gap: '0.42rem' }}
+              >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.9rem' }}>
                   <p style={{ margin: 0, color: '#3c2430', fontSize: '1.08rem', fontWeight: 700, lineHeight: 1.35, flex: 1 }}>{getEntryTitle(entry) || 'Untitled reflection'}</p>
                   <p style={{ margin: 0, color: '#8f7180', fontSize: '0.9rem', flexShrink: 0, textAlign: 'right' }}>{formatDate(entry.date)}</p>
@@ -1971,7 +2014,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
                 <button type="button" onClick={event => { event.stopPropagation(); setSelectedEntry(entry); setScreen('detail') }} style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, justifySelf: 'start', padding: 0 }}>See more</button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginTop: '0.22rem' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.38rem', borderRadius: 999, border: '1px solid var(--app-border)', padding: '0.35rem 0.72rem', color: '#6d5862', fontSize: '0.84rem', fontWeight: 700, background: '#fff9fb' }}>
-                      <span>{entry.mood?.emoji || '??'}</span>
+                      <span>{entry.mood?.emoji || '😌'}</span>
                       <span>{entry.clarityLabel || 'Reflective'}</span>
                       <span>· {entry.clarityScore || 7}/10</span>
                     </span>
@@ -1984,16 +2027,16 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
                       <button type="button" onClick={event => { event.stopPropagation(); setEntries(current => current.filter(item => item.id !== entry.id)); setEntryActionId(null) }} style={{ ...ghostMiniActionStyle, color: '#d24b78' }}><Trash2 size={16} /></button>
                     </div>
                   ) : null}
-              </button>
+              </motion.button>
             ))}
 
-            {!filteredEntries.length ? <div style={{ borderRadius: 24, border: '1px solid var(--app-border)', background: '#fff', padding: '1.2rem', color: '#8f7180', textAlign: 'center' }}>No entries yet. Tap the plus button to start.</div> : null}
+            {!filteredEntries.length ? <div style={{ borderRadius: 'var(--app-radius-lg)', border: '1px solid var(--app-border)', background: '#fff', padding: '1.2rem', color: '#8f7180', textAlign: 'center' }}>No entries yet. Tap the plus button to start.</div> : null}
           </div>
         </div>
 
-        <button type="button" onClick={startNewEntry} style={{ position: 'fixed', right: '50%', transform: 'translateX(50%)', bottom: '1.2rem', width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', boxShadow: '0 18px 28px rgba(232,64,122,0.28)', display: 'grid', placeItems: 'center', zIndex: 8 }}>
+        <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} type="button" onClick={startNewEntry} style={{ position: 'fixed', right: '50%', transform: 'translateX(50%)', bottom: '1.2rem', width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', boxShadow: 'var(--app-shadow-lg)', display: 'grid', placeItems: 'center', zIndex: 8 }}>
           <Plus size={30} />
-        </button>
+        </motion.button>
       </div>
 
       <BottomSheet open={showSortSheet} onClose={() => setShowSortSheet(false)} title="Sort entries">
@@ -2011,10 +2054,10 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}><p style={{ margin: 0, color: '#af8396', fontSize: '1rem' }}>How are you feeling right now?</p></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.8rem' }}>
           {MOODS.map(mood => (
-            <button key={mood.label} type="button" onClick={() => pickMood(mood)} style={{ border: 'none', background: 'transparent', display: 'grid', justifyItems: 'center', gap: '0.3rem' }}>
+            <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} key={mood.label} type="button" onClick={() => pickMood(mood)} style={{ border: 'none', background: 'transparent', display: 'grid', justifyItems: 'center', gap: '0.3rem' }}>
               <span style={{ fontSize: '1.8rem' }}>{mood.emoji}</span>
               <span style={{ fontSize: '0.72rem', color: '#8f7180' }}>{mood.label}</span>
-            </button>
+            </motion.button>
           ))}
         </div>
         <button type="button" onClick={() => { setDraft(prev => ({ ...prev, mood: MOODS[0] })); setShowMoodPicker(false); setScreen('write') }} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 700, fontSize: '0.7rem', width: '100%' }}>Skip for now ?</button>

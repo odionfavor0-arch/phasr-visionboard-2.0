@@ -78,7 +78,7 @@ export default function AuthPage({ onBack, onSuccess }) {
         {/* Logo */}
         <span onClick={onBack} style={{
           fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.4rem',
-          background: 'linear-gradient(135deg,#f472a8,#ffd6e7)',
+          background: 'linear-gradient(135deg,var(--app-accent2),#ffd6e7)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text', cursor: 'pointer', position: 'relative', zIndex: 1,
         }}>Phasr</span>

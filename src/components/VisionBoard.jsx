@@ -1,11 +1,13 @@
 ﻿// src/components/VisionBoard.jsx
-// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-// Full vision board â€" phase lock, pillar presets,
+// ---------------------------------------------------------
+// Full vision board - phase lock, pillar presets,
 // independent collapse (max 3 open), Today's Target,
 // before/after upload, quarterly review, export
-// â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+// ---------------------------------------------------------
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+// eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
+import { motion } from 'framer-motion'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
@@ -2481,12 +2483,16 @@ Return JSON only:
         )}
 
         {/* Today's Task */}
-        <div style={{
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
-          borderRadius: 12, padding: isMobile ? '0.75rem 0.85rem' : '0.9rem 1.1rem',
+          borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.75rem 0.85rem' : '0.9rem 1.1rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginBottom: isMobile ? '0.5rem' : '0.7rem', gap: '0.6rem',
-          boxShadow: '0 4px 16px rgba(233,100,136,0.25)',
+          boxShadow: 'var(--app-shadow-md)',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: '0.45rem' }}>
@@ -2498,31 +2504,37 @@ Return JSON only:
           </div>
           <div style={{ flexShrink: 0 }}>
             {scheduledThisWeek ? (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 type="button"
                 onClick={() => onOpenDailyStreak?.()}
                 style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
               >
                 Start Now
-              </button>
+              </motion.button>
             ) : (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 type="button"
                 onClick={addToCalendarPlan}
                 disabled={calendarBusy}
                 style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem' }}
               >
                 {calendarBusy ? 'Scheduling...' : 'Schedule Your Week'}
-              </button>
+              </motion.button>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* â"€â"€ Header â"€â"€ */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '0.9rem' : '1.4rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
-            : (!isMobile && <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
+            : (!isMobile && <h1 className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
           }
           <p style={{ color: 'var(--app-muted)', fontSize: isMobile ? '0.74rem' : '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: isMobile ? '0' : '0.3rem' }}>
             {(isMobile ? visiblePillars : phase?.pillars || []).map(p => p.name).join(' · ')}
@@ -2545,25 +2557,31 @@ Return JSON only:
             const draft = getTimelineDraft(p)
             const alignRight = index === data.phases.length - 1
             return (
-            <div
+            <motion.div
               key={p.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.04 }}
               style={{ position: 'relative' }}
               onMouseEnter={() => setRevealedDeleteTarget(`phase:${p.id}`)}
               onMouseLeave={() => setRevealedDeleteTarget(current => current === `phase:${p.id}` ? null : current)}
               onTouchStart={() => setRevealedDeleteTarget(`phase:${p.id}`)}
             >
-              <div
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 onClick={() => {
                   setPhaseId(p.id)
                   if (timelineEditorPhaseId && timelineEditorPhaseId !== p.id) setTimelineEditorPhaseId(null)
                 }}
                 style={{
                   padding: isMobile ? '0.58rem 0.82rem' : '0.72rem 1.1rem',
-                  borderRadius: isMobile ? 20 : 24,
+                  borderRadius: 'var(--app-radius-lg)',
                   border: `1.5px solid ${activePhase ? 'transparent' : 'var(--app-border)'}`,
                   background: activePhase ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff',
                   color: activePhase ? '#fff' : 'var(--app-muted)',
-                  boxShadow: activePhase ? '0 4px 14px rgba(233,100,136,0.28)' : 'none',
+                  boxShadow: activePhase ? 'var(--app-shadow-md)' : 'var(--app-shadow-sm)',
                   transition: 'all 0.2s',
                   textAlign: 'center',
                   display: 'inline-flex',
@@ -2620,10 +2638,13 @@ Return JSON only:
                 >
                   {getPhaseTimelineLabel(p)}
                 </button>
-              </div>
+              </motion.div>
 
               {editing && timelineEditorPhaseId === p.id && (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                   onClick={event => event.stopPropagation()}
                   style={{
                     position: 'absolute',
@@ -2635,9 +2656,9 @@ Return JSON only:
                     maxWidth: isMobile ? 'calc(100vw - 2.2rem)' : 'calc(100vw - 2rem)',
                     background: '#fff',
                     border: '1px solid var(--app-border)',
-                    borderRadius: 18,
+                    borderRadius: 'var(--app-radius-md)',
                     padding: isMobile ? '0.72rem' : '0.85rem',
-                    boxShadow: '0 16px 32px rgba(240,96,144,0.18)',
+                    boxShadow: 'var(--app-shadow-lg)',
                     zIndex: 30,
                     marginLeft: isMobile ? '-110px' : 0,
                   }}
@@ -2679,7 +2700,7 @@ Return JSON only:
                       Save
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {editing && data.phases.length > 1 && (
@@ -2710,7 +2731,7 @@ Return JSON only:
                   ×
                 </button>
               )}
-            </div>
+            </motion.div>
           )})}
 
           {editing && (isPro || data.phases.length < FREE_PHASE_LIMIT) ? (
@@ -2722,13 +2743,17 @@ Return JSON only:
 
 
         {/* â"€â"€ Affirmation â"€â"€ */}
-        <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: isMobile ? 10 : 12, padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.04 }}
+          style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.2rem', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: 'var(--app-shadow-sm)' }}>
           <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
           {editing
             ? <input value={phase?.affirmation || ''} onChange={e => updatePhase('affirmation', e.target.value)} placeholder="Your phase mantra..." style={inp({ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--app-border)', textAlign: 'center', marginBottom: 0, position: 'relative', zIndex: 1 })} onFocus={focus} onBlur={blur} />
-            : <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
+            : <p className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
           }
-        </div>
+        </motion.div>
 
         {/* ── Pillars ── */}
         {editing && (
@@ -2743,7 +2768,7 @@ Return JSON only:
         )}
         {editing && presetPillar && (
           <div style={{ marginBottom: '0.95rem', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: 980, borderRadius: 20, border: '1px solid var(--app-border)', background: '#fff', boxShadow: '0 12px 28px rgba(0,0,0,0.08)', padding: '0.8rem' }}>
+            <div style={{ width: '100%', maxWidth: 980, borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', background: '#fff', boxShadow: 'var(--app-shadow-md)', padding: '0.8rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
                   <span style={{ width: 32, height: 32, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff' }}>
@@ -2759,9 +2784,14 @@ Return JSON only:
                 </button>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-                {PILLAR_PRESETS.map(p => (
-                  <button
+                {PILLAR_PRESETS.map((p, presetIndex) => (
+                  <motion.button
                     key={p.name}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30, delay: presetIndex * 0.04 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => applyPreset(presetPillar.id, p)}
                     style={{
@@ -2769,9 +2799,10 @@ Return JSON only:
                       alignItems: 'flex-start',
                       gap: '0.45rem',
                       padding: '0.7rem 0.8rem',
-                      borderRadius: 18,
+                      borderRadius: 'var(--app-radius-md)',
                       border: p.name === presetPillar.name ? '1px solid var(--app-accent)' : '1px solid var(--app-border)',
                       background: p.name === presetPillar.name ? 'var(--app-bg2)' : '#fff',
+                      boxShadow: 'var(--app-shadow-sm)',
                       cursor: 'pointer',
                       fontSize: '0.76rem',
                       color: 'var(--app-text)',
@@ -2787,16 +2818,17 @@ Return JSON only:
                       <span style={{ fontWeight: 700 }}>{p.name}</span>
                       <span style={{ fontSize: '0.7rem', lineHeight: 1.45, color: 'var(--app-muted)' }}>{p.details}</span>
                     </span>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
           </div>
         )}
         <div id="pillar-section" className="phase-container" style={{ display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : (isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))'), gap: '1rem', marginBottom: '1.5rem', alignItems: 'start' }}>
-          {visiblePillars.map(pl => (
+          {visiblePillars.map((pl, pillarIndex) => (
             <PillarCard
               key={pl.id} pl={pl} editing={editing} checked={checked} phaseId={phaseId}
+              index={pillarIndex}
               userId={activeUserId}
               weekStartKey={weekStartKey}
               presetOpen={presetOpen === pl.id}
@@ -2817,26 +2849,35 @@ Return JSON only:
           ))}
           {editing && (
             (phase?.pillars?.length || 0) < FREE_PILLAR_LIMIT ? (
-              <button onClick={addPillar} style={{ border: '2px dashed var(--app-border)', borderRadius: 16, background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.8rem 1rem', cursor: 'pointer', minHeight: 120 }}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={addPillar} style={{ border: '2px dashed var(--app-border)', borderRadius: 'var(--app-radius-md)', background: 'transparent', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1.8rem 1rem', cursor: 'pointer', minHeight: 120 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--app-bg2)'; e.currentTarget.style.borderColor = 'var(--app-accent2)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--app-border)' }}>
                 <span style={{ fontSize: '1.4rem', color: 'var(--app-accent2)' }}>+</span>
                 <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--app-accent2)', fontFamily: "'DM Sans',sans-serif" }}>add pillar</span>
-              </button>
+              </motion.button>
             ) : null
           )}
         </div>
         {/* â"€â"€ Ultimate Impact â"€â"€ */}
         <div style={{ margin: '2rem 0 1.5rem', display: 'flex', justifyContent: 'center' }}>
-          <div style={{ background: '#fffbfc', borderRadius: 6, padding: '2rem 3rem', textAlign: 'center', width: '100%', maxWidth: 820, boxShadow: '0 0 0 1.5px var(--app-border),0 0 0 5px var(--app-bg2),0 0 0 6.5px var(--app-border),0 12px 40px rgba(233,100,136,0.1)' }}>
-            <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.1rem,3vw,1.6rem)', fontWeight: 700, background: 'linear-gradient(90deg,#ff6b9d,#ffb3c6,#ffa0bc,#ff6b9d)', backgroundSize: '300% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'vbFoil 4s linear infinite', marginBottom: '0.7rem' }}>Ultimate Impact</p>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            style={{ background: '#fffbfc', borderRadius: 'var(--app-radius-lg)', padding: '2rem 3rem', textAlign: 'center', width: '100%', maxWidth: 820, boxShadow: '0 0 0 1.5px var(--app-border),0 0 0 5px var(--app-bg2),0 0 0 6.5px var(--app-border),var(--app-shadow-lg)' }}>
+            <p className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.1rem,3vw,1.6rem)', fontWeight: 700, background: 'linear-gradient(90deg,#ff6b9d,#ffb3c6,#ffa0bc,#ff6b9d)', backgroundSize: '300% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'vbFoil 4s linear infinite', marginBottom: '0.7rem' }}>Ultimate Impact</p>
             {editing
               ? <textarea rows={3} value={phase?.impact || ''} onChange={e => updatePhase('impact', e.target.value)} style={ta({ textAlign: 'center', fontStyle: 'italic' })} onFocus={focus} onBlur={blur} />
               : <p style={{ fontSize: '0.95rem', color: '#7a3a55', lineHeight: 1.7, fontWeight: 500 }}>{phase?.impact}</p>
             }
             {isMobile && (
               <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   className="quarterly-review-btn"
                   type="button"
                   onClick={() => setShowReview(true)}
@@ -2844,27 +2885,31 @@ Return JSON only:
                     width: '100%',
                     maxWidth: 280,
                     padding: '0.95rem 1rem',
-                    borderRadius: '14px',
+                    borderRadius: 'var(--app-radius-md)',
                     border: '1.5px solid #f2c4d0',
                     background: '#fff',
-                    color: '#e8407a',
+                    color: 'var(--app-cta)',
                     fontSize: '0.95rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     fontFamily: "'DM Sans', sans-serif",
-                    boxShadow: '0 8px 24px rgba(232,64,122,0.08)',
+                    boxShadow: 'var(--app-shadow-md)',
                   }}
                 >
                   Review this phase →
-                </button>
+                </motion.button>
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* â"€â"€ Quarterly Review â"€â"€ */}
         {!isMobile && (
-          <div data-quarterly-review="true" style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--app-border)', boxShadow: 'none', overflow: 'hidden', marginBottom: '1rem' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            data-quarterly-review="true" style={{ background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-lg)', overflow: 'hidden', marginBottom: '1rem' }}>
             <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.45rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <div style={{ width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.72rem', flexShrink: 0 }}>Q</div>
@@ -2873,8 +2918,8 @@ Return JSON only:
               <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
             </div>
             {!phase?.reviewCollapsed && phase?.futureMessage && (
-              <div style={{ margin: '1rem 1rem 0', padding: '1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 12 }}>
-                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f95f85', marginBottom: '0.5rem' }}>
+              <div style={{ margin: '1rem 1rem 0', padding: '1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 'var(--app-radius-md)' }}>
+                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>
                   &#9993; A letter from you &middot; {phase.futureMessageDate}
                 </p>
                 <p style={{ fontSize: '0.84rem', fontStyle: 'italic', fontFamily: "'Playfair Display',serif", color: '#4d3142', lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>
@@ -2887,30 +2932,42 @@ Return JSON only:
                 { k: 'reviewWorked',  bg: '#f4fbf5', bc: '#b9dfc0', c: '#3a7d4d', l: 'What Worked?',     h: 'What brought results?' },
                 { k: 'reviewDrained', bg: '#fff8f8', bc: '#f9cdd3', c: '#c0445a', l: 'What Drained Me?', h: 'What to drop?' },
                 { k: 'reviewPaid',    bg: '#f2f6ff', bc: '#c5d5f7', c: '#3355a0', l: 'What Paid Off?',   h: 'What to double down on?' },
-              ].map(({ k, bg, bc, c, l, h }) => (
-                <div key={k} style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.8rem' }}>
+              ].map(({ k, bg, bc, c, l, h }, tileIndex) => (
+                <motion.div
+                  key={k}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30, delay: tileIndex * 0.04 }}
+                  style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 'var(--app-radius-md)', padding: '0.8rem', boxShadow: 'var(--app-shadow-sm)' }}>
                   <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c, marginBottom: '0.28rem' }}>{l}</p>
                   <p style={{ fontSize: '0.7rem', color: '#8a7080', marginBottom: '0.4rem' }}>{h}</p>
                   <textarea rows={4} value={phase?.[k] || ''} onChange={e => updatePhase(k, e.target.value)} placeholder="" style={ta({ minHeight: 70 })} onFocus={focus} onBlur={blur} />
-                  <button onClick={() => startReviewVoice(k)} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: c, fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>
-                </div>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => startReviewVoice(k)} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: c, fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: 'var(--app-shadow-sm)' }}>Rec</motion.button>
+                </motion.div>
               ))}
             </div>}
-            {!phase?.reviewCollapsed && <div style={{ margin: '0 1rem 1rem', borderRadius: 12, padding: '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0' }}>
+            {!phase?.reviewCollapsed && <div style={{ margin: '0 1rem 1rem', borderRadius: 'var(--app-radius-md)', padding: '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0', boxShadow: 'var(--app-shadow-sm)' }}>
               <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.4rem' }}>Next Phase Strategy</p>
               <textarea rows={3} value={phase?.reviewStrategy || ''} onChange={e => updatePhase('reviewStrategy', e.target.value)} placeholder="" style={ta()} onFocus={focus} onBlur={blur} />
-              <button onClick={() => startReviewVoice('reviewStrategy')} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: '#7a58b0', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: '0 8px 20px rgba(0,0,0,0.06)' }}>Rec</button>
+              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => startReviewVoice('reviewStrategy')} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: '#7a58b0', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: 'var(--app-shadow-sm)' }}>Rec</motion.button>
             </div>}
-          </div>
+          </motion.div>
         )}
         {/* â"€â"€ Footer â"€â"€ */}
         <div style={{ textAlign: 'center' }}>
-          <button onClick={openExportModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.3rem', borderRadius: 99, border: '1.5px solid var(--app-border)', background: '#fff', color: 'var(--app-accent)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.7rem' }}>Save as image</button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={openExportModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.3rem', borderRadius: 99, border: '1.5px solid var(--app-border)', background: '#fff', color: 'var(--app-accent)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.7rem' }}>Save as image</motion.button>
           <p style={{ color: 'var(--app-muted)', fontSize: '0.78rem' }}>Track weekly · Review quarterly · Transform your life</p>
         </div>
 
         {showExportModal && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(10,10,15,0.94)', padding: isMobile ? '18px 14px 28px' : '28px 16px 48px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(10,10,15,0.94)', padding: isMobile ? '18px 14px 28px' : '28px 16px 48px', overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
             <button
               type="button"
               onClick={closeExportModal}
@@ -2923,39 +2980,46 @@ Return JSON only:
               <>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 10 }}>Step 1 of 1</p>
                 <div style={{ width: '100%', maxWidth: 480 }}>
-                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 6 }}>Pick one pillar to save</h2>
+                  <h2 className="font-display" style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 6 }}>Pick one pillar to save</h2>
                   <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 18 }}>This goes on your wall. Choose what matters most right now.</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(phase?.pillars || []).map(item => {
+                    {(phase?.pillars || []).map((item, exportIndex) => {
                       const active = selectedExportPillarId === item.id
                       return (
-                        <button
+                        <motion.button
                           key={item.id}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: exportIndex * 0.04 }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                           type="button"
                           onClick={() => setSelectedExportPillarId(item.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: active ? '1.5px solid #f95f85' : '1.5px solid rgba(255,255,255,0.07)', background: active ? 'rgba(249,95,133,0.1)' : '#13131a', cursor: 'pointer', textAlign: 'left' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 'var(--app-radius-md)', border: active ? '1.5px solid var(--app-accent)' : '1.5px solid rgba(255,255,255,0.07)', background: active ? 'rgba(240,96,144,0.1)' : '#13131a', boxShadow: active ? 'var(--app-shadow-sm)' : 'none', cursor: 'pointer', textAlign: 'left' }}
                         >
                           <span style={{ fontSize: 18, flexShrink: 0 }}>{item.emoji}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>{item.name}</div>
                             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{cleanText(item.beforeState) || 'Before'} → {cleanText(item.afterState) || 'After'}</div>
                           </div>
-                          <div style={{ width: 18, height: 18, borderRadius: '50%', border: active ? '2px solid #f95f85' : '2px solid rgba(255,255,255,0.2)', background: active ? '#f95f85' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, flexShrink: 0 }}>
+                          <div style={{ width: 18, height: 18, borderRadius: '50%', border: active ? '2px solid var(--app-accent)' : '2px solid rgba(255,255,255,0.2)', background: active ? 'var(--app-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, flexShrink: 0 }}>
                             {active ? '✓' : ''}
                           </div>
-                        </button>
+                        </motion.button>
                       )
                     })}
                   </div>
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: selectedExportPillarId ? 1.02 : 1 }}
+                  whileTap={{ scale: selectedExportPillarId ? 0.98 : 1 }}
                   type="button"
                   onClick={generateExportCard}
                   disabled={!selectedExportPillarId}
-                  style={{ width: '100%', maxWidth: 480, padding: 14, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#f95f85,#e83d66)', color: '#fff', fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: selectedExportPillarId ? 'pointer' : 'not-allowed', boxShadow: '0 4px 20px rgba(249,95,133,0.3)', opacity: selectedExportPillarId ? 1 : 0.4 }}
+                  style={{ width: '100%', maxWidth: 480, padding: 14, borderRadius: 'var(--app-radius-md)', border: 'none', background: `linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))`, color: '#fff', fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: selectedExportPillarId ? 'pointer' : 'not-allowed', boxShadow: 'var(--app-shadow-md)', opacity: selectedExportPillarId ? 1 : 0.4 }}
                 >
                   Create My Vision Card →
-                </button>
+                </motion.button>
               </>
             )}
 
@@ -2970,10 +3034,10 @@ Return JSON only:
                         <img src={phasrMark} alt="Phasr mark" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
                         <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, background: 'linear-gradient(135deg,#f472a8,#ffd6e7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Phasr</span>
                       </div>
-                      <span style={{ padding: '4px 11px', borderRadius: 99, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.12)', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: '#ff8fab' }}>{exportPhaseLabel}</span>
+                      <span style={{ padding: '4px 11px', borderRadius: 99, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.12)', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--app-accent2)' }}>{exportPhaseLabel}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, position: 'relative', zIndex: 1 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#f95f85,#e83d66)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{selectedExportPillar.emoji}</div>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{selectedExportPillar.emoji}</div>
                       <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: '#fff' }}>{selectedExportPillar.name}</span>
                     </div>
                   </div>
@@ -3011,11 +3075,11 @@ Return JSON only:
                   </div>
 
                   <div style={{ padding: '0 22px 18px' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f95f85', marginBottom: 8 }}>What you need to source</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: 8 }}>What you need to source</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {compactList(selectedExportPillar.resources, 3).map(item => (
                         <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, background: '#fff5f7', border: '1px solid #f9d8e0' }}>
-                          <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#f95f85', flexShrink: 0 }} />
+                          <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--app-accent)', flexShrink: 0 }} />
                           <span style={{ fontSize: 11, color: '#3d1f2b', fontWeight: 500 }}>{shortenText(item, 48)}</span>
                         </div>
                       ))}
@@ -3026,7 +3090,7 @@ Return JSON only:
 
                   <div style={{ padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, fontWeight: 700, color: '#1a0a10', lineHeight: 1.3, marginBottom: 6 }}>Check in daily.<br /><em style={{ fontStyle: 'italic', color: '#f95f85' }}>Sage remembers everything.</em></div>
+                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, fontWeight: 700, color: '#1a0a10', lineHeight: 1.3, marginBottom: 6 }}>Check in daily.<br /><em style={{ fontStyle: 'italic', color: 'var(--app-accent)' }}>Sage remembers everything.</em></div>
                       <div style={{ fontSize: 11, color: '#7a5a66', lineHeight: 1.55 }}>This plan is valid for this week. Open your dashboard daily and let Sage guide the next move.</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
@@ -3044,31 +3108,39 @@ Return JSON only:
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 480 }}>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: exportBusy || !exportScriptsReady ? 1 : 1.02 }}
+                    whileTap={{ scale: exportBusy || !exportScriptsReady ? 1 : 0.98 }}
                     type="button"
                     onClick={downloadExportCard}
                     disabled={exportBusy || !exportScriptsReady}
-                    style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#f95f85,#e83d66)', color: '#fff', fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: exportBusy || !exportScriptsReady ? 'not-allowed' : 'pointer', boxShadow: '0 4px 20px rgba(249,95,133,0.3)', opacity: exportBusy || !exportScriptsReady ? 0.5 : 1 }}
+                    style={{ width: '100%', padding: 14, borderRadius: 'var(--app-radius-md)', border: 'none', background: 'linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))', color: '#fff', fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: exportBusy || !exportScriptsReady ? 'not-allowed' : 'pointer', boxShadow: 'var(--app-shadow-md)', opacity: exportBusy || !exportScriptsReady ? 0.5 : 1 }}
                   >
                     {exportBusy ? 'Saving...' : '⬇ Save as Image'}
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => setExportStage('picker')}
-                    style={{ width: '100%', padding: 12, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                    style={{ width: '100%', padding: 12, borderRadius: 'var(--app-radius-md)', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
                   >
                     ← Pick a different pillar
-                  </button>
+                  </motion.button>
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center' }}>Print it. Put it on your wall. Never forget why you started.</p>
                 </div>
               </>
             )}
-          </div>
+          </motion.div>
         )}
       </div>
 
       {showReview && isMobile && (
-        <div style={{
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          style={{
           position: 'fixed', inset: 0, background: '#fff',
           zIndex: 500, overflowY: 'auto', padding: '0',
           fontFamily: "'DM Sans', sans-serif",
@@ -3081,9 +3153,9 @@ Return JSON only:
           }}>
             <button onClick={() => setShowReview(false)} style={{
               background: 'none', border: 'none', fontSize: '1.2rem',
-              cursor: 'pointer', color: '#e8407a', padding: '0.25rem',
+              cursor: 'pointer', color: 'var(--app-cta)', padding: '0.25rem',
             }}>←</button>
-            <h2 style={{
+            <h2 className="font-display" style={{
               fontFamily: "'Playfair Display', serif",
               fontSize: '1.1rem', fontWeight: 700, color: '#3d1f2b',
               margin: 0,
@@ -3094,8 +3166,8 @@ Return JSON only:
 
           <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {phase?.futureMessage && (
-              <div style={{ padding: '1rem 1.1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 14 }}>
-                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#f95f85', marginBottom: '0.5rem' }}>
+              <div style={{ padding: '1rem 1.1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 'var(--app-radius-md)', boxShadow: 'var(--app-shadow-sm)' }}>
+                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>
                   &#9993; A letter from you &middot; {phase.futureMessageDate}
                 </p>
                 <p style={{ fontSize: '0.9rem', fontStyle: 'italic', fontFamily: "'Playfair Display',serif", color: '#4d3142', lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>
@@ -3108,8 +3180,13 @@ Return JSON only:
               { key: 'reviewDrained', label: 'What drained you?', hint: 'What to drop or do less of next phase', color: '#c0445a' },
               { key: 'reviewPaid', label: 'What actually paid off?', hint: 'What produced real results and moved the needle', color: '#3355a0' },
               { key: 'reviewStrategy', label: 'Next phase strategy', hint: 'What will you start, stop, and do more of', color: '#7a58b0' },
-            ].map(({ key, label, hint, color }) => (
-              <div key={key}>
+            ].map(({ key, label, hint, color }, reviewIndex) => (
+              <motion.div
+                key={key}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: reviewIndex * 0.04 }}
+              >
               <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
                   {label}
                 </p>
@@ -3121,27 +3198,31 @@ Return JSON only:
                     { icon: '💡', text: '💡 ' },
                     { icon: '❤️', text: '❤️ ' },
                   ].map(tool => (
-                    <button
+                    <motion.button
                       key={tool.icon}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       type="button"
                       onClick={() => appendReviewText(key, tool.text)}
                       style={{
                         width: 34,
                         height: 34,
-                        borderRadius: 12,
+                        borderRadius: 'var(--app-radius-sm)',
                         border: '1px solid #f2c4d0',
                         background: '#fff7fa',
-                        color: '#e8407a',
+                        color: 'var(--app-cta)',
                         cursor: 'pointer',
                         fontSize: '0.92rem',
                         fontWeight: 700,
-                        boxShadow: '0 6px 16px rgba(232,64,122,0.08)',
+                        boxShadow: 'var(--app-shadow-sm)',
                       }}
                     >
                       {tool.icon}
-                    </button>
+                    </motion.button>
                   ))}
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => startReviewVoice(key)}
                     style={{
@@ -3150,7 +3231,7 @@ Return JSON only:
                       gap: '0.38rem',
                       height: 34,
                       padding: '0 0.8rem',
-                      borderRadius: 12,
+                      borderRadius: 'var(--app-radius-sm)',
                       border: '1px solid #f2c4d0',
                       background: '#fff',
                       color: '#7a5a66',
@@ -3162,7 +3243,7 @@ Return JSON only:
                   >
                     <span style={{ fontSize: '0.95rem' }}>🎙️</span>
                     Rec
-                  </button>
+                  </motion.button>
                 </div>
                 <textarea
                   value={phase?.[key] || ''}
@@ -3170,32 +3251,34 @@ Return JSON only:
                   placeholder="Write here..."
                   style={{
                     width: '100%', minHeight: '100px', padding: '0.85rem',
-                    border: '1.5px solid #f2c4d0', borderRadius: '12px',
+                    border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)',
                     fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem',
                     color: '#3d1f2b', background: '#fff', outline: 'none',
                     resize: 'vertical', lineHeight: 1.6,
                   }}
-                  onFocus={e => { e.target.style.borderColor = '#e8407a' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--app-cta)' }}
                   onBlur={e => { e.target.style.borderColor = '#f2c4d0' }}
                 />
-              </div>
+              </motion.div>
             ))}
 
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowReview(false)}
               style={{
-                width: '100%', padding: '0.95rem', borderRadius: '12px',
-                border: 'none', background: 'linear-gradient(135deg, #e8407a, #f472a8)',
+                width: '100%', padding: '0.95rem', borderRadius: 'var(--app-radius-md)',
+                border: 'none', background: 'linear-gradient(135deg, var(--app-cta), var(--app-accent2))',
                 color: '#fff', fontSize: '0.95rem', fontWeight: 700,
                 cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                boxShadow: '0 4px 16px rgba(232,64,122,0.3)',
+                boxShadow: 'var(--app-shadow-md)',
                 marginBottom: '2rem',
               }}
             >
               Save Review
-            </button>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <style>{`
@@ -3209,7 +3292,7 @@ Return JSON only:
 }
 
 /* â"€â"€ Pillar Card â"€â"€ */
-  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
+  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const calendarWindowStart = useMemo(() => {
       const base = new Date()
@@ -3283,28 +3366,37 @@ Return JSON only:
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid var(--app-border)', boxShadow: '0 4px 24px rgba(233,100,136,0.08)', overflow: 'hidden', alignSelf: 'start' }}>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30, delay: (index || 0) * 0.04 }}
+      whileHover={{ scale: 1.01 }}
+      style={{ background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden', alignSelf: 'start' }}>
       {/* Header */}
       <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: pl.collapsed ? 'none' : '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <div onClick={e => { e.stopPropagation(); editing && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
         {editing
           ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
-          : <span style={{ fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', flex: 1 }}>{pl.name}</span>
+          : <span className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', flex: 1 }}>{pl.name}</span>
         }
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
           {editing && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={e => {
                 e.stopPropagation()
                 if (window.confirm('Are you sure you want to delete this pillar?')) onDel()
               }}
               aria-label={`Delete ${pl.name}`}
-              style={{ width: 30, height: 30, borderRadius: 999, background: '#fff3f6', border: '1px solid #f2c7d4', cursor: 'pointer', color: '#d05d86', display: 'grid', placeItems: 'center', padding: 0, boxShadow: '0 6px 14px rgba(240,96,144,0.12)' }}
+              style={{ width: 30, height: 30, borderRadius: 999, background: '#fff3f6', border: '1px solid #f2c7d4', cursor: 'pointer', color: '#d05d86', display: 'grid', placeItems: 'center', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}
             >
               <Trash2 size={14} strokeWidth={2.1} />
-            </button>
+            </motion.button>
           )}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             type="button"
             onClick={e => {
               e.stopPropagation()
@@ -3314,7 +3406,7 @@ Return JSON only:
             style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid var(--app-border)', background: '#fff', color: 'var(--app-accent2)', fontSize: '0.8rem', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
           >
             {pl.collapsed ? '▼' : '▲'}
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -3328,11 +3420,13 @@ Return JSON only:
             ].map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
               <div key={slot} style={{ display: 'grid', gap: 8 }}>
                 <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, margin: 0 }}>{lbl}</p>
-                <div style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 12, padding: '0.7rem' }}>
-                  <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: '3/4', borderRadius: 10, background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
+                <div style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 'var(--app-radius-md)', padding: '0.7rem', boxShadow: 'var(--app-shadow-sm)' }}>
+                  <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: '3/4', borderRadius: 'var(--app-radius-sm)', background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
                     {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload' : 'add photo'}</p>}
                     {editing && src && (
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
                         type="button"
                         onClick={event => {
                           event.stopPropagation()
@@ -3342,7 +3436,7 @@ Return JSON only:
                         style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', border: '1px solid #f2c7d4', background: 'rgba(255,255,255,0.96)', color: '#d05d86', display: 'grid', placeItems: 'center', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
                       >
                         ×
-                      </button>
+                      </motion.button>
                     )}
                   </div>
                   {editing
@@ -3360,7 +3454,9 @@ Return JSON only:
 
           {editing && buttonLabel && (
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
+              <motion.button
+                whileHover={{ scale: isGenerating ? 1 : 1.02 }}
+                whileTap={{ scale: isGenerating ? 1 : 0.98 }}
                 type="button"
                 disabled={isGenerating}
                 onPointerUp={event => {
@@ -3370,15 +3466,15 @@ Return JSON only:
                 style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: isGenerating ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: isGenerating ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation', position: 'relative', zIndex: 5, pointerEvents: 'auto' }}
               >
                 {isGenerating ? 'Generating...' : buttonLabel}
-              </button>
+              </motion.button>
             </div>
           )}
 
           <div style={{ height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
           {/* List sections */}
-          {[ 
-            { lbl: 'Resources',  key: 'resources',  c: '#4a7fc1', m: '•' },
+          {[
+            { lbl: 'Resources',  key: 'resources',  c: 'var(--app-accent2)', m: '•' },
           ].map(({ lbl, key, c, m }) => (
             <div key={key}>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c, marginBottom: '0.38rem' }}>{lbl}</p>
@@ -3387,7 +3483,7 @@ Return JSON only:
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
                     {editing
                       ? <><input value={item} onChange={e => onUpdateArr(key, i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
-                         <button onClick={() => onDelArr(key, i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: '#f06090', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: '0 6px 14px rgba(240,96,144,0.12)' }}>×</button></>
+                         <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr(key, i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                       : <span style={{ fontSize: '0.8rem', color: '#5a3d47', lineHeight: 1.5, flex: 1 }}>{m} {item}</span>
                     }
                   </div>
@@ -3398,7 +3494,7 @@ Return JSON only:
           ))}
 
           {/* Weekly non-negotiables */}
-          <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 12, padding: '0.75rem' }}>
+          <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>Weekly Non-Negotiables</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
               {pl.weeklyActions.map((item, i) => {
@@ -3415,7 +3511,7 @@ Return JSON only:
                     <input type="checkbox" checked={!!checked[ck]} onChange={() => onCheck(ck)} onClick={e => e.stopPropagation()} style={{ width: 14, height: 14, marginTop: 3, accentColor: 'var(--app-accent)', flexShrink: 0, cursor: 'pointer' }} />
                     {editing
                       ? <><input value={item} onChange={e => onUpdateArr('weeklyActions', i, e.target.value)} style={{ flex: 1, minWidth: 0, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
-                         <button onClick={() => onDelArr('weeklyActions', i)} style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: '#fff0f4', border: '1px solid #f5c0cc', cursor: 'pointer', color: '#f06090', fontSize: '0.82rem', fontWeight: 800, lineHeight: 1, padding: 0, boxShadow: '0 6px 14px rgba(240,96,144,0.12)' }}>×</button></>
+                         <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr('weeklyActions', i)} style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: '#fff0f4', border: '1px solid #f5c0cc', cursor: 'pointer', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, lineHeight: 1, padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                       : <>
                           <span style={{ fontSize: '0.8rem', color: checked[ck] ? '#c4a0ac' : '#5a3d47', lineHeight: 1.5, flex: 1, textDecoration: checked[ck] ? 'line-through' : 'none' }}>{item}</span>
                           {calendarUrl ? (
@@ -3477,7 +3573,7 @@ Return JSON only:
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
                   {editing
                     ? <><input value={item} onChange={e => onUpdateArr('activities', i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
-                       <button onClick={() => onDelArr('activities', i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: '#f06090', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: '0 6px 14px rgba(240,96,144,0.12)' }}>×</button></>
+                       <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr('activities', i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                     : <span style={{ fontSize: '0.8rem', color: '#5a3d47', lineHeight: 1.5, flex: 1 }}>→ {item}</span>
                   }
                 </div>
@@ -3489,7 +3585,7 @@ Return JSON only:
           {/* Outcome */}
           <div>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.38rem' }}>Outcome</p>
-            <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff1f6)', border: '1px solid #f0d6e2', borderRadius: 10, padding: '0.5rem 0.7rem' }}>
+            <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff1f6)', border: '1px solid #f0d6e2', borderRadius: 'var(--app-radius-sm)', padding: '0.5rem 0.7rem', boxShadow: 'var(--app-shadow-sm)' }}>
               {editing
                 ? (
                   <textarea
@@ -3510,6 +3606,6 @@ Return JSON only:
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
