@@ -2538,6 +2538,25 @@ function subscribeLocalFeed(roomName, callback) {
   return () => channel.removeEventListener('message', handler)
 }
 
+function getMembersStorageKey(roomName) {
+  return `showup_members_${normalize(roomName)}`
+}
+
+function readLocalMembers(roomName) {
+  return safeArray(safeRead(getMembersStorageKey(roomName), []))
+}
+
+function writeLocalMembers(roomName, members) {
+  if (!roomName) return
+  safeWrite(
+    getMembersStorageKey(roomName),
+    safeArray(members)
+      .filter(member => member?.room_name === roomName)
+      .filter(member => !isPlaceholderMember(member))
+      .slice(0, 100)
+  )
+}
+
 function safeRemove(key) {
   try {
     localStorage.removeItem(key)
@@ -3147,8 +3166,8 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (!selectedRoom) return
     setMembers(current => {
       const selfMember =
-        localSessionMemberRef.current ||
-        current.find(member => member.user_id === profile.id && member.checked_in)
+        (localSessionMemberRef.current?.room_name === selectedRoom ? localSessionMemberRef.current : null) ||
+        current.find(member => member.room_name === selectedRoom && member.user_id === profile.id && member.checked_in)
       return selfMember ? [selfMember] : []
     })
     setFeedPosts([])
@@ -3500,6 +3519,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
   async function loadMembers(roomName, nextProfile = profileRef.current) {
     if (!supabase) {
+      const cachedMembers = readLocalMembers(roomName)
+      setMembers(cachedMembers)
+      hydrateCurrentMember(cachedMembers, nextProfile)
       setError('')
       return
     }
@@ -3550,9 +3572,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       if (!nextMembers.some(member => member.user_id === nextProfile.id)) {
         const existingSelf =
-          localSessionMemberRef.current ||
-          membersRef.current.find(member => member.user_id === nextProfile.id && member.checked_in)
-        const shouldKeepSelf = Boolean(existingSelf) || checkedInRef.current
+          (localSessionMemberRef.current?.room_name === roomName ? localSessionMemberRef.current : null) ||
+          membersRef.current.find(member => member.room_name === roomName && member.user_id === nextProfile.id && member.checked_in)
+        const shouldKeepSelf = Boolean(existingSelf)
         if (shouldKeepSelf) nextMembers.unshift(existingSelf || {
           room_name: roomName,
           user_id: nextProfile.id,
@@ -3570,12 +3592,18 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       }
 
       setMembers(nextMembers)
+      writeLocalMembers(roomName, nextMembers)
       const loadedSelf = nextMembers.find(member => member.user_id === nextProfile.id && member.checked_in)
       if (loadedSelf) setLocalSessionMember(loadedSelf)
       hydrateCurrentMember(nextMembers, nextProfile)
       setError('')
     } catch (nextError) {
       console.error('[ShowUp] loadMembers failed', nextError.message || nextError)
+      const cachedMembers = readLocalMembers(roomName)
+      if (cachedMembers.length) {
+        setMembers(cachedMembers)
+        hydrateCurrentMember(cachedMembers, nextProfile)
+      }
       setError('')
     }
   }
@@ -3698,6 +3726,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
     const nextPost = {
       id: getUuid(),
+      room_id: targetRoom,
       authorId: postAuthor.id,
       authorName: postAuthor.name,
       authorInitials: postAuthor.initials,
@@ -3999,6 +4028,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     setCheckedIn(false)
     setTaskDone(false)
     setLocalSessionMember(optimisticPayload)
+    writeLocalMembers(roomName, [
+      optimisticPayload,
+      ...readLocalMembers(roomName).filter(member => member.user_id !== profile.id),
+    ])
 
     console.log(
       '[ShowUp] ensureRoomMembership → writing room_name:', JSON.stringify(roomName),
@@ -4054,6 +4087,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       // Refine local state now that we have the real remote data
       setTaskDone(taskDoneToday)
       setLocalSessionMember(resolvedPayload)
+      writeLocalMembers(roomName, [
+        resolvedPayload,
+        ...readLocalMembers(roomName).filter(member => member.user_id !== profile.id),
+      ])
 
       // Persist to Supabase (non-blocking for UX — user is already visible locally)
       await upsertCheckinRow(resolvedPayload)
@@ -4112,10 +4149,14 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       time: new Date(nowIso).toTimeString().slice(0, 5),
     })
     setMembers(current => (
-      current.some(member => member.user_id === profile.id)
-        ? current.map(member => (member.user_id === profile.id ? { ...member, ...patch } : member))
+      current.some(member => member.room_name === selectedRoom && member.user_id === profile.id)
+        ? current.map(member => (member.room_name === selectedRoom && member.user_id === profile.id ? { ...member, ...patch } : member))
         : [patch, ...current]
     ))
+    writeLocalMembers(selectedRoom, [
+      patch,
+      ...readLocalMembers(selectedRoom).filter(member => member.user_id !== profile.id),
+    ])
 
     try {
       await upsertCheckinRow(patch)
@@ -4185,6 +4226,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
 
     clearPresence(roomName, profile.id)
+    writeLocalMembers(roomName, readLocalMembers(roomName).filter(member => member.user_id !== profile.id))
     setStoredActiveRoom('')
     setJoinedRoomName('')
     setLocalSessionMember(null)
@@ -4236,6 +4278,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       ? members.map(member => (member.user_id === profile.id ? { ...member, ...donePatch } : member))
       : [donePatch, ...members]
     setMembers(nextMembers)
+    writeLocalMembers(roomName, nextMembers)
     const nextRoomStreak = updateRoomStreak(roomName)
     setRoomStreak(nextRoomStreak)
 
@@ -5192,7 +5235,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           {[
             { key: 'live', label: 'Live' },
             { key: 'feed', label: 'Feed' },
-            { key: 'ranks', label: 'Stacks' },
+            { key: 'ranks', label: 'Ranks' },
           ].map(tab => (
             <button
               key={tab.key}
