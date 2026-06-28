@@ -2514,6 +2514,77 @@ function getLocalFeedChannel(roomName) {
   return localFeedChannels[key]
 }
 
+function getFeedStorageKey(roomName) {
+  return `showup_feed_${normalize(roomName)}`
+}
+
+function getRoomWelcomePost(roomName) {
+  const roomDef = ROOM_DEFINITIONS.find(room => normalize(room.name) === normalize(roomName))
+  const roomLabel = roomDef?.name || roomName || 'this room'
+  const pillar = roomDef?.pillar || roomLabel
+  return {
+    id: `sage-welcome-${normalize(roomLabel)}`,
+    room_id: roomLabel,
+    authorId: 'sage',
+    authorName: 'Sage',
+    authorInitials: 'SG',
+    authorAvatarUrl: '',
+    anonymous: false,
+    text: `Welcome to ${roomLabel}.\n\nThis is your ${pillar} accountability room. Use Live to show up, Feed to share proof and progress, and Ranks to celebrate the women building momentum with you.\n\nThis week's challenge: check in, finish one real action, and post proof of what moved forward.`,
+    image: '',
+    system: true,
+    pinned: true,
+    pulseFormat: 'Welcome',
+    pulseLabel: 'PINNED BY SAGE',
+    targetUserId: '',
+    postStyle: 'welcome',
+    createdAt: '2000-01-01T00:00:00.000Z',
+    reactions: {},
+    comments: [],
+  }
+}
+
+async function ensureRemoteWelcomePost(roomName) {
+  if (!supabase || !roomName) return
+  const welcomePost = getRoomWelcomePost(roomName)
+  const payload = {
+    id: welcomePost.id,
+    room_id: roomName,
+    author_id: 'sage',
+    author_name: 'Sage',
+    text: welcomePost.text,
+    image_url: null,
+    post_type: 'welcome',
+    is_system_post: true,
+    created_at: welcomePost.createdAt,
+  }
+  const attempts = [
+    payload,
+    (() => {
+      const { is_system_post: _ignoredSystem, post_type: _ignoredPostType, ...nextPayload } = payload
+      return nextPayload
+    })(),
+    {
+      room_id: roomName,
+      user_id: 'sage',
+      display_name: 'Sage',
+      content: welcomePost.text,
+      image_url: null,
+      created_at: welcomePost.createdAt,
+    },
+  ]
+  for (const attemptPayload of attempts) {
+    try {
+      const { error } = await supabase
+        .from('room_feed_posts')
+        .upsert(attemptPayload, { onConflict: 'id' })
+      if (!error) return
+    } catch {
+      // Try the next compatible table shape.
+    }
+  }
+}
+
 function readLocalPosts(roomName) {
   return safeArray(safeRead(getFeedStorageKey(roomName), []))
 }
@@ -3664,13 +3735,21 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   async function loadFeedPosts(roomName) {
+    const welcomePost = getRoomWelcomePost(roomName)
     if (!supabase) {
-      setFeedPosts(readLocalPosts(roomName))
+      const localPosts = readLocalPosts(roomName)
+      const mergedLocal = [
+        welcomePost,
+        ...localPosts.filter(post => post.id !== welcomePost.id),
+      ]
+      writeLocalPosts(roomName, mergedLocal)
+      setFeedPosts(mergedLocal)
       setFeedReady(true)
       return
     }
 
     try {
+      await ensureRemoteWelcomePost(roomName)
       const { data, error: feedError } = await supabase
         .from('room_feed_posts')
         .select('*')
@@ -3688,6 +3767,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         const remotePulseFormat = remoteType.startsWith('pulse:') ? remoteType.slice(6) : ''
         const remoteRecap = remoteType.startsWith('recap:')
         const remoteCheckin = remoteType === 'checkin'
+        const remoteWelcome = remoteType === 'welcome' || remoteId === welcomePost.id
         const remoteTargetUserId = remoteType.startsWith('nudge:') ? remoteType.slice(6) : ''
         const authorId = post.author_id || post.user_id || `anon-${index}`
         const memberMatch = members.find(member => member.user_id === authorId)
@@ -3702,8 +3782,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           text: post.text || post.content || '',
           image: post.image_url || '',
           system: Boolean(post.is_system_post) || (post.author_name || post.display_name) === 'Sage',
+          pinned: remoteWelcome,
           pulseFormat: remotePulseFormat || (remoteRecap ? 'Weekly Recap' : ''),
-          pulseLabel: remotePulseFormat
+          pulseLabel: remoteWelcome
+            ? 'PINNED BY SAGE'
+            : remotePulseFormat
             ? `\u{1F4C5} ${remotePulseFormat.toUpperCase()}`
             : remoteRecap
               ? '\u{1F4C5} WEEKLY RECAP'
@@ -3722,7 +3805,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       const cachedPosts = readLocalPosts(roomName)
       const cachedById = Object.fromEntries(cachedPosts.map(post => [post.id, post]))
       const mergedMap = new Map()
-      ;[...remotePosts, ...cachedPosts].forEach(post => {
+      ;[welcomePost, ...remotePosts, ...cachedPosts].forEach(post => {
         if (!post?.id) return
         const cached = cachedById[post.id] || {}
         const existing = mergedMap.get(post.id) || {}
@@ -3731,6 +3814,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           ...cached,
           ...post,
           room_id: roomName,
+          pinned: Boolean(post.pinned || cached.pinned || existing.pinned),
           image: post.image || cached.image || existing.image || '',
           reactions: mergeReactionMaps(existing.reactions, cached.reactions, post.reactions),
           comments: mergeCommentLists(existing.comments, cached.comments, post.comments).map(comment => ({
@@ -3742,7 +3826,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       })
       const mergedPosts = [...mergedMap.values()]
         .filter(post => !post.room_id || post.room_id === roomName)
-        .sort((a, b) => new Date(b.createdAt || b.created_at).getTime() - new Date(a.createdAt || a.created_at).getTime())
+        .sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1
+          if (!a.pinned && b.pinned) return 1
+          return new Date(b.createdAt || b.created_at).getTime() - new Date(a.createdAt || a.created_at).getTime()
+        })
         .slice(0, 100)
       writeLocalPosts(roomName, mergedPosts)
       setFeedReady(true)
@@ -3751,7 +3839,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       console.error('[ShowUp] loadFeedPosts failed', nextError.message || nextError)
       setFeedReady(true)
       const cached = readLocalPosts(roomName)
-      if (cached.length) setFeedPosts(cached)
+      const mergedCached = [welcomePost, ...cached.filter(post => post.id !== welcomePost.id)]
+      writeLocalPosts(roomName, mergedCached)
+      setFeedPosts(mergedCached)
     }
   }
 
@@ -4797,7 +4887,11 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           replies: dedupeByIdOrTimestamp(safeArray(comment?.replies)),
         })),
       }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1
+        if (!a.pinned && b.pinned) return 1
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      })
   ), [feedPosts])
   const commentSheetPost = useMemo(() => visiblePosts.find(post => post.id === commentSheetPostId) || null, [visiblePosts, commentSheetPostId])
   const commentDraft = commentSheetPost ? String(commentDrafts[commentSheetPost.id] || '') : ''
@@ -4809,15 +4903,41 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     const roomActivity = selectedRoom ? getRoomActivity(selectedRoom) : []
     const pillar = getPillarFromRoom(selectedRoom)
     const myCompletions = selectedRoom ? getCompletionRecords().filter(c => c.pillar === pillar).length : 0
+    const roomPosts = safeArray(feedPosts).filter(post => !post.system && (!post.room_id || post.room_id === selectedRoom))
     return [...rankSource]
       .filter(member => !isPlaceholderMember(member) && member.display_name)
       .map(member => {
         const roomTasksDone = roomActivity.filter(e => e.type === 'done' && e.userId === member.user_id).length
+        const roomCheckins = roomActivity.filter(e => e.type === 'checkin' && e.userId === member.user_id).length
+        const authoredPosts = roomPosts.filter(post => post.authorId === member.user_id).length
+        const likesReceived = roomPosts
+          .filter(post => post.authorId === member.user_id)
+          .reduce((total, post) => total + Object.values(post.reactions || {}).reduce((sum, list) => sum + safeArray(list).length, 0), 0)
+        const commentsMade = roomPosts.reduce((total, post) => (
+          total +
+          safeArray(post.comments).filter(comment => comment.authorId === member.user_id).length +
+          safeArray(post.comments).reduce((replyTotal, comment) => (
+            replyTotal + safeArray(comment.replies).filter(reply => reply.authorId === member.user_id).length
+          ), 0)
+        ), 0)
         const pillarTasksDone = member.user_id === profile.id ? myCompletions : 0
+        const streakValue = member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0)
+        const engagementScore =
+          (roomTasksDone * 8) +
+          (pillarTasksDone * 5) +
+          (roomCheckins * 3) +
+          (authoredPosts * 4) +
+          (commentsMade * 2) +
+          likesReceived +
+          streakValue
         return {
           ...member,
-          streakValue: member.user_id === profile.id ? getCurrentStreakCount() : Number(member?.streak_count || 0),
-          tasksValue: Math.max(roomTasksDone, pillarTasksDone, member.task_done ? 1 : 0),
+          streakValue,
+          tasksValue: Math.max(engagementScore, member.task_done ? 8 : 0),
+          engagementScore,
+          postsValue: authoredPosts,
+          commentsValue: commentsMade,
+          likesValue: likesReceived,
         }
       })
       .sort((a, b) => (
@@ -4825,7 +4945,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         b.streakValue - a.streakValue ||
         String(a.display_name || '').localeCompare(String(b.display_name || ''))
       ))
-  }, [activeTab, realMembers, profile.id, selfSessionMember, selectedRoom])
+  }, [activeTab, feedPosts, realMembers, profile.id, selfSessionMember, selectedRoom])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
   const dailyTasksFinished = useMemo(() => (
@@ -5612,6 +5732,10 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     </p>
                   </div>
                   {topRole ? <div className="showup-rank-badge">{topRole}</div> : <div />}
+                  <div className="showup-rank-score">
+                    <span className="showup-rank-score-value">{member.engagementScore || 0}</span>
+                    <span className="showup-rank-score-label">room pts</span>
+                  </div>
                   {isMe && dailyTasksFinished && checkedIn ? (
                     <span className="showup-rank-done-pill">Marked Done</span>
                   ) : isMe ? (
