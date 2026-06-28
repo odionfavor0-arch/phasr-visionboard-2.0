@@ -2358,6 +2358,333 @@ const SHOW_UP_STYLES = `
   cursor:default;
   transform:none;
 }
+
+.showup-root{
+  background:
+    radial-gradient(circle at 12% 4%, rgba(255,215,226,0.68), transparent 32%),
+    radial-gradient(circle at 92% 10%, rgba(220,204,255,0.42), transparent 28%),
+    linear-gradient(180deg,#fffaf6 0%,#fff5f8 54%,#fffaf8 100%) !important;
+}
+.showup-shell{
+  padding:22px 18px 116px !important;
+}
+.showup-room-inline-banner{
+  border:1px solid rgba(249,95,133,0.16) !important;
+  background:rgba(255,255,255,0.72) !important;
+  backdrop-filter:blur(18px);
+  box-shadow:0 18px 48px rgba(77,49,66,0.08);
+}
+.showup-list-header{
+  padding:8px 2px 16px !important;
+}
+.showup-list-kicker{
+  color:#b98097 !important;
+  letter-spacing:.24em !important;
+}
+.showup-create-link{
+  border:1px solid rgba(249,95,133,0.20) !important;
+  border-radius:999px !important;
+  padding:8px 14px !important;
+  background:rgba(255,255,255,0.74) !important;
+  box-shadow:0 14px 32px rgba(249,95,133,0.10);
+}
+.showup-list-panel{
+  display:grid !important;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important;
+  gap:14px !important;
+  border:none !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  overflow:visible !important;
+}
+.showup-list-row{
+  grid-template-columns:44px minmax(0,1fr) auto !important;
+  align-items:start !important;
+  min-height:138px !important;
+  padding:18px !important;
+  border:1px solid rgba(249,95,133,0.18) !important;
+  border-radius:28px !important;
+  background:rgba(255,255,255,0.78) !important;
+  box-shadow:0 18px 48px rgba(77,49,66,0.08) !important;
+  backdrop-filter:blur(18px);
+  transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.showup-list-row:hover{
+  transform:translateY(-3px);
+  box-shadow:0 24px 64px rgba(77,49,66,0.12) !important;
+  border-color:rgba(249,95,133,0.32) !important;
+}
+.showup-list-icon{
+  width:42px !important;
+  height:42px !important;
+  border-radius:16px !important;
+}
+.showup-list-content{
+  gap:8px !important;
+}
+.showup-list-name{
+  font-size:17px !important;
+  line-height:1.2 !important;
+}
+.showup-list-meta{
+  font-size:12px !important;
+  line-height:1.4 !important;
+}
+.showup-list-action{
+  align-self:end !important;
+  grid-column:1 / -1 !important;
+  justify-content:space-between !important;
+  margin-top:8px !important;
+}
+.showup-join-pill{
+  min-height:38px !important;
+  padding:0 18px !important;
+  color:#fff !important;
+  background:linear-gradient(135deg,#f95f85,#ff9ab4) !important;
+  box-shadow:0 14px 30px rgba(249,95,133,0.20) !important;
+}
+.showup-join-pill.is-joined{
+  color:#f95f85 !important;
+  background:#fff !important;
+  border-color:rgba(249,95,133,0.22) !important;
+  box-shadow:none !important;
+  padding:0 16px !important;
+}
+.showup-sticky-header{
+  position:relative !important;
+  margin-bottom:12px !important;
+  padding:14px 16px !important;
+  border:1px solid rgba(249,95,133,0.14);
+  border-radius:28px;
+  background:rgba(255,255,255,0.76);
+  box-shadow:0 18px 48px rgba(77,49,66,0.08);
+  backdrop-filter:blur(18px);
+}
+.showup-topbar{
+  display:grid !important;
+  grid-template-columns:42px minmax(0,1fr) 42px !important;
+  align-items:center !important;
+}
+.showup-room-title{
+  text-align:center !important;
+  font-size:20px !important;
+  letter-spacing:-.02em !important;
+}
+.showup-room-menu-wrap{
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+.showup-header-btn{
+  border-radius:16px !important;
+  background:#fff !important;
+  border:1px solid rgba(249,95,133,0.14) !important;
+  color:#4d3142 !important;
+}
+.showup-tabs{
+  border:1px solid rgba(249,95,133,0.14) !important;
+  background:rgba(255,255,255,0.84) !important;
+  box-shadow:0 18px 48px rgba(77,49,66,0.12) !important;
+}
+.showup-tab{
+  border:none !important;
+  background:transparent !important;
+}
+.showup-tab.is-active{
+  background:#f95f85 !important;
+  color:#fff !important;
+}
+.showup-member-grid{
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr)) !important;
+  gap:14px !important;
+}
+.showup-member-card{
+  border-radius:26px !important;
+  background:rgba(255,255,255,0.82) !important;
+  box-shadow:0 18px 48px rgba(77,49,66,0.08);
+  border-color:rgba(249,95,133,0.16) !important;
+}
+.showup-feed-view{
+  gap:14px !important;
+}
+.showup-compose-card,
+.showup-feed-card,
+.showup-rank-row,
+.showup-empty{
+  border-radius:26px !important;
+  background:rgba(255,255,255,0.86) !important;
+  box-shadow:0 18px 48px rgba(77,49,66,0.08) !important;
+  border:1px solid rgba(249,95,133,0.14) !important;
+}
+.showup-compose-card{
+  padding:16px !important;
+}
+.showup-compose-input{
+  background:#fff7fa !important;
+  border:1px solid rgba(249,95,133,0.12) !important;
+  border-radius:999px !important;
+  padding:0 16px !important;
+}
+.showup-photo-btn,
+.showup-post-btn{
+  border-radius:999px !important;
+}
+.showup-feed-card{
+  padding:18px !important;
+}
+.showup-feed-card.is-sage,
+.showup-feed-card.is-pinned{
+  background:
+    linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,243,248,0.96)),
+    radial-gradient(circle at 90% 12%,rgba(249,95,133,0.16),transparent 28%) !important;
+  border-color:rgba(249,95,133,0.24) !important;
+}
+.showup-feed-card.is-pinned{
+  position:sticky;
+  top:10px;
+  z-index:2;
+}
+.showup-pinned-label{
+  margin:0 0 12px;
+  color:#f95f85;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+}
+.showup-feed-header-main{
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  justify-content:center !important;
+  gap:2px !important;
+}
+.showup-feed-name{
+  font-size:15px !important;
+}
+.showup-feed-time{
+  font-size:12px !important;
+}
+.showup-feed-text{
+  margin-left:52px !important;
+}
+.showup-feed-media-wrapper{
+  width:calc(100% - 52px) !important;
+  margin-left:52px !important;
+  border-radius:20px !important;
+  background:#fff5f8 !important;
+}
+.showup-feed-image{
+  border-radius:20px !important;
+}
+.showup-feed-reactions{
+  margin-left:52px !important;
+  padding-top:12px !important;
+  border-top:1px solid rgba(77,49,66,0.08);
+  justify-content:space-between !important;
+  flex-wrap:nowrap !important;
+}
+.showup-reaction-chip,
+.showup-comment-toggle,
+.showup-nudge-post-btn{
+  border-radius:999px !important;
+  background:#fff !important;
+}
+.showup-feed-side-panel{
+  display:none;
+}
+.showup-side-card{
+  border:1px solid rgba(249,95,133,0.14);
+  border-radius:26px;
+  background:rgba(255,255,255,0.82);
+  box-shadow:0 18px 48px rgba(77,49,66,0.08);
+  padding:16px;
+}
+.showup-side-title{
+  margin:0 0 12px;
+  font-size:11px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:#b98097;
+  font-weight:900;
+}
+.showup-side-avatar-row{
+  display:flex;
+  align-items:center;
+  gap:0;
+  margin-bottom:12px;
+}
+.showup-side-avatar-row .showup-avatar{
+  margin-right:-8px;
+  border:2px solid #fff;
+}
+.showup-side-rank{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 0;
+  border-top:1px solid rgba(77,49,66,0.07);
+  color:#4d3142;
+  font-size:12px;
+  font-weight:800;
+}
+.showup-rank-row{
+  border-radius:22px !important;
+}
+@media (min-width: 900px){
+  .showup-shell{
+    max-width:1180px !important;
+    padding-left:28px !important;
+    padding-right:28px !important;
+  }
+  .showup-feed-view{
+    grid-template-columns:minmax(0,1fr) 300px !important;
+    align-items:start !important;
+    gap:18px !important;
+  }
+  .showup-feed-view > .showup-compose-card,
+  .showup-feed-view > .showup-feed-card,
+  .showup-feed-view > .showup-empty,
+  .showup-feed-view > .showup-progress-toast{
+    grid-column:1 !important;
+  }
+  .showup-feed-side-panel{
+    display:grid;
+    gap:14px;
+    grid-column:2;
+    grid-row:1 / span 12;
+    position:sticky;
+    top:24px;
+  }
+}
+@media (max-width: 767px){
+  .showup-shell{
+    padding:14px 12px 104px !important;
+  }
+  .showup-list-panel{
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+  .showup-list-row{
+    min-height:116px !important;
+    border-radius:24px !important;
+    padding:16px !important;
+  }
+  .showup-room-title{
+    font-size:17px !important;
+  }
+  .showup-feed-card{
+    padding:14px !important;
+    border-radius:22px !important;
+  }
+  .showup-feed-text,
+  .showup-feed-reactions{
+    margin-left:0 !important;
+  }
+  .showup-feed-media-wrapper{
+    width:100% !important;
+    margin-left:0 !important;
+  }
+}
 `
 
 const ROOM_DEFINITIONS = [
@@ -5424,7 +5751,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           {[
             { key: 'live', label: 'Live' },
             { key: 'feed', label: 'Feed' },
-            { key: 'ranks', label: 'Ranks' },
+            { key: 'ranks', label: 'Rankings' },
           ].filter(tab => tab.key === 'live' || isSelectedRoomMember).map(tab => (
             <button
               key={tab.key}
@@ -5572,6 +5899,44 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
               <input ref={fileInputRef} type="file" accept="image/*,video/*" className="showup-hidden-input" onChange={handlePhotoPick} />
             </div>
 
+            <aside className="showup-feed-side-panel" aria-label="Room activity summary">
+              <div className="showup-side-card">
+                <p className="showup-side-title">Live Now</p>
+                <div className="showup-side-avatar-row">
+                  {liveMembers.slice(0, 6).map(member => {
+                    const avatarUrl = member.user_id === profile.id ? profile.avatar : (member.avatar_url || member.avatar || '')
+                    const initials = member.user_id === profile.id ? profile.initials : (member.initials || buildInitials(member.display_name))
+                    return (
+                      <div key={member.user_id} className="showup-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                        {avatarUrl
+                          ? <img src={avatarUrl} alt={member.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                          : initials}
+                      </div>
+                    )
+                  })}
+                </div>
+                <button type="button" className="showup-join-pill" onClick={() => setActiveTab('live')}>
+                  Join Live
+                </button>
+              </div>
+              <div className="showup-side-card">
+                <p className="showup-side-title">Weekly Leaderboard</p>
+                {rankedMembers.slice(0, 5).map((member, index) => (
+                  <div key={member.user_id} className="showup-side-rank">
+                    <span>{index + 1}. {member.user_id === profile.id ? 'You' : member.display_name}</span>
+                    <span>{member.engagementScore || 0} pts</span>
+                  </div>
+                ))}
+              </div>
+              <div className="showup-side-card">
+                <p className="showup-side-title">Your Streak</p>
+                <p style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: 28, fontWeight: 900, color: '#f95f85' }}>
+                  {getCurrentStreakCount()} days
+                </p>
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#b98097' }}>Current streak</p>
+              </div>
+            </aside>
+
             {visiblePosts.length === 0 ? (
               <div className="showup-empty">No posts yet. Be the first to share.</div>
             ) : (
@@ -5581,6 +5946,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                 const targetMember = post.targetUserId ? realMembers.find(member => member.user_id === post.targetUserId) : null
                 const feedClass = [
                   'showup-feed-card',
+                  post.pinned ? 'is-pinned' : '',
                   post.anonymous ? 'is-anonymous' : '',
                   post.postStyle === 'checkin' ? 'is-checkin' : (post.postStyle === 'activity' ? 'is-activity' : (post.system ? 'is-sage' : '')),
                   post.postStyle === 'pulse' ? 'is-pulse' : '',
@@ -5596,6 +5962,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                   }}
                   style={{ cursor: targetMember ? 'pointer' : undefined }}
                 >
+                  {post.pinned || post.pulseLabel ? (
+                    <p className="showup-pinned-label">{post.pulseLabel || 'PINNED BY SAGE'}</p>
+                  ) : null}
                   <div className="showup-feed-header">
                     <div className="showup-feed-author">
                       <button
