@@ -1455,16 +1455,16 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         const onboardingPillars = JSON.parse(localStorage.getItem('phasr_onboarding_pillars') || 'null')
         const letter = JSON.parse(localStorage.getItem('phasr_future_letter_p1') || 'null')
         if (onboardingPillars?.length && board.phases[0]) {
-          board.phases[0].pillars = onboardingPillars.slice(0, 6).map((name, i) => ({
-            id: `pillar-${i + 1}`, name, details: '', emoji: '',
-            resources: [], activities: [], weeklyNonNegotiables: [], outcome: '', sageGenerated: false,
-            beforePhoto: '', afterPhoto: '', beforeCaption: '', afterCaption: '',
-          }))
+          board.phases[0].pillars = onboardingPillars.slice(0, 6).map((name, i) =>
+            normalizePillarShape({ id: `pillar-${i + 1}`, name })
+          )
         }
         if (letter && board.phases[0]) {
           board.phases[0].futureMessage = letter.message || ''
           board.phases[0].futureMessageDate = letter.date || ''
         }
+        localStorage.removeItem('phasr_onboarding_pillars')
+        localStorage.removeItem('phasr_future_letter_p1')
       } catch {}
     }
     return board
@@ -3574,7 +3574,7 @@ Return JSON only:
           <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>Weekly Non-Negotiables</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
-              {pl.weeklyActions.map((item, i) => {
+              {(Array.isArray(pl.weeklyActions) && pl.weeklyActions.length ? pl.weeklyActions : ['']).map((item, i) => {
                 const ck = `${phaseId}-${pl.id}-wk-${i}`
                 const safeTask = String(item || '').trim()
                 const dayOffset = NON_NEGOTIABLE_DAY_OFFSETS[i % NON_NEGOTIABLE_DAY_OFFSETS.length] ?? 0

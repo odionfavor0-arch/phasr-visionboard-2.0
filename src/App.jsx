@@ -205,6 +205,7 @@ export default function App() {
     }
     localStorage.removeItem(ONBOARDING_KEY_PREFIX)
     localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
+    localStorage.removeItem('phasr_onboarding_pillars')
     clearAuthReturnValue()
     localStorage.setItem(POST_ONBOARDING_KEY, 'app')
     localStorage.setItem(PRODUCT_ENTRY_KEY, 'true')
