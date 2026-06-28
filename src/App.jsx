@@ -97,6 +97,15 @@ function cacheUser(user) {
   safeLocalSet(CACHED_USER_KEY, JSON.stringify(nextCachedUser))
 }
 
+function hasRemoteOnboardingComplete(user) {
+  const metadata = user?.user_metadata || {}
+  return Boolean(
+    metadata.onboarding_completed ||
+    metadata.phasr_onboarded ||
+    metadata.product_ready
+  )
+}
+
 function clearCachedUser() {
   safeLocalRemove(CACHED_USER_KEY)
 }
@@ -108,6 +117,10 @@ function getOnboardingKey(user) {
 
 function getStoredOnboarded(user) {
   if (!user) return false
+  if (hasRemoteOnboardingComplete(user)) {
+    localStorage.setItem(getOnboardingKey(user), 'true')
+    return true
+  }
   const userOnboardingKey = getOnboardingKey(user)
   const userDone = localStorage.getItem(userOnboardingKey) === 'true'
   const globalDone = localStorage.getItem(ONBOARDING_KEY_PREFIX) === 'true'
@@ -117,6 +130,35 @@ function getStoredOnboarded(user) {
     return true
   }
   return userDone
+}
+
+async function persistOnboardingComplete(user) {
+  if (!user) return
+  try {
+    localStorage.setItem(getOnboardingKey(user), 'true')
+    cacheUser({
+      ...user,
+      user_metadata: {
+        ...(user?.user_metadata || {}),
+        onboarding_completed: true,
+        phasr_onboarded: true,
+        product_ready: true,
+      },
+    })
+  } catch {}
+  if (!supabase) return
+  try {
+    await supabase.auth.updateUser({
+      data: {
+        ...(user?.user_metadata || {}),
+        onboarding_completed: true,
+        phasr_onboarded: true,
+        product_ready: true,
+      },
+    })
+  } catch (error) {
+    console.warn('[Phasr] Could not persist onboarding status remotely:', error?.message || error)
+  }
 }
 
 function hasAuthRedirectParams() {
@@ -154,8 +196,12 @@ export default function App() {
   const effectiveUser = user || (!hasExplicitSignOutIntent() ? getCachedUser() : null)
 
   function finishOnboarding(nextUser = user, _choice = 'later') {
-    if (nextUser) {
-      localStorage.setItem(getOnboardingKey(nextUser), 'true')
+    const resolvedUser = nextUser || effectiveUser || getCachedUser()
+    if (resolvedUser) {
+      localStorage.setItem(getOnboardingKey(resolvedUser), 'true')
+      cacheUser(resolvedUser)
+      setUser(resolvedUser)
+      persistOnboardingComplete(resolvedUser)
     }
     localStorage.removeItem(ONBOARDING_KEY_PREFIX)
     localStorage.removeItem(ONBOARDING_ACTIVE_KEY)
@@ -387,6 +433,25 @@ export default function App() {
     )
   }
 
+  if (screen === 'app' && safeLocalGet(PRODUCT_READY_KEY) === 'true') {
+    return (
+      <AuthPage
+        configError={supabaseConfigError}
+        onBack={() => setScreen('landing')}
+        onSuccess={nextUser => {
+          setUser(nextUser)
+          const isAlreadyOnboarded = getStoredOnboarded(nextUser)
+          setOnboarded(isAlreadyOnboarded)
+          if (isAlreadyOnboarded) {
+            cacheUser(nextUser)
+            safeLocalRemove(ONBOARDING_ACTIVE_KEY)
+          }
+          setScreen('app')
+        }}
+      />
+    )
+  }
+
   if (screen === 'auth') {
     return (
         <AuthPage
@@ -396,6 +461,11 @@ export default function App() {
           setUser(nextUser)
           const isAlreadyOnboarded = getStoredOnboarded(nextUser)
           setOnboarded(isAlreadyOnboarded)
+          if (isAlreadyOnboarded) {
+            cacheUser(nextUser)
+            safeLocalRemove(ONBOARDING_ACTIVE_KEY)
+            safeLocalSet(PRODUCT_READY_KEY, 'true')
+          }
           setScreen('app')
         }}
       />
