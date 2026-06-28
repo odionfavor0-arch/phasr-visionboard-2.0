@@ -2945,6 +2945,46 @@ function getMemberStatus(member) {
   return 'idle'
 }
 
+function getSavedDailyTasksFinished() {
+  try {
+    const startDate = String(localStorage.getItem('phasr_phase1_start_date') || localStorage.getItem('phasr_joined_at') || new Date().toISOString()).slice(0, 10)
+    const start = new Date(`${startDate}T00:00:00`)
+    const today = new Date()
+    const dayOfPhase = Math.max(Math.floor((today - start) / 86400000) + 1, 1)
+    const currentWeek = Math.max(Math.ceil(dayOfPhase / 7), 1)
+    const dayOfWeek = ((dayOfPhase - 1) % 7) + 1
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index) || ''
+      if (!key.startsWith('phasr_tasks_')) continue
+      if (!key.includes(`_w${currentWeek}_d${dayOfWeek}`)) continue
+      const tasks = safeRead(key, [])
+      if (!Array.isArray(tasks) || tasks.length === 0) continue
+      if (tasks.every(task => task?.done)) return true
+    }
+  } catch {
+    // Local fallback only.
+  }
+  return false
+}
+
+async function loadRemoteDailyTasksFinished(userId) {
+  if (!supabase || !userId) return null
+  const today = getTodayKey()
+  try {
+    const { data, error } = await supabase
+      .from('daily_activity_logs')
+      .select('completed')
+      .eq('user_id', userId)
+      .eq('date', today)
+    if (error) throw error
+    if (!Array.isArray(data) || data.length === 0) return false
+    return data.every(row => row.completed === true)
+  } catch (error) {
+    console.warn('[ShowUp] Remote daily task check skipped:', error?.message || error)
+    return null
+  }
+}
+
 function readPresence(roomName, userId) {
   const value = safeRead(getPresenceStorageKey(roomName, userId), null)
   if (!value || !roomName || !userId) return { status: 'none', lastSeen: 0 }
@@ -3095,6 +3135,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [nudgeToast, setNudgeToast] = useState(null)
   const [progressToast, setProgressToast] = useState('')
   const [bottomToast, setBottomToast] = useState('')
+  const [remoteDailyTasksFinished, setRemoteDailyTasksFinished] = useState(null)
   const [expandedComments, setExpandedComments] = useState({})
   const [commentDrafts, setCommentDrafts] = useState({})
   const [expandedReplies, setExpandedReplies] = useState({})
@@ -4716,6 +4757,14 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const currentMember = useMemo(() => (
     localSessionMember || members.find(member => member.user_id === profile.id) || null
   ), [localSessionMember, members, profile.id])
+  const isSelectedRoomMember = Boolean(
+    selectedRoom &&
+    (
+      joinedRoomName === selectedRoom ||
+      localSessionMember?.room_name === selectedRoom ||
+      members.some(member => member.room_name === selectedRoom && member.user_id === profile.id)
+    )
+  )
   const selfSessionMember = useMemo(() => {
     if (localSessionMember) return localSessionMember
     if (currentMember) return currentMember
@@ -4779,6 +4828,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }, [activeTab, realMembers, profile.id, selfSessionMember, selectedRoom])
   const roomRoles = useMemo(() => computeRoomRoles(realMembers, selectedRoom), [realMembers, selectedRoom, feedPosts])
   const topRoleFor = member => roomRoles[member.user_id]?.[0] || ''
+  const dailyTasksFinished = useMemo(() => (
+    remoteDailyTasksFinished ?? getSavedDailyTasksFinished()
+  ), [activeTab, taskDone, doneBusy, remoteDailyTasksFinished, selectedRoom])
   const joinedRoomMember = useMemo(() => (
     members.find(member => member.user_id === profile.id) || currentMember
   ), [currentMember, members, profile.id])
@@ -4800,6 +4852,23 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (!selectedRoom) return
     safeWrite(getRanksStorageKey(selectedRoom), rankedMembers)
   }, [rankedMembers, selectedRoom])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const remoteFinished = await loadRemoteDailyTasksFinished(profile.id)
+      if (!cancelled) setRemoteDailyTasksFinished(remoteFinished)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, profile.id, selectedRoom, taskDone])
+
+  useEffect(() => {
+    if (!isSelectedRoomMember && (activeTab === 'feed' || activeTab === 'ranks')) {
+      setActiveTab('live')
+    }
+  }, [activeTab, isSelectedRoomMember])
 
   useEffect(() => {
     if (!dmSheetMember) return
@@ -5236,7 +5305,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
             { key: 'live', label: 'Live' },
             { key: 'feed', label: 'Feed' },
             { key: 'ranks', label: 'Ranks' },
-          ].map(tab => (
+          ].filter(tab => tab.key === 'live' || isSelectedRoomMember).map(tab => (
             <button
               key={tab.key}
               type="button"
@@ -5250,6 +5319,14 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
         {visibleError ? <div className="showup-empty">{visibleError}</div> : null}
         {loading && !members.length ? <div className="showup-empty">Loading your room...</div> : null}
+        {!isSelectedRoomMember ? (
+          <div className="showup-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <span>Join this room to unlock the feed and ranks.</span>
+            <button type="button" className="showup-streak-cta-btn" onClick={() => handleJoinRoom(selectedRoom)}>
+              Join room
+            </button>
+          </div>
+        ) : null}
         {activeTab === 'live' ? (
           <div style={{ display: 'grid', gap: 16 }}>
             <div className="showup-member-grid">
@@ -5321,7 +5398,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           </div>
         ) : null}
 
-        {activeTab === 'feed' ? (
+        {activeTab === 'feed' && isSelectedRoomMember ? (
           <div className="showup-feed-view" ref={feedViewRef}>
             {progressToast ? (
               <div className="showup-progress-toast" role="status" aria-live="polite">
@@ -5495,7 +5572,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
           </div>
         ) : null}
 
-        {activeTab === 'ranks' ? (
+        {activeTab === 'ranks' && isSelectedRoomMember ? (
           <div className="showup-ranks-view">
             {rankedMembers.length === 0 ? (
               <div className="showup-empty">No members ranked yet.</div>
@@ -5535,22 +5612,23 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
                     </p>
                   </div>
                   {topRole ? <div className="showup-rank-badge">{topRole}</div> : <div />}
-                  {getMemberStatus(member) === 'done' ? (
-                    <span className="showup-rank-done-pill">Done Today ✓</span>
+                  {isMe && dailyTasksFinished && checkedIn ? (
+                    <span className="showup-rank-done-pill">Marked Done</span>
                   ) : isMe ? (
                     <button
                       type="button"
                       className="showup-streak-cta-btn"
                       onClick={event => {
                         event.stopPropagation()
-                        handleMarkDone()
+                        onGoToDailyStreaks?.()
                       }}
-                      disabled={doneBusy}
                     >
-                      {doneBusy ? 'Saving...' : 'Mark Done'}
+                      Finish Tasks
                     </button>
                   ) : (
-                    <span className="showup-rank-waiting">Not done</span>
+                    <span className={getMemberStatus(member) === 'done' ? 'showup-rank-done-pill' : 'showup-rank-waiting'}>
+                      {getMemberStatus(member) === 'done' ? 'Marked Done' : 'Not done'}
+                    </span>
                   )}
                 </div>
               )
