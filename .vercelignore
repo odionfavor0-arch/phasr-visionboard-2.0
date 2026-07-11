@@ -1,0 +1,21 @@
+# Reference/scratch assets living at repo root — not used by the built site.
+# The site's real assets live under public/ and src/.
+/*.mp4
+/*.gif
+/*.jpeg
+/*.jpg
+/*.png
+/*.PNG
+/*.pdf
+/.extract_sheet.png
+/.grid.png
+/.mockup_sheet.png
+/PHASR_Brand_Positioning.md
+/PHASR_Product_Vision.md
+/FUTURE_ENHANCEMENTS.md
+
+# Dev tooling not needed at build/runtime
+/.agents/
+/.obsidian/
+/.claude/
+/Skills/

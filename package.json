@@ -11,15 +11,25 @@
     "test:e2e": "playwright test --project=chromium --project=firefox --project=chromium-authenticated",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:webkit": "playwright test --project=webkit"
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "reel:sound": "node scripts/make-transition-sound.mjs",
+    "reel:studio": "remotion studio src/remotion/index.js",
+    "reel:mp4": "remotion render src/remotion/index.js PhasrMockup out/phasr-mockup.mp4",
+    "reel:gif": "remotion render src/remotion/index.js PhasrMockup out/phasr-mockup.gif --codec=gif --every-nth-frame=2",
+    "glass:mp4": "remotion render src/remotion/index.js PhasrGlass out/phasr-glass.mp4",
+    "glass:gif": "remotion render src/remotion/index.js PhasrGlass out/phasr-glass.gif --codec=gif --every-nth-frame=2"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@remotion/cli": "^4.0.484",
+    "@remotion/player": "^4.0.484",
     "@supabase/supabase-js": "^2.99.3",
     "framer-motion": "^12.42.0",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.18.0",
+    "remotion": "^4.0.484"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
