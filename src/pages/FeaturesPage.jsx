@@ -62,7 +62,7 @@ const STYLES = `
   margin-bottom: 20px;
 }
 .feat-hub-h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(2.4rem, 5vw, 3.8rem);
   font-weight: 700;
   color: #1a0a10;
@@ -89,7 +89,7 @@ const STYLES = `
   border-bottom: 1px solid rgba(240,96,144,0.1);
 }
 .feat-showcase-eyebrow {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -214,7 +214,7 @@ const STYLES = `
   padding: 80px 0;
 }
 .feat-hub-cta-h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
   font-weight: 700;
   color: #1a0a10;
@@ -237,7 +237,7 @@ const STYLES = `
   background: #c2185b;
   color: #fff;
   border-radius: 100px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
-import phasrMark from '../../assets/phasr-mark.png'
+import phasrMark from '../../assets/phasr-logo-pink.png'
 
 const NAV_LINKS = [
   { label: 'Features', to: '/features' },
@@ -29,7 +29,7 @@ const STYLES = `
   align-items: center;
   justify-content: space-between;
   transition: background 0.35s, box-shadow 0.35s, padding 0.25s, backdrop-filter 0.35s;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
 }
 .mkt-nav.mkt-dark {
   background: transparent;
@@ -48,9 +48,9 @@ const STYLES = `
 }
 .mkt-nav-logo img { width: 28px; height: 28px; object-fit: contain; }
 .mkt-nav-logo-text {
-  font-family: 'Manrope', sans-serif;
-  font-size: 1.05rem; font-weight: 800;
-  letter-spacing: -0.02em;
+  font-family: 'Fraunces', serif;
+  font-size: 1.15rem; font-weight: 700;
+  letter-spacing: -0.01em;
   transition: color 0.35s;
 }
 .mkt-nav.mkt-dark .mkt-nav-logo-text { color: #ffffff; }
@@ -124,7 +124,7 @@ const STYLES = `
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 22px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
 }
 .mkt-mobile-close {
   position: absolute; top: 24px; right: 28px;

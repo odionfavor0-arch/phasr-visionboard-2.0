@@ -55,7 +55,7 @@ const STYLES = `
   margin-bottom: 16px;
 }
 .legal-h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(1.8rem, 3.5vw, 2.8rem);
   font-weight: 700;
   color: #1a0a10;

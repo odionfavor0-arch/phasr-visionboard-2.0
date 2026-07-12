@@ -52,7 +52,7 @@ const STYLES = `
   margin-bottom: 20px;
 }
 .faq-h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(2.2rem, 4vw, 3.2rem);
   font-weight: 700;
   color: #1a0a10;
@@ -93,7 +93,7 @@ const STYLES = `
   border: none;
   text-align: left;
   padding: 20px 0;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 1rem;
   font-weight: 600;
   color: #1a0a10;
@@ -137,7 +137,7 @@ const STYLES = `
   background: #c2185b;
   color: #fff;
   border-radius: 100px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;

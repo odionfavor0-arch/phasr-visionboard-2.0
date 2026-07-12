@@ -166,7 +166,7 @@ const STYLES = `
   font-size: 1rem;
   font-weight: 500;
   color: #71717a;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
 }
 .pricing-period {
   font-size: 0.8rem;
@@ -219,7 +219,7 @@ const STYLES = `
   background: #c2185b;
   color: #fff;
   border-radius: 100px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.875rem;
   font-weight: 700;
   text-decoration: none;

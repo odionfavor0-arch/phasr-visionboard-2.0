@@ -1,4 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,700&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap');
+
+/* Browsers default <body> to an 8px margin — without this reset that shows as a
+   thin white gutter around the whole page on first paint, before any route's own
+   styles take over. */
+html, body {
+  margin: 0;
+  padding: 0;
+}
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 :root,
 [data-theme="neutral"],
@@ -14,7 +26,7 @@
   --border: rgba(240, 96, 144, 0.2);
   --glow: 0 0 40px rgba(240, 96, 144, 0.3);
 
-  --app-bg: #fff8fa;
+  --app-bg: #ffffff;
   --app-bg2: #fff0f4;
   --app-surface: #ffffff;
   --app-text: #3d1020;
@@ -34,7 +46,7 @@
   --app-radius-md: 16px;
   --app-radius-lg: 24px;
 
-  --coach-bg: linear-gradient(160deg, #fff8fa, #fff);
+  --coach-bg: linear-gradient(160deg, #fdf0f4, #fff);
   --coach-header: linear-gradient(135deg, #f78fb0, #f06090);
   --coach-bubble-bg: linear-gradient(135deg, #f78fb0, #d04070);
   --coach-user-msg: linear-gradient(135deg, #f78fb0, #f06090);
@@ -90,6 +102,17 @@
   --t: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --sh: 0 4px 24px rgba(0, 0, 0, 0.06);
   --sh2: 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* Landing page tokens — does not affect app theme */
+  --lp-bg: #ffffff;
+  --lp-bg2: #ffeef4;
+  --lp-pink: #f06090;
+  --lp-deep: #c2185b;
+  --lp-text: #3d1020;
+  --lp-muted: #8c4a62;
+  --lp-blush: #fcc0d4;
+  --lp-shadow: rgba(240, 96, 144, 0.18);
+  --lp-glow: rgba(240, 96, 144, 0.08);
 }
 
 body {

@@ -44,8 +44,8 @@ function getFriendlyAuthError(message) {
   return message
 }
 
-export default function AuthPage({ onBack, onSuccess, configError = '' }) {
-  const [mode, setMode] = useState('signin')
+export default function AuthPage({ onBack, onSuccess, configError = '', initialMode = 'signin' }) {
+  const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
   const [name, setName] = useState('')
@@ -77,6 +77,15 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
     ) {
       setSuccess('Signing you in...')
     }
+  }, [])
+
+  // Quiz answers from the Sage landing bubble (if she came from "Build My Personal Roadmap").
+  // No email is ever captured in the bubble — this is answers only, for later personalization.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('phasr_sage_answers')
+      if (raw) setMode('signup')
+    } catch {}
   }, [])
 
   function switchMode(nextMode) {
@@ -130,7 +139,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
   }
 
   async function handleGoogle() {
-    if (configError || !supabase) return
+    if (configError || !supabase || loading) return
 
     setError('')
     setSuccess('')
@@ -168,19 +177,6 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
     else setSuccess('Password reset email sent!')
   }
 
-  const inputStyle = {
-    width: '100%',
-    padding: '0.8rem 1rem',
-    borderRadius: 12,
-    border: '1.5px solid var(--border)',
-    background: 'rgba(255,255,255,0.03)',
-    color: 'var(--text)',
-    fontSize: '0.92rem',
-    outline: 'none',
-    fontFamily: "'DM Sans', sans-serif",
-    transition: 'border-color 0.2s',
-  }
-
   const isDisabled = loading || Boolean(configError)
 
   const authHighlights = [
@@ -190,262 +186,64 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
   ]
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        width: '100%',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        background: 'linear-gradient(180deg, #140913 0%, #1b0d1c 100%)',
-        overflow: 'hidden',
-        margin: 0,
-      }}
-    >
-      <div
-        style={{
-          background: 'linear-gradient(180deg, rgba(33,12,26,0.96) 0%, rgba(27,9,21,0.98) 100%)',
-          borderRight: '1px solid var(--border)',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
-          gap: '2.5rem',
-          padding: '2.2rem 3rem 3rem',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-        className="auth-left-panel"
-      >
-        <div
-          style={{
-            position: 'absolute',
-            width: 500,
-            height: 500,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle,rgba(232,64,122,0.15) 0%,transparent 70%)',
-            top: -100,
-            left: -100,
-            pointerEvents: 'none',
-          }}
-        />
+    <div className="auth-page">
+      <style>{AUTH_STYLES}</style>
 
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'flex-start' }}>
-          <span
-            onClick={onBack}
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontWeight: 800,
-              fontSize: '1.4rem',
-              background: 'linear-gradient(135deg,var(--app-accent2),#ffd6e7)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              cursor: 'pointer',
-            }}
-          >
-            Phasr
-          </span>
+      <div className="auth-left-panel">
+        <div className="auth-left-glow" aria-hidden="true" />
+
+        <div className="auth-left-top">
+          <span className="auth-logo" onClick={onBack}>PHASR</span>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 520, marginTop: '3rem' }}>
-          <h2
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: '2.4rem',
-              fontWeight: 800,
-              lineHeight: 1.15,
-              color: '#f8f1f5',
-              marginBottom: '2.5rem',
-            }}
-          >
-            Turn your goals into{' '}
-            <span
-              style={{
-                background: 'linear-gradient(135deg,var(--accent2),var(--accent3))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              real achievements.
-            </span>
+        <div className="auth-left-main">
+          <h2 className="auth-left-h2">
+            Turn your goals into <em>real achievements.</em>
           </h2>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.85rem',
-              maxWidth: 460,
-              marginTop: '2rem',
-            }}
-          >
+          <div className="auth-highlights">
             {authHighlights.map(({ icon, text }) => (
-              <div
-                key={icon}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.9rem',
-                  color: 'var(--muted)',
-                  fontSize: '0.9rem',
-                  paddingBottom: '0.85rem',
-                  borderBottom: '1px solid rgba(232,64,122,0.12)',
-                }}
-              >
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 14,
-                    background: 'linear-gradient(135deg, rgba(232,64,122,0.18), rgba(244,114,168,0.08))',
-                    border: '1px solid rgba(244,114,168,0.16)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    fontSize: '1rem',
-                    fontWeight: 700,
-                    color: 'var(--accent3)',
-                  }}
-                >
-                  {icon}
-                </div>
-                <p style={{ color: 'var(--muted)', fontSize: '0.88rem', lineHeight: 1.65 }}>{text}</p>
+              <div key={icon} className="auth-highlight">
+                <div className="auth-highlight-icon">{icon}</div>
+                <p className="auth-highlight-text">{text}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div
-          style={{
-            background: 'rgba(232,64,122,0.06)',
-            border: '1px solid var(--border)',
-            borderRadius: 20,
-            padding: '1.25rem 1.4rem',
-            position: 'relative',
-            zIndex: 1,
-            maxWidth: 460,
-            marginTop: 'auto',
-          }}
-        >
-          <p
-            style={{
-              fontSize: '0.88rem',
-              color: 'var(--text)',
-              fontStyle: 'italic',
-              lineHeight: 1.6,
-              marginBottom: '0.8rem',
-            }}
-          >
+        <div className="auth-testimonial">
+          <p className="auth-testimonial-quote">
             "I hit every Q1 goal I set. The phased approach is what makes this different from anything else."
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg,var(--accent),var(--accent2))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '0.8rem',
-                color: '#fff',
-              }}
-            >
-              M
-            </div>
+          <div className="auth-testimonial-person">
+            <img src="/images/avatars/avatar-3.jpg" alt="" className="auth-testimonial-avatar" />
             <div>
-              <p style={{ fontWeight: 600, fontSize: '0.88rem' }}>Marcus T.</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Entrepreneur</p>
+              <p className="auth-testimonial-name">Amara T.</p>
+              <p className="auth-testimonial-role">Entrepreneur</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2.5rem 1.75rem',
-          position: 'relative',
-          background: 'linear-gradient(180deg, rgba(24,10,22,0.98) 0%, rgba(20,8,18,1) 100%)',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ width: '100%', maxWidth: 420 }}>
-          <h1
-            style={{
-              fontFamily: "'Syne', sans-serif",
-              fontSize: '1.8rem',
-              fontWeight: 800,
-              marginBottom: '0.4rem',
-              color: '#fff6fb',
-            }}
-          >
-            {mode === 'signin' ? 'Welcome' : 'Create your account'}
-          </h1>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>
+      <div className="auth-right-panel">
+        <div className="auth-form-wrap">
+          <h1 className="auth-h1">{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
+          <p className="auth-sub">
             {mode === 'signin' ? 'Sign in to access your vision boards.' : 'Free forever. No credit card required.'}
           </p>
 
-          <div
-            style={{
-              display: 'flex',
-              background: 'var(--bg2)',
-              border: '1px solid var(--border)',
-              borderRadius: 99,
-              padding: 4,
-              marginBottom: '2rem',
-            }}
-          >
+          <div className="auth-mode-switch">
             {['signin', 'signup'].map(entryMode => (
               <button
                 key={entryMode}
                 onClick={() => switchMode(entryMode)}
-                style={{
-                  flex: 1,
-                  padding: '0.6rem',
-                  borderRadius: 99,
-                  border: 'none',
-                  background:
-                    mode === entryMode ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : 'transparent',
-                  color: mode === entryMode ? '#fff' : 'var(--muted)',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: "'DM Sans', sans-serif",
-                  transition: 'all 0.2s',
-                }}
+                className={`auth-mode-btn${mode === entryMode ? ' active' : ''}`}
               >
                 {entryMode === 'signin' ? 'Sign In' : 'Sign Up'}
               </button>
             ))}
           </div>
 
-          <button
-            onClick={handleGoogle}
-            disabled={Boolean(configError)}
-            style={{
-              width: '100%',
-              padding: '0.8rem',
-              borderRadius: 12,
-              border: '1.5px solid var(--border)',
-              background: 'rgba(255,255,255,0.03)',
-              color: 'var(--text)',
-              fontSize: '0.9rem',
-              fontWeight: 500,
-              cursor: configError ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.7rem',
-              fontFamily: "'DM Sans', sans-serif",
-              marginBottom: '1.5rem',
-              opacity: configError ? 0.6 : 1,
-            }}
-          >
+          <button onClick={handleGoogle} disabled={Boolean(configError) || loading} className="auth-google-btn">
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -455,114 +253,46 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
             Continue with Google
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', color: 'var(--muted)', fontSize: '0.8rem' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <div className="auth-divider">
+            <span />
             or continue with email
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <span />
           </div>
 
-          {error && (
-            <div
-              style={{
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                borderRadius: 10,
-                padding: '0.75rem 1rem',
-                fontSize: '0.85rem',
-                color: '#fca5a5',
-                marginBottom: '1rem',
-              }}
-            >
-              Warning: {error}
-            </div>
-          )}
+          {error && <div className="auth-banner auth-banner-error">{error}</div>}
+          {success && <div className="auth-banner auth-banner-success">{success}</div>}
 
-          {success && (
-            <div
-              style={{
-                background: 'rgba(52,211,153,0.1)',
-                border: '1px solid rgba(52,211,153,0.3)',
-                borderRadius: 10,
-                padding: '0.75rem 1rem',
-                fontSize: '0.85rem',
-                color: '#6ee7b7',
-                marginBottom: '1rem',
-              }}
-            >
-              Success: {success}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleSubmit} className="auth-form">
             {mode === 'signup' && (
-              <div>
-                <label
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    color: 'var(--muted)',
-                    letterSpacing: '0.04em',
-                    display: 'block',
-                    marginBottom: '0.4rem',
-                  }}
-                >
-                  Full Name
-                </label>
+              <div className="auth-field">
+                <label className="auth-label">Full Name</label>
                 <input
                   value={name}
                   onChange={e => setName(e.target.value)}
                   type="text"
                   placeholder="Your name"
-                  style={inputStyle}
-                  onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+                  className="auth-input"
                 />
               </div>
             )}
 
-            <div>
-              <label
-                style={{
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  display: 'block',
-                  marginBottom: '0.4rem',
-                }}
-              >
-                Email Address
-              </label>
+            <div className="auth-field">
+              <label className="auth-label">Email Address</label>
               <input
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 type="email"
                 placeholder="you@example.com"
                 required
-                style={inputStyle}
-                onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+                className="auth-input"
               />
             </div>
 
-            <div>
-              <label
-                style={{
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  color: 'var(--muted)',
-                  letterSpacing: '0.04em',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '0.4rem',
-                }}
-              >
+            <div className="auth-field">
+              <label className="auth-label auth-label-row">
                 Password
                 {mode === 'signin' && (
-                  <span onClick={handleForgot} style={{ fontSize: '0.8rem', color: 'var(--accent2)', cursor: 'pointer' }}>
-                    Forgot password?
-                  </span>
+                  <span onClick={handleForgot} className="auth-forgot">Forgot password?</span>
                 )}
               </label>
               <input
@@ -572,53 +302,191 @@ export default function AuthPage({ onBack, onSuccess, configError = '' }) {
                 placeholder="Your password"
                 required
                 minLength={8}
-                style={inputStyle}
-                onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
-                onBlur={e => (e.target.style.borderColor = 'var(--border)')}
+                className="auth-input"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isDisabled}
-              style={{
-                width: '100%',
-                padding: '0.9rem',
-                borderRadius: 12,
-                border: 'none',
-                background: 'linear-gradient(135deg,var(--accent),var(--accent2))',
-                color: '#fff',
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                cursor: isDisabled ? 'not-allowed' : 'pointer',
-                fontFamily: "'DM Sans', sans-serif",
-                opacity: isDisabled ? 0.7 : 1,
-                boxShadow: '0 4px 20px rgba(232,64,122,0.35)',
-                marginTop: '0.5rem',
-              }}
-            >
-              {loading ? '...' : mode === 'signin' ? 'Sign In ->' : 'Create Free Account ->'}
+            <button type="submit" disabled={isDisabled} className="auth-submit-btn">
+              {loading ? 'One moment…' : mode === 'signin' ? 'Sign In →' : 'Create Free Account →'}
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--muted)', marginTop: '1rem', lineHeight: 1.6 }}>
-            By continuing you agree to our <a href="#" style={{ color: 'var(--accent2)', textDecoration: 'none' }}>Terms</a> and{' '}
-            <a href="#" style={{ color: 'var(--accent2)', textDecoration: 'none' }}>Privacy Policy</a>.
+          <p className="auth-legal">
+            By continuing you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
           </p>
         </div>
       </div>
-
-      <style>{`
-        html, body, #root {
-          margin: 0;
-          min-height: 100dvh;
-          background: #140913;
-        }
-        @media (max-width: 768px) {
-          .auth-left-panel { display: none !important; }
-          [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </div>
   )
 }
+
+const AUTH_STYLES = `
+  html, body, #root { margin: 0; min-height: 100dvh; background: #fff7fa; }
+
+  .auth-page {
+    min-height: 100dvh;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #ffffff;
+    overflow: hidden;
+    margin: 0;
+    font-family: 'General Sans', sans-serif;
+  }
+
+  /* ── Left panel ── */
+  .auth-left-panel {
+    background: linear-gradient(160deg, #fff0f5 0%, #ffe4ed 55%, #ffd9e6 100%);
+    border-right: 1px solid rgba(240,96,144,0.14);
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    gap: 2.5rem;
+    padding: 2.4rem 3rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .auth-left-glow {
+    position: absolute; width: 480px; height: 480px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(240,96,144,0.28) 0%, transparent 70%);
+    top: -120px; left: -120px; pointer-events: none;
+  }
+  .auth-left-top { position: relative; z-index: 1; }
+  .auth-logo {
+    font-family: 'Fraunces', serif;
+    font-weight: 700; font-size: 1.5rem;
+    color: #c2185b; letter-spacing: -0.02em;
+    cursor: pointer;
+  }
+  .auth-left-main { position: relative; z-index: 1; max-width: 480px; margin-top: 2rem; }
+  .auth-left-h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 2.5rem; font-weight: 700;
+    line-height: 1.16; letter-spacing: -0.02em;
+    color: #3d1020; margin: 0 0 2.4rem;
+  }
+  .auth-left-h2 em { font-style: italic; color: #f06090; }
+  .auth-highlights { display: flex; flex-direction: column; gap: 0.9rem; }
+  .auth-highlight {
+    display: flex; align-items: flex-start; gap: 0.9rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid rgba(194,24,91,0.12);
+  }
+  .auth-highlight-icon {
+    width: 40px; height: 40px; border-radius: 14px; flex-shrink: 0;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(194,24,91,0.16);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; font-weight: 700; color: #c2185b;
+  }
+  .auth-highlight-text { font-size: 0.9rem; color: #8a5060; line-height: 1.65; margin: 0; }
+
+  .auth-testimonial {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 20px; padding: 1.4rem 1.5rem;
+    position: relative; z-index: 1; max-width: 460px;
+    box-shadow: 0 8px 28px rgba(194,24,91,0.10);
+  }
+  .auth-testimonial-quote {
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 0.98rem; color: #3d1020;
+    line-height: 1.6; margin: 0 0 0.9rem;
+  }
+  .auth-testimonial-person { display: flex; align-items: center; gap: 0.75rem; }
+  .auth-testimonial-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .auth-testimonial-name { font-weight: 700; font-size: 0.88rem; color: #3d1020; margin: 0; }
+  .auth-testimonial-role { font-size: 0.76rem; color: #b08090; margin: 2px 0 0; }
+
+  /* ── Right panel ── */
+  .auth-right-panel {
+    display: flex; align-items: center; justify-content: center;
+    padding: 2.5rem 1.75rem;
+    background: #ffffff;
+  }
+  .auth-form-wrap { width: 100%; max-width: 420px; }
+  .auth-h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 2rem; font-weight: 700;
+    margin: 0 0 0.4rem; color: #3d1020; letter-spacing: -0.02em;
+  }
+  .auth-sub { color: #8a5060; font-size: 0.92rem; margin: 0 0 2rem; }
+
+  .auth-mode-switch {
+    display: flex; background: rgba(240,96,144,0.08);
+    border: 1px solid rgba(240,96,144,0.16);
+    border-radius: 100px; padding: 4px; margin-bottom: 1.8rem;
+  }
+  .auth-mode-btn {
+    flex: 1; padding: 0.65rem; border-radius: 100px; border: none;
+    background: transparent; color: #8a5060;
+    font-size: 0.88rem; font-weight: 700; cursor: pointer;
+    font-family: 'General Sans', sans-serif;
+    transition: all 0.2s;
+  }
+  .auth-mode-btn.active { background: #c2185b; color: #fff; box-shadow: 0 4px 14px rgba(194,24,91,0.3); }
+
+  .auth-google-btn {
+    width: 100%; padding: 0.8rem; border-radius: 12px;
+    border: 1.5px solid rgba(240,96,144,0.22);
+    background: #fff; color: #3d1020;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+    font-family: 'General Sans', sans-serif; margin-bottom: 1.5rem;
+    transition: border-color 0.18s, background 0.18s;
+  }
+  .auth-google-btn:hover { border-color: #c2185b; background: rgba(240,96,144,0.04); }
+  .auth-google-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .auth-divider {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+    color: #b08090; font-size: 0.8rem;
+  }
+  .auth-divider span { flex: 1; height: 1px; background: rgba(240,96,144,0.18); }
+
+  .auth-banner { border-radius: 12px; padding: 0.75rem 1rem; font-size: 0.85rem; margin-bottom: 1rem; }
+  .auth-banner-error { background: rgba(240,96,144,0.1); border: 1px solid rgba(240,96,144,0.35); color: #c2185b; }
+  .auth-banner-success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: #1a8c66; }
+
+  .auth-form { display: flex; flex-direction: column; gap: 1rem; }
+  .auth-field { display: flex; flex-direction: column; }
+  .auth-label {
+    font-size: 0.82rem; font-weight: 600; color: #8a5060;
+    letter-spacing: 0.02em; margin-bottom: 0.4rem;
+    font-family: 'General Sans', sans-serif;
+  }
+  .auth-label-row { display: flex; justify-content: space-between; align-items: center; }
+  .auth-forgot { font-size: 0.8rem; color: #c2185b; cursor: pointer; font-weight: 600; }
+  .auth-input {
+    width: 100%; padding: 0.8rem 1rem; border-radius: 12px;
+    border: 1.5px solid rgba(240,96,144,0.22);
+    background: rgba(255,240,244,0.35);
+    color: #3d1020; font-size: 0.92rem; outline: none;
+    font-family: 'General Sans', sans-serif;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .auth-input::placeholder { color: #c79ba8; }
+  .auth-input:focus { border-color: #c2185b; background: rgba(255,240,244,0.7); }
+
+  .auth-submit-btn {
+    width: 100%; padding: 0.9rem; border-radius: 12px; border: none;
+    background: #c2185b; color: #fff;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    font-family: 'General Sans', sans-serif;
+    box-shadow: 0 6px 22px rgba(194,24,91,0.32);
+    margin-top: 0.5rem;
+    transition: background 0.18s, transform 0.12s;
+  }
+  .auth-submit-btn:hover:not(:disabled) { background: #a8124e; transform: translateY(-1px); }
+  .auth-submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+  .auth-legal { text-align: center; font-size: 0.78rem; color: #b08090; margin-top: 1.2rem; line-height: 1.6; }
+  .auth-legal a { color: #c2185b; text-decoration: none; font-weight: 600; }
+  .auth-legal a:hover { text-decoration: underline; }
+
+  @media (max-width: 860px) {
+    .auth-page { grid-template-columns: 1fr; }
+    .auth-left-panel { display: none; }
+  }
+`

@@ -7,7 +7,7 @@ const STYLES = `
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   overflow-x: hidden;
   width: 100%;
 }

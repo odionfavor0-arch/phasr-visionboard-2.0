@@ -16,7 +16,7 @@ const STYLES = `
   margin-bottom: 20px;
 }
 .contact-h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(2.2rem, 4vw, 3.2rem);
   font-weight: 700;
   color: #1a0a10;
@@ -60,7 +60,7 @@ const STYLES = `
   padding: 12px 16px;
   border: 1.5px solid rgba(240,96,144,0.2);
   border-radius: 10px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.9rem;
   color: #1a0a10;
   background: #fff;
@@ -84,7 +84,7 @@ const STYLES = `
   color: #fff;
   border: none;
   border-radius: 100px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;

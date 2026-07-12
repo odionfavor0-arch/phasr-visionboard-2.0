@@ -26,7 +26,7 @@ const STYLES = `
   margin-bottom: 16px;
 }
 .blog-post-h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 700;
   color: #1a0a10;
@@ -50,7 +50,7 @@ const STYLES = `
   text-align: center;
 }
 .blog-coming-card h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(1.6rem, 3vw, 2.2rem);
   font-weight: 700;
   color: #1a0a10;
@@ -72,7 +72,7 @@ const STYLES = `
   background: #c2185b;
   color: #fff;
   border-radius: 100px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;

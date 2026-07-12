@@ -16,7 +16,7 @@ const STYLES = `
   margin-bottom: 20px;
 }
 .about-h1 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(2.4rem, 5vw, 3.6rem);
   font-weight: 700;
   color: #1a0a10;
@@ -67,7 +67,7 @@ const STYLES = `
   margin-bottom: 16px;
 }
 .about-mission-h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(1.8rem, 3vw, 2.6rem);
   font-weight: 700;
   color: #1a0a10;
@@ -136,7 +136,7 @@ const STYLES = `
   50% { transform: translateY(-8px); }
 }
 .about-phase-card-label {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 9px; font-weight: 700;
   letter-spacing: 0.12em; text-transform: uppercase;
   color: #f06090; margin-bottom: 6px;
@@ -156,13 +156,13 @@ const STYLES = `
   border-radius: 100px;
 }
 .about-phase-meta {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 11px; color: #8a5060; margin-bottom: 8px;
 }
 .about-phase-pills { display: flex; gap: 5px; flex-wrap: wrap; }
 .about-phase-pill {
   background: rgba(240,96,144,0.1); color: #c2185b;
-  font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 600;
+  font-family: 'General Sans', sans-serif; font-size: 10px; font-weight: 600;
   padding: 3px 9px; border-radius: 100px;
   border: 1px solid rgba(194,24,91,0.15);
 }
@@ -183,7 +183,7 @@ const STYLES = `
   text-align: center;
 }
 .about-cta-h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Fraunces', serif;
   font-size: clamp(1.8rem, 3vw, 2.4rem);
   font-weight: 700;
   color: #1a0a10;
@@ -199,7 +199,7 @@ const STYLES = `
   background: #c2185b;
   color: #fff;
   border-radius: 100px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'General Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   text-decoration: none;

@@ -1536,8 +1536,10 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
   if (!open) return null
 
   const isMobile = window.innerWidth <= 768
-  const panelWidth = isMobile ? Math.min(320, window.innerWidth - 48) : QUICK_WIDTH
-  const panelHeight = isMobile ? Math.min(430, Math.max(300, Math.round(window.innerHeight * 0.52))) : QUICK_HEIGHT
+  const panelWidth = isMobile ? window.innerWidth : QUICK_WIDTH
+  const panelHeight = isMobile
+    ? Math.min(560, Math.max(360, Math.round(window.innerHeight * 0.72)))
+    : QUICK_HEIGHT
   const panelPosition = getPanelPosition(position, panelWidth, panelHeight)
   const displayMessages = sessionMode ? weeklySessionMessages : messages
   const inputPlaceholder = sessionMode ? 'Write...' : ''
@@ -1547,8 +1549,9 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
 
   return (
     <>
-      {sessionMode ? (
+      {(sessionMode || isMobile) ? (
         <div
+          onClick={isMobile && !sessionMode ? onClose : undefined}
           style={{
             position: 'fixed',
             inset: 0,
@@ -1558,7 +1561,24 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
         />
       ) : null}
       <div
-        style={{
+        style={isMobile ? {
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: panelHeight,
+          background: '#fffafc',
+          border: '1px solid var(--app-border)',
+          borderBottom: 'none',
+          borderRadius: '20px 20px 0 0',
+          boxShadow: 'var(--app-shadow-lg)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          zIndex: 9997,
+          scrollbarWidth: 'none',
+        } : {
           position: 'fixed',
           right: panelPosition.right,
           bottom: panelPosition.bottom,
@@ -1668,12 +1688,15 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
 
       <div
         style={{
-          padding: '0.8rem',
+          padding: isMobile ? '0.7rem 0.8rem calc(0.8rem + env(safe-area-inset-bottom, 0px))' : '0.8rem',
           borderTop: '1px solid var(--app-border)',
           background: '#fff',
           display: 'flex',
           gap: '0.5rem',
           alignItems: 'flex-end',
+          flexShrink: 0,
+          position: 'relative',
+          zIndex: 1,
         }}
       >
         <textarea
@@ -1726,13 +1749,14 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             disabled={!getSpeechRecognition()}
           />
         <motion.button
+          type="button"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={sessionMode ? sendWeeklySessionMessage : sendQuickMessage}
           disabled={!input.trim() || loading || (sessionMode && (Boolean(weeklySessionCompletedAt) || sessionLimitReached))}
           style={{
-            minWidth: 42,
-            height: 42,
+            minWidth: isMobile ? 44 : 42,
+            height: isMobile ? 44 : 42,
             borderRadius: '50%',
             border: 'none',
             background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
@@ -1740,6 +1764,8 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             cursor: 'pointer',
             fontFamily: "'DM Sans', sans-serif",
             fontWeight: 800,
+            position: 'relative',
+            zIndex: 2,
             opacity: !input.trim() || loading ? 0.45 : 1,
           }}
         >
@@ -1971,6 +1997,8 @@ export function QuickSageBubble() {
         onClick={handleClick}
         onDragStart={event => event.preventDefault()}
         title="Think with Sage"
+        aria-hidden={open}
+        tabIndex={open ? -1 : 0}
         style={{
           position: 'fixed',
           right: position.right,
@@ -1990,7 +2018,11 @@ export function QuickSageBubble() {
           overflow: 'hidden',
           userSelect: 'none',
           WebkitUserDrag: 'none',
-          pointerEvents: 'auto',
+          // The open chat panel has its own close button — hiding the orb while
+          // open is what stops it from sitting on top of the panel's send button.
+          opacity: open ? 0 : 1,
+          pointerEvents: open ? 'none' : 'auto',
+          transition: 'opacity 0.18s ease-out',
         }}
       >
         {avatarUrl ? (

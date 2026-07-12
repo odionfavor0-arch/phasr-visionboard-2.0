@@ -20,7 +20,7 @@ import ContactPage from './pages/ContactPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import { supabase, supabaseConfigError } from './lib/supabase'
-import phasrLogo from './assets/phasr-mark.png'
+import phasrLogo from './assets/phasr-logo-pink.png'
 
 const AUTH_RETURN_KEY = 'phasr_auth_return'
 const ONBOARDING_KEY_PREFIX = 'phasr_onboarded'
@@ -398,10 +398,11 @@ export default function AppRouter() {
         placeItems: 'center',
         background: 'var(--bg)',
         color: 'var(--text)',
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'General Sans', sans-serif",
       }}>
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.5rem' }}>Phasr</p>
+          <img src={phasrLogo} alt="" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: '0.75rem' }} />
+          <p style={{ fontFamily: "'Fraunces', serif", fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>Phasr</p>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Loading your workspace...</p>
         </div>
       </div>

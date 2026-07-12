@@ -14,17 +14,17 @@ export default function JournalFeaturePage() {
         .feat-breadcrumb a { color: #b08090; text-decoration: none; }
         .feat-breadcrumb a:hover { color: #c2185b; }
         .feat-page-label { display: inline-block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; margin-bottom: 20px; }
-        .feat-page-h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 700; color: #1a0a10; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 20px; }
+        .feat-page-h1 { font-family: 'Fraunces', serif; font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 700; color: #1a0a10; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 20px; }
         .feat-page-h1 em { font-style: italic; color: #c2185b; }
         .feat-page-sub { font-size: 1.1rem; color: #71717a; max-width: 560px; line-height: 1.65; margin: 0 0 40px; }
         .feat-page-cta-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-        .mkt-btn-primary { display: inline-flex; align-items: center; padding: 14px 32px; background: #c2185b; color: #fff; border-radius: 100px; font-family: 'Manrope', sans-serif; font-size: 0.95rem; font-weight: 700; text-decoration: none; transition: background 0.15s, transform 0.1s; }
+        .mkt-btn-primary { display: inline-flex; align-items: center; padding: 14px 32px; background: #c2185b; color: #fff; border-radius: 100px; font-family: 'General Sans', sans-serif; font-size: 0.95rem; font-weight: 700; text-decoration: none; transition: background 0.15s, transform 0.1s; }
         .mkt-btn-primary:hover { background: #a8124e; transform: translateY(-1px); }
-        .mkt-btn-ghost { display: inline-flex; align-items: center; padding: 14px 28px; border: 1.5px solid rgba(194,24,91,0.3); color: #c2185b; border-radius: 100px; font-family: 'Manrope', sans-serif; font-size: 0.95rem; font-weight: 600; text-decoration: none; }
+        .mkt-btn-ghost { display: inline-flex; align-items: center; padding: 14px 28px; border: 1.5px solid rgba(194,24,91,0.3); color: #c2185b; border-radius: 100px; font-family: 'General Sans', sans-serif; font-size: 0.95rem; font-weight: 600; text-decoration: none; }
         .mkt-btn-ghost:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
         .feat-page-divider { height: 1px; background: rgba(240,96,144,0.12); }
         .feat-page-section { padding: 80px 0; }
-        .feat-page-section-h2 { font-family: 'Playfair Display', serif; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 16px; }
+        .feat-page-section-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 16px; }
         .feat-page-section-h2 em { font-style: italic; color: #c2185b; }
         .feat-page-section-body { font-size: 1rem; color: #71717a; line-height: 1.7; max-width: 600px; margin: 0 0 40px; }
         .feat-points { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
@@ -36,7 +36,7 @@ export default function JournalFeaturePage() {
         .feat-trust-note { background: rgba(194,24,91,0.05); border: 1px solid rgba(194,24,91,0.12); border-radius: 12px; padding: 20px 24px; font-size: 0.875rem; color: #71717a; line-height: 1.6; margin-top: 32px; }
         .feat-trust-note strong { color: #c2185b; }
         .feat-page-cta-section { padding: 80px 0; text-align: center; border-top: 1px solid rgba(240,96,144,0.1); }
-        .feat-page-cta-h2 { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 12px; }
+        .feat-page-cta-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 12px; }
         .feat-page-cta-h2 em { font-style: italic; color: #c2185b; }
         .feat-page-cta-sub { color: #71717a; font-size: 0.95rem; margin: 0 0 32px; }
         @media (max-width: 640px) { .feat-points { grid-template-columns: 1fr; } .feat-page-hero { padding: 80px 0 60px; } }

@@ -173,7 +173,7 @@ const STYLES = `
   /* ── EYEBROW ── */
   .bl-eyebrow {
     display: block;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 11px; font-weight: 700;
     letter-spacing: 0.2em; text-transform: uppercase;
     color: #f06090; margin-bottom: 20px;
@@ -209,7 +209,7 @@ const STYLES = `
     color: #f06090;
   }
   .bl-hero-sub {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 17px;
     color: rgba(61,16,32,0.65);
     line-height: 1.7;
@@ -224,7 +224,7 @@ const STYLES = `
     color: #c2185b;
     border-radius: 999px;
     padding: 8px 20px;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 13px;
     font-weight: 600;
     margin-top: 32px;
@@ -300,13 +300,13 @@ const STYLES = `
     margin-bottom: 12px;
   }
   .bl-card-cat {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 10px; font-weight: 700;
     letter-spacing: 0.12em; text-transform: uppercase;
     color: #f06090;
   }
   .bl-card-cat-sep {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 10px; color: rgba(240,96,144,0.5);
   }
   .bl-card-title {
@@ -320,7 +320,7 @@ const STYLES = `
     overflow: hidden;
   }
   .bl-card-desc {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 14px;
     color: rgba(61,16,32,0.65);
     line-height: 1.6;
@@ -354,13 +354,13 @@ const STYLES = `
     gap: 1px;
   }
   .bl-card-inspired-label {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 9px; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase;
     color: rgba(61,16,32,0.4);
   }
   .bl-card-inspired-name {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 12px;
     color: rgba(61,16,32,0.7);
     font-weight: 500;
@@ -373,7 +373,7 @@ const STYLES = `
   }
   .bl-card-time-icon { color: rgba(61,16,32,0.4); }
   .bl-card-time-text {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 12px;
     color: rgba(61,16,32,0.5);
     font-weight: 500;
@@ -419,7 +419,7 @@ const STYLES = `
     flex-shrink: 0;
   }
   .bl-subscribe-text {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 16px;
     color: #3d1020;
     line-height: 1.5;
@@ -436,7 +436,7 @@ const STYLES = `
     border: 1px solid rgba(61,16,32,0.15);
     border-radius: 10px;
     padding: 12px 16px;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 14px;
     color: #3d1020;
     background: #ffffff;
@@ -452,7 +452,7 @@ const STYLES = `
     border: none;
     border-radius: 10px;
     padding: 12px 24px;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 14px; font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
@@ -460,7 +460,7 @@ const STYLES = `
   }
   .bl-subscribe-btn:hover { background: #a01548; }
   .bl-subscribe-thanks {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 15px;
     color: #c2185b;
     font-weight: 600;

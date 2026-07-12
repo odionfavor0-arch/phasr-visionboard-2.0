@@ -261,7 +261,15 @@ export default function SageIntroBubble() {
         )}
       </AnimatePresence>
 
-      <div className="sage-fab-wrap">
+      <div
+        className="sage-fab-wrap"
+        aria-hidden={open}
+        style={{
+          opacity: open ? 0 : 1,
+          pointerEvents: open ? 'none' : 'auto',
+          transition: 'opacity 0.18s ease-out',
+        }}
+      >
         <AnimatePresence>
           {!open && peekOpen && (
             <motion.div
@@ -297,7 +305,7 @@ export default function SageIntroBubble() {
           )}
         </AnimatePresence>
 
-        <button className="sage-fab" onClick={handleOpenToggle} aria-label={open ? 'Close Sage' : 'Chat with Sage'}>
+        <button className="sage-fab" onClick={handleOpenToggle} tabIndex={open ? -1 : 0} aria-label={open ? 'Close Sage' : 'Chat with Sage'}>
           <span className="sage-fab-glow" aria-hidden="true" />
           <img src="/images/sage.jpg" alt="" className="sage-fab-img" />
         </button>
@@ -310,7 +318,7 @@ const STYLES = `
   .sage-bubble-root {
     position: fixed; right: 24px; bottom: 24px; z-index: 300;
     display: flex; flex-direction: column; align-items: flex-end; gap: 14px;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
   }
 
   .sage-fab {
@@ -336,7 +344,7 @@ const STYLES = `
     -webkit-backdrop-filter: blur(10px) saturate(1.3);
     color: #3d1020;
     padding: 10px 12px 10px 16px; border-radius: 18px;
-    font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600;
+    font-family: 'General Sans', sans-serif; font-size: 13px; font-weight: 600;
     white-space: nowrap;
     box-shadow: 0 10px 28px rgba(194,24,91,0.18), inset 0 1px 0 rgba(255,255,255,0.85);
     border: 1px solid rgba(255,255,255,0.65);
@@ -379,7 +387,10 @@ const STYLES = `
     box-shadow: 0 24px 64px rgba(61,16,32,0.18), inset 0 1.5px 0 rgba(255,255,255,0.9);
     display: flex; flex-direction: column;
     overflow: hidden;
+    position: relative;
+    z-index: 2;
   }
+  .sage-fab-wrap { z-index: 1; }
   .sage-panel-header {
     display: flex; align-items: center; gap: 10px;
     padding: 14px 16px 13px 16px;
@@ -416,7 +427,7 @@ const STYLES = `
     align-self: flex-start;
   }
   .sage-line-reply {
-    font-family: 'Manrope', sans-serif; color: #ffffff; font-weight: 600;
+    font-family: 'General Sans', sans-serif; color: #ffffff; font-weight: 600;
     background: #c2185b;
     border-bottom-right-radius: 6px;
     align-self: flex-end;
@@ -430,7 +441,7 @@ const STYLES = `
 
   .sage-options { display: flex; flex-wrap: wrap; gap: 8px; align-self: flex-start; max-width: 100%; }
   .sage-option-btn {
-    font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600;
+    font-family: 'General Sans', sans-serif; font-size: 13.5px; font-weight: 600;
     color: #c2185b; background: rgba(255,255,255,0.85);
     border: 1.5px solid rgba(194,24,91,0.25); border-radius: 100px;
     padding: 9px 16px; cursor: pointer;
@@ -440,7 +451,7 @@ const STYLES = `
 
   .sage-cta-btn {
     align-self: stretch; width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer;
-    background: #c2185b; color: #ffffff; font-family: 'Manrope', sans-serif;
+    background: #c2185b; color: #ffffff; font-family: 'General Sans', sans-serif;
     font-size: 14px; font-weight: 700;
     box-shadow: 0 6px 20px rgba(194,24,91,0.3);
     transition: background 0.18s, transform 0.12s;
@@ -450,12 +461,13 @@ const STYLES = `
   .sage-input-row {
     display: flex; align-items: center; gap: 8px;
     padding: 12px 16px; border-top: 1px solid rgba(183,164,217,0.16); flex-shrink: 0;
+    position: relative; z-index: 1;
   }
   .sage-text-input {
     flex: 1; padding: 10px 14px; border-radius: 100px;
     border: 1.5px solid rgba(183,164,217,0.3);
     background: rgba(255,255,255,0.8);
-    font-family: 'Manrope', sans-serif; font-size: 13.5px; color: #3d1020;
+    font-family: 'General Sans', sans-serif; font-size: 13.5px; color: #3d1020;
     outline: none;
   }
   .sage-text-input:focus { border-color: #B7A4D9; }
@@ -464,6 +476,7 @@ const STYLES = `
     width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0;
     background: #c2185b; color: #fff; display: flex; align-items: center; justify-content: center;
     transition: background 0.18s;
+    position: relative; z-index: 2;
   }
   .sage-send-btn:hover:not(:disabled) { background: #a8124e; }
   .sage-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -475,5 +488,10 @@ const STYLES = `
       border-radius: 24px 24px 0 0; max-height: 80vh;
     }
     .sage-line, .sage-options { max-width: 100%; }
+    .sage-input-row {
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .sage-send-btn { width: 44px; height: 44px; }
+    .sage-text-input { font-size: 16px; }
   }
 `

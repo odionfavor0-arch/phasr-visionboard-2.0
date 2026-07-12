@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, useInView, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
 import { Flame, LayoutGrid, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/marketing/MarketingLayout'
@@ -13,8 +13,7 @@ const fade = (delay = 0) => ({
 })
 
 /* ─────────────── Hero cards — gently bob, as if drifting off the phone ─────────────── */
-/* `ping` swaps the loop for a notification-style pop: rises off the phone, holds, fades — repeats */
-function FloatingCard({ className, delay = 0, floatDelay = 0, ping = false, children }) {
+function FloatingCard({ className, delay = 0, floatDelay = 0, children }) {
   const reduced = useReducedMotion()
   return (
     <motion.div
@@ -24,34 +23,13 @@ function FloatingCard({ className, delay = 0, floatDelay = 0, ping = false, chil
       transition={{ duration: 0.6, ease: 'easeOut', delay }}
     >
       <motion.div
-        animate={reduced ? {} : ping
-          ? { y: [26, 0, 0, -10], opacity: [0, 1, 1, 0], scale: [0.88, 1, 1, 0.94] }
-          : { y: [0, -12, 0] }}
-        transition={reduced ? {} : ping
-          ? { duration: 2.6, ease: [0.16, 1, 0.3, 1], times: [0, 0.3, 0.75, 1], repeat: Infinity, repeatDelay: 1.8, delay: delay + floatDelay + 0.6 }
-          : { duration: 5, ease: 'easeInOut', repeat: Infinity, delay: delay + floatDelay + 0.6 }}
+        animate={reduced ? {} : { y: [0, -12, 0] }}
+        transition={{ duration: 5, ease: 'easeInOut', repeat: Infinity, delay: delay + floatDelay + 0.6 }}
       >
         {children}
       </motion.div>
     </motion.div>
   )
-}
-
-/* Tracks a single mobile breakpoint via matchMedia so the hero can swap
-   the ping card in without touching any desktop layout rule. */
-function useIsMobile(breakpoint = 960) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' && window.innerWidth <= breakpoint
-  )
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`)
-    const update = () => setIsMobile(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [breakpoint])
-  return isMobile
 }
 
 /* ─────────────── How It Works mock cards ─────────────── */
@@ -112,17 +90,14 @@ const HOW_STEPS = [
 ]
 
 const FEATURES = [
-  { name:'Sage', photo:true, front:'Your thinking partner', back:'She sees your whole picture and coaches you from there.', href:'/features/ai-coach' },
   { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:'AI-generated non-negotiables, resources, and daily activities — built from your goal, every single week.', href:'/features/vision-boards' },
   { Icon:Flame, name:'Daily Streaks', front:'Show up daily', back:'Proof you followed through on the plan Sage and your board just built.', href:'/features/daily-streaks' },
 ]
 
 const PROBLEMS = [
   'No clarity on what your actual next step is',
-  'No structure that holds all your goals together',
   'No system that keeps you going past week two',
   'No accountability that feels real, not performative',
-  'No way to see whether any of it is actually working',
 ]
 
 const TRIED_ITEMS = [
@@ -267,24 +242,6 @@ export default function LandingPage({ onGetStarted }) {
   const reducedMotion = useReducedMotion()
   const sagePhotoRef = useRef(null)
   const sagePhotoInView = useInView(sagePhotoRef, { margin: '-80px' })
-  const isMobile = useIsMobile(960)
-
-  useEffect(() => {
-    const targets = HOW_STEPS.map((_, i) => document.getElementById(`step-${i}`)).filter(Boolean)
-    if (!targets.length) return
-    const ratios = new Map()
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => ratios.set(e.target, e.intersectionRatio))
-      let bestIdx = -1, bestRatio = 0
-      targets.forEach((target, i) => {
-        const ratio = ratios.get(target) || 0
-        if (ratio > bestRatio) { bestRatio = ratio; bestIdx = i }
-      })
-      if (bestIdx !== -1) setActiveStep(bestIdx)
-    }, { threshold: [0, 0.25, 0.45, 0.5, 0.75, 1] })
-    targets.forEach(t => observer.observe(t))
-    return () => observer.disconnect()
-  }, [])
 
   return (
     <MarketingLayout>
@@ -338,7 +295,7 @@ export default function LandingPage({ onGetStarted }) {
                 <div className="lp-hero-photo-wrap">
                   <video
                     src="/hero-screen.mp4"
-                    poster="/images/mockup-1.jpg"
+                    poster="/images/hero-screen-poster.jpg"
                     autoPlay muted loop playsInline preload="auto"
                     className="lp-hero-screen-video"
                     aria-label="PHASR app preview"
@@ -349,6 +306,26 @@ export default function LandingPage({ onGetStarted }) {
                     alt="Hand holding a phone showing the PHASR app"
                     className="lp-hero-hand-img"
                   />
+
+                  {/* Mobile-only: a small notification card pinned to the phone's top-right
+                      tip, clear of the screen crop, wobbling gently like a message ping.
+                      Hidden on desktop via CSS — the 4 fanned cards below handle that view. */}
+                  <motion.div
+                    className="lp-hero-mobile-ping"
+                    aria-hidden="true"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, ease: 'easeOut', delay: 0.8 }}
+                  >
+                    <motion.div
+                      className="lp-hero-mobile-ping-card"
+                      animate={reducedMotion ? {} : { x: [0, -4, 4, -2, 0] }}
+                      transition={reducedMotion ? {} : { duration: 3.2, ease: 'easeInOut', repeat: Infinity, delay: 1.2 }}
+                    >
+                      <span className="lp-hero-mobile-ping-label">Sage</span>
+                      <span className="lp-hero-mobile-ping-text">"6-day streak 💗"</span>
+                    </motion.div>
+                  </motion.div>
                 </div>
               </motion.div>
 
@@ -358,7 +335,7 @@ export default function LandingPage({ onGetStarted }) {
                 <div className="lp-hcard-streak-label"><Flame size={13} color="#f06090" style={{ verticalAlign:'-2px', marginRight:4 }} />days in a row</div>
               </FloatingCard>
 
-              <FloatingCard className="lp-hero-card-2 lp-hero-card-ping" delay={0.7} floatDelay={0.6} ping={isMobile}>
+              <FloatingCard className="lp-hero-card-2" delay={0.7} floatDelay={0.6}>
                 <div className="lp-hcard-label" style={{ marginBottom:2 }}>New Sage Insight</div>
                 <div className="lp-hcard-sage-text">"You've been showing up even on the hard days — that's the pattern that matters."</div>
               </FloatingCard>
@@ -433,30 +410,37 @@ export default function LandingPage({ onGetStarted }) {
             <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade(0.05)}>
               Simple. Monthly. <em>Together.</em>
             </motion.h2>
-            <div className="lp-how-grid">
-              <div className="lp-how-left">
-                <div className="lp-how-mobile-step" aria-live="polite">
-                  <span className="lp-how-mobile-num">Step {activeStep + 1}<span className="lp-how-mobile-of">/{HOW_STEPS.length}</span></span>
-                  <span className="lp-how-mobile-label">{HOW_STEPS[activeStep].label}</span>
-                </div>
-                <div className="lp-how-nav">
-                  {HOW_STEPS.map((s,i) => (
-                    <button key={i}
-                      className={`lp-how-tab${activeStep===i ? ' active' : ''}`}
-                      onClick={() => { setActiveStep(i); document.getElementById(`step-${i}`)?.scrollIntoView({ behavior:'smooth', block:'center' }) }}>
-                      <span className="lp-how-tab-num">Step {i+1}</span>
-                      <span className="lp-how-tab-label">{s.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="lp-how-right">
-                {HOW_STEPS.map((s,i) => {
+
+            <div className="lp-how-tabs" role="tablist" aria-label="How PHASR works">
+              {HOW_STEPS.map((s, i) => (
+                <button
+                  key={i}
+                  role="tab"
+                  aria-selected={activeStep === i}
+                  className={`lp-how-tab${activeStep === i ? ' active' : ''}`}
+                  onClick={() => setActiveStep(i)}
+                >
+                  <span className="lp-how-tab-num">Step {i + 1}</span>
+                  <span className="lp-how-tab-label">{s.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="lp-how-stage">
+              <AnimatePresence mode="wait" initial={false}>
+                {HOW_STEPS.filter((_, i) => i === activeStep).map((s) => {
                   const V = s.Visual
                   return (
-                    <div key={i} id={`step-${i}`} className={`lp-how-block${activeStep === i ? ' active' : ''}`}>
+                    <motion.div
+                      key={activeStep}
+                      className="lp-how-block"
+                      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
+                      transition={{ duration: 0.32, ease: 'easeOut' }}
+                    >
                       <div className="lp-how-block-text">
-                        <span className="lp-how-eyebrow">Step {i+1}</span>
+                        <span className="lp-how-eyebrow">Step {activeStep + 1}</span>
                         <h3 className="lp-how-headline">{s.headline}</h3>
                         <p className="lp-how-body">{s.body}</p>
                       </div>
@@ -464,21 +448,15 @@ export default function LandingPage({ onGetStarted }) {
                         <div className="lp-how-visual-glow" aria-hidden="true" />
                         <V />
                       </div>
-                    </div>
+                    </motion.div>
                   )
                 })}
-              </div>
+              </AnimatePresence>
             </div>
-          </div>
-        </section>
 
-        {/* ── 5. REVIEWS ── */}
-        <section className="lp-reviews" aria-labelledby="lp-rev-h2">
-          <div className="lp-container">
-            <motion.span className="lp-eyebrow" {...fade()}>REAL WOMEN, REAL PHASES</motion.span>
-            <motion.h2 id="lp-rev-h2" className="lp-section-display lp-rev-h2" {...fade(0.05)}>
-              They showed up. <em>It worked.</em>
-            </motion.h2>
+            <motion.p className="lp-how-proof-line" {...fade(0.1)}>
+              Women who did these three steps — <em>in their own words.</em>
+            </motion.p>
           </div>
           <ReviewsMarquee />
         </section>
@@ -521,7 +499,7 @@ export default function LandingPage({ onGetStarted }) {
             <div className="lp-feat-header">
               <motion.span className="lp-eyebrow" {...fade()}>WHAT SAGE CONNECTS</motion.span>
               <motion.h2 id="lp-feat-h2" className="lp-section-display lp-feat-h2" {...fade(0.05)}>
-                Five tools. One Sage.<br /><em>One system that finally works together.</em>
+                Where the plan<br /><em>becomes the day.</em>
               </motion.h2>
             </div>
 
@@ -600,7 +578,7 @@ const STYLES = `
     color: #c2185b;
   }
   .lp-eyebrow {
-    display: block; font-family: 'Manrope', sans-serif;
+    display: block; font-family: 'General Sans', sans-serif;
     font-size: 11px; font-weight: 700; letter-spacing: 0.18em;
     text-transform: uppercase; color: #f06090; margin-bottom: 16px;
   }
@@ -610,7 +588,7 @@ const STYLES = `
   .lp-btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
     background: #c2185b; color: #fff;
-    font-family: 'Manrope', sans-serif; font-size: 15px; font-weight: 700;
+    font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 700;
     padding: 13px 28px; border-radius: 12px; border: none; cursor: pointer;
     transition: background 0.2s; text-decoration: none;
   }
@@ -647,7 +625,7 @@ const STYLES = `
   }
   .lp-hero-h1 em { font-style: italic; color: #f06090; }
   .lp-hero-sub {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 16px; font-weight: 500; color: #8a5060;
     line-height: 1.6; margin-bottom: 36px; max-width: 440px;
   }
@@ -655,7 +633,7 @@ const STYLES = `
   .lp-btn-hero-primary {
     display: inline-flex; align-items: center; gap: 8px;
     background: #c2185b; color: #ffffff;
-    font-family: 'Manrope', sans-serif; font-size: 15px; font-weight: 700;
+    font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 700;
     padding: 14px 32px; border-radius: 12px; border: none; cursor: pointer;
     transition: background 0.18s;
   }
@@ -663,14 +641,14 @@ const STYLES = `
   .lp-btn-hero-ghost {
     display: inline-flex; align-items: center; gap: 8px;
     background: transparent; color: #c2185b;
-    font-family: 'Manrope', sans-serif; font-size: 15px; font-weight: 500;
+    font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 500;
     padding: 13px 28px; border-radius: 12px;
     border: 1.5px solid rgba(194,24,91,0.35); cursor: pointer;
     transition: border-color 0.18s, background 0.18s;
   }
   .lp-btn-hero-ghost:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
   .lp-hero-trust {
-    font-family: 'Manrope', sans-serif;
+    font-family: 'General Sans', sans-serif;
     font-size: 13px; color: #b08090;
   }
 
@@ -734,9 +712,13 @@ const STYLES = `
   .lp-hero-card-3 { top: -6%; right: -16%; }
   .lp-hero-card-4 { top: 22%; right: -12%; }
 
+  /* Mobile-only notification card — positioned relative to the phone photo itself
+     (not the wider hero column) so it stays pinned to the phone's tip at any width. */
+  .lp-hero-mobile-ping { display: none; }
+
   /* Card internals */
   .lp-hcard-label {
-    font-family: 'Manrope', sans-serif; font-size: 10.5px; font-weight: 700;
+    font-family: 'General Sans', sans-serif; font-size: 10.5px; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b;
     margin-bottom: 8px;
   }
@@ -746,14 +728,14 @@ const STYLES = `
   }
   .lp-hcard-bar-track { height: 4px; background: rgba(240,96,144,0.18); border-radius: 100px; overflow: hidden; margin-bottom: 7px; }
   .lp-hcard-bar { height: 100%; background: #f06090; border-radius: 100px; }
-  .lp-hcard-meta { font-family: 'Manrope', sans-serif; font-size: 12.5px; color: #8a5060; }
+  .lp-hcard-meta { font-family: 'General Sans', sans-serif; font-size: 12.5px; color: #8a5060; }
   .lp-hcard-sage-text { font-family: 'Fraunces', serif; font-size: 14.5px; color: #3d1020; line-height: 1.55; font-style: italic; }
   .lp-hcard-streak-num { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 700; color: #c2185b; line-height: 1; }
-  .lp-hcard-streak-label { font-family: 'Manrope', sans-serif; font-size: 13px; color: #8a5060; margin-top: 6px; }
+  .lp-hcard-streak-label { font-family: 'General Sans', sans-serif; font-size: 13px; color: #8a5060; margin-top: 6px; }
   .lp-hcard-avatars { display: flex; align-items: center; margin: 4px 0 10px; }
   .lp-hcard-av-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.9); margin-left: -10px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(61,16,32,0.15); }
   .lp-hcard-av-img:first-child { margin-left: 0; }
-  .lp-hcard-msg { font-family: 'Manrope', sans-serif; font-size: 13.5px; color: #3d1020; font-style: italic; line-height: 1.5; }
+  .lp-hcard-msg { font-family: 'General Sans', sans-serif; font-size: 13.5px; color: #3d1020; font-style: italic; line-height: 1.5; }
 
   /* ─────────────────────────────────────────────────
      STATS TICKER
@@ -790,13 +772,13 @@ const STYLES = `
   }
   .lp-prob-h2 em { font-style: italic; color: #c2185b; }
   .lp-prob-sub {
-    font-family: 'Manrope', sans-serif; font-size: 17px;
+    font-family: 'General Sans', sans-serif; font-size: 17px;
     color: rgba(61,16,32,0.68); line-height: 1.7;
     max-width: 480px; margin: 0 0 40px;
   }
   .lp-prob-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 48px; }
   .lp-prob-item {
-    font-family: 'Manrope', sans-serif; font-size: 16px;
+    font-family: 'General Sans', sans-serif; font-size: 16px;
     color: rgba(61,16,32,0.8); padding: 10px 0;
     display: flex; align-items: baseline; gap: 12px; justify-content: flex-start;
     border-bottom: 1px solid rgba(240,96,144,0.08);
@@ -809,7 +791,7 @@ const STYLES = `
   .lp-pticker-pill {
     display: inline-block; background: #E8C9D1; color: #3d1020;
     border-radius: 999px; padding: 6px 16px;
-    font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 500;
+    font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 500;
     flex-shrink: 0; white-space: nowrap;
   }
   .lp-prob-pivot {
@@ -829,34 +811,27 @@ const STYLES = `
   /* ─────────────────────────────────────────────────
      HOW IT WORKS
   ───────────────────────────────────────────────── */
-  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 48px; }
-  .lp-how-h2 { margin-bottom: 40px; }
-  .lp-how-grid { display: grid; grid-template-columns: 220px 1fr; gap: 56px; align-items: start; }
-  .lp-how-left { position: sticky; top: 100px; }
-  .lp-how-nav { display: flex; flex-direction: column; gap: 4px; }
-  .lp-how-tab { display: flex; flex-direction: column; align-items: flex-start; padding: 14px 18px; border-radius: 12px; border: none; background: none; cursor: pointer; text-align: left; transition: background 0.2s; }
-  .lp-how-tab:hover { background: rgba(240,96,144,0.08); }
-  .lp-how-tab.active { background: rgba(240,96,144,0.10); }
-  .lp-how-tab-num { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8a5060; margin-bottom: 3px; }
-  .lp-how-tab.active .lp-how-tab-num { color: #c2185b; }
-  .lp-how-tab-label { font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600; color: #8a5060; }
-  .lp-how-tab.active .lp-how-tab-label { color: #3d1020; }
+  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 56px; }
+  .lp-how-h2 { margin-bottom: 32px; }
+  .lp-how-tabs { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; }
+  .lp-how-tab { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 16px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
+  .lp-how-tab:hover { border-color: rgba(194,24,91,0.4); }
+  .lp-how-tab.active { background: #c2185b; border-color: #c2185b; }
+  .lp-how-tab-num { font-family: 'General Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a5060; }
+  .lp-how-tab.active .lp-how-tab-num { color: rgba(255,255,255,0.8); }
+  .lp-how-tab-label { font-family: 'General Sans', sans-serif; font-size: 13.5px; font-weight: 600; color: #3d1020; }
+  .lp-how-tab.active .lp-how-tab-label { color: #fff; }
+  .lp-how-stage { position: relative; min-height: 340px; }
   .lp-how-block {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding: 32px 0;
-    border-top: 1px solid rgba(240,96,144,0.12);
-    opacity: 0.4; transform: scale(0.97);
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
   }
-  .lp-how-block.active { opacity: 1; transform: scale(1); }
-  .lp-how-block:first-child { border-top: none; padding-top: 0; }
-  .lp-how-eyebrow { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; display: block; margin-bottom: 12px; }
+  .lp-how-eyebrow { font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; display: block; margin-bottom: 12px; }
   .lp-how-headline { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: #3d1020; line-height: 1.25; margin-bottom: 14px; }
-  .lp-how-body { font-family: 'Manrope', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; }
+  .lp-how-body { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; }
   .lp-how-block-text { min-width: 0; }
   .lp-how-block-visual { position: relative; min-width: 0; }
   .lp-how-visual-glow { position: absolute; inset: -32px; border-radius: 50%; background: radial-gradient(circle, rgba(240,96,144,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0; }
   .lp-how-block-visual > *:not(.lp-how-visual-glow) { position: relative; z-index: 1; }
-  .lp-how-mobile-step { display: none; }
 
   /* Mock cards */
   .lp-mock-card {
@@ -866,25 +841,25 @@ const STYLES = `
     border-radius: 18px; padding: 20px;
     box-shadow: 0 4px 20px rgba(194,24,91,0.16), 0 16px 40px rgba(194,24,91,0.08), inset 0 1.5px 0 rgba(255,255,255,0.90);
   }
-  .lp-mock-label { font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c2185b; margin-bottom: 8px; }
+  .lp-mock-label { font-family: 'General Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c2185b; margin-bottom: 8px; }
   .lp-mock-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: #3d1020; margin-bottom: 12px; }
   .lp-mock-bar-track { height: 4px; background: rgba(240,96,144,0.18); border-radius: 100px; overflow: hidden; margin-bottom: 6px; }
   .lp-mock-bar { height: 100%; background: #f06090; border-radius: 100px; }
-  .lp-mock-meta { font-family: 'Manrope', sans-serif; font-size: 12px; color: #8a5060; margin-bottom: 12px; }
+  .lp-mock-meta { font-family: 'General Sans', sans-serif; font-size: 12px; color: #8a5060; margin-bottom: 12px; }
   .lp-mock-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-  .lp-mock-pill { background: rgba(255,240,244,0.8); color: #c2185b; font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; border: 1px solid rgba(194,24,91,0.15); }
+  .lp-mock-pill { background: rgba(255,240,244,0.8); color: #c2185b; font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; border: 1px solid rgba(194,24,91,0.15); }
   .lp-mock-streak-row { display: flex; gap: 5px; margin-bottom: 8px; }
   .lp-mock-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(240,96,144,0.18); }
   .lp-mock-dot.active { background: #f06090; }
-  .lp-mock-checkin-q { font-family: 'Manrope', sans-serif; font-size: 13px; color: #8a5060; margin: 8px 0 6px; }
-  .lp-mock-checkin-input { font-family: 'Manrope', sans-serif; font-size: 13px; color: #3d1020; background: rgba(255,248,250,0.85); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(240,96,144,0.18); }
+  .lp-mock-checkin-q { font-family: 'General Sans', sans-serif; font-size: 13px; color: #8a5060; margin: 8px 0 6px; }
+  .lp-mock-checkin-input { font-family: 'General Sans', sans-serif; font-size: 13px; color: #3d1020; background: rgba(255,248,250,0.85); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(240,96,144,0.18); }
   .lp-mock-members { display: flex; align-items: center; margin-bottom: 12px; }
-  .lp-mock-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; color: #fff; border: 2px solid rgba(255,255,255,0.8); margin-left: -8px; flex-shrink: 0; }
+  .lp-mock-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: flex; align-items: center; justify-content: center; font-family: 'General Sans', sans-serif; font-size: 13px; font-weight: 700; color: #fff; border: 2px solid rgba(255,255,255,0.8); margin-left: -8px; flex-shrink: 0; }
   .lp-mock-avatar:first-child { margin-left: 0; }
-  .lp-mock-avatar-more { margin-left: -8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,240,244,0.85); color: #c2185b; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; border: 2px solid rgba(255,255,255,0.8); }
+  .lp-mock-avatar-more { margin-left: -8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,240,244,0.85); color: #c2185b; display: flex; align-items: center; justify-content: center; font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; border: 2px solid rgba(255,255,255,0.8); }
   .lp-mock-post { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
   .lp-mock-post:last-child { margin-bottom: 0; }
-  .lp-mock-post-text { font-family: 'Manrope', sans-serif; font-size: 13px; color: #3d1020; line-height: 1.5; }
+  .lp-mock-post-text { font-family: 'General Sans', sans-serif; font-size: 13px; color: #3d1020; line-height: 1.5; }
 
   /* ─────────────────────────────────────────────────
      MEET SAGE (anchor)
@@ -926,15 +901,20 @@ const STYLES = `
     cursor: pointer;
   }
   .lp-sage-anchor-body {
-    font-family: 'Manrope', sans-serif; font-size: 17px;
+    font-family: 'General Sans', sans-serif; font-size: 17px;
     color: #6a4a5a; line-height: 1.75;
   }
 
   /* ─────────────────────────────────────────────────
-     REVIEWS MARQUEE
+     REVIEWS MARQUEE (blended into How It Works — proof, not a new section)
   ───────────────────────────────────────────────── */
-  .lp-reviews { background: #fff7fa; padding: 56px 0 64px; text-align: center; }
-  .lp-rev-h2 { margin-bottom: 36px; }
+  .lp-how-proof-line {
+    font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 500;
+    color: #a5677e; text-align: center;
+    margin: 48px 0 24px; padding-top: 32px;
+    border-top: 1px solid rgba(240,96,144,0.12);
+  }
+  .lp-how-proof-line em { font-style: italic; color: #c2185b; }
   .lp-reviews-track-wrap { width: 100%; overflow: hidden; }
   .lp-reviews-track { display: inline-flex; align-items: stretch; gap: 20px; padding: 4px 32px; will-change: transform; }
   .lp-review-card {
@@ -948,7 +928,7 @@ const STYLES = `
   }
   .lp-review-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 8px rgba(61,16,32,0.12); }
   .lp-review-quote { font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; color: #3d1020; line-height: 1.55; }
-  .lp-review-name { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; color: #c2185b; }
+  .lp-review-name { font-family: 'General Sans', sans-serif; font-size: 13px; font-weight: 700; color: #c2185b; }
 
   /* ─────────────────────────────────────────────────
      FEATURES GRID
@@ -961,13 +941,13 @@ const STYLES = `
   }
   .lp-feat-header { max-width: 700px; margin: 0 auto 32px; text-align: center; }
   .lp-feat-h2 { margin-bottom: 16px; }
-  .lp-feat-intro { font-family: 'Manrope', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; margin: 0 auto; }
+  .lp-feat-intro { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; margin: 0 auto; }
   .lp-feat-showcase { text-align: center; margin-bottom: 40px; }
   .lp-feat-showcase-img { width: 100%; max-width: 920px; height: auto; display: block; margin: 0 auto; }
 
 
   /* Flip cards */
-  .lp-flip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 40px; }
+  .lp-flip-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 640px; margin: 0 auto 40px; }
   .lp-flip-outer { perspective: 1200px; }
   .lp-flip-card { height: 200px; cursor: pointer; outline: none; }
   .lp-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
@@ -987,13 +967,13 @@ const STYLES = `
   .lp-flip-icon { width: 40px; height: 40px; border-radius: 12px; background: rgba(194,24,91,0.10); display: flex; align-items: center; justify-content: center; color: #c2185b; margin-bottom: 12px; flex-shrink: 0; }
   .lp-flip-photo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(183,164,217,0.4); }
   .lp-flip-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 700; color: #3d1020; margin-bottom: 4px; }
-  .lp-flip-front-sub { font-family: 'Manrope', sans-serif; font-size: 13px; color: #8a5060; }
-  .lp-flip-tap { font-family: 'Manrope', sans-serif; font-size: 11px; color: #b08090; margin-top: auto; }
+  .lp-flip-front-sub { font-family: 'General Sans', sans-serif; font-size: 13px; color: #8a5060; }
+  .lp-flip-tap { font-family: 'General Sans', sans-serif; font-size: 11px; color: #b08090; margin-top: auto; }
   .lp-flip-back-text { font-family: 'Fraunces', serif; font-style: italic; font-size: 15.5px; color: #3d1020; line-height: 1.5; }
-  .lp-flip-back-link { font-family: 'Manrope', sans-serif; font-size: 12.5px; font-weight: 700; color: #c2185b; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
+  .lp-flip-back-link { font-family: 'General Sans', sans-serif; font-size: 12.5px; font-weight: 700; color: #c2185b; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
 
   .lp-feat-all-wrap { text-align: center; }
-  .lp-feat-all-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 600; color: #c2185b; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); padding-bottom: 2px; transition: border-color 0.18s; }
+  .lp-feat-all-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 600; color: #c2185b; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); padding-bottom: 2px; transition: border-color 0.18s; }
   .lp-feat-all-link:hover { border-color: #c2185b; }
 
 
@@ -1006,11 +986,11 @@ const STYLES = `
   .lp-faq-list { display: flex; flex-direction: column; gap: 0; }
   .lp-faq-item { border-bottom: 1px solid rgba(240,96,144,0.2); }
   .lp-faq-item:first-child { border-top: 1px solid rgba(240,96,144,0.2); }
-  .lp-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 22px 0; gap: 16px; font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 600; color: #1a0a10; background: none; border: none; cursor: pointer; text-align: left; transition: color 0.18s; }
+  .lp-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 22px 0; gap: 16px; font-family: 'General Sans', sans-serif; font-size: 16px; font-weight: 600; color: #1a0a10; background: none; border: none; cursor: pointer; text-align: left; transition: color 0.18s; }
   .lp-faq-q:hover { color: #c2185b; }
   .lp-faq-icon { font-size: 20px; color: #f06090; flex-shrink: 0; }
-  .lp-faq-a { font-family: 'Manrope', sans-serif; font-size: 15px; line-height: 1.7; color: #8a5060; padding-bottom: 20px; }
-  .lp-faq-more { font-family: 'Manrope', sans-serif; font-size: 14px; color: #8a5060; text-align: center; margin-top: 40px; }
+  .lp-faq-a { font-family: 'General Sans', sans-serif; font-size: 15px; line-height: 1.7; color: #8a5060; padding-bottom: 20px; }
+  .lp-faq-more { font-family: 'General Sans', sans-serif; font-size: 14px; color: #8a5060; text-align: center; margin-top: 40px; }
   .lp-faq-link { color: #c2185b; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); transition: border-color 0.18s; }
   .lp-faq-link:hover { border-color: #c2185b; }
 
@@ -1032,29 +1012,43 @@ const STYLES = `
     .lp-hero-mockup-wrap { align-items: flex-end; }
     .lp-hero-photo-wrap { max-width: 320px; margin: 0 auto -48px; }
     .lp-hero-card { display: none; }
-    .lp-hero-card-ping {
+    .lp-hero-mobile-ping {
       display: block;
-      top: auto; left: auto;
-      bottom: 16%; right: 2%;
-      min-width: 168px; max-width: 190px;
-      padding: 14px 16px;
+      position: absolute;
+      top: -3%; right: 4%;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .lp-hero-mobile-ping-card {
+      display: flex; flex-direction: column; gap: 1px;
+      background: linear-gradient(150deg, rgba(255,255,255,0.94) 0%, rgba(255,235,242,0.88) 100%);
+      backdrop-filter: blur(14px) saturate(1.5);
+      -webkit-backdrop-filter: blur(14px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: 12px; padding: 7px 10px;
+      box-shadow: 0 6px 16px rgba(194,24,91,0.18), inset 0 1px 0 rgba(255,255,255,0.9);
+      max-width: 108px;
+    }
+    .lp-hero-mobile-ping-label {
+      font-family: 'General Sans', sans-serif; font-size: 8.5px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase; color: #c2185b;
+    }
+    .lp-hero-mobile-ping-text {
+      font-family: 'General Sans', sans-serif; font-size: 10.5px; font-weight: 600;
+      color: #3d1020; line-height: 1.3; white-space: nowrap;
     }
     .lp-hero-sub { max-width: 100%; margin-bottom: 24px; }
     .lp-hero-btns { margin-bottom: 16px; gap: 10px; }
     .lp-btn-hero-primary, .lp-btn-hero-ghost { padding: 11px 22px; font-size: 13.5px; }
-    .lp-how-grid { grid-template-columns: 1fr; gap: 40px; }
-    .lp-how-left {
-      position: sticky; top: 62px; z-index: 2;
-      background: linear-gradient(180deg, #fff0f5 0%, #fff0f5 78%, rgba(255,240,245,0) 100%);
-      padding: 12px 0 16px;
-    }
-    .lp-how-mobile-step { display: flex; align-items: baseline; gap: 10px; }
-    .lp-how-mobile-num { font-family: 'Fraunces', serif; font-weight: 700; font-size: 16px; color: #c2185b; }
-    .lp-how-mobile-of { font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 600; color: #b08090; margin-left: 2px; }
-    .lp-how-mobile-label { font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600; color: #3d1020; }
-    .lp-how-nav { display: none; }
-    .lp-how-block { grid-template-columns: 1fr; gap: 32px; }
+    .lp-how-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; }
+    .lp-how-tabs::-webkit-scrollbar { display: none; }
+    .lp-how-tab { flex-shrink: 0; }
+    .lp-how-stage { min-height: 0; }
+    .lp-how-block { grid-template-columns: 1fr; gap: 24px; }
+    .lp-how-block-visual { order: -1; }
     .lp-flip-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .lp-feat-showcase { margin-left: -32px; margin-right: -32px; margin-bottom: 32px; }
+    .lp-feat-showcase-img { max-width: none; width: 100%; border-radius: 0; }
     .lp-prob-grid { grid-template-columns: 1fr; gap: 32px; }
     .lp-prob-sub, .lp-prob-list, .lp-prob-item, .lp-prob-ticker-wrap, .lp-prob-pivot { max-width: 100%; }
     .lp-prob-img { max-height: 60vh; border-radius: 20px; }

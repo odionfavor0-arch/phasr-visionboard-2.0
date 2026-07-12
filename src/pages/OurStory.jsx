@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import founderImg from '../assets/founder-favour.jpeg'
+import phasrLogo from '../assets/phasr-logo-pink.png'
 
 const faqItems = [
   {
     q: 'Is Phasr only for women?',
-    a: "Phasr is built with women in mind. The design, the community, the positioning. But the system works for anyone serious about their goals. If that is you, you are welcome here.",
+    a: "Phasr is built with women in mind. The design, the tone, the positioning. But the system works for anyone serious about their goals. If that is you, you are welcome here.",
   },
   {
     q: 'How is this different from a regular vision board app?',
@@ -19,12 +20,8 @@ const faqItems = [
     a: 'Your streak drops and the system notices. Miss one day and you get a warning. Miss two and your streak resets. But the system does not abandon you. It adjusts your weekly goal difficulty so you can rebuild from where you are, not from zero.',
   },
   {
-    q: 'What are Show Up Rooms?',
-    a: 'Show Up Rooms are small accountability groups. Six people, one focus area. Health. Wealth. Career. Relationships. Inner Life. Personal Growth. You see who showed up today. You can push others. They can push you. Nobody hides in these rooms.',
-  },
-  {
     q: 'Is it free to start?',
-    a: "Yes. The free plan includes your vision board, journal, daily streaks, and one Show Up room. Pro unlocks Sage's full AI coaching, advanced analytics, unlimited phases, and more. Pro starts at $5 per month. The Coach plan is $24 per month for professionals managing client boards.",
+    a: "Yes. The free plan includes your vision board, journal, and daily streaks. Founding Member unlocks Sage's full AI coaching, Phase Review, and more — see pricing for details.",
   },
   {
     q: 'Can I use this for any goal, not just fitness or career?',
@@ -70,7 +67,10 @@ export default function OurStory({ onGetStarted }) {
       <style>{styles}</style>
 
       <nav>
-        <a href="/" className="logo">Phasr</a>
+        <a href="/" className="logo">
+          <img src={phasrLogo} alt="" />
+          Phasr
+        </a>
         <div className={`nav-links ${menuOpen ? 'nav-open' : ''}`}>
           <a href="/#features" onClick={() => setMenuOpen(false)}>Features</a>
           <a href="/#how" onClick={() => setMenuOpen(false)}>How it works</a>
@@ -78,7 +78,7 @@ export default function OurStory({ onGetStarted }) {
           <a href="#faq" onClick={() => setMenuOpen(false)}>FAQ</a>
           <a href="/story" className="active" onClick={() => setMenuOpen(false)}>Our Story</a>
           <button type="button" className="nav-cta" onClick={() => { setMenuOpen(false); onGetStarted?.() }}>
-            Get started
+            Join the waitlist
           </button>
         </div>
         <button className="nav-hamburger" onClick={() => setMenuOpen(open => !open)} aria-label="Toggle menu">
@@ -132,7 +132,7 @@ export default function OurStory({ onGetStarted }) {
             <h3>Ready to stop starting over?</h3>
             <p>Your vision is waiting. Sage is ready. The room has a spot with your name on it.</p>
           </div>
-          <button type="button" className="cta-btn" onClick={onGetStarted}>Start Building Free →</button>
+          <button type="button" className="cta-btn" onClick={onGetStarted}>Join the waitlist →</button>
         </div>
       </div>
     </>
@@ -148,7 +148,7 @@ const styles = `
     --border:rgba(249,95,133,0.15);
   }
   html{scroll-behavior:smooth}
-  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body{font-family:'General Sans',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
   nav{
     position:fixed;top:0;left:0;right:0;z-index:100;
@@ -156,7 +156,8 @@ const styles = `
     background:rgba(5,5,10,0.92);backdrop-filter:blur(20px);
     border-bottom:1px solid var(--border);
   }
-  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;background:linear-gradient(135deg,#f472a8,#ffd6e7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none}
+  .logo{display:flex;align-items:center;gap:8px;font-family:'Fraunces',serif;font-weight:700;font-size:1.3rem;color:#fff;letter-spacing:-0.01em;text-decoration:none}
+  .logo img{width:26px;height:26px;object-fit:contain}
   .nav-links{display:flex;align-items:center;gap:1.5rem}
   .nav-links a{color:var(--muted);font-size:.88rem;text-decoration:none;transition:color .2s}
   .nav-links a:hover,.nav-links a.active{color:var(--text)}
@@ -171,6 +172,7 @@ const styles = `
     position:relative;
     overflow:hidden;
   }
+  .story-hero > * { min-width:0; }
   @media(max-width:768px){
     .story-hero{grid-template-columns:1fr}
   }
@@ -192,7 +194,7 @@ const styles = `
   .story-label::before{content:none}
 
   .story-headline{
-    font-family:'Playfair Display',serif;
+    font-family:'Fraunces',serif;
     font-size:clamp(1.8rem,3.5vw,2.8rem);
     font-weight:700;line-height:1.2;
     margin-bottom:32px;color:var(--text);
@@ -211,7 +213,7 @@ const styles = `
     padding-left:16px;margin-left:-18px;
   }
   .story-text .big{
-    font-family:'Playfair Display',serif;
+    font-family:'Fraunces',serif;
     font-size:1.15rem;font-style:italic;
     color:var(--text);
   }
@@ -221,7 +223,7 @@ const styles = `
     margin-top:40px;padding-top:32px;
     border-top:1px solid var(--border);
   }
-  .founder-name{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;color:var(--text)}
+  .founder-name{font-family:'Fraunces',serif;font-size:.95rem;font-weight:700;color:var(--text)}
   .founder-title{font-size:.8rem;color:var(--muted);margin-top:2px}
 
   .story-right{
@@ -229,7 +231,7 @@ const styles = `
     display:flex;align-items:center;justify-content:center;
   }
   @media(max-width:768px){
-    .story-right{min-height:320px;order:-1}
+    .story-right{min-height:320px}
   }
   .story-right::before{
     content:'';position:absolute;inset:0;
@@ -266,7 +268,7 @@ const styles = `
   }
   .faq-label::before{content:none}
   .faq-title{
-    font-family:'Syne',sans-serif;font-size:clamp(1.6rem,3vw,2.4rem);
+    font-family:'Fraunces',serif;font-size:clamp(1.6rem,3vw,2.4rem);
     font-weight:800;margin-bottom:56px;color:var(--text);
   }
 
@@ -281,7 +283,7 @@ const styles = `
     display:flex;align-items:center;justify-content:space-between;gap:16px;
   }
   .faq-q-text{
-    font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;
+    font-family:'Fraunces',serif;font-size:1rem;font-weight:700;
     color:var(--text);line-height:1.35;
     transition:color .2s;
   }
@@ -318,14 +320,14 @@ const styles = `
     flex-wrap:wrap;gap:24px;
   }
   .cta-text h3{
-    font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;
+    font-family:'Fraunces',serif;font-size:1.5rem;font-weight:800;
     margin-bottom:8px;
   }
   .cta-text p{color:var(--muted);font-size:.93rem}
   .cta-btn{
     padding:.85rem 2rem;border-radius:99px;border:none;
     background:linear-gradient(135deg,var(--pink),#e83d66);
-    color:#fff;font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;
+    color:#fff;font-family:'Fraunces',serif;font-size:.9rem;font-weight:700;
     cursor:pointer;white-space:nowrap;
     box-shadow:0 4px 20px rgba(249,95,133,0.3);
     transition:all .2s;text-decoration:none;display:inline-block;
