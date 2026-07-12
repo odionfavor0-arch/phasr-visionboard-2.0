@@ -116,13 +116,6 @@ const STYLES = `
   letter-spacing: -0.02em;
   color: #fff0f4;
 }
-.mkt-footer-tagline {
-  font-size: 0.9rem;
-  color: #b08090;
-  line-height: 1.7;
-  max-width: 260px;
-  margin-bottom: 28px;
-}
 .mkt-footer-quote {
   font-family: 'Fraunces', serif;
   font-size: 0.95rem;
@@ -130,8 +123,6 @@ const STYLES = `
   color: #f78fb0;
   line-height: 1.6;
   max-width: 240px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(240,96,144,0.14);
 }
 
 /* Link columns */
@@ -221,7 +212,11 @@ const STYLES = `
   .mkt-footer-body { padding: 60px 24px 0; }
 }
 @media (max-width: 560px) {
-  .mkt-footer-top { grid-template-columns: 1fr; gap: 36px; }
+  .mkt-footer-top { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .mkt-footer-brand { grid-column: 1 / -1; }
+  .mkt-footer-col-title { font-size: 0.7rem; margin-bottom: 16px; }
+  .mkt-footer-links { gap: 10px; }
+  .mkt-footer-links a { font-size: 0.82rem; }
   .mkt-footer-bottom {
     flex-direction: column; align-items: flex-start;
     gap: 12px; padding-bottom: 40px;
@@ -253,9 +248,6 @@ export default function MarketingFooter({ onGetStarted }) {
                   <img src={phasrMark} alt="PHASR" />
                   <span className="mkt-footer-logo-text">PHASR</span>
                 </Link>
-                <p className="mkt-footer-tagline">
-                  Vision boards, Sage AI coaching, daily streaks, and journaling — built for women who actually follow through.
-                </p>
                 <p className="mkt-footer-quote">
                   "The vision was never the problem.<br />The follow-through was."
                 </p>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
-import { Flame, LayoutGrid, ArrowRight } from 'lucide-react'
+import { Flame, LayoutGrid, ArrowRight, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/marketing/MarketingLayout'
 import SageIntroBubble from '../components/marketing/SageIntroBubble'
@@ -92,6 +92,7 @@ const HOW_STEPS = [
 const FEATURES = [
   { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:'AI-generated non-negotiables, resources, and daily activities — built from your goal, every single week.', href:'/features/vision-boards' },
   { Icon:Flame, name:'Daily Streaks', front:'Show up daily', back:'Proof you followed through on the plan Sage and your board just built.', href:'/features/daily-streaks' },
+  { Icon:RefreshCw, name:'Phase & Weekly Reflection', front:'Reset and adjust', back:"Sage reviews your check-ins and journal every Sunday, then wraps your whole phase into one clear recap when it ends.", href:'/features/dashboard' },
 ]
 
 const PROBLEMS = [
@@ -155,40 +156,6 @@ function ProblemTicker() {
       >
         {doubled.map((item, i) => (
           <span key={i} className="lp-pticker-pill">{item}</span>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
-
-/* ─────────────── Reviews marquee ─────────────── */
-const REVIEWS = [
-  { name:'Amara O.', photo:'/images/review-1.jpg', quote:"I've bought every planner on the internet. PHASR is the first one that actually knows what I did yesterday." },
-  { name:'Jordan T.', photo:'/images/review-2.jpg', quote:'Sage caught a pattern in my journal I never noticed myself. That alone was worth it.' },
-  { name:'Priya K.', photo:'/images/review-3.jpg', quote:"My streak isn't guilt anymore, it's just proof. Huge mental shift." },
-  { name:'Bianca R.', photo:'/images/review-4.jpg', quote:'One goal a month sounded too simple. Turns out simple was the missing piece.' },
-  { name:'Élise M.', photo:'/images/review-5.jpg', quote:'The check-ins take two minutes and somehow keep me honest all week.' },
-  { name:'Naomi S.', photo:'/images/review-6.jpg', quote:"First app that felt like it was actually rooting for me, not just tracking me." },
-]
-
-function ReviewsMarquee() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { margin: '0px' })
-  const reduced = useReducedMotion()
-  const doubled = [...REVIEWS, ...REVIEWS]
-  return (
-    <div className="lp-reviews-track-wrap" ref={ref}>
-      <motion.div
-        className="lp-reviews-track"
-        animate={reduced ? {} : inView ? { x: ['0%', '-50%'] } : false}
-        transition={{ duration: 38, repeat: Infinity, ease: 'linear' }}
-      >
-        {doubled.map((r, i) => (
-          <div key={i} className="lp-review-card" aria-hidden={i >= REVIEWS.length}>
-            <img src={r.photo} alt="" className="lp-review-avatar" />
-            <p className="lp-review-quote">"{r.quote}"</p>
-            <div className="lp-review-name">{r.name}</div>
-          </div>
         ))}
       </motion.div>
     </div>
@@ -274,7 +241,7 @@ export default function LandingPage({ onGetStarted }) {
                 <motion.button className="lp-btn-hero-ghost"
                   onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior:'smooth' })}
                   whileHover={{ scale:1.02 }} whileTap={{ scale:0.97 }}>
-                  See video demo
+                  See how it works
                 </motion.button>
               </motion.div>
               <motion.p className="lp-hero-trust"
@@ -453,12 +420,7 @@ export default function LandingPage({ onGetStarted }) {
                 })}
               </AnimatePresence>
             </div>
-
-            <motion.p className="lp-how-proof-line" {...fade(0.1)}>
-              Women who did these three steps — <em>in their own words.</em>
-            </motion.p>
           </div>
-          <ReviewsMarquee />
         </section>
 
         {/* ── 6. MEET SAGE (the anchor) ── */}
@@ -811,7 +773,7 @@ const STYLES = `
   /* ─────────────────────────────────────────────────
      HOW IT WORKS
   ───────────────────────────────────────────────── */
-  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 56px; }
+  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 24px; }
   .lp-how-h2 { margin-bottom: 32px; }
   .lp-how-tabs { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; }
   .lp-how-tab { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 16px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
@@ -866,7 +828,7 @@ const STYLES = `
   ───────────────────────────────────────────────── */
   .lp-sage-anchor {
     background: #ffffff;
-    padding: 72px 0 64px;
+    padding: 40px 0 64px;
     text-align: center;
   }
   .lp-sage-anchor-inner {
@@ -906,31 +868,6 @@ const STYLES = `
   }
 
   /* ─────────────────────────────────────────────────
-     REVIEWS MARQUEE (blended into How It Works — proof, not a new section)
-  ───────────────────────────────────────────────── */
-  .lp-how-proof-line {
-    font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 500;
-    color: #a5677e; text-align: center;
-    margin: 48px 0 24px; padding-top: 32px;
-    border-top: 1px solid rgba(240,96,144,0.12);
-  }
-  .lp-how-proof-line em { font-style: italic; color: #c2185b; }
-  .lp-reviews-track-wrap { width: 100%; overflow: hidden; }
-  .lp-reviews-track { display: inline-flex; align-items: stretch; gap: 20px; padding: 4px 32px; will-change: transform; }
-  .lp-review-card {
-    flex-shrink: 0; width: 300px;
-    background: #ffffff; border-radius: 20px;
-    border: 1px solid rgba(240,96,144,0.12);
-    box-shadow: 0 8px 24px rgba(61,16,32,0.08);
-    padding: 22px 24px; text-align: left;
-    display: flex; flex-direction: column; gap: 12px;
-    white-space: normal;
-  }
-  .lp-review-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 8px rgba(61,16,32,0.12); }
-  .lp-review-quote { font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; color: #3d1020; line-height: 1.55; }
-  .lp-review-name { font-family: 'General Sans', sans-serif; font-size: 13px; font-weight: 700; color: #c2185b; }
-
-  /* ─────────────────────────────────────────────────
      FEATURES GRID
   ───────────────────────────────────────────────── */
   .lp-features {
@@ -947,7 +884,7 @@ const STYLES = `
 
 
   /* Flip cards */
-  .lp-flip-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 640px; margin: 0 auto 40px; }
+  .lp-flip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 900px; margin: 0 auto 40px; }
   .lp-flip-outer { perspective: 1200px; }
   .lp-flip-card { height: 200px; cursor: pointer; outline: none; }
   .lp-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
@@ -975,7 +912,6 @@ const STYLES = `
   .lp-feat-all-wrap { text-align: center; }
   .lp-feat-all-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 600; color: #c2185b; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); padding-bottom: 2px; transition: border-color 0.18s; }
   .lp-feat-all-link:hover { border-color: #c2185b; }
-
 
   /* ─────────────────────────────────────────────────
      FAQ
@@ -1040,9 +976,11 @@ const STYLES = `
     .lp-hero-sub { max-width: 100%; margin-bottom: 24px; }
     .lp-hero-btns { margin-bottom: 16px; gap: 10px; }
     .lp-btn-hero-primary, .lp-btn-hero-ghost { padding: 11px 22px; font-size: 13.5px; }
-    .lp-how-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; }
+    .lp-how-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; gap: 6px; }
     .lp-how-tabs::-webkit-scrollbar { display: none; }
-    .lp-how-tab { flex-shrink: 0; }
+    .lp-how-tab { flex-shrink: 0; padding: 7px 12px; }
+    .lp-how-tab-num { font-size: 9px; }
+    .lp-how-tab-label { font-size: 12px; }
     .lp-how-stage { min-height: 0; }
     .lp-how-block { grid-template-columns: 1fr; gap: 24px; }
     .lp-how-block-visual { order: -1; }
@@ -1050,14 +988,14 @@ const STYLES = `
     .lp-feat-showcase { margin-left: -32px; margin-right: -32px; margin-bottom: 32px; }
     .lp-feat-showcase-img { max-width: none; width: 100%; border-radius: 0; }
     .lp-prob-grid { grid-template-columns: 1fr; gap: 32px; }
-    .lp-prob-sub, .lp-prob-list, .lp-prob-item, .lp-prob-ticker-wrap, .lp-prob-pivot { max-width: 100%; }
+    .lp-prob-sub, .lp-prob-list, .lp-prob-item, .lp-prob-pivot { max-width: 100%; }
+    .lp-prob-ticker-wrap { max-width: none; margin-left: -32px; margin-right: -32px; }
     .lp-prob-img { max-height: 60vh; border-radius: 20px; }
   }
   @media (max-width: 640px) {
     .lp-flip-grid { grid-template-columns: 1fr; }
-    .lp-sage-anchor { padding: 56px 0 56px; }
+    .lp-sage-anchor { padding: 32px 0 56px; }
     .lp-sage-anchor-photo-wrap { width: 128px; height: 128px; }
-    .lp-review-card { width: 250px; padding: 18px 20px; }
     .lp-prob-img { max-height: 55vh; }
   }
 `
