@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
-import { Flame, LayoutGrid, ArrowRight, RefreshCw } from 'lucide-react'
+import { Flame, LayoutGrid, ArrowRight, Layers } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/marketing/MarketingLayout'
 import SageIntroBubble from '../components/marketing/SageIntroBubble'
@@ -84,21 +84,28 @@ function WeeklyReflectCard() {
 }
 
 const HOW_STEPS = [
-  { label:'Set your phase', headline:'Pick your monthly focus', body:'One meaningful goal. Not ten. PHASR gives you one clear phase so your energy actually lands somewhere real.', Visual:PhaseCard },
-  { label:'Show up daily', headline:'Check in, track streaks, journal with Sage', body:'A quick daily pulse keeps momentum visible. Your streak is proof. Sage helps you reflect, not just record — guilt-free, even on the days you miss.', Visual:CheckinCard },
-  { label:'Weekly reflection', headline:'A weekly reset with Sage', body:"Every Sunday, Sage reviews your check-ins and journal and helps you adjust before next week starts — steady course-correction, not a surprise recap once the month's already over.", Visual:WeeklyReflectCard },
+  { label:'Set your phase', headline:'Pick the goal that matters most right now.', body:"Sage turns it into phases, weekly non-negotiables, and today's first step, so there's always something to actually do.", Visual:PhaseCard },
+  { label:'Show up daily', headline:'One small thing a day.', body:'Miss a day, and Sage picks the plan back up with you the next time you open the app instead of wiping your streak.', Visual:CheckinCard },
+  { label:'See it working', headline:'Every Sunday Sage shows you what moved.', body:'At the end of the phase, you see the person you became.', Visual:WeeklyReflectCard },
 ]
 
 const FEATURES = [
-  { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:'AI-generated non-negotiables, resources, and daily activities — built from your goal, every single week.', href:'/features/vision-boards' },
-  { Icon:Flame, name:'Daily Streaks', front:'Show up daily', back:'Proof you followed through on the plan Sage and your board just built.', href:'/features/daily-streaks' },
-  { Icon:RefreshCw, name:'Phase & Weekly Reflection', front:'Reset and adjust', back:"Sage reviews your check-ins and journal every Sunday, then wraps your whole phase into one clear recap when it ends.", href:'/features/dashboard' },
+  { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:"You've made these before and watched them collect dust. With PHASR, that vision becomes something you actually work from.", href:'/features/vision-boards' },
+  { Icon:Layers, name:'Weekly Phase', front:'Cut it down', back:'Your goal, cut into phases short enough to finish. One at a time, so you never face the whole mountain at once.', href:'/features/dashboard' },
 ]
 
-const PROBLEMS = [
-  'No clarity on what your actual next step is',
-  'No system that keeps you going past week two',
-  'No accountability that feels real, not performative',
+const FAQ_ITEMS = [
+  { q:'Is PHASR free?', a:'Yes, you can start free. Founding members lock in early pricing when paid plans launch.' },
+  { q:'What does Sage actually do?', a:'She builds your plan, checks in daily, reflects with you every week, and remembers everything so her advice fits you and not some average user.' },
+  { q:'What if I miss a few days?', a:'Nothing breaks. Sage picks the plan back up with you the next time you open the app.' },
+  { q:'Is my journal private?', a:'Yes. Your journal and your conversations are yours, private and encrypted, and you can delete them anytime.' },
+  { q:'When does PHASR launch?', a:"We're opening in phases. Join the waitlist to be first in and lock in founding pricing." },
+]
+
+const PAIN_POINTS = [
+  "You know exactly who you want to become. You've just never known what to actually do on a Tuesday.",
+  'You start strong. Then work gets heavy, life gets loud, the plan slips, and getting back in feels like starting the whole thing from zero.',
+  "You can't see it working, so you stop believing it is. The effort goes invisible, and invisible effort is the kind you quit.",
 ]
 
 const TRIED_ITEMS = [
@@ -114,10 +121,10 @@ function StatsTicker() {
   const reduced = useReducedMotion()
   const items = [
     "Your vision, turned into today's task",
-    'Sage remembers everything — so you never start over',
-    'One goal. One phase. One clear next step.',
+    'Sage remembers everything, so you never explain yourself twice',
+    'One goal, one phase, one clear next step',
     'For women who are done starting over',
-    'From vision to done.',
+    'From vision to done',
   ]
   const doubled = [...items, { sep:true }, ...items, { sep:true }]
   return (
@@ -206,9 +213,25 @@ function ToolFlipCard({ tool, index }) {
 export default function LandingPage({ onGetStarted }) {
   const [activeStep, setActiveStep] = useState(0)
   const [faqOpen, setFaqOpen] = useState(null)
+  const [heroPosterReady, setHeroPosterReady] = useState(false)
   const reducedMotion = useReducedMotion()
   const sagePhotoRef = useRef(null)
   const sagePhotoInView = useInView(sagePhotoRef, { margin: '-80px' })
+
+  // Gate the hero phone's entrance on the poster frame actually being loaded —
+  // without this the fade-in can start before the video/poster is ready, so the
+  // phone flashes blank before the video pops in. A timeout fallback keeps the
+  // hero from staying hidden if the image is slow or fails to load.
+  useEffect(() => {
+    let settled = false
+    const finish = () => { if (!settled) { settled = true; setHeroPosterReady(true) } }
+    const img = new Image()
+    img.onload = finish
+    img.onerror = finish
+    img.src = '/images/hero-screen-poster.jpg'
+    const fallback = setTimeout(finish, 1200)
+    return () => clearTimeout(fallback)
+  }, [])
 
   return (
     <MarketingLayout>
@@ -221,6 +244,11 @@ export default function LandingPage({ onGetStarted }) {
 
             {/* Left */}
             <div className="lp-hero-left">
+              <motion.span className="lp-eyebrow lp-hero-eyebrow"
+                initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }}
+                transition={{ duration:0.6, ease:'easeOut' }}>
+                YOUR MONTHLY SYSTEM
+              </motion.span>
               <motion.h1 id="lp-h1" className="lp-hero-h1"
                 initial={{ opacity:0, y:28 }} animate={{ opacity:1, y:0 }}
                 transition={{ duration:0.75, ease:'easeOut', delay:0.15 }}>
@@ -229,7 +257,7 @@ export default function LandingPage({ onGetStarted }) {
               <motion.p className="lp-hero-sub"
                 initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }}
                 transition={{ duration:0.7, ease:'easeOut', delay:0.3 }}>
-                It's the system you're missing — the one that turns your vision into one monthly goal with clear action steps, and keeps you showing up until it's done.
+                PHASR turns your biggest goal into a clear plan you can actually follow. Sage keeps you moving every step of the way.
               </motion.p>
               <motion.div className="lp-hero-btns"
                 initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }}
@@ -247,7 +275,7 @@ export default function LandingPage({ onGetStarted }) {
               <motion.p className="lp-hero-trust"
                 initial={{ opacity:0 }} animate={{ opacity:1 }}
                 transition={{ delay:0.75 }}>
-                Founding access · No credit card required
+                Built for women who are done starting over.
               </motion.p>
             </div>
 
@@ -257,7 +285,8 @@ export default function LandingPage({ onGetStarted }) {
             <div className="lp-hero-right">
               <div className="lp-hero-glow" aria-hidden="true" />
               <motion.div className="lp-hero-mockup-wrap"
-                initial={{ opacity:0, y:40 }} animate={{ opacity:1, y:0 }}
+                initial={{ opacity:0, y:40 }}
+                animate={heroPosterReady ? { opacity:1, y:0 } : {}}
                 transition={{ duration:0.9, ease:'easeOut', delay:0.2 }}>
                 <div className="lp-hero-photo-wrap">
                   <video
@@ -330,22 +359,21 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 2. STATS TICKER ── */}
         <StatsTicker />
 
-        {/* ── 3. PROBLEM NAMING ── */}
+        {/* ── 3. PAIN POINT ── */}
         <section className="lp-problem" aria-labelledby="lp-prob-h2">
           <div className="lp-container lp-prob-grid">
             <div className="lp-prob-text">
+              <motion.span className="lp-eyebrow" {...fade()}>THE REAL PROBLEM</motion.span>
               <motion.h2 id="lp-prob-h2" className="lp-prob-h2" {...fade(0.08)}>
-                You've tried everything.<br />
-                You still end up with<br />
-                <em>nothing to show for the year.</em>
+                You've tried everything, and you<br />
+                still have <em>nothing to show for the year.</em>
               </motion.h2>
               <motion.p className="lp-prob-sub" {...fade(0.14)}>
-                Not because you're undisciplined.<br />
-                Because you've been over-equipped with tools<br />
-                that don't talk to each other.
+                You've downloaded the apps. Bought the planner. Made the vision board.
+                And not one of them ever checked whether you actually follow through.
               </motion.p>
               <div className="lp-prob-list">
-                {PROBLEMS.map((p, i) => (
+                {PAIN_POINTS.map((p, i) => (
                   <motion.p key={i} className="lp-prob-item"
                     initial={{ opacity:0, y:12 }}
                     whileInView={{ opacity:1, y:0 }}
@@ -359,9 +387,8 @@ export default function LandingPage({ onGetStarted }) {
                 <ProblemTicker />
               </div>
               <motion.p className="lp-prob-pivot" {...fade(0.1)}>
-                The problem was never the vision.<br />
-                It was never having a system<br />
-                that <em>held all of it together.</em>
+                Vision was never your problem.<br />
+                Not having <em>clear action steps</em> was.
               </motion.p>
             </div>
             <motion.div className="lp-prob-img-wrap" {...fade(0.15)}>
@@ -375,8 +402,11 @@ export default function LandingPage({ onGetStarted }) {
           <div className="lp-container">
             <motion.span className="lp-eyebrow" {...fade()}>HOW IT WORKS</motion.span>
             <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade(0.05)}>
-              Simple. Monthly. <em>Together.</em>
+              How you <em>finish</em> this time.
             </motion.h2>
+            <motion.p className="lp-how-intro" {...fade(0.08)}>
+              You pick one goal. Sage builds the plan. You get one thing to do today.
+            </motion.p>
 
             <div className="lp-how-tabs" role="tablist" aria-label="How PHASR works">
               {HOW_STEPS.map((s, i) => (
@@ -420,17 +450,24 @@ export default function LandingPage({ onGetStarted }) {
                 })}
               </AnimatePresence>
             </div>
+
+            <motion.div className="lp-how-cta-wrap" {...fade(0.15)}>
+              <button
+                type="button"
+                className="lp-how-cta"
+                onClick={() => document.getElementById('vision-board')?.scrollIntoView({ behavior:'smooth' })}
+              >
+                See what's inside <ArrowRight size={14} />
+              </button>
+            </motion.div>
           </div>
         </section>
 
         {/* ── 6. MEET SAGE (the anchor) ── */}
         <section className="lp-sage-anchor" aria-labelledby="lp-sage-h2">
           <div className="lp-container lp-sage-anchor-inner">
-            <motion.span className="lp-eyebrow" {...fade()}>MEET SAGE</motion.span>
-            <motion.h2 id="lp-sage-h2" className="lp-section-display lp-sage-anchor-h2" {...fade(0.05)}>
-              The one who actually<br /><em>remembers you.</em>
-            </motion.h2>
-            <motion.div className="lp-sage-anchor-photo-wrap" ref={sagePhotoRef} {...fade(0.15)}>
+            <motion.span id="lp-sage-h2" className="lp-eyebrow" {...fade()}>MEET SAGE</motion.span>
+            <motion.div className="lp-sage-anchor-photo-wrap" ref={sagePhotoRef} {...fade(0.05)}>
               <motion.div
                 className="lp-sage-anchor-glow" aria-hidden="true"
                 animate={reducedMotion ? {} : { scale: [1, 1.08, 1], opacity: [0.75, 1, 0.75] }}
@@ -448,21 +485,35 @@ export default function LandingPage({ onGetStarted }) {
                 />
               </div>
             </motion.div>
-            <motion.p className="lp-sage-anchor-body" {...fade(0.22)}>
-              She's not a chatbot you remember to open. Sage knows your vision, watches your streak, and reads your journal —
-              then turns all of it into the one task that actually matters today. Every tool below is just a place she brings you to.
-            </motion.p>
+            <motion.div className="lp-sage-anchor-body" {...fade(0.15)}>
+              <p>Hi. I'm Sage.</p>
+              <p>I keep the whole picture so you don't have to. Your goals, your journal, the week it all fell apart, the excuse you've made three times now. You never start from scratch with me, and you never repeat yourself.</p>
+              <p>I'll tell you the truth even when it's uncomfortable. When the reason you give me doesn't match what you've actually been doing, I'll say so, kindly, in your own words. That's the point of me.</p>
+              <p>I want you trusting yourself more, not leaning on me forever.</p>
+              <p>You're not behind. You've been starting over. Let's stop.</p>
+            </motion.div>
+            <motion.button
+              type="button"
+              className="lp-sage-anchor-cta"
+              {...fade(0.22)}
+              onClick={() => window.dispatchEvent(new CustomEvent('phasr:open-sage'))}
+            >
+              Talk to Sage
+            </motion.button>
           </div>
         </section>
 
-        {/* ── 7. THE TOOLS (what Sage connects) ── */}
-        <section className="lp-features" aria-labelledby="lp-feat-h2">
+        {/* ── 7. THE VISION BOARD ── */}
+        <section id="vision-board" className="lp-features" aria-labelledby="lp-feat-h2">
           <div className="lp-container">
             <div className="lp-feat-header">
-              <motion.span className="lp-eyebrow" {...fade()}>WHAT SAGE CONNECTS</motion.span>
+              <motion.span className="lp-eyebrow" {...fade()}>THE VISION BOARD</motion.span>
               <motion.h2 id="lp-feat-h2" className="lp-section-display lp-feat-h2" {...fade(0.05)}>
-                Where the plan<br /><em>becomes the day.</em>
+                Your vision board,<br />but it actually <em>does something.</em>
               </motion.h2>
+              <motion.p className="lp-feat-intro" {...fade(0.1)}>
+                Put in the life you want. Sage reads it and builds the plan to get there: your phases, your weekly non-negotiables, and today's step.
+              </motion.p>
             </div>
 
             <motion.div className="lp-feat-showcase" {...fade(0.1)}>
@@ -483,6 +534,7 @@ export default function LandingPage({ onGetStarted }) {
               <Link to="/features" className="lp-feat-all-link">
                 See everything PHASR can do <ArrowRight size={14} />
               </Link>
+              <span className="lp-feat-all-micro">There's more inside.</span>
             </motion.div>
           </div>
         </section>
@@ -494,12 +546,7 @@ export default function LandingPage({ onGetStarted }) {
               Quick answers for <em>curious women.</em>
             </motion.h2>
             <div className="lp-faq-list">
-              {[
-                { q:'Is PHASR free?', a:'Yes. PHASR has a free tier with core features: vision board, daily streaks, and one active phase. Founding Member ($12/mo) unlocks full Sage AI coaching, the full journal, and Phase Review.' },
-                { q:'What does Sage actually do?', a:"Sage reads your journal entries, checks your streak, and gives you a weekly reset. Not generic advice — responses that know exactly where you are in your phase. She plans with you, not at you." },
-                { q:"What if I miss a few days?", a:"Streaks break, but momentum doesn't have to. PHASR shows you exactly where you stopped so you can pick back up without the shame spiral. Sage helps you reset every Sunday." },
-                { q:'Is my journal private?', a:"Completely. Your journal entries are encrypted and never shared with anyone, anywhere. It's your space." },
-              ].map(({ q, a }, i) => (
+              {FAQ_ITEMS.map(({ q, a }, i) => (
                 <motion.div key={i} className={`lp-faq-item${faqOpen===i ? ' open' : ''}`} {...fade(i*0.05)}>
                   <button className="lp-faq-q" onClick={() => setFaqOpen(faqOpen===i ? null : i)} aria-expanded={faqOpen===i}>
                     <span>{q}</span>
@@ -515,7 +562,40 @@ export default function LandingPage({ onGetStarted }) {
           </div>
         </section>
 
+        {/* ── 9. FINAL CTA ── */}
+        <section className="lp-final-cta" aria-labelledby="lp-final-h2">
+          <div className="lp-container lp-final-cta-inner">
+            <motion.span className="lp-eyebrow" {...fade()}>YOUR NEXT CHAPTER</motion.span>
+            <motion.h2 id="lp-final-h2" className="lp-section-display lp-final-cta-h2" {...fade(0.05)}>
+              Are you ready to start <em>working on your dreams?</em>
+            </motion.h2>
+            <motion.p className="lp-final-cta-sub" {...fade(0.1)}>
+              Join the women who make sure every action counts.
+            </motion.p>
+            <motion.button className="lp-btn-hero-primary" onClick={onGetStarted} {...fade(0.15)}
+              whileHover={{ scale:1.03, boxShadow:'0 8px 28px rgba(194,24,91,0.25)' }} whileTap={{ scale:0.97 }}>
+              Join the waitlist
+            </motion.button>
+            <motion.p className="lp-final-cta-trust" {...fade(0.2)}>
+              Founding members are joining now.
+            </motion.p>
+          </div>
+        </section>
+
       </main>
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: FAQ_ITEMS.map(({ q, a }) => ({
+            '@type': 'Question',
+            name: q,
+            acceptedAnswer: { '@type': 'Answer', text: a },
+          })),
+        })}
+      </script>
+
       <SageIntroBubble />
     </MarketingLayout>
   )
@@ -578,6 +658,7 @@ const STYLES = `
     background: linear-gradient(180deg, transparent 0%, rgba(240,96,144,0.3) 18%, rgba(240,96,144,0.3) 82%, transparent 100%);
   }
   .lp-hero-left { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  .lp-hero-eyebrow { margin-bottom: 14px; }
   .lp-hero-h1 {
     font-family: 'Fraunces', serif;
     font-size: clamp(36px, 3.8vw, 54px);
@@ -774,7 +855,8 @@ const STYLES = `
      HOW IT WORKS
   ───────────────────────────────────────────────── */
   .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 24px; }
-  .lp-how-h2 { margin-bottom: 32px; }
+  .lp-how-h2 { margin-bottom: 12px; }
+  .lp-how-intro { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.6; max-width: 480px; margin-bottom: 32px; }
   .lp-how-tabs { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; }
   .lp-how-tab { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 16px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
   .lp-how-tab:hover { border-color: rgba(194,24,91,0.4); }
@@ -794,6 +876,16 @@ const STYLES = `
   .lp-how-block-visual { position: relative; min-width: 0; }
   .lp-how-visual-glow { position: absolute; inset: -32px; border-radius: 50%; background: radial-gradient(circle, rgba(240,96,144,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0; }
   .lp-how-block-visual > *:not(.lp-how-visual-glow) { position: relative; z-index: 1; }
+  .lp-how-cta-wrap { text-align: center; margin-top: 40px; }
+  .lp-how-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; color: #c2185b;
+    font-family: 'General Sans', sans-serif; font-size: 14.5px; font-weight: 700;
+    padding: 12px 26px; border-radius: 100px;
+    border: 1.5px solid rgba(194,24,91,0.3); cursor: pointer;
+    transition: border-color 0.18s, background 0.18s;
+  }
+  .lp-how-cta:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
 
   /* Mock cards */
   .lp-mock-card {
@@ -835,11 +927,10 @@ const STYLES = `
     max-width: 640px; margin: 0 auto;
     display: flex; flex-direction: column; align-items: center;
   }
-  .lp-sage-anchor-h2 { margin: 0 0 32px; }
   .lp-sage-anchor-photo-wrap {
     position: relative;
     width: 128px; height: 128px;
-    margin: 0 0 28px;
+    margin: 16px 0 28px;
   }
   .lp-sage-anchor-glow {
     position: absolute; inset: -26px;
@@ -863,9 +954,21 @@ const STYLES = `
     cursor: pointer;
   }
   .lp-sage-anchor-body {
-    font-family: 'General Sans', sans-serif; font-size: 17px;
-    color: #6a4a5a; line-height: 1.75;
+    font-family: 'Fraunces', serif; font-size: 18px;
+    color: #3d1020; line-height: 1.7;
+    text-align: left; max-width: 480px;
+    display: flex; flex-direction: column; gap: 16px;
+    margin-bottom: 32px;
   }
+  .lp-sage-anchor-body p { margin: 0; }
+  .lp-sage-anchor-cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #c2185b; color: #ffffff;
+    font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 700;
+    padding: 13px 30px; border-radius: 12px; border: none; cursor: pointer;
+    transition: background 0.18s;
+  }
+  .lp-sage-anchor-cta:hover { background: #a8124e; }
 
   /* ─────────────────────────────────────────────────
      FEATURES GRID
@@ -884,7 +987,7 @@ const STYLES = `
 
 
   /* Flip cards */
-  .lp-flip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 900px; margin: 0 auto 40px; }
+  .lp-flip-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 640px; margin: 0 auto 40px; }
   .lp-flip-outer { perspective: 1200px; }
   .lp-flip-card { height: 200px; cursor: pointer; outline: none; }
   .lp-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
@@ -909,9 +1012,10 @@ const STYLES = `
   .lp-flip-back-text { font-family: 'Fraunces', serif; font-style: italic; font-size: 15.5px; color: #3d1020; line-height: 1.5; }
   .lp-flip-back-link { font-family: 'General Sans', sans-serif; font-size: 12.5px; font-weight: 700; color: #c2185b; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
 
-  .lp-feat-all-wrap { text-align: center; }
+  .lp-feat-all-wrap { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .lp-feat-all-link { display: inline-flex; align-items: center; gap: 6px; font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 600; color: #c2185b; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); padding-bottom: 2px; transition: border-color 0.18s; }
   .lp-feat-all-link:hover { border-color: #c2185b; }
+  .lp-feat-all-micro { font-family: 'General Sans', sans-serif; font-size: 13px; color: #b08090; font-style: italic; }
 
   /* ─────────────────────────────────────────────────
      FAQ
@@ -929,6 +1033,15 @@ const STYLES = `
   .lp-faq-more { font-family: 'General Sans', sans-serif; font-size: 14px; color: #8a5060; text-align: center; margin-top: 40px; }
   .lp-faq-link { color: #c2185b; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); transition: border-color 0.18s; }
   .lp-faq-link:hover { border-color: #c2185b; }
+
+  /* ─────────────────────────────────────────────────
+     FINAL CTA
+  ───────────────────────────────────────────────── */
+  .lp-final-cta { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 100%); padding: 72px 0 88px; text-align: center; }
+  .lp-final-cta-inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+  .lp-final-cta-h2 { margin-bottom: 16px; }
+  .lp-final-cta-sub { font-family: 'General Sans', sans-serif; font-size: 17px; color: #8a5060; line-height: 1.6; margin-bottom: 28px; }
+  .lp-final-cta-trust { font-family: 'General Sans', sans-serif; font-size: 13px; color: #b08090; margin-top: 16px; }
 
   /* ── Float keyframe ── */
   @keyframes lp-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }

@@ -1,50 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X, Send } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 
 const SEEN_KEY = 'phasr_sage_intro_seen'
-const ANSWERS_KEY = 'phasr_sage_answers'
+const OPEN_EVENT = 'phasr:open-sage'
 
-const STEPS = {
-  greeting: {
-    type: 'sage',
-    text: "Hey — welcome. I'm Sage, and I help women here actually follow through on what they want. Can I ask you something?",
-    next: 'q1',
-  },
-  q1: {
-    type: 'question',
-    key: 'goal',
-    prompt: "What's the one thing you want to change this year?",
-    options: ['Career', 'Health', 'Money', 'Relationships', 'Myself'],
-    next: 'q2',
-  },
-  q2: {
-    type: 'question',
-    key: 'attempt',
-    prompt: "Be honest — how's it gone when you've tried before?",
-    options: ['I lost momentum', 'Life got busy', 'I stopped seeing progress', 'I felt alone in it'],
-    next: 'q3',
-  },
-  q3: {
-    type: 'question',
-    key: 'feeling',
-    prompt: 'If it actually worked this time, how do you want to feel?',
-    options: ['In control', 'Proud', 'Consistent', 'Like I finally finished something'],
-    next: 'reveal',
-  },
-  reveal: {
-    type: 'sage',
-    text: "I think I get it. You don't lack the want — you lack a system that connects what you want to what you do every day. That's the whole reason PHASR exists.",
-    next: 'handoff',
-  },
-  handoff: {
-    type: 'sage',
-    text: 'Come build your first phase with me. Inside, I remember your goals, your journal, your progress — every conversation we have.',
-    next: 'cta',
-  },
-  cta: { type: 'cta' },
-}
+const GREETING = "Hi, I'm Sage. What's the one thing you want to change this year?"
+const STARTER_CHIPS = ['Career', 'Health', 'Money', 'Relationships', 'Myself']
 
 function getSeen() {
   try { return localStorage.getItem(SEEN_KEY) === '1' } catch { return false }
@@ -56,18 +18,15 @@ function markSeen() {
 export default function SageIntroBubble() {
   const [open, setOpen] = useState(false)
   const [started, setStarted] = useState(false)
-  const [stage, setStage] = useState('greeting')
   const [transcript, setTranscript] = useState([])
   const [typing, setTyping] = useState(false)
-  const [answers, setAnswers] = useState({})
   const [inputValue, setInputValue] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [streamText, setStreamText] = useState('')
   const [peekOpen, setPeekOpen] = useState(false)
   const reducedMotion = useReducedMotion()
-  const navigate = useNavigate()
   const scrollRef = useRef(null)
-  const advancedRef = useRef(null)
+  const greetedRef = useRef(false)
 
   useEffect(() => {
     if (getSeen()) return
@@ -87,40 +46,26 @@ export default function SageIntroBubble() {
     return () => clearTimeout(t)
   }, [])
 
-  // Deterministic scripted beats: greeting -> q1/q2/q3 -> reveal -> handoff -> cta.
-  // Each 'sage' beat auto-chains to the next after a warm typing pause; 'question'
-  // beats stop and wait for a chip click (or a free-text detour, which doesn't
-  // touch `stage` at all — see handleSend).
+  // Lets any button on the page ("Talk to Sage" in the Meet Sage section)
+  // open this same panel instead of duplicating the chat experience.
   useEffect(() => {
-    if (!started || !open) return
-    if (advancedRef.current === stage) return
-    const step = STEPS[stage]
-    if (!step) return
-    advancedRef.current = stage
+    const handler = () => { setOpen(true); setStarted(true) }
+    window.addEventListener(OPEN_EVENT, handler)
+    return () => window.removeEventListener(OPEN_EVENT, handler)
+  }, [])
 
-    if (step.type === 'sage') {
-      setTyping(true)
-      const t = setTimeout(() => {
-        setTyping(false)
-        setTranscript(prev => [...prev, { role: 'sage', text: step.text }])
-        setStage(step.next)
-      }, 600)
-      return () => clearTimeout(t)
-    }
-    if (step.type === 'question') {
-      setTyping(true)
-      const t = setTimeout(() => {
-        setTyping(false)
-        setTranscript(prev => [...prev, { role: 'sage', text: step.prompt }])
-      }, 600)
-      return () => clearTimeout(t)
-    }
-    if (step.type === 'cta') {
-      setTyping(true)
-      const t = setTimeout(() => setTyping(false), 400)
-      return () => clearTimeout(t)
-    }
-  }, [stage, started, open])
+  // A single warm opener, not a scripted tree — everything after this goes
+  // through the real Sage LLM (see handleSend), free text or chip alike.
+  useEffect(() => {
+    if (!started || !open || greetedRef.current) return
+    greetedRef.current = true
+    setTyping(true)
+    const t = setTimeout(() => {
+      setTyping(false)
+      setTranscript([{ role: 'sage', text: GREETING }])
+    }, 550)
+    return () => clearTimeout(t)
+  }, [started, open])
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -132,16 +77,8 @@ export default function SageIntroBubble() {
     if (!started) setStarted(true)
   }
 
-  function handleChip(step, value) {
-    setAnswers(prev => ({ ...prev, [step.key]: value }))
-    setTranscript(prev => [...prev, { role: 'user', text: value }])
-    setStage(step.next)
-  }
-
-  async function handleSend() {
-    const text = inputValue.trim()
+  async function sendMessage(text) {
     if (!text || streaming) return
-    setInputValue('')
     const nextTranscript = [...transcript, { role: 'user', text }]
     setTranscript(nextTranscript)
     setStreaming(true)
@@ -151,7 +88,7 @@ export default function SageIntroBubble() {
       const res = await fetch('/api/sage-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextTranscript.map(m => ({ role: m.role, content: m.text })) }),
+        body: JSON.stringify({ messages: nextTranscript.map(m => ({ role: m.role === 'sage' ? 'assistant' : 'user', content: m.text })) }),
       })
       if (!res.body) throw new Error('no stream')
       const reader = res.body.getReader()
@@ -163,24 +100,30 @@ export default function SageIntroBubble() {
         acc += decoder.decode(value, { stream: true })
         setStreamText(acc)
       }
-      setTranscript(prev => [...prev, { role: 'sage', text: acc || "I'm here — tell me a bit more?" }])
+      setTranscript(prev => [...prev, { role: 'sage', text: acc || "I'm here, tell me a bit more?" }])
     } catch {
-      setTranscript(prev => [...prev, { role: 'sage', text: 'Sage is having trouble connecting right now — try again in a moment.' }])
+      setTranscript(prev => [...prev, { role: 'sage', text: "I'm having trouble connecting right now. Try again in a moment?" }])
     } finally {
       setStreaming(false)
       setStreamText('')
     }
   }
 
-  function handleRoadmapClick() {
-    try { sessionStorage.setItem(ANSWERS_KEY, JSON.stringify(answers)) } catch {}
-    navigate('/signup', { state: { sageAnswers: answers } })
+  function handleChip(value) {
+    sendMessage(value)
   }
 
-  const currentStep = STEPS[stage]
-  const showChips = started && !typing && !streaming && currentStep?.type === 'question'
-  const showCta = started && !typing && stage === 'cta'
-  const showInput = started && stage !== 'cta'
+  function handleSend() {
+    const text = inputValue.trim()
+    if (!text) return
+    setInputValue('')
+    sendMessage(text)
+  }
+
+  // Chips are a starting nudge, not a cage — they only ever show once,
+  // right after the opener, and disappear the moment she says anything.
+  const showChips = started && !typing && transcript.length === 1 && transcript[0]?.role === 'sage'
+  const showCta = started && transcript.some(m => m.role === 'user')
 
   return (
     <div className="sage-bubble-root">
@@ -224,8 +167,8 @@ export default function SageIntroBubble() {
 
               {showChips && (
                 <div className="sage-options">
-                  {currentStep.options.map(opt => (
-                    <button key={opt} className="sage-option-btn" onClick={() => handleChip(currentStep, opt)}>
+                  {STARTER_CHIPS.map(opt => (
+                    <button key={opt} className="sage-option-btn" onClick={() => handleChip(opt)}>
                       {opt}
                     </button>
                   ))}
@@ -233,30 +176,28 @@ export default function SageIntroBubble() {
               )}
 
               {showCta && (
-                <button className="sage-cta-btn" onClick={handleRoadmapClick}>
-                  Build My Personal Roadmap
-                </button>
+                <a href="/login" className="sage-cta-link">
+                  Ready to start? Join the waitlist →
+                </a>
               )}
             </div>
 
-            {showInput && (
-              <form
-                className="sage-input-row"
-                onSubmit={e => { e.preventDefault(); handleSend() }}
-              >
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  placeholder={currentStep?.type === 'question' ? '...or type your own answer' : 'Ask Sage anything'}
-                  className="sage-text-input"
-                  disabled={streaming}
-                />
-                <button type="submit" className="sage-send-btn" disabled={streaming || !inputValue.trim()} aria-label="Send">
-                  <Send size={16} />
-                </button>
-              </form>
-            )}
+            <form
+              className="sage-input-row"
+              onSubmit={e => { e.preventDefault(); handleSend() }}
+            >
+              <input
+                type="text"
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                placeholder="Ask Sage anything"
+                className="sage-text-input"
+                disabled={streaming}
+              />
+              <button type="submit" className="sage-send-btn" disabled={streaming || !inputValue.trim()} aria-label="Send">
+                <Send size={16} />
+              </button>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>
@@ -286,7 +227,7 @@ export default function SageIntroBubble() {
                   }}
             >
               <div className="sage-peek" onClick={handleOpenToggle}>
-                <span className="sage-peek-text">hey — got a sec? 👋</span>
+                <span className="sage-peek-text">hey, got a sec? 👋</span>
                 <span className="sage-peek-typing">
                   <span className="sage-dot" /><span className="sage-dot" /><span className="sage-dot" />
                 </span>
@@ -449,14 +390,15 @@ const STYLES = `
   }
   .sage-option-btn:hover { border-color: #c2185b; background: rgba(194,24,91,0.06); transform: translateY(-1px); }
 
-  .sage-cta-btn {
-    align-self: stretch; width: 100%; padding: 13px; border-radius: 12px; border: none; cursor: pointer;
-    background: #c2185b; color: #ffffff; font-family: 'General Sans', sans-serif;
-    font-size: 14px; font-weight: 700;
-    box-shadow: 0 6px 20px rgba(194,24,91,0.3);
-    transition: background 0.18s, transform 0.12s;
+  .sage-cta-link {
+    align-self: flex-start;
+    font-family: 'General Sans', sans-serif; font-size: 13px; font-weight: 700;
+    color: #c2185b; text-decoration: none;
+    border-bottom: 1px solid rgba(194,24,91,0.3);
+    padding-bottom: 2px;
+    transition: border-color 0.18s;
   }
-  .sage-cta-btn:hover { background: #a8124e; transform: translateY(-1px); }
+  .sage-cta-link:hover { border-color: #c2185b; }
 
   .sage-input-row {
     display: flex; align-items: center; gap: 8px;

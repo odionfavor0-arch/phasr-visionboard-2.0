@@ -4,6 +4,7 @@ import MarketingFooter from './MarketingFooter'
 const STYLES = `
 .mkt-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: #ffffff;

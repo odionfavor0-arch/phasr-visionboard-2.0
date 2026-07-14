@@ -10,8 +10,13 @@
     <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
+    <!-- Hero phone video: preload the poster + video so the phone never renders
+         blank before the video pops in. -->
+    <link rel="preload" as="image" href="/images/hero-screen-poster.jpg" fetchpriority="high" />
+    <link rel="preload" as="video" href="/hero-screen.mp4" fetchpriority="high" />
+
     <title>PHASR — Monthly Goals & Accountability for Women</title>
-    <meta name="description" content="PHASR helps ambitious women set monthly goals, stay accountable, and connect with women chasing the same goal at the same pace. Birds of a feather, flying together." />
+    <meta name="description" content="Turn your yearly goals into phases, weekly priorities, and daily actions. Sage keeps you following through. For women done starting over. Join the waitlist." />
     <meta name="keywords" content="accountability app for women, monthly goals, women's community, manifestation accountability, goal setting app, follow through, self improvement women" />
     <link rel="canonical" href="https://myphasr.com" />
 
