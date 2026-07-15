@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, useInView, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
 import { Flame, LayoutGrid, ArrowRight, Layers, Volume2, VolumeX } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/marketing/MarketingLayout'
@@ -32,15 +32,69 @@ function FloatingCard({ className, delay = 0, floatDelay = 0, children }) {
   )
 }
 
+/* ─────────────── How It Works mock cards ─────────────── */
+function PhaseCard() {
+  return (
+    <div className="lp-mock-card">
+      <div className="lp-mock-label">JANUARY PHASE</div>
+      <div className="lp-mock-title">Land the role</div>
+      <div className="lp-mock-bar-track"><div className="lp-mock-bar" style={{ width: '72%' }} /></div>
+      <div className="lp-mock-meta">72% · 18 days in</div>
+      <div className="lp-mock-pills">
+        <span className="lp-mock-pill">Portfolio</span>
+        <span className="lp-mock-pill">Interviews</span>
+        <span className="lp-mock-pill">Networking</span>
+      </div>
+    </div>
+  )
+}
+
+function CheckinCard() {
+  return (
+    <div className="lp-mock-card">
+      <div className="lp-mock-label">TODAY'S CHECK-IN</div>
+      <div className="lp-mock-streak-row">
+        {[1,1,1,1,0,1,1].map((a,i) => (
+          <div key={i} className={`lp-mock-dot${a ? ' active' : ''}`} />
+        ))}
+      </div>
+      <div className="lp-mock-title" style={{ fontSize:15, display:'flex', alignItems:'center', gap:6 }}>
+        6-day streak <Flame size={14} color="#f06090" />
+      </div>
+      <div className="lp-mock-checkin-q">What did you move forward today?</div>
+      <div className="lp-mock-checkin-input">Applied to 2 jobs and updated LinkedIn...</div>
+    </div>
+  )
+}
+
+function WeeklyReflectCard() {
+  return (
+    <div className="lp-mock-card">
+      <div className="lp-mock-label">WEEKLY REFLECTION</div>
+      <div className="lp-mock-title">Your Sunday reset</div>
+      <div className="lp-mock-checkin-q">Sage's note:</div>
+      <div className="lp-mock-checkin-input">"You showed up 5 of 7 days — Tuesdays are still the hard one. Let's plan around that this week."</div>
+      <div className="lp-mock-pills">
+        <span className="lp-mock-pill">Wins</span>
+        <span className="lp-mock-pill">Adjust</span>
+        <span className="lp-mock-pill">Next week</span>
+      </div>
+    </div>
+  )
+}
+
 const HOW_STEPS = [
-  { num: '01', title: 'Set your phase', body: 'Pick the one goal that matters most this month.' },
-  { num: '02', title: 'Show up daily', body: 'Check in, track streaks, journal with Sage.' },
-  { num: '03', title: 'Build something real', body: 'Watch your vision board become your life.' },
+  { label:'Set your phase', headline:'Pick the goal that matters most right now.', body:"Sage turns it into phases, weekly non-negotiables, and today's first step, so there's always something to actually do.", Visual:PhaseCard },
+  { label:'Show up daily', headline:'One small thing a day.', body:'Miss a day, and Sage picks the plan back up with you the next time you open the app instead of wiping your streak.', Visual:CheckinCard },
+  { label:'See it working', headline:'Every Sunday Sage shows you what moved.', body:'At the end of the phase, you see the person you became.', Visual:WeeklyReflectCard },
 ]
 
-const SAGE_BULLETS = [
-  'She remembers your whole journey — goals, patterns, wins, setbacks',
-  'She keeps you honest, moving, and never lets you forget why you started',
+const SAGE_LETTER_INTRO = "Hi, my name is Sage. Nice to meet you."
+
+const SAGE_LETTER_BODY = [
+  "You already know what it's like to do this alone. To set the goal, lose the thread, and carry the disappointment quietly into next year. I'm the part that makes sure this year ends differently.",
+  "I stay. Through the good weeks and the ones where you go quiet. I'll never make you feel behind for living your life, and I'll never let you talk yourself out of something you actually want.",
+  "The first women in are the ones I grow with, and they lock in founding access before anyone else. You've spent years starting over. Come start something that finishes.",
 ]
 
 const FEATURES = [
@@ -138,6 +192,7 @@ function ToolFlipCard({ tool, index }) {
 
 /* ─────────────── Main page ─────────────── */
 export default function LandingPage({ onGetStarted }) {
+  const [activeStep, setActiveStep] = useState(0)
   const [faqOpen, setFaqOpen] = useState(null)
   const [heroPosterReady, setHeroPosterReady] = useState(false)
   const [sageVideoMuted, setSageVideoMuted] = useState(true)
@@ -345,22 +400,54 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 4. HOW IT WORKS ── */}
         <section id="how-it-works" className="lp-how" aria-labelledby="lp-how-h2">
           <div className="lp-container">
-            <motion.span className="lp-head-eyebrow" {...fade()}>HOW IT WORKS</motion.span>
-            <motion.h2 id="lp-how-h2" className="lp-head-title" {...fade(0.05)}>
-              you pick one goal. Sage builds the plan and you get to start achieving your goal immediately
+            <motion.span className="lp-eyebrow" {...fade()}>HOW IT WORKS</motion.span>
+            <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade(0.05)}>
+              How you <em>finish</em> this time.
             </motion.h2>
-            <motion.p className="lp-head-sub" {...fade(0.1)}>
-              Pick your focus. Show up daily. Build something real.
+            <motion.p className="lp-how-intro" {...fade(0.1)}>
+              You pick one goal. Sage builds the plan. You get one thing to do today.
             </motion.p>
 
-            <div className="lp-how-cols">
+            <div className="lp-how-tabs" role="tablist" aria-label="How PHASR works">
               {HOW_STEPS.map((s, i) => (
-                <motion.div key={i} className="lp-how-col" {...fade(0.15 + i * 0.08)}>
-                  <div className="lp-how-col-num">{s.num}</div>
-                  <div className="lp-how-col-title">{s.title}</div>
-                  <div className="lp-how-col-body">{s.body}</div>
-                </motion.div>
+                <button
+                  key={i}
+                  role="tab"
+                  aria-selected={activeStep === i}
+                  className={`lp-how-tab${activeStep === i ? ' active' : ''}`}
+                  onClick={() => setActiveStep(i)}
+                >
+                  <span className="lp-how-tab-num">Step {i + 1}</span>
+                  <span className="lp-how-tab-label">{s.label}</span>
+                </button>
               ))}
+            </div>
+
+            <div className="lp-how-stage">
+              <AnimatePresence mode="wait" initial={false}>
+                {HOW_STEPS.filter((_, i) => i === activeStep).map((s) => {
+                  const V = s.Visual
+                  return (
+                    <motion.div
+                      key={activeStep}
+                      className="lp-how-block"
+                      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
+                      transition={{ duration: 0.32, ease: 'easeOut' }}
+                    >
+                      <div className="lp-how-block-text">
+                        <h3 className="lp-how-headline">{s.headline}</h3>
+                        <p className="lp-how-body">{s.body}</p>
+                      </div>
+                      <div className="lp-how-block-visual">
+                        <div className="lp-how-visual-glow" aria-hidden="true" />
+                        <V />
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
             </div>
           </div>
         </section>
@@ -368,8 +455,10 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 6. MEET SAGE (the anchor) ── */}
         <section className="lp-sage-anchor" aria-labelledby="lp-sage-h2">
           <div className="lp-container">
-            <div className="lp-sage-top">
+            <motion.h2 id="lp-sage-h2" className="lp-sage-h2" {...fade()}>Meet Sage, <em>Your AI Coach</em></motion.h2>
+            <motion.p className="lp-sage-sub" {...fade(0.03)}>Always remembers. Always honest. Always moving with you.</motion.p>
 
+            <div className="lp-sage-top">
               <motion.div className="lp-sage-video-col" ref={sagePhotoRef} {...fade(0.05)}>
                 <div className="lp-sage-visual-frame">
                   <video
@@ -392,12 +481,10 @@ export default function LandingPage({ onGetStarted }) {
               </motion.div>
 
               <motion.div className="lp-sage-content-col" {...fade(0.1)}>
-                <span className="lp-head-eyebrow">MEET SAGE</span>
-                <h2 id="lp-sage-h2" className="lp-head-title">Sage, Your AI Coach</h2>
-
-                <ul className="lp-sage-bullets">
-                  {SAGE_BULLETS.map((b, i) => <li key={i}>{b}</li>)}
-                </ul>
+                <p className="lp-sage-letter-intro">{SAGE_LETTER_INTRO}</p>
+                {SAGE_LETTER_BODY.map((p, i) => (
+                  <p key={i} className="lp-sage-letter-body">{p}</p>
+                ))}
 
                 <button
                   type="button"
@@ -407,7 +494,6 @@ export default function LandingPage({ onGetStarted }) {
                   Talk to Sage
                 </button>
               </motion.div>
-
             </div>
           </div>
         </section>
@@ -534,24 +620,6 @@ const STYLES = `
     text-transform: uppercase; color: #f06090; margin-bottom: 16px;
   }
   .lp-eyebrow-pink { color: #f06090; }
-
-  /* Global section-header pattern: eyebrow / headline / one-line sub */
-  .lp-head-eyebrow {
-    display: block; font-family: 'Manrope', sans-serif;
-    font-size: 11px; font-weight: 700; letter-spacing: 0.25em;
-    text-transform: uppercase; color: #f06090; margin-bottom: 14px;
-  }
-  .lp-head-title {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(26px, 3.4vw, 40px);
-    font-weight: 700; color: #3d1020;
-    line-height: 1.25; letter-spacing: -0.01em; text-wrap: balance;
-  }
-  .lp-head-sub {
-    font-family: 'Manrope', sans-serif;
-    font-size: 16px; color: #71717a; line-height: 1.6;
-    max-width: 520px; margin-top: 12px;
-  }
 
   /* ── Buttons ── */
   .lp-btn-primary {
@@ -771,33 +839,88 @@ const STYLES = `
   /* ─────────────────────────────────────────────────
      HOW IT WORKS
   ───────────────────────────────────────────────── */
-  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0; }
-  .lp-how-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; margin-top: 44px; }
-  .lp-how-col-num { font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: #f06090; margin-bottom: 10px; }
-  .lp-how-col-title { font-family: 'Manrope', sans-serif; font-size: 18px; font-weight: 700; color: #3d1020; margin-bottom: 8px; }
-  .lp-how-col-body { font-family: 'Manrope', sans-serif; font-size: 14.5px; color: #71717a; line-height: 1.6; }
+  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 24px; }
+  .lp-how-h2 { margin-bottom: 12px; }
+  .lp-how-intro { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.6; max-width: 480px; margin-bottom: 32px; }
+  .lp-how-tabs { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; }
+  .lp-how-tab { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
+  .lp-how-tab:hover { border-color: rgba(194,24,91,0.4); }
+  .lp-how-tab.active { background: #c2185b; border-color: #c2185b; }
+  .lp-how-tab-num { font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: #c2185b; }
+  .lp-how-tab.active .lp-how-tab-num { color: rgba(255,255,255,0.8); }
+  .lp-how-tab-label { font-family: 'General Sans', sans-serif; font-size: 13.5px; font-weight: 600; color: #3d1020; }
+  .lp-how-tab.active .lp-how-tab-label { color: #fff; }
+  .lp-how-stage { position: relative; min-height: 340px; }
+  .lp-how-block {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+  }
+  .lp-how-headline { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: #3d1020; line-height: 1.25; margin-bottom: 14px; }
+  .lp-how-body { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; }
+  .lp-how-block-text { min-width: 0; }
+  .lp-how-block-visual { position: relative; min-width: 0; }
+  .lp-how-visual-glow { position: absolute; inset: -32px; border-radius: 50%; background: radial-gradient(circle, rgba(240,96,144,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0; }
+  .lp-how-block-visual > *:not(.lp-how-visual-glow) { position: relative; z-index: 1; }
+
+  /* Mock cards */
+  .lp-mock-card {
+    background: linear-gradient(150deg, rgba(255,225,235,0.50) 0%, rgba(240,96,144,0.16) 48%, rgba(194,24,91,0.22) 100%);
+    backdrop-filter: blur(18px) saturate(1.5); -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    border: 1px solid rgba(240,155,175,0.40); border-top-color: rgba(255,240,248,0.80);
+    border-radius: 18px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(194,24,91,0.16), 0 16px 40px rgba(194,24,91,0.08), inset 0 1.5px 0 rgba(255,255,255,0.90);
+  }
+  .lp-mock-label { font-family: 'General Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c2185b; margin-bottom: 8px; }
+  .lp-mock-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: #3d1020; margin-bottom: 12px; }
+  .lp-mock-bar-track { height: 4px; background: rgba(240,96,144,0.18); border-radius: 100px; overflow: hidden; margin-bottom: 6px; }
+  .lp-mock-bar { height: 100%; background: #f06090; border-radius: 100px; }
+  .lp-mock-meta { font-family: 'General Sans', sans-serif; font-size: 12px; color: #8a5060; margin-bottom: 12px; }
+  .lp-mock-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lp-mock-pill { background: rgba(255,240,244,0.8); color: #c2185b; font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; border: 1px solid rgba(194,24,91,0.15); }
+  .lp-mock-streak-row { display: flex; gap: 5px; margin-bottom: 8px; }
+  .lp-mock-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(240,96,144,0.18); }
+  .lp-mock-dot.active { background: #f06090; }
+  .lp-mock-checkin-q { font-family: 'General Sans', sans-serif; font-size: 13px; color: #8a5060; margin: 8px 0 6px; }
+  .lp-mock-checkin-input { font-family: 'General Sans', sans-serif; font-size: 13px; color: #3d1020; background: rgba(255,248,250,0.85); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(240,96,144,0.18); }
 
   /* ─────────────────────────────────────────────────
      MEET SAGE (the differentiator)
   ───────────────────────────────────────────────── */
-  .lp-sage-anchor { background: #ffffff; padding: 64px 0; }
-
-  /* Video + intro, side by side, one experience */
-  .lp-sage-top {
-    display: grid;
-    grid-template-columns: minmax(200px, 260px) 1fr;
-    gap: 48px;
-    align-items: center;
+  .lp-sage-anchor { background: #ffffff; padding: 24px 0 56px; }
+  .lp-sage-h2 {
+    font-family: 'Fraunces', serif; font-weight: 700; color: #c2185b;
+    font-size: clamp(26px, 3vw, 36px); line-height: 1.2; letter-spacing: -0.01em;
+    margin-bottom: 8px; text-align: center; text-wrap: balance;
   }
-  .lp-sage-video-col { min-width: 0; display: flex; }
-  .lp-sage-content-col { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .lp-sage-h2 em { font-style: italic; }
+  .lp-sage-sub {
+    font-family: 'General Sans', sans-serif; font-size: 15px; color: #8a5060;
+    text-align: center; margin-bottom: 36px;
+  }
+
+  /* Mobile-first: video centered on top, letter runs full width below it —
+     a 4-paragraph letter squeezed into a ~150px side column is unreadable
+     (2-3 words/line), so this section stacks below the two-column breakpoint.
+     At ≥700px there's room for a real side-by-side read: video left, letter right. */
+  .lp-sage-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+  .lp-sage-video-col { min-width: 0; display: flex; justify-content: center; }
+  .lp-sage-content-col { min-width: 0; max-width: 62ch; width: 100%; display: flex; flex-direction: column; gap: 16px; }
 
   .lp-sage-visual-frame {
     position: relative;
-    width: 100%; max-width: 260px; aspect-ratio: 496 / 864;
-    border-radius: 20px; overflow: hidden;
+    width: 100%; max-width: 200px; aspect-ratio: 496 / 864;
+    border-radius: 16px; overflow: hidden;
     background: #f7eef2;
     box-shadow: 0 12px 32px rgba(61,16,32,0.10);
+  }
+  @media (min-width: 700px) {
+    .lp-sage-top { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 48px; align-items: start; }
+    .lp-sage-video-col { justify-content: flex-start; }
+    .lp-sage-visual-frame { max-width: 260px; }
   }
   .lp-sage-visual-img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .lp-sage-sound-btn {
@@ -810,15 +933,14 @@ const STYLES = `
   }
   .lp-sage-sound-btn:hover { background: rgba(61,16,32,0.75); transform: scale(1.06); }
 
-  .lp-sage-bullets {
-    display: flex; flex-direction: column; gap: 10px;
-    margin: 4px 0 0; padding-left: 18px;
+  .lp-sage-letter-intro {
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+    font-size: 22px; color: #c2185b; line-height: 1.4; margin-bottom: 4px;
   }
-  .lp-sage-bullets li {
-    font-family: 'Manrope', sans-serif; font-size: 15px;
-    color: #71717a; line-height: 1.6;
+  .lp-sage-letter-body {
+    font-family: 'General Sans', sans-serif; font-size: 16px;
+    color: #3d1020; line-height: 1.75;
   }
-  .lp-sage-bullets li::marker { color: #f06090; }
 
   .lp-sage-anchor-cta {
     align-self: flex-start;
@@ -899,7 +1021,7 @@ const STYLES = `
   ───────────────────────────────────────────────── */
   .lp-final-cta {
     background: #f06090;
-    padding: 36px 0; text-align: center; position: relative; overflow: hidden;
+    padding: 24px 0; text-align: center; position: relative; overflow: hidden;
   }
   .lp-final-cta::before {
     content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -908,17 +1030,17 @@ const STYLES = `
       linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
     background-size: 48px 48px;
   }
-  .lp-final-cta-inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
-  .lp-final-cta-eyebrow { color: rgba(255,255,255,0.85); margin-bottom: 10px; }
-  .lp-final-cta-h2 { margin-bottom: 10px; color: #ffffff; font-size: clamp(24px, 3vw, 34px); }
+  .lp-final-cta-inner { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+  .lp-final-cta-eyebrow { color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+  .lp-final-cta-h2 { margin-bottom: 8px; color: #ffffff; font-size: clamp(20px, 2.4vw, 28px); text-wrap: pretty; }
   .lp-final-cta-h2 em { color: #ffffff; }
-  .lp-final-cta-sub { font-family: 'General Sans', sans-serif; font-size: 15.5px; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 18px; }
-  .lp-final-cta-trust { font-family: 'General Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 12px; }
+  .lp-final-cta-sub { font-family: 'General Sans', sans-serif; font-size: 14.5px; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 14px; }
+  .lp-final-cta-trust { font-family: 'General Sans', sans-serif; font-size: 11.5px; color: rgba(255,255,255,0.7); margin-top: 8px; }
   .lp-final-cta-btn {
     display: inline-flex; align-items: center; gap: 8px;
     background: #ffffff; color: #c2185b;
-    font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 700;
-    padding: 14px 32px; border-radius: 12px; border: none; cursor: pointer;
+    font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 700;
+    padding: 11px 28px; border-radius: 12px; border: none; cursor: pointer;
     transition: background 0.18s;
   }
   .lp-final-cta-btn:hover { background: #fff0f5; }
@@ -969,12 +1091,13 @@ const STYLES = `
     .lp-hero-sub { max-width: 100%; margin-bottom: 24px; }
     .lp-hero-btns { margin-bottom: 16px; gap: 10px; }
     .lp-btn-hero-primary, .lp-btn-hero-ghost { padding: 11px 22px; font-size: 13.5px; }
-    .lp-how-cols { grid-template-columns: 1fr; gap: 28px; }
-    .lp-sage-top { grid-template-columns: 1fr; gap: 24px; text-align: center; }
-    .lp-sage-content-col { align-items: center; }
-    .lp-sage-anchor-cta { align-self: center; }
-    .lp-sage-visual-frame { max-width: 220px; margin: 0 auto; }
-    .lp-sage-bullets { text-align: left; }
+    .lp-how-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; gap: 6px; }
+    .lp-how-tabs::-webkit-scrollbar { display: none; }
+    .lp-how-tab { flex-shrink: 0; padding: 7px 12px; }
+    .lp-how-tab-num { font-size: 9px; }
+    .lp-how-tab-label { font-size: 12px; }
+    .lp-how-stage { min-height: 0; }
+    .lp-how-block { grid-template-columns: 1fr; gap: 24px; }
     .lp-flip-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
     .lp-feat-showcase { margin-left: -32px; margin-right: -32px; margin-bottom: 32px; }
     .lp-feat-showcase-img { max-width: none; width: 100%; border-radius: 0; }
@@ -985,7 +1108,6 @@ const STYLES = `
   @media (max-width: 640px) {
     .lp-flip-grid { grid-template-columns: 1fr; }
     .lp-sage-anchor { padding: 48px 0; }
-    .lp-sage-anchor-cta { width: 100%; justify-content: center; }
     .lp-prob-img { max-height: 55vh; }
   }
 `
