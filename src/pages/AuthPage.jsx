@@ -182,7 +182,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '', initialM
   const authHighlights = [
     { icon: '◉', text: 'AI coaching that stays close to your goals and your phase.' },
     { icon: '◈', text: 'Structured planning across your year so progress never feels random.' },
-    { icon: '◎', text: 'Rooms where people can react, nudge, and keep each other accountable.' },
+    { icon: '◎', text: 'Weekly reflection and phase wrap, so you always see what moved.' },
   ]
 
   return (
@@ -212,7 +212,7 @@ export default function AuthPage({ onBack, onSuccess, configError = '', initialM
 
         <div className="auth-testimonial">
           <p className="auth-testimonial-quote">
-            "I hit every Q1 goal I set. The phased approach is what makes this different from anything else."
+            "I've quit on myself more times than I'd like to admit. This time, I didn't — every Q1 goal, actually done."
           </p>
           <div className="auth-testimonial-person">
             <img src="/images/avatars/avatar-3.jpg" alt="" className="auth-testimonial-avatar" />

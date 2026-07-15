@@ -297,7 +297,7 @@ export default function FeaturesPage() {
               <Link key={to} to={to} className="feat-hub-card">
                 <div className="feat-hub-icon-wrap">
                   {photo
-                    ? <img src="/images/sage.jpg" alt="" className="feat-hub-icon-photo" />
+                    ? <img src="/images/sage-avatar.png" alt="" className="feat-hub-icon-photo" />
                     : <Icon size={22} strokeWidth={1.8} />}
                 </div>
                 <p className="feat-hub-card-label">{label}</p>

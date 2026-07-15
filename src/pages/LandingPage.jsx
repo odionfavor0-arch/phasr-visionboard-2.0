@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
-import { Flame, LayoutGrid, ArrowRight, Layers } from 'lucide-react'
+import { Flame, LayoutGrid, ArrowRight, Layers, Volume2, VolumeX, Brain, MessageCircle, CalendarClock, TrendingUp } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/marketing/MarketingLayout'
 import SageIntroBubble from '../components/marketing/SageIntroBubble'
@@ -89,8 +89,16 @@ const HOW_STEPS = [
   { label:'See it working', headline:'Every Sunday Sage shows you what moved.', body:'At the end of the phase, you see the person you became.', Visual:WeeklyReflectCard },
 ]
 
+const SAGE_TRAITS = [
+  { Icon:Brain, title:'She remembers everything.', body:'Your goals, your journey, your patterns.' },
+  { Icon:CalendarClock, title:'She fits your life.', body:'Her plan bends around your week, then studies it in a weekly reflection.' },
+  { Icon:TrendingUp, title:'She keeps you moving.', body:'A daily nudge, always open for conversation.' },
+  { Icon:MessageCircle, title:'She tells you the truth.', body:'Kind, honest, always in your corner.' },
+]
+
 const FEATURES = [
   { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:"You've made these before and watched them collect dust. With PHASR, that vision becomes something you actually work from.", href:'/features/vision-boards' },
+  { Icon:Flame, name:'Daily Streak', front:'Show up daily', back:'Proof you followed through on the plan Sage and your board just built.', href:'/features/daily-streaks' },
   { Icon:Layers, name:'Weekly Phase', front:'Cut it down', back:'Your goal, cut into phases short enough to finish. One at a time, so you never face the whole mountain at once.', href:'/features/dashboard' },
 ]
 
@@ -191,7 +199,7 @@ function ToolFlipCard({ tool, index }) {
         >
           <div className="lp-flip-face lp-flip-front">
             {tool.photo
-              ? <img src="/images/sage.jpg" alt="" className="lp-flip-photo" />
+              ? <img src="/images/sage-avatar.png" alt="" className="lp-flip-photo" />
               : <div className="lp-flip-icon"><tool.Icon size={20} strokeWidth={1.8} /></div>}
             <div className="lp-flip-name">{tool.name}</div>
             <div className="lp-flip-front-sub">{tool.front}</div>
@@ -214,9 +222,31 @@ export default function LandingPage({ onGetStarted }) {
   const [activeStep, setActiveStep] = useState(0)
   const [faqOpen, setFaqOpen] = useState(null)
   const [heroPosterReady, setHeroPosterReady] = useState(false)
+  const [sageVideoMuted, setSageVideoMuted] = useState(true)
   const reducedMotion = useReducedMotion()
   const sagePhotoRef = useRef(null)
-  const sagePhotoInView = useInView(sagePhotoRef, { margin: '-80px' })
+  const sageVideoRef = useRef(null)
+  const sageVideoInView = useInView(sagePhotoRef, { amount: 0.6 })
+
+  function toggleSageVideoSound() {
+    const el = sageVideoRef.current
+    if (!el) return
+    const next = !sageVideoMuted
+    el.muted = next
+    if (!next) el.play().catch(() => {})
+    setSageVideoMuted(next)
+  }
+
+  // Sage talks when her video is actually on screen, and goes quiet the moment
+  // it scrolls away — no need to hunt for the mute button to hear her.
+  useEffect(() => {
+    const el = sageVideoRef.current
+    if (!el) return
+    el.muted = !sageVideoInView
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the video element's own muted state, not derived React data
+    setSageVideoMuted(!sageVideoInView)
+    if (sageVideoInView) el.play().catch(() => {})
+  }, [sageVideoInView])
 
   // Gate the hero phone's entrance on the poster frame actually being loaded —
   // without this the fade-in can start before the video/poster is ready, so the
@@ -392,7 +422,7 @@ export default function LandingPage({ onGetStarted }) {
               </motion.p>
             </div>
             <motion.div className="lp-prob-img-wrap" {...fade(0.15)}>
-              <img src="/images/girlboss.jpg" alt="Two women working together in a bright, editorial space" className="lp-prob-img" />
+              <img src="/images/girlboss-2.jpg" alt="Two women in a bright, editorial space with Phasr branded boxes" className="lp-prob-img" />
             </motion.div>
           </div>
         </section>
@@ -400,8 +430,7 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 4. HOW IT WORKS ── */}
         <section id="how-it-works" className="lp-how" aria-labelledby="lp-how-h2">
           <div className="lp-container">
-            <motion.span className="lp-eyebrow" {...fade()}>HOW IT WORKS</motion.span>
-            <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade(0.05)}>
+            <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade()}>
               How you <em>finish</em> this time.
             </motion.h2>
             <motion.p className="lp-how-intro" {...fade(0.08)}>
@@ -437,7 +466,6 @@ export default function LandingPage({ onGetStarted }) {
                       transition={{ duration: 0.32, ease: 'easeOut' }}
                     >
                       <div className="lp-how-block-text">
-                        <span className="lp-how-eyebrow">Step {activeStep + 1}</span>
                         <h3 className="lp-how-headline">{s.headline}</h3>
                         <p className="lp-how-body">{s.body}</p>
                       </div>
@@ -450,56 +478,58 @@ export default function LandingPage({ onGetStarted }) {
                 })}
               </AnimatePresence>
             </div>
-
-            <motion.div className="lp-how-cta-wrap" {...fade(0.15)}>
-              <button
-                type="button"
-                className="lp-how-cta"
-                onClick={() => document.getElementById('vision-board')?.scrollIntoView({ behavior:'smooth' })}
-              >
-                See what's inside <ArrowRight size={14} />
-              </button>
-            </motion.div>
           </div>
         </section>
 
         {/* ── 6. MEET SAGE (the anchor) ── */}
         <section className="lp-sage-anchor" aria-labelledby="lp-sage-h2">
-          <div className="lp-container lp-sage-anchor-inner">
-            <motion.span id="lp-sage-h2" className="lp-eyebrow" {...fade()}>MEET SAGE</motion.span>
-            <motion.div className="lp-sage-anchor-photo-wrap" ref={sagePhotoRef} {...fade(0.05)}>
-              <motion.div
-                className="lp-sage-anchor-glow" aria-hidden="true"
-                animate={reducedMotion ? {} : { scale: [1, 1.08, 1], opacity: [0.75, 1, 0.75] }}
-                transition={{ duration: 4.5, ease: 'easeInOut', repeat: Infinity }}
-              />
-              <div className="lp-sage-anchor-photo-frame">
-                <motion.img
-                  src="/images/sage.jpg" alt="Sage" className="lp-sage-anchor-photo"
-                  animate={reducedMotion ? {} : sagePhotoInView
-                    ? { scale: [1, 1.07, 1, 1.04, 1] }
-                    : {}}
-                  transition={{ duration: 7, ease: 'easeInOut', repeat: Infinity }}
-                  whileHover={reducedMotion ? {} : { scale: 1.12, transition: { duration: 0.5, ease: 'easeInOut' } }}
-                  whileTap={reducedMotion ? {} : { scale: 1.06, transition: { duration: 0.5, ease: 'easeInOut' } }}
-                />
-              </div>
-            </motion.div>
-            <motion.div className="lp-sage-anchor-body" {...fade(0.15)}>
-              <p>Hi. I'm Sage.</p>
-              <p>I keep the whole picture so you don't have to. Your goals, your journal, the week it all fell apart, the excuse you've made three times now. You never start from scratch with me, and you never repeat yourself.</p>
-              <p>I'll tell you the truth even when it's uncomfortable. When the reason you give me doesn't match what you've actually been doing, I'll say so, kindly, in your own words. That's the point of me.</p>
-              <p>I want you trusting yourself more, not leaning on me forever.</p>
-              <p>You're not behind. You've been starting over. Let's stop.</p>
-            </motion.div>
-            <motion.button
-              type="button"
-              className="lp-sage-anchor-cta"
-              {...fade(0.22)}
-              onClick={() => window.dispatchEvent(new CustomEvent('phasr:open-sage'))}
-            >
-              Talk to Sage
-            </motion.button>
+          <div className="lp-container">
+            <div className="lp-sage-top">
+
+              <motion.div className="lp-sage-video-col" ref={sagePhotoRef} {...fade(0.05)}>
+                <div className="lp-sage-visual-frame">
+                  <video
+                    ref={sageVideoRef}
+                    src="/sage-intro.mp4"
+                    className="lp-sage-visual-img"
+                    autoPlay muted loop playsInline preload="auto"
+                    aria-label="Sage introducing herself"
+                    onPause={(e) => { if (!e.target.ended) e.target.play().catch(() => {}) }}
+                  />
+                  <button
+                    type="button"
+                    className="lp-sage-sound-btn"
+                    onClick={toggleSageVideoSound}
+                    aria-label={sageVideoMuted ? 'Turn on Sage’s voice' : 'Mute Sage’s voice'}
+                  >
+                    {sageVideoMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                  </button>
+                </div>
+              </motion.div>
+
+              <motion.div className="lp-sage-content-col" {...fade(0.1)}>
+                <h2 id="lp-sage-h2" className="lp-sage-h2">Meet Sage, <em>Your AI Coach</em></h2>
+
+                <div className="lp-sage-traits">
+                  {SAGE_TRAITS.map((t, i) => (
+                    <div key={i} className="lp-sage-trait">
+                      <div className="lp-sage-trait-icon"><t.Icon size={18} strokeWidth={1.8} /></div>
+                      <div className="lp-sage-trait-title">{t.title}</div>
+                      <div className="lp-sage-trait-body">{t.body}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="lp-sage-anchor-cta"
+                  onClick={() => window.dispatchEvent(new CustomEvent('phasr:open-sage'))}
+                >
+                  Talk to Sage
+                </button>
+              </motion.div>
+
+            </div>
           </div>
         </section>
 
@@ -565,15 +595,15 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 9. FINAL CTA ── */}
         <section className="lp-final-cta" aria-labelledby="lp-final-h2">
           <div className="lp-container lp-final-cta-inner">
-            <motion.span className="lp-eyebrow" {...fade()}>YOUR NEXT CHAPTER</motion.span>
+            <motion.span className="lp-eyebrow lp-final-cta-eyebrow" {...fade()}>YOUR NEXT CHAPTER</motion.span>
             <motion.h2 id="lp-final-h2" className="lp-section-display lp-final-cta-h2" {...fade(0.05)}>
               Are you ready to start <em>working on your dreams?</em>
             </motion.h2>
             <motion.p className="lp-final-cta-sub" {...fade(0.1)}>
               Join the women who make sure every action counts.
             </motion.p>
-            <motion.button className="lp-btn-hero-primary" onClick={onGetStarted} {...fade(0.15)}
-              whileHover={{ scale:1.03, boxShadow:'0 8px 28px rgba(194,24,91,0.25)' }} whileTap={{ scale:0.97 }}>
+            <motion.button className="lp-final-cta-btn" onClick={onGetStarted} {...fade(0.15)}
+              whileHover={{ scale:1.03, boxShadow:'0 8px 28px rgba(0,0,0,0.18)' }} whileTap={{ scale:0.97 }}>
               Join the waitlist
             </motion.button>
             <motion.p className="lp-final-cta-trust" {...fade(0.2)}>
@@ -858,10 +888,10 @@ const STYLES = `
   .lp-how-h2 { margin-bottom: 12px; }
   .lp-how-intro { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.6; max-width: 480px; margin-bottom: 32px; }
   .lp-how-tabs { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; }
-  .lp-how-tab { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 16px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
+  .lp-how-tab { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
   .lp-how-tab:hover { border-color: rgba(194,24,91,0.4); }
   .lp-how-tab.active { background: #c2185b; border-color: #c2185b; }
-  .lp-how-tab-num { font-family: 'General Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #8a5060; }
+  .lp-how-tab-num { font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: #c2185b; }
   .lp-how-tab.active .lp-how-tab-num { color: rgba(255,255,255,0.8); }
   .lp-how-tab-label { font-family: 'General Sans', sans-serif; font-size: 13.5px; font-weight: 600; color: #3d1020; }
   .lp-how-tab.active .lp-how-tab-label { color: #fff; }
@@ -869,23 +899,12 @@ const STYLES = `
   .lp-how-block {
     display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
   }
-  .lp-how-eyebrow { font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; display: block; margin-bottom: 12px; }
   .lp-how-headline { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: #3d1020; line-height: 1.25; margin-bottom: 14px; }
   .lp-how-body { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; }
   .lp-how-block-text { min-width: 0; }
   .lp-how-block-visual { position: relative; min-width: 0; }
   .lp-how-visual-glow { position: absolute; inset: -32px; border-radius: 50%; background: radial-gradient(circle, rgba(240,96,144,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0; }
   .lp-how-block-visual > *:not(.lp-how-visual-glow) { position: relative; z-index: 1; }
-  .lp-how-cta-wrap { text-align: center; margin-top: 40px; }
-  .lp-how-cta {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: transparent; color: #c2185b;
-    font-family: 'General Sans', sans-serif; font-size: 14.5px; font-weight: 700;
-    padding: 12px 26px; border-radius: 100px;
-    border: 1.5px solid rgba(194,24,91,0.3); cursor: pointer;
-    transition: border-color 0.18s, background 0.18s;
-  }
-  .lp-how-cta:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
 
   /* Mock cards */
   .lp-mock-card {
@@ -916,52 +935,60 @@ const STYLES = `
   .lp-mock-post-text { font-family: 'General Sans', sans-serif; font-size: 13px; color: #3d1020; line-height: 1.5; }
 
   /* ─────────────────────────────────────────────────
-     MEET SAGE (anchor)
+     MEET SAGE (the differentiator)
   ───────────────────────────────────────────────── */
-  .lp-sage-anchor {
-    background: #ffffff;
-    padding: 40px 0 64px;
-    text-align: center;
+  .lp-sage-anchor { background: #ffffff; padding: 64px 0; }
+
+  /* Video + intro, side by side, one experience */
+  .lp-sage-top {
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) 1fr;
+    gap: 48px;
+    align-items: center;
   }
-  .lp-sage-anchor-inner {
-    max-width: 640px; margin: 0 auto;
-    display: flex; flex-direction: column; align-items: center;
-  }
-  .lp-sage-anchor-photo-wrap {
+  .lp-sage-video-col { min-width: 0; display: flex; }
+  .lp-sage-content-col { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+
+  .lp-sage-visual-frame {
     position: relative;
-    width: 128px; height: 128px;
-    margin: 16px 0 28px;
+    width: 100%; max-width: 260px; aspect-ratio: 496 / 864;
+    border-radius: 20px; overflow: hidden;
+    background: #f7eef2;
+    box-shadow: 0 12px 32px rgba(61,16,32,0.10);
   }
-  .lp-sage-anchor-glow {
-    position: absolute; inset: -26px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(183,164,217,0.45) 0%, rgba(183,164,217,0.18) 45%, transparent 72%);
-    filter: blur(20px);
-    z-index: 0;
+  .lp-sage-visual-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lp-sage-sound-btn {
+    position: absolute; bottom: 12px; right: 12px; z-index: 2;
+    width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+    background: rgba(61,16,32,0.55); color: #fff;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.18s, transform 0.15s;
   }
-  .lp-sage-anchor-photo-frame {
-    position: relative; z-index: 1;
-    width: 100%; height: 100%;
-    border-radius: 50%; overflow: hidden;
-    box-shadow:
-      0 24px 64px rgba(183,164,217,0.4),
-      0 0 0 6px rgba(255,255,255,0.95),
-      0 0 0 9px rgba(183,164,217,0.28);
+  .lp-sage-sound-btn:hover { background: rgba(61,16,32,0.75); transform: scale(1.06); }
+
+  .lp-sage-h2 {
+    font-family: 'Fraunces', serif; font-weight: 700; color: #c2185b;
+    font-size: clamp(26px, 3vw, 36px); line-height: 1.2; letter-spacing: -0.01em;
+    margin: 0; text-wrap: balance;
   }
-  .lp-sage-anchor-photo {
-    width: 100%; height: 100%;
-    object-fit: cover; display: block;
-    cursor: pointer;
+  .lp-sage-h2 em { font-style: italic; }
+
+  .lp-sage-traits { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
+  .lp-sage-trait {
+    background: rgba(194,24,91,0.05);
+    border-radius: 16px; padding: 16px;
   }
-  .lp-sage-anchor-body {
-    font-family: 'Fraunces', serif; font-size: 18px;
-    color: #3d1020; line-height: 1.7;
-    text-align: left; max-width: 480px;
-    display: flex; flex-direction: column; gap: 16px;
-    margin-bottom: 32px;
+  .lp-sage-trait-icon {
+    width: 32px; height: 32px; border-radius: 10px; margin-bottom: 10px;
+    background: rgba(194,24,91,0.12); color: #c2185b;
+    display: flex; align-items: center; justify-content: center;
   }
-  .lp-sage-anchor-body p { margin: 0; }
+  .lp-sage-trait-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 14.5px; color: #3d1020; margin-bottom: 4px; line-height: 1.35; }
+  .lp-sage-trait-body { font-family: 'General Sans', sans-serif; font-size: 12.5px; color: #8a5060; line-height: 1.5; }
+
   .lp-sage-anchor-cta {
+    align-self: flex-start;
     display: inline-flex; align-items: center; gap: 8px;
     background: #c2185b; color: #ffffff;
     font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 700;
@@ -987,7 +1014,7 @@ const STYLES = `
 
 
   /* Flip cards */
-  .lp-flip-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 640px; margin: 0 auto 40px; }
+  .lp-flip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 900px; margin: 0 auto 40px; }
   .lp-flip-outer { perspective: 1200px; }
   .lp-flip-card { height: 200px; cursor: pointer; outline: none; }
   .lp-flip-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
@@ -1037,11 +1064,31 @@ const STYLES = `
   /* ─────────────────────────────────────────────────
      FINAL CTA
   ───────────────────────────────────────────────── */
-  .lp-final-cta { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 100%); padding: 72px 0 88px; text-align: center; }
-  .lp-final-cta-inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
-  .lp-final-cta-h2 { margin-bottom: 16px; }
-  .lp-final-cta-sub { font-family: 'General Sans', sans-serif; font-size: 17px; color: #8a5060; line-height: 1.6; margin-bottom: 28px; }
-  .lp-final-cta-trust { font-family: 'General Sans', sans-serif; font-size: 13px; color: #b08090; margin-top: 16px; }
+  .lp-final-cta {
+    background: #f06090;
+    padding: 36px 0; text-align: center; position: relative; overflow: hidden;
+  }
+  .lp-final-cta::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .lp-final-cta-inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+  .lp-final-cta-eyebrow { color: rgba(255,255,255,0.85); margin-bottom: 10px; }
+  .lp-final-cta-h2 { margin-bottom: 10px; color: #ffffff; font-size: clamp(24px, 3vw, 34px); }
+  .lp-final-cta-h2 em { color: #ffffff; }
+  .lp-final-cta-sub { font-family: 'General Sans', sans-serif; font-size: 15.5px; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 18px; }
+  .lp-final-cta-trust { font-family: 'General Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 12px; }
+  .lp-final-cta-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #ffffff; color: #c2185b;
+    font-family: 'General Sans', sans-serif; font-size: 15px; font-weight: 700;
+    padding: 14px 32px; border-radius: 12px; border: none; cursor: pointer;
+    transition: background 0.18s;
+  }
+  .lp-final-cta-btn:hover { background: #fff0f5; }
 
   /* ── Float keyframe ── */
   @keyframes lp-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
@@ -1096,7 +1143,12 @@ const STYLES = `
     .lp-how-tab-label { font-size: 12px; }
     .lp-how-stage { min-height: 0; }
     .lp-how-block { grid-template-columns: 1fr; gap: 24px; }
-    .lp-how-block-visual { order: -1; }
+    .lp-sage-top { grid-template-columns: 1fr; gap: 24px; text-align: center; }
+    .lp-sage-content-col { align-items: center; }
+    .lp-sage-anchor-cta { align-self: center; }
+    .lp-sage-visual-frame { max-width: 220px; margin: 0 auto; }
+    .lp-sage-traits { grid-template-columns: 1fr; }
+    .lp-sage-trait { text-align: left; }
     .lp-flip-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
     .lp-feat-showcase { margin-left: -32px; margin-right: -32px; margin-bottom: 32px; }
     .lp-feat-showcase-img { max-width: none; width: 100%; border-radius: 0; }
@@ -1107,8 +1159,8 @@ const STYLES = `
   }
   @media (max-width: 640px) {
     .lp-flip-grid { grid-template-columns: 1fr; }
-    .lp-sage-anchor { padding: 32px 0 56px; }
-    .lp-sage-anchor-photo-wrap { width: 128px; height: 128px; }
+    .lp-sage-anchor { padding: 48px 0; }
+    .lp-sage-anchor-cta { width: 100%; justify-content: center; }
     .lp-prob-img { max-height: 55vh; }
   }
 `

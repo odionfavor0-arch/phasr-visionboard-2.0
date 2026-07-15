@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion, useAnimation } from 'framer-motion'
 import { X, Send } from 'lucide-react'
 
 const SEEN_KEY = 'phasr_sage_intro_seen'
@@ -27,6 +27,15 @@ export default function SageIntroBubble() {
   const reducedMotion = useReducedMotion()
   const scrollRef = useRef(null)
   const greetedRef = useRef(false)
+  const waveControls = useAnimation()
+
+  function playWave() {
+    if (reducedMotion) return
+    waveControls.start({
+      rotate: [0, -14, 12, -10, 8, 0],
+      transition: { duration: 0.9, ease: 'easeInOut' },
+    })
+  }
 
   useEffect(() => {
     if (getSeen()) return
@@ -45,6 +54,13 @@ export default function SageIntroBubble() {
     const t = setTimeout(() => setPeekOpen(true), 5000)
     return () => clearTimeout(t)
   }, [])
+
+  // Wave hello the moment the peek bubble shows up, so the avatar feels alive
+  // even before anyone clicks.
+  useEffect(() => {
+    if (peekOpen) playWave()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peekOpen])
 
   // Lets any button on the page ("Talk to Sage" in the Meet Sage section)
   // open this same panel instead of duplicating the chat experience.
@@ -75,6 +91,7 @@ export default function SageIntroBubble() {
     if (open) { setOpen(false); return }
     setOpen(true)
     if (!started) setStarted(true)
+    playWave()
   }
 
   async function sendMessage(text) {
@@ -139,7 +156,19 @@ export default function SageIntroBubble() {
             transition={{ duration: 0.35, ease: 'easeOut' }}
           >
             <div className="sage-panel-header">
-              <img src="/images/sage.jpg" alt="Sage" className="sage-orb-sm" />
+              <div className="sage-orb-wrap">
+                <span className={`sage-orb-glow${typing || streaming ? ' talking' : ''}`} aria-hidden="true" />
+                <motion.img
+                  src="/images/sage-avatar.png"
+                  alt="Sage"
+                  className="sage-orb-sm"
+                  style={{ transformOrigin: '70% 70%' }}
+                  initial={{ rotate: 0 }}
+                  animate={reducedMotion ? { rotate: 0 } : { rotate: [0, -14, 12, -10, 8, 0] }}
+                  transition={{ duration: 0.9, ease: 'easeInOut', delay: 0.15 }}
+                />
+                <span className="sage-status-dot" aria-hidden="true" />
+              </div>
               <span className="sage-panel-title">Sage</span>
               <button className="sage-close-btn" onClick={() => setOpen(false)} aria-label="Close Sage">
                 <X size={16} />
@@ -248,7 +277,14 @@ export default function SageIntroBubble() {
 
         <button className="sage-fab" onClick={handleOpenToggle} tabIndex={open ? -1 : 0} aria-label={open ? 'Close Sage' : 'Chat with Sage'}>
           <span className="sage-fab-glow" aria-hidden="true" />
-          <img src="/images/sage.jpg" alt="" className="sage-fab-img" />
+          <motion.img
+            src="/images/sage-avatar.png"
+            alt=""
+            className="sage-fab-img"
+            style={{ transformOrigin: '70% 70%' }}
+            animate={waveControls}
+          />
+          <span className="sage-status-dot sage-status-dot-fab" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -317,6 +353,31 @@ const STYLES = `
   }
   @keyframes sage-pulse { 0%,100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.12); } }
 
+  .sage-status-dot {
+    position: absolute; width: 9px; height: 9px; border-radius: 50%;
+    background: #34d399; border: 1.5px solid #fff;
+    bottom: -1px; right: -1px; z-index: 2;
+    animation: sage-status-ping 2.4s ease-in-out infinite;
+  }
+  .sage-status-dot-fab { width: 13px; height: 13px; border-width: 2px; bottom: 1px; right: 1px; }
+  @keyframes sage-status-ping {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0.55); }
+    50% { box-shadow: 0 0 0 4px rgba(52,211,153,0); }
+  }
+
+  .sage-orb-wrap { position: relative; width: 32px; height: 32px; flex-shrink: 0; }
+  .sage-orb-glow {
+    position: absolute; inset: -6px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(183,164,217,0.45) 0%, transparent 70%);
+    animation: sage-pulse 3.4s ease-in-out infinite;
+    pointer-events: none;
+    transition: background 0.3s;
+  }
+  .sage-orb-glow.talking {
+    animation-duration: 0.9s;
+    background: radial-gradient(circle, rgba(194,24,91,0.55) 0%, transparent 70%);
+  }
+
   .sage-panel {
     width: 380px; max-width: calc(100vw - 32px);
     max-height: 560px;
@@ -340,7 +401,7 @@ const STYLES = `
   }
   .sage-orb-sm {
     width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-    object-fit: cover;
+    object-fit: cover; position: relative; z-index: 1;
     box-shadow: 0 4px 12px rgba(183,164,217,0.4);
   }
   .sage-panel-title {
