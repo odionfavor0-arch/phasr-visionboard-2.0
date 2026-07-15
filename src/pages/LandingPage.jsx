@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion'
-import { Flame, LayoutGrid, ArrowRight, Layers, Volume2, VolumeX, Brain, MessageCircle, CalendarClock, TrendingUp } from 'lucide-react'
+import { motion, useInView, useReducedMotion } from 'framer-motion'
+import { Flame, LayoutGrid, ArrowRight, Layers, Volume2, VolumeX } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import MarketingLayout from '../components/marketing/MarketingLayout'
 import SageIntroBubble from '../components/marketing/SageIntroBubble'
@@ -32,68 +32,15 @@ function FloatingCard({ className, delay = 0, floatDelay = 0, children }) {
   )
 }
 
-/* ─────────────── How It Works mock cards ─────────────── */
-function PhaseCard() {
-  return (
-    <div className="lp-mock-card">
-      <div className="lp-mock-label">JANUARY PHASE</div>
-      <div className="lp-mock-title">Land the role</div>
-      <div className="lp-mock-bar-track"><div className="lp-mock-bar" style={{ width: '72%' }} /></div>
-      <div className="lp-mock-meta">72% · 18 days in</div>
-      <div className="lp-mock-pills">
-        <span className="lp-mock-pill">Portfolio</span>
-        <span className="lp-mock-pill">Interviews</span>
-        <span className="lp-mock-pill">Networking</span>
-      </div>
-    </div>
-  )
-}
-
-function CheckinCard() {
-  return (
-    <div className="lp-mock-card">
-      <div className="lp-mock-label">TODAY'S CHECK-IN</div>
-      <div className="lp-mock-streak-row">
-        {[1,1,1,1,0,1,1].map((a,i) => (
-          <div key={i} className={`lp-mock-dot${a ? ' active' : ''}`} />
-        ))}
-      </div>
-      <div className="lp-mock-title" style={{ fontSize:15, display:'flex', alignItems:'center', gap:6 }}>
-        6-day streak <Flame size={14} color="#f06090" />
-      </div>
-      <div className="lp-mock-checkin-q">What did you move forward today?</div>
-      <div className="lp-mock-checkin-input">Applied to 2 jobs and updated LinkedIn...</div>
-    </div>
-  )
-}
-
-function WeeklyReflectCard() {
-  return (
-    <div className="lp-mock-card">
-      <div className="lp-mock-label">WEEKLY REFLECTION</div>
-      <div className="lp-mock-title">Your Sunday reset</div>
-      <div className="lp-mock-checkin-q">Sage's note:</div>
-      <div className="lp-mock-checkin-input">"You showed up 5 of 7 days — Tuesdays are still the hard one. Let's plan around that this week."</div>
-      <div className="lp-mock-pills">
-        <span className="lp-mock-pill">Wins</span>
-        <span className="lp-mock-pill">Adjust</span>
-        <span className="lp-mock-pill">Next week</span>
-      </div>
-    </div>
-  )
-}
-
 const HOW_STEPS = [
-  { label:'Set your phase', headline:'Pick the goal that matters most right now.', body:"Sage turns it into phases, weekly non-negotiables, and today's first step, so there's always something to actually do.", Visual:PhaseCard },
-  { label:'Show up daily', headline:'One small thing a day.', body:'Miss a day, and Sage picks the plan back up with you the next time you open the app instead of wiping your streak.', Visual:CheckinCard },
-  { label:'See it working', headline:'Every Sunday Sage shows you what moved.', body:'At the end of the phase, you see the person you became.', Visual:WeeklyReflectCard },
+  { num: '01', title: 'Set your phase', body: 'Pick the one goal that matters most this month.' },
+  { num: '02', title: 'Show up daily', body: 'Check in, track streaks, journal with Sage.' },
+  { num: '03', title: 'Build something real', body: 'Watch your vision board become your life.' },
 ]
 
-const SAGE_TRAITS = [
-  { Icon:Brain, title:'She remembers everything.', body:'Your goals, your journey, your patterns.' },
-  { Icon:CalendarClock, title:'She fits your life.', body:'Her plan bends around your week, then studies it in a weekly reflection.' },
-  { Icon:TrendingUp, title:'She keeps you moving.', body:'A daily nudge, always open for conversation.' },
-  { Icon:MessageCircle, title:'She tells you the truth.', body:'Kind, honest, always in your corner.' },
+const SAGE_BULLETS = [
+  'She remembers your whole journey — goals, patterns, wins, setbacks',
+  'She keeps you honest, moving, and never lets you forget why you started',
 ]
 
 const FEATURES = [
@@ -111,15 +58,8 @@ const FAQ_ITEMS = [
 ]
 
 const PAIN_POINTS = [
-  "You know exactly who you want to become. You've just never known what to actually do on a Tuesday.",
-  'You start strong. Then work gets heavy, life gets loud, the plan slips, and getting back in feels like starting the whole thing from zero.',
-  "You can't see it working, so you stop believing it is. The effort goes invisible, and invisible effort is the kind you quit.",
-]
-
-const TRIED_ITEMS = [
-  'Vision boards','Daily affirmations','Meditation apps','Habit trackers',
-  'Manifestation rituals','Journaling apps','Goal planners','Morning routines',
-  'Pinterest boards','Self-help books','75 Hard','Accountability buddies',
+  "You've tried everything — the journals, the apps, the challenges. Nothing stuck.",
+  'The problem was never motivation. It was never having a real system behind the intention.',
 ]
 
 /* ─────────────── Marketing Ticker ─────────────── */
@@ -151,27 +91,6 @@ function StatsTicker() {
             </span>
           )
         )}
-      </motion.div>
-    </div>
-  )
-}
-
-/* ─────────────── Tried-It-All Ticker ─────────────── */
-function ProblemTicker() {
-  const ref = useRef(null)
-  const inView = useInView(ref, { margin: '0px' })
-  const reduced = useReducedMotion()
-  const doubled = [...TRIED_ITEMS, ...TRIED_ITEMS]
-  return (
-    <div className="lp-pticker" ref={ref} aria-hidden="true">
-      <motion.div
-        className="lp-pticker-track"
-        animate={reduced ? {} : inView ? { x: ['0%', '-50%'] } : false}
-        transition={{ duration: 35, repeat: Infinity, ease: 'linear' }}
-      >
-        {doubled.map((item, i) => (
-          <span key={i} className="lp-pticker-pill">{item}</span>
-        ))}
       </motion.div>
     </div>
   )
@@ -219,7 +138,6 @@ function ToolFlipCard({ tool, index }) {
 
 /* ─────────────── Main page ─────────────── */
 export default function LandingPage({ onGetStarted }) {
-  const [activeStep, setActiveStep] = useState(0)
   const [faqOpen, setFaqOpen] = useState(null)
   const [heroPosterReady, setHeroPosterReady] = useState(false)
   const [sageVideoMuted, setSageVideoMuted] = useState(true)
@@ -413,9 +331,6 @@ export default function LandingPage({ onGetStarted }) {
                   </motion.p>
                 ))}
               </div>
-              <div className="lp-prob-ticker-wrap">
-                <ProblemTicker />
-              </div>
               <motion.p className="lp-prob-pivot" {...fade(0.1)}>
                 Vision was never your problem.<br />
                 Not having <em>clear action steps</em> was.
@@ -430,53 +345,22 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 4. HOW IT WORKS ── */}
         <section id="how-it-works" className="lp-how" aria-labelledby="lp-how-h2">
           <div className="lp-container">
-            <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade()}>
-              How you <em>finish</em> this time.
+            <motion.span className="lp-head-eyebrow" {...fade()}>HOW IT WORKS</motion.span>
+            <motion.h2 id="lp-how-h2" className="lp-head-title" {...fade(0.05)}>
+              you pick one goal. Sage builds the plan and you get to start achieving your goal immediately
             </motion.h2>
-            <motion.p className="lp-how-intro" {...fade(0.08)}>
-              You pick one goal. Sage builds the plan. You get one thing to do today.
+            <motion.p className="lp-head-sub" {...fade(0.1)}>
+              Pick your focus. Show up daily. Build something real.
             </motion.p>
 
-            <div className="lp-how-tabs" role="tablist" aria-label="How PHASR works">
+            <div className="lp-how-cols">
               {HOW_STEPS.map((s, i) => (
-                <button
-                  key={i}
-                  role="tab"
-                  aria-selected={activeStep === i}
-                  className={`lp-how-tab${activeStep === i ? ' active' : ''}`}
-                  onClick={() => setActiveStep(i)}
-                >
-                  <span className="lp-how-tab-num">Step {i + 1}</span>
-                  <span className="lp-how-tab-label">{s.label}</span>
-                </button>
+                <motion.div key={i} className="lp-how-col" {...fade(0.15 + i * 0.08)}>
+                  <div className="lp-how-col-num">{s.num}</div>
+                  <div className="lp-how-col-title">{s.title}</div>
+                  <div className="lp-how-col-body">{s.body}</div>
+                </motion.div>
               ))}
-            </div>
-
-            <div className="lp-how-stage">
-              <AnimatePresence mode="wait" initial={false}>
-                {HOW_STEPS.filter((_, i) => i === activeStep).map((s) => {
-                  const V = s.Visual
-                  return (
-                    <motion.div
-                      key={activeStep}
-                      className="lp-how-block"
-                      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: -24 }}
-                      transition={{ duration: 0.32, ease: 'easeOut' }}
-                    >
-                      <div className="lp-how-block-text">
-                        <h3 className="lp-how-headline">{s.headline}</h3>
-                        <p className="lp-how-body">{s.body}</p>
-                      </div>
-                      <div className="lp-how-block-visual">
-                        <div className="lp-how-visual-glow" aria-hidden="true" />
-                        <V />
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
             </div>
           </div>
         </section>
@@ -508,17 +392,12 @@ export default function LandingPage({ onGetStarted }) {
               </motion.div>
 
               <motion.div className="lp-sage-content-col" {...fade(0.1)}>
-                <h2 id="lp-sage-h2" className="lp-sage-h2">Meet Sage, <em>Your AI Coach</em></h2>
+                <span className="lp-head-eyebrow">MEET SAGE</span>
+                <h2 id="lp-sage-h2" className="lp-head-title">Sage, Your AI Coach</h2>
 
-                <div className="lp-sage-traits">
-                  {SAGE_TRAITS.map((t, i) => (
-                    <div key={i} className="lp-sage-trait">
-                      <div className="lp-sage-trait-icon"><t.Icon size={18} strokeWidth={1.8} /></div>
-                      <div className="lp-sage-trait-title">{t.title}</div>
-                      <div className="lp-sage-trait-body">{t.body}</div>
-                    </div>
-                  ))}
-                </div>
+                <ul className="lp-sage-bullets">
+                  {SAGE_BULLETS.map((b, i) => <li key={i}>{b}</li>)}
+                </ul>
 
                 <button
                   type="button"
@@ -655,6 +534,24 @@ const STYLES = `
     text-transform: uppercase; color: #f06090; margin-bottom: 16px;
   }
   .lp-eyebrow-pink { color: #f06090; }
+
+  /* Global section-header pattern: eyebrow / headline / one-line sub */
+  .lp-head-eyebrow {
+    display: block; font-family: 'Manrope', sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.25em;
+    text-transform: uppercase; color: #f06090; margin-bottom: 14px;
+  }
+  .lp-head-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(26px, 3.4vw, 40px);
+    font-weight: 700; color: #3d1020;
+    line-height: 1.25; letter-spacing: -0.01em; text-wrap: balance;
+  }
+  .lp-head-sub {
+    font-family: 'Manrope', sans-serif;
+    font-size: 16px; color: #71717a; line-height: 1.6;
+    max-width: 520px; margin-top: 12px;
+  }
 
   /* ── Buttons ── */
   .lp-btn-primary {
@@ -849,24 +746,14 @@ const STYLES = `
     color: rgba(61,16,32,0.68); line-height: 1.7;
     max-width: 480px; margin: 0 0 40px;
   }
-  .lp-prob-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 48px; }
+  .lp-prob-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
   .lp-prob-item {
     font-family: 'General Sans', sans-serif; font-size: 16px;
-    color: rgba(61,16,32,0.8); padding: 10px 0;
+    color: rgba(61,16,32,0.8); padding: 0;
     display: flex; align-items: baseline; gap: 12px; justify-content: flex-start;
-    border-bottom: 1px solid rgba(240,96,144,0.08);
     text-align: left; max-width: 480px; width: 100%;
   }
   .lp-prob-dot { color: #f06090; font-size: 20px; flex-shrink: 0; line-height: 1; }
-  .lp-prob-ticker-wrap { overflow: hidden; margin-bottom: 48px; max-width: 480px; }
-  .lp-pticker { width: 100%; overflow: hidden; }
-  .lp-pticker-track { display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; will-change: transform; }
-  .lp-pticker-pill {
-    display: inline-block; background: #E8C9D1; color: #3d1020;
-    border-radius: 999px; padding: 6px 16px;
-    font-family: 'General Sans', sans-serif; font-size: 14px; font-weight: 500;
-    flex-shrink: 0; white-space: nowrap;
-  }
   .lp-prob-pivot {
     font-family: 'Fraunces', serif;
     font-size: clamp(22px, 2.6vw, 28px); font-weight: 600;
@@ -884,55 +771,11 @@ const STYLES = `
   /* ─────────────────────────────────────────────────
      HOW IT WORKS
   ───────────────────────────────────────────────── */
-  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0 24px; }
-  .lp-how-h2 { margin-bottom: 12px; }
-  .lp-how-intro { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.6; max-width: 480px; margin-bottom: 32px; }
-  .lp-how-tabs { display: flex; gap: 8px; margin-bottom: 36px; flex-wrap: wrap; }
-  .lp-how-tab { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 100px; border: 1.5px solid rgba(240,96,144,0.18); background: #fff; cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s; }
-  .lp-how-tab:hover { border-color: rgba(194,24,91,0.4); }
-  .lp-how-tab.active { background: #c2185b; border-color: #c2185b; }
-  .lp-how-tab-num { font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: #c2185b; }
-  .lp-how-tab.active .lp-how-tab-num { color: rgba(255,255,255,0.8); }
-  .lp-how-tab-label { font-family: 'General Sans', sans-serif; font-size: 13.5px; font-weight: 600; color: #3d1020; }
-  .lp-how-tab.active .lp-how-tab-label { color: #fff; }
-  .lp-how-stage { position: relative; min-height: 340px; }
-  .lp-how-block {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
-  }
-  .lp-how-headline { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 700; color: #3d1020; line-height: 1.25; margin-bottom: 14px; }
-  .lp-how-body { font-family: 'General Sans', sans-serif; font-size: 16px; color: #8a5060; line-height: 1.7; }
-  .lp-how-block-text { min-width: 0; }
-  .lp-how-block-visual { position: relative; min-width: 0; }
-  .lp-how-visual-glow { position: absolute; inset: -32px; border-radius: 50%; background: radial-gradient(circle, rgba(240,96,144,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0; }
-  .lp-how-block-visual > *:not(.lp-how-visual-glow) { position: relative; z-index: 1; }
-
-  /* Mock cards */
-  .lp-mock-card {
-    background: linear-gradient(150deg, rgba(255,225,235,0.50) 0%, rgba(240,96,144,0.16) 48%, rgba(194,24,91,0.22) 100%);
-    backdrop-filter: blur(18px) saturate(1.5); -webkit-backdrop-filter: blur(18px) saturate(1.5);
-    border: 1px solid rgba(240,155,175,0.40); border-top-color: rgba(255,240,248,0.80);
-    border-radius: 18px; padding: 20px;
-    box-shadow: 0 4px 20px rgba(194,24,91,0.16), 0 16px 40px rgba(194,24,91,0.08), inset 0 1.5px 0 rgba(255,255,255,0.90);
-  }
-  .lp-mock-label { font-family: 'General Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c2185b; margin-bottom: 8px; }
-  .lp-mock-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: #3d1020; margin-bottom: 12px; }
-  .lp-mock-bar-track { height: 4px; background: rgba(240,96,144,0.18); border-radius: 100px; overflow: hidden; margin-bottom: 6px; }
-  .lp-mock-bar { height: 100%; background: #f06090; border-radius: 100px; }
-  .lp-mock-meta { font-family: 'General Sans', sans-serif; font-size: 12px; color: #8a5060; margin-bottom: 12px; }
-  .lp-mock-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-  .lp-mock-pill { background: rgba(255,240,244,0.8); color: #c2185b; font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; border: 1px solid rgba(194,24,91,0.15); }
-  .lp-mock-streak-row { display: flex; gap: 5px; margin-bottom: 8px; }
-  .lp-mock-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(240,96,144,0.18); }
-  .lp-mock-dot.active { background: #f06090; }
-  .lp-mock-checkin-q { font-family: 'General Sans', sans-serif; font-size: 13px; color: #8a5060; margin: 8px 0 6px; }
-  .lp-mock-checkin-input { font-family: 'General Sans', sans-serif; font-size: 13px; color: #3d1020; background: rgba(255,248,250,0.85); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(240,96,144,0.18); }
-  .lp-mock-members { display: flex; align-items: center; margin-bottom: 12px; }
-  .lp-mock-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: flex; align-items: center; justify-content: center; font-family: 'General Sans', sans-serif; font-size: 13px; font-weight: 700; color: #fff; border: 2px solid rgba(255,255,255,0.8); margin-left: -8px; flex-shrink: 0; }
-  .lp-mock-avatar:first-child { margin-left: 0; }
-  .lp-mock-avatar-more { margin-left: -8px; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,240,244,0.85); color: #c2185b; display: flex; align-items: center; justify-content: center; font-family: 'General Sans', sans-serif; font-size: 11px; font-weight: 700; border: 2px solid rgba(255,255,255,0.8); }
-  .lp-mock-post { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
-  .lp-mock-post:last-child { margin-bottom: 0; }
-  .lp-mock-post-text { font-family: 'General Sans', sans-serif; font-size: 13px; color: #3d1020; line-height: 1.5; }
+  .lp-how { background: linear-gradient(180deg, #ffffff 0%, #fff0f5 50%, #ffffff 100%); padding: 64px 0; }
+  .lp-how-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; margin-top: 44px; }
+  .lp-how-col-num { font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: #f06090; margin-bottom: 10px; }
+  .lp-how-col-title { font-family: 'Manrope', sans-serif; font-size: 18px; font-weight: 700; color: #3d1020; margin-bottom: 8px; }
+  .lp-how-col-body { font-family: 'Manrope', sans-serif; font-size: 14.5px; color: #71717a; line-height: 1.6; }
 
   /* ─────────────────────────────────────────────────
      MEET SAGE (the differentiator)
@@ -947,7 +790,7 @@ const STYLES = `
     align-items: center;
   }
   .lp-sage-video-col { min-width: 0; display: flex; }
-  .lp-sage-content-col { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+  .lp-sage-content-col { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 
   .lp-sage-visual-frame {
     position: relative;
@@ -967,25 +810,15 @@ const STYLES = `
   }
   .lp-sage-sound-btn:hover { background: rgba(61,16,32,0.75); transform: scale(1.06); }
 
-  .lp-sage-h2 {
-    font-family: 'Fraunces', serif; font-weight: 700; color: #c2185b;
-    font-size: clamp(26px, 3vw, 36px); line-height: 1.2; letter-spacing: -0.01em;
-    margin: 0; text-wrap: balance;
+  .lp-sage-bullets {
+    display: flex; flex-direction: column; gap: 10px;
+    margin: 4px 0 0; padding-left: 18px;
   }
-  .lp-sage-h2 em { font-style: italic; }
-
-  .lp-sage-traits { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
-  .lp-sage-trait {
-    background: rgba(194,24,91,0.05);
-    border-radius: 16px; padding: 16px;
+  .lp-sage-bullets li {
+    font-family: 'Manrope', sans-serif; font-size: 15px;
+    color: #71717a; line-height: 1.6;
   }
-  .lp-sage-trait-icon {
-    width: 32px; height: 32px; border-radius: 10px; margin-bottom: 10px;
-    background: rgba(194,24,91,0.12); color: #c2185b;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .lp-sage-trait-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 14.5px; color: #3d1020; margin-bottom: 4px; line-height: 1.35; }
-  .lp-sage-trait-body { font-family: 'General Sans', sans-serif; font-size: 12.5px; color: #8a5060; line-height: 1.5; }
+  .lp-sage-bullets li::marker { color: #f06090; }
 
   .lp-sage-anchor-cta {
     align-self: flex-start;
@@ -1095,7 +928,7 @@ const STYLES = `
 
   /* ── Reduced motion ── */
   @media (prefers-reduced-motion: reduce) {
-    .lp-ticker-track, .lp-pticker-track { animation: none !important; }
+    .lp-ticker-track { animation: none !important; }
   }
 
   /* ── Responsive ── */
@@ -1136,25 +969,17 @@ const STYLES = `
     .lp-hero-sub { max-width: 100%; margin-bottom: 24px; }
     .lp-hero-btns { margin-bottom: 16px; gap: 10px; }
     .lp-btn-hero-primary, .lp-btn-hero-ghost { padding: 11px 22px; font-size: 13.5px; }
-    .lp-how-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding-left: 24px; padding-right: 24px; gap: 6px; }
-    .lp-how-tabs::-webkit-scrollbar { display: none; }
-    .lp-how-tab { flex-shrink: 0; padding: 7px 12px; }
-    .lp-how-tab-num { font-size: 9px; }
-    .lp-how-tab-label { font-size: 12px; }
-    .lp-how-stage { min-height: 0; }
-    .lp-how-block { grid-template-columns: 1fr; gap: 24px; }
+    .lp-how-cols { grid-template-columns: 1fr; gap: 28px; }
     .lp-sage-top { grid-template-columns: 1fr; gap: 24px; text-align: center; }
     .lp-sage-content-col { align-items: center; }
     .lp-sage-anchor-cta { align-self: center; }
     .lp-sage-visual-frame { max-width: 220px; margin: 0 auto; }
-    .lp-sage-traits { grid-template-columns: 1fr; }
-    .lp-sage-trait { text-align: left; }
+    .lp-sage-bullets { text-align: left; }
     .lp-flip-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
     .lp-feat-showcase { margin-left: -32px; margin-right: -32px; margin-bottom: 32px; }
     .lp-feat-showcase-img { max-width: none; width: 100%; border-radius: 0; }
     .lp-prob-grid { grid-template-columns: 1fr; gap: 32px; }
     .lp-prob-sub, .lp-prob-list, .lp-prob-item, .lp-prob-pivot { max-width: 100%; }
-    .lp-prob-ticker-wrap { max-width: none; margin-left: -32px; margin-right: -32px; }
     .lp-prob-img { max-height: 60vh; border-radius: 20px; }
   }
   @media (max-width: 640px) {
