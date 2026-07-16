@@ -917,7 +917,11 @@ const STYLES = `
     box-shadow: 0 12px 32px rgba(61,16,32,0.10);
   }
   @media (min-width: 700px) {
-    .lp-sage-top { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 48px; align-items: start; }
+    /* The text column is capped at 62ch for readable line length, so the grid
+       track is sized to match instead of 1fr — 1fr stretched the column to
+       the full container width, leaving a dead gap to the right of the text
+       and making the video+letter pairing look pinned to the left edge. */
+    .lp-sage-top { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 620px); gap: 48px; align-items: start; justify-content: center; max-width: 100%; }
     .lp-sage-video-col { justify-content: flex-start; }
     .lp-sage-visual-frame { max-width: 260px; }
   }

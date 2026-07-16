@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ChevronDown } from 'lucide-react'
 import MarketingLayout from '../components/marketing/MarketingLayout'
 
 const FAQS = [
@@ -86,13 +87,17 @@ const STYLES = `
 }
 .faq-item {
   border-bottom: 1px solid rgba(240,96,144,0.1);
+  border-radius: 12px;
+  transition: background 0.2s ease;
 }
+.faq-item:hover { background: rgba(240,96,144,0.05); }
 .faq-question {
   width: 100%;
   background: none;
   border: none;
   text-align: left;
-  padding: 20px 0;
+  padding: 20px 16px;
+  margin: 0 -16px;
   font-family: 'General Sans', sans-serif;
   font-size: 1rem;
   font-weight: 600;
@@ -110,14 +115,15 @@ const STYLES = `
   flex-shrink: 0;
   color: #c2185b;
   transition: transform 0.2s;
-  font-size: 1.1rem;
+  display: flex;
 }
 .faq-chevron.open { transform: rotate(180deg); }
 .faq-answer {
   font-size: 0.9rem;
   color: #71717a;
   line-height: 1.7;
-  padding: 0 0 20px;
+  padding: 0 16px 20px;
+  margin: 0 -16px;
   max-width: 640px;
 }
 .faq-cta-strip {
@@ -153,7 +159,7 @@ function FAQItem({ q, a }) {
     <div className="faq-item">
       <button className="faq-question" onClick={() => setOpen(o => !o)} aria-expanded={open}>
         {q}
-        <span className={`faq-chevron${open ? ' open' : ''}`}>▾</span>
+        <span className={`faq-chevron${open ? ' open' : ''}`}><ChevronDown size={18} strokeWidth={2} /></span>
       </button>
       {open && <p className="faq-answer">{a}</p>}
     </div>

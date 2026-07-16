@@ -12,7 +12,6 @@ const ARTICLES = [
       "Dreaming isn't the hard part. Following through is. Here's why most vision boards stop at inspiration, and how to build a system that keeps moving.",
     inspiredBy: 'PHASR Method',
     readTime: '7 MIN READ',
-    image: '/images/blog-vision.jpg',
   },
   {
     slug: 'your-first-dream-job-starts-before-youre-hired',
@@ -22,7 +21,6 @@ const ARTICLES = [
       "Confidence isn't built after success. It's built through the small daily actions that shape your identity before anyone notices.",
     inspiredBy: 'PHASR Method',
     readTime: '6 MIN READ',
-    image: '/images/blog-career.jpg',
   },
   {
     slug: 'the-conversation-with-yourself-changes-everything',
@@ -32,7 +30,6 @@ const ARTICLES = [
       "Your journal shouldn't just store your thoughts. It should reveal your patterns, challenge your blind spots, and help shape what comes next.",
     inspiredBy: 'PHASR Method',
     readTime: '8 MIN READ',
-    image: '/images/blog-reflection.jpg',
   },
 ]
 
@@ -72,7 +69,7 @@ export default function BlogPage() {
 
           <div className="bl-hero-right">
             <div className="bl-hero-img-wrap">
-              <img src="/images/blog-hero.jpg" alt="Editorial lifestyle — books, mug, pen and dried flowers" className="bl-hero-img" />
+              <img src="/images/girlboss-2.jpg" alt="Two women in a bright, editorial space with Phasr branded boxes" className="bl-hero-img" />
             </div>
           </div>
 
@@ -83,19 +80,17 @@ export default function BlogPage() {
       <section className="bl-articles">
         <div className="bl-container">
           <div className="bl-grid">
-            {ARTICLES.map((a) => (
+            {ARTICLES.map((a, i) => (
               <Link key={a.slug} to={`/blog/${a.slug}`} className="bl-card">
 
-                <div className="bl-card-img-wrap">
-                  <img src={a.image} alt={a.headline} className="bl-card-img" />
-                </div>
+                <div className="bl-card-index">{String(i + 1).padStart(2, '0')}</div>
 
                 <div className="bl-card-body">
                   <div className="bl-card-cats">
-                    {a.categories.map((c, i) => (
+                    {a.categories.map((c, ci) => (
                       <span key={c}>
                         <span className="bl-card-cat">{c}</span>
-                        {i < a.categories.length - 1 && <span className="bl-card-cat-sep">·</span>}
+                        {ci < a.categories.length - 1 && <span className="bl-card-cat-sep">·</span>}
                       </span>
                     ))}
                   </div>
@@ -259,36 +254,33 @@ const STYLES = `
     display: flex;
     flex-direction: column;
     border-radius: 20px;
-    overflow: hidden;
     background: #ffffff;
-    box-shadow: 0 4px 20px rgba(61,16,32,0.08);
+    border: 1px solid rgba(240,96,144,0.14);
+    box-shadow: 0 4px 20px rgba(61,16,32,0.06);
     text-decoration: none;
     color: inherit;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 32px 28px 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   }
   .bl-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(61,16,32,0.14);
+    box-shadow: 0 12px 40px rgba(61,16,32,0.10);
+    border-color: rgba(240,96,144,0.4);
   }
 
-  /* Image block */
-  .bl-card-img-wrap {
-    height: 260px;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .bl-card-img {
-    width: 100%; height: 100%;
-    object-fit: cover; display: block;
-    transition: transform 0.4s ease;
-  }
-  .bl-card:hover .bl-card-img {
-    transform: scale(1.03);
+  /* Decorative index number, replacing per-card stock photography */
+  .bl-card-index {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15px;
+    font-weight: 600;
+    color: #f06090;
+    margin-bottom: 18px;
   }
 
   /* Card body */
   .bl-card-body {
-    padding: 24px 24px 0;
+    padding: 0;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -337,7 +329,8 @@ const STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 24px;
+    margin-top: 16px;
+    padding: 16px 0 24px;
     border-top: 1px solid rgba(240,96,144,0.12);
     gap: 8px;
   }

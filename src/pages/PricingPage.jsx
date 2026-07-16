@@ -173,16 +173,6 @@ const STYLES = `
   color: #b08090;
   margin-bottom: 10px;
 }
-.pricing-founding-tag {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #c2185b;
-  background: rgba(240, 96, 144, 0.1);
-  border-radius: 100px;
-  padding: 4px 10px;
-  margin-bottom: 20px;
-}
 .pricing-desc {
   font-size: 0.85rem;
   color: #71717a;
@@ -290,7 +280,6 @@ export default function PricingPage() {
                 <p className="pricing-tier">{t.tier}</p>
                 <p className="pricing-price">{t.price}{t.suffix && <span>{t.suffix}</span>}</p>
                 <p className="pricing-period">{t.period || 'per member'}</p>
-                {t.founding && <span className="pricing-founding-tag">Founding pricing — locked in when you join</span>}
                 <p className="pricing-desc">{t.desc}</p>
                 <ul className="pricing-features">
                   {t.features.map((f) => <li key={f}>{f}</li>)}

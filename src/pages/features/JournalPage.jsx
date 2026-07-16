@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { PenLine, MessageSquare, CalendarDays, Search } from 'lucide-react'
+import { PenLine, MessageSquare, CalendarDays, Search, Phone } from 'lucide-react'
 import MarketingLayout from '../../components/marketing/MarketingLayout'
 
 const BLOCKS = [
@@ -23,6 +23,11 @@ const BLOCKS = [
     Icon: Search,
     title: 'Reflection that shows your patterns',
     body: "Over time, the journal surfaces the loops you keep running, the ones you can't see from inside them. That's where the growth happens.",
+  },
+  {
+    Icon: Phone,
+    title: "Or just talk it out",
+    body: "Some days you don't want to type. Hop on a call with Sage and say it out loud. With your permission, she cleans it up and adds it to your journal as a real entry, so journaling stays easy and the clarity still comes.",
   },
 ]
 
@@ -51,7 +56,15 @@ export default function JournalFeaturePage() {
         .mkt-btn-ghost:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
         .feat-page-divider { height: 1px; background: rgba(240,96,144,0.12); }
         .feat-page-section { padding: 80px 0; }
-        .feat-block-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 960px; }
+        .feat-content-row { display: grid; grid-template-columns: 1fr 200px; gap: 40px; align-items: start; max-width: 1160px; }
+        .feat-visual-wrap { position: relative; width: 100%; max-width: 200px; margin: 0 auto; }
+        .feat-visual-ring { position: absolute; top: -22px; right: -22px; width: 130px; height: 130px; border: 2px solid rgba(240,96,144,0.4); border-radius: 50%; z-index: 0; }
+        .feat-visual-img { position: relative; z-index: 1; width: 100%; height: auto; display: block; border-radius: 18px; box-shadow: 0 16px 36px rgba(194,24,91,0.18); }
+        @media (max-width: 900px) {
+          .feat-content-row { grid-template-columns: 1fr; }
+          .feat-visual-wrap { order: -1; max-width: 160px; margin: 0 0 32px; }
+        }
+        .feat-block-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
         .feat-block { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
         .feat-block:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
         .feat-block-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -93,16 +106,27 @@ export default function JournalFeaturePage() {
 
       <section className="feat-page-section">
         <div className="mkt-container">
-          <div className="feat-block-list">
-            {BLOCKS.map(({ Icon, title, body }) => (
-              <div className="feat-block" key={title}>
-                <div className="feat-block-head">
-                  <Icon size={20} strokeWidth={1.8} className="feat-block-icon" />
-                  <h3 className="feat-block-h3">{title}</h3>
+          <div className="feat-content-row">
+            <div className="feat-block-list">
+              {BLOCKS.map(({ Icon, title, body }) => (
+                <div className="feat-block" key={title}>
+                  <div className="feat-block-head">
+                    <Icon size={20} strokeWidth={1.8} className="feat-block-icon" />
+                    <h3 className="feat-block-h3">{title}</h3>
+                  </div>
+                  <p className="feat-block-body">{body}</p>
                 </div>
-                <p className="feat-block-body">{body}</p>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <div className="feat-visual-wrap">
+              <div className="feat-visual-ring" aria-hidden="true" />
+              <img
+                src="/images/journal-ugc.jpg"
+                alt="A woman journaling with PHASR on her tablet"
+                className="feat-visual-img"
+              />
+            </div>
           </div>
 
           <div className="feat-trust-note">

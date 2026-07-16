@@ -173,9 +173,43 @@ const STYLES = `
 .feat-page-cta-h2 em { font-style: italic; color: #c2185b; }
 .feat-page-cta-sub { color: #71717a; font-size: 0.95rem; margin: 0 0 32px; }
 
-.sage-showcase { padding: 0 0 60px; border-bottom: 1px solid rgba(240,96,144,0.1); }
-.sage-showcase-img { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; border-radius: 24px; box-shadow: 0 24px 60px rgba(194,24,91,0.18); }
+.feat-points-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 40px;
+  align-items: center;
+  margin-top: 8px;
+}
+.feat-visual-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+}
+.feat-visual-ring {
+  position: absolute;
+  top: -22px;
+  right: -22px;
+  width: 130px;
+  height: 130px;
+  border: 2px solid rgba(240,96,144,0.4);
+  border-radius: 50%;
+  z-index: 0;
+}
+.sage-showcase-img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 18px;
+  box-shadow: 0 16px 36px rgba(194,24,91,0.18);
+}
 
+@media (max-width: 900px) {
+  .feat-points-row { grid-template-columns: 1fr; }
+  .feat-visual-wrap { order: -1; max-width: 160px; margin: 0 0 32px; }
+}
 @media (max-width: 640px) {
   .feat-points { grid-template-columns: 1fr; }
   .feat-page-hero { padding: 80px 0 60px; }
@@ -208,16 +242,6 @@ export default function AICoachPage() {
         </div>
       </section>
 
-      <section className="sage-showcase">
-        <div className="mkt-container">
-          <img
-            src="/images/sage-chat-mockup.jpg"
-            alt="Sage AI coach chat mockup on mobile"
-            className="sage-showcase-img"
-          />
-        </div>
-      </section>
-
       <div className="feat-page-divider" />
 
       <section className="feat-page-section">
@@ -227,26 +251,38 @@ export default function AICoachPage() {
           <p className="feat-page-section-body">
             Generic AI coaching is everywhere. Sage is different because she doesn't start from zero every session. She knows where you are in your phase, how your streak looks, and what you wrote in your journal last week.
           </p>
-          <div className="feat-points">
-            <div className="feat-point">
-              <div className="feat-point-icon"><ClipboardList size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Weekly reset</p>
-              <p className="feat-point-body">Every week, Sage reviews your progress and helps you set a realistic, focused weekly goal — not a list, one clear thing.</p>
+
+          <div className="feat-points-row">
+            <div className="feat-points">
+              <div className="feat-point">
+                <div className="feat-point-icon"><ClipboardList size={22} strokeWidth={1.8} /></div>
+                <p className="feat-point-title">Weekly reset</p>
+                <p className="feat-point-body">Every week, Sage reviews your progress and helps you set a realistic, focused weekly goal — not a list, one clear thing.</p>
+              </div>
+              <div className="feat-point">
+                <div className="feat-point-icon"><MessageSquare size={22} strokeWidth={1.8} /></div>
+                <p className="feat-point-title">Journal responses</p>
+                <p className="feat-point-body">Write in your journal and Sage responds — not with platitudes, but with a reflection based on what you actually wrote.</p>
+              </div>
+              <div className="feat-point">
+                <div className="feat-point-icon"><Map size={22} strokeWidth={1.8} /></div>
+                <p className="feat-point-title">Pillar planning</p>
+                <p className="feat-point-body">When you set up a new phase, Sage generates resources, activities, and non-negotiables tailored to your specific goal.</p>
+              </div>
+              <div className="feat-point">
+                <div className="feat-point-icon"><Bell size={22} strokeWidth={1.8} /></div>
+                <p className="feat-point-title">Nudges that land</p>
+                <p className="feat-point-body">When your streak dips or you miss a check-in, Sage surfaces a warm, direct prompt — not a guilt trip.</p>
+              </div>
             </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><MessageSquare size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Journal responses</p>
-              <p className="feat-point-body">Write in your journal and Sage responds — not with platitudes, but with a reflection based on what you actually wrote.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><Map size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Pillar planning</p>
-              <p className="feat-point-body">When you set up a new phase, Sage generates resources, activities, and non-negotiables tailored to your specific goal.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><Bell size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Nudges that land</p>
-              <p className="feat-point-body">When your streak dips or you miss a check-in, Sage surfaces a warm, direct prompt — not a guilt trip.</p>
+
+            <div className="feat-visual-wrap">
+              <div className="feat-visual-ring" aria-hidden="true" />
+              <img
+                src="/images/sage-chat-mockup.jpg"
+                alt="Sage AI coach chat mockup on mobile"
+                className="sage-showcase-img"
+              />
             </div>
           </div>
 
