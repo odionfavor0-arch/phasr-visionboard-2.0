@@ -173,6 +173,9 @@ const STYLES = `
 .feat-page-cta-h2 em { font-style: italic; color: #c2185b; }
 .feat-page-cta-sub { color: #71717a; font-size: 0.95rem; margin: 0 0 32px; }
 
+.sage-showcase { padding: 0 0 60px; border-bottom: 1px solid rgba(240,96,144,0.1); }
+.sage-showcase-img { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; border-radius: 24px; box-shadow: 0 24px 60px rgba(194,24,91,0.18); }
+
 @media (max-width: 640px) {
   .feat-points { grid-template-columns: 1fr; }
   .feat-page-hero { padding: 80px 0 60px; }
@@ -202,6 +205,16 @@ export default function AICoachPage() {
             <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
             <Link to="/features" className="mkt-btn-ghost">All features</Link>
           </div>
+        </div>
+      </section>
+
+      <section className="sage-showcase">
+        <div className="mkt-container">
+          <img
+            src="/images/sage-chat-mockup.jpg"
+            alt="Sage AI coach chat mockup on mobile"
+            className="sage-showcase-img"
+          />
         </div>
       </section>
 

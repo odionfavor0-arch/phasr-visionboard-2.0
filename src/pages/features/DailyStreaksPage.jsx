@@ -1,10 +1,47 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Flame, Trophy, BarChart2, RefreshCw } from 'lucide-react'
+import { Flame, TrendingUp, RefreshCw, Trophy, CalendarDays, BarChart2 } from 'lucide-react'
 import MarketingLayout from '../../components/marketing/MarketingLayout'
 
+const BLOCKS = [
+  {
+    Icon: Flame,
+    title: 'One prompt a day',
+    body: 'Each morning you get one thing to do, sized to about 30 seconds to start. Small enough to beat the resistance, real enough to move the goal.',
+  },
+  {
+    Icon: TrendingUp,
+    title: 'It grows with you',
+    body: 'Your daily actions get a little bigger each week, so you build capacity instead of burning out on day three.',
+  },
+  {
+    Icon: RefreshCw,
+    title: 'Momentum over completion',
+    body: 'Miss a day and nothing resets to zero. This is consistency over time, the way real habits are built. Small actions, repeated, quietly become who you are.',
+  },
+  {
+    Icon: Trophy,
+    title: 'Unlocks that keep you going',
+    body: 'Streaks and new features open up as you show up, so progress feels earned instead of handed to you.',
+  },
+  {
+    Icon: CalendarDays,
+    title: 'A weekly reset with Sage',
+    body: 'Once a week, you and Sage look back at how it went and how you feel, then adjust the plan before the next week starts.',
+  },
+  {
+    Icon: BarChart2,
+    title: 'See it add up',
+    body: 'A dashboard that shows every check-in, so two quiet weeks still look like the progress they were.',
+  },
+]
+
 export default function DailyStreaksPage() {
-  useEffect(() => { document.title = 'Daily Streaks — PHASR' }, [])
+  useEffect(() => {
+    document.title = 'Habit Streak App Built On Momentum, Not Guilt | PHASR'
+    const meta = document.querySelector('meta[name="description"]')
+    if (meta) meta.setAttribute('content', 'One 30-second action a day. Streaks that survive a bad week. PHASR builds real consistency with a daily check-in and a weekly reset. Get early access.')
+  }, [])
 
   return (
     <MarketingLayout>
@@ -24,38 +61,29 @@ export default function DailyStreaksPage() {
         .mkt-btn-ghost:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
         .feat-page-divider { height: 1px; background: rgba(240,96,144,0.12); margin: 0; }
         .feat-page-section { padding: 80px 0; }
-        .feat-page-section-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 16px; }
-        .feat-page-section-h2 em { font-style: italic; color: #c2185b; }
-        .feat-page-section-body { font-size: 1rem; color: #71717a; line-height: 1.7; max-width: 600px; margin: 0 0 40px; }
-        .feat-points { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-        .feat-point { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
-        .feat-point:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
-        .feat-point-icon { margin-bottom: 10px; color: #c2185b; }
-        .feat-point-title { font-size: 1rem; font-weight: 700; color: #1a0a10; letter-spacing: -0.01em; margin-bottom: 6px; }
-        .feat-point-body { font-size: 0.875rem; color: #71717a; line-height: 1.6; }
-        .feat-philosophy { background: rgba(194,24,91,0.04); border-left: 3px solid #c2185b; border-radius: 0 12px 12px 0; padding: 24px 28px; margin-top: 40px; font-size: 1rem; color: #3d1020; line-height: 1.7; font-style: italic; }
+        .feat-block-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 960px; }
+        .feat-block { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
+        .feat-block:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
+        .feat-block-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .feat-block-icon { color: #c2185b; flex-shrink: 0; }
+        .feat-block-h3 { font-family: 'Fraunces', serif; font-size: clamp(1.2rem, 2vw, 1.5rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.01em; margin: 0; }
+        .feat-block-body { font-size: 1rem; color: #71717a; line-height: 1.75; margin: 0; }
+        .feat-related { margin-top: 56px; padding-top: 32px; border-top: 1px solid rgba(240,96,144,0.12); max-width: 680px; }
+        .feat-related-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; margin: 0 0 10px; }
+        .feat-related-body { font-size: 0.95rem; color: #71717a; line-height: 1.6; margin: 0; }
+        .feat-related-body a { color: #c2185b; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); }
+        .feat-related-body a:hover { border-color: #c2185b; }
         .feat-page-cta-section { padding: 80px 0; text-align: center; border-top: 1px solid rgba(240,96,144,0.1); }
         .feat-page-cta-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 12px; }
         .feat-page-cta-h2 em { font-style: italic; color: #c2185b; }
         .feat-page-cta-sub { color: #71717a; font-size: 0.95rem; margin: 0 0 32px; }
-        @media (max-width: 640px) { .feat-points { grid-template-columns: 1fr; } .feat-page-hero { padding: 80px 0 60px; } }
+        @media (max-width: 640px) { .feat-page-hero { padding: 80px 0 60px; } }
         .streak-showcase { padding: 0 0 80px; }
-        .streak-showcase-panel {
-          background: linear-gradient(150deg, #ffe1eb 0%, #ffcfe0 100%);
-          border-radius: 32px;
-          padding: 56px 40px;
-          display: flex; align-items: center; justify-content: center;
-          overflow: hidden;
-        }
         .streak-showcase-img {
           width: 100%; max-width: 880px; height: auto; display: block;
-          transform: rotate(-4deg);
+          margin: 0 auto;
           border-radius: 20px;
           box-shadow: 0 30px 70px rgba(194,24,91,0.28);
-        }
-        @media (max-width: 640px) {
-          .streak-showcase-panel { padding: 32px 20px; border-radius: 24px; }
-          .streak-showcase-img { transform: rotate(-3deg); }
         }
       `}</style>
 
@@ -64,10 +92,10 @@ export default function DailyStreaksPage() {
           <div className="feat-breadcrumb">
             <Link to="/features">Features</Link><span>/</span><span>Daily Streaks</span>
           </div>
-          <span className="feat-page-label">Momentum, not guilt</span>
-          <h1 className="feat-page-h1">The streak that<br /><em>wants you back.</em></h1>
+          <span className="feat-page-label">Follow-through, one day at a time</span>
+          <h1 className="feat-page-h1">Momentum you can <em>actually feel.</em></h1>
           <p className="feat-page-sub">
-            One daily check-in. That's all it takes to keep your streak alive. No punishing resets, no shame loops — just a visible record of how many days you chose yourself.
+            Big goals die in the gap between deciding and doing. Daily Streak closes it with one small thing a day.
           </p>
           <div className="feat-page-cta-row">
             <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
@@ -78,13 +106,11 @@ export default function DailyStreaksPage() {
 
       <section className="streak-showcase">
         <div className="mkt-container">
-          <div className="streak-showcase-panel">
-            <img
-              src="/images/product-vision-dailystreak.png"
-              alt="PHASR Vision Board and Daily Streaks screens, side by side"
-              className="streak-showcase-img"
-            />
-          </div>
+          <img
+            src="/images/product-vision-dailystreak.png"
+            alt="PHASR habit streak app — Vision Board and Daily Streaks screens, side by side"
+            className="streak-showcase-img"
+          />
         </div>
       </section>
 
@@ -92,44 +118,32 @@ export default function DailyStreaksPage() {
 
       <section className="feat-page-section">
         <div className="mkt-container">
-          <h2 className="feat-page-section-h2">Built for <em>real life.</em></h2>
-          <p className="feat-page-section-body">
-            Most streak apps punish you for living. PHASR's streak system is designed to make showing up feel earned — not like avoiding a punishment.
-          </p>
-          <div className="feat-points">
-            <div className="feat-point">
-              <div className="feat-point-icon"><Flame size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Daily check-in</p>
-              <p className="feat-point-body">One prompt each day: what did you move forward? Takes 60 seconds. Keeps your streak alive and your mind clear.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><Trophy size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Ranks & unlocks</p>
-              <p className="feat-point-body">As your streak grows, your rank rises. Features and recognition unlock with consistency.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><BarChart2 size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Streak history</p>
-              <p className="feat-point-body">Your full streak timeline is visible on the dashboard. See the weeks that landed and what made them stick.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><RefreshCw size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Weekly reset with Sage</p>
-              <p className="feat-point-body">Every Monday, Sage reviews the past week's streaks and helps you set a single, focused goal for the week ahead.</p>
-            </div>
+          <div className="feat-block-list">
+            {BLOCKS.map(({ Icon, title, body }) => (
+              <div className="feat-block" key={title}>
+                <div className="feat-block-head">
+                  <Icon size={20} strokeWidth={1.8} className="feat-block-icon" />
+                  <h3 className="feat-block-h3">{title}</h3>
+                </div>
+                <p className="feat-block-body">{body}</p>
+              </div>
+            ))}
           </div>
 
-          <p className="feat-philosophy">
-            "Momentum over completion. A 6-day streak after a slip beats a 30-day streak you gave up on. PHASR is designed to make you want to come back — not dread opening the app."
-          </p>
+          <div className="feat-related">
+            <p className="feat-related-label">Related</p>
+            <p className="feat-related-body">
+              <Link to="/features/vision-boards">Vision Board</Link> is where the actions come from. <Link to="/features/dashboard">Phase Review</Link> is where the streaks add up.
+            </p>
+          </div>
         </div>
       </section>
 
       <section className="feat-page-cta-section">
         <div className="mkt-container">
           <h2 className="feat-page-cta-h2">Day 1 is always<br /><em>today.</em></h2>
-          <p className="feat-page-cta-sub">Join the waitlist and start your first streak when PHASR opens.</p>
-          <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
+          <p className="feat-page-cta-sub">Start your first streak when PHASR opens.</p>
+          <Link to="/login" className="mkt-btn-primary">Get early access</Link>
         </div>
       </section>
     </MarketingLayout>

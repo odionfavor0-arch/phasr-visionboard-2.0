@@ -94,7 +94,6 @@ const SAGE_LETTER_INTRO = "Hi, my name is Sage. Nice to meet you."
 const SAGE_LETTER_BODY = [
   "You already know what it's like to do this alone. To set the goal, lose the thread, and carry the disappointment quietly into next year. I'm the part that makes sure this year ends differently.",
   "I stay. Through the good weeks and the ones where you go quiet. I'll never make you feel behind for living your life, and I'll never let you talk yourself out of something you actually want.",
-  "The first women in are the ones I grow with, and they lock in founding access before anyone else. You've spent years starting over. Come start something that finishes.",
 ]
 
 const FEATURES = [

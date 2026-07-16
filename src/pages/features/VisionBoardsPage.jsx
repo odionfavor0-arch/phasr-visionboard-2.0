@@ -1,10 +1,42 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Target, Layers, CalendarDays } from 'lucide-react'
+import { Compass, Target, Sparkles, Layers, Image as ImageIcon } from 'lucide-react'
 import MarketingLayout from '../../components/marketing/MarketingLayout'
 
+const BLOCKS = [
+  {
+    Icon: Compass,
+    title: "Start with where you are and where you're going",
+    body: "Add a before photo and an after photo. Tell Sage where you are right now, how you feel, and who you want to become. That's all she needs to build the rest.",
+  },
+  {
+    Icon: Target,
+    title: 'One goal becomes a full plan',
+    body: "Your goal turns into a pillar: a structured path with phases, weekly non-negotiables, and daily activities. Every piece connects to an outcome, so there's always a reason behind today's task. The goal can be anything, a new job, a habit, a bucket-list thing.",
+  },
+  {
+    Icon: Sparkles,
+    title: 'Resources that actually fit you',
+    body: "Sage skips the generic reading list. She pulls resources built on what has worked before, real research, and the right books for your specific goal. The things that move this goal forward, not a folder you'll never open.",
+  },
+  {
+    Icon: Layers,
+    title: 'Work more than one goal without losing the thread',
+    body: 'Run one pillar or three at once. Keep them in separate phases or stack them into the same three months. If your brain runs in ten directions, you can finally watch all of them grow in one place.',
+  },
+  {
+    Icon: ImageIcon,
+    title: 'Take it off the screen',
+    body: "Save your pillar as an image or print it. The printed version comes with your before and after, your resources, and a QR code. Scan it from your wall and you're back in your dashboard in a second. Your vision board finally does more than hang there.",
+  },
+]
+
 export default function VisionBoardsPage() {
-  useEffect(() => { document.title = 'Vision Boards — PHASR' }, [])
+  useEffect(() => {
+    document.title = 'AI Vision Board App That Builds Your Plan | PHASR'
+    const meta = document.querySelector('meta[name="description"]')
+    if (meta) meta.setAttribute('content', 'Turn your vision board into a real plan. PHASR reads your goal and builds phases, weekly actions, and daily steps to get you there. Get early access.')
+  }, [])
 
   return (
     <MarketingLayout>
@@ -24,23 +56,25 @@ export default function VisionBoardsPage() {
         .mkt-btn-ghost:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
         .feat-page-divider { height: 1px; background: rgba(240,96,144,0.12); margin: 0; }
         .feat-page-section { padding: 80px 0; }
-        .feat-page-section-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; margin-bottom: 16px; }
-        .feat-page-section-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 16px; }
-        .feat-page-section-h2 em { font-style: italic; color: #c2185b; }
-        .feat-page-section-body { font-size: 1rem; color: #71717a; line-height: 1.7; max-width: 600px; margin: 0 0 40px; }
-        .feat-points { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 8px; }
-        .feat-point { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
-        .feat-point:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
-        .feat-point-icon { margin-bottom: 10px; color: #c2185b; }
-        .feat-point-title { font-size: 1rem; font-weight: 700; color: #1a0a10; letter-spacing: -0.01em; margin-bottom: 6px; }
-        .feat-point-body { font-size: 0.875rem; color: #71717a; line-height: 1.6; }
+        .feat-block-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 960px; }
+        .feat-block { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
+        .feat-block:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
+        .feat-block-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .feat-block-icon { color: #c2185b; flex-shrink: 0; }
+        .feat-block-h3 { font-family: 'Fraunces', serif; font-size: clamp(1.2rem, 2vw, 1.5rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.01em; margin: 0; }
+        .feat-block-body { font-size: 1rem; color: #71717a; line-height: 1.75; margin: 0; }
+        .feat-related { margin-top: 56px; padding-top: 32px; border-top: 1px solid rgba(240,96,144,0.12); max-width: 680px; }
+        .feat-related-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; margin: 0 0 10px; }
+        .feat-related-body { font-size: 0.95rem; color: #71717a; line-height: 1.6; margin: 0; }
+        .feat-related-body a { color: #c2185b; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); }
+        .feat-related-body a:hover { border-color: #c2185b; }
         .feat-page-cta-section { padding: 80px 0; text-align: center; border-top: 1px solid rgba(240,96,144,0.1); }
         .feat-page-cta-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 12px; }
         .feat-page-cta-h2 em { font-style: italic; color: #c2185b; }
         .feat-page-cta-sub { color: #71717a; font-size: 0.95rem; margin: 0 0 32px; }
         .vb-showcase { padding: 0 0 60px; border-bottom: 1px solid rgba(240,96,144,0.1); }
         .vb-showcase-img { width: 100%; max-width: 960px; height: auto; display: block; margin: 0 auto; mix-blend-mode: multiply; }
-        @media (max-width: 640px) { .feat-points { grid-template-columns: 1fr; } .feat-page-hero { padding: 80px 0 60px; } }
+        @media (max-width: 640px) { .feat-page-hero { padding: 80px 0 60px; } }
       `}</style>
 
       <section className="feat-page-hero">
@@ -48,10 +82,10 @@ export default function VisionBoardsPage() {
           <div className="feat-breadcrumb">
             <Link to="/features">Features</Link><span>/</span><span>Vision Boards</span>
           </div>
-          <span className="feat-page-label">Where it starts</span>
-          <h1 className="feat-page-h1">The board that has<br />a <em>plan attached.</em></h1>
+          <span className="feat-page-label">Vision, with follow-through</span>
+          <h1 className="feat-page-h1">The vision board that <em>builds the plan for you.</em></h1>
           <p className="feat-page-sub">
-            You've made vision boards before. This one doesn't let you stop at pretty. Set your phase, break it into pillars, get AI-generated resources — and let it feed everything else in PHASR.
+            You've made vision boards before. Beautiful, hopeful, forgotten by spring. This one reads what you want and hands you the steps to get there.
           </p>
           <div className="feat-page-cta-row">
             <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
@@ -64,7 +98,7 @@ export default function VisionBoardsPage() {
         <div className="mkt-container">
           <img
             src="/images/mockup-3.jpg"
-            alt="PHASR app — vision board, daily streaks, home dashboard, and phase review"
+            alt="PHASR digital vision board app — vision board, daily streaks, home dashboard, and phase review"
             className="vb-showcase-img"
           />
         </div>
@@ -74,31 +108,23 @@ export default function VisionBoardsPage() {
 
       <section className="feat-page-section">
         <div className="mkt-container">
-          <p className="feat-page-section-label">What's different</p>
-          <h2 className="feat-page-section-h2">Vision boards that <em>do something.</em></h2>
-          <p className="feat-page-section-body">
-            Pinterest boards stay theoretical. PHASR boards connect to your daily check-ins, your streak, your journal, and Sage — so your vision actually becomes a system.
-          </p>
-          <div className="feat-points">
-            <div className="feat-point">
-              <div className="feat-point-icon"><Target size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Phase-based goals</p>
-              <p className="feat-point-body">One big goal becomes one monthly phase. Clear, bounded, achievable. Not a sprawling bucket list.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><Layers size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Pillars & structure</p>
-              <p className="feat-point-body">Break your phase into focus areas. Before/after vision uploads give your pillars an emotional anchor.</p>
-            </div>
-            <div className="feat-point">
-              <p className="feat-point-title">AI-generated resources</p>
-              <p className="feat-point-body">Sage generates tailored resources, activities, and non-negotiables for each pillar when you set up your board.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><CalendarDays size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Weekly plans</p>
-              <p className="feat-point-body">Your board feeds your weekly focus. Each Monday you know exactly what this week is for — not just what the month is for.</p>
-            </div>
+          <div className="feat-block-list">
+            {BLOCKS.map(({ Icon, title, body }) => (
+              <div className="feat-block" key={title}>
+                <div className="feat-block-head">
+                  <Icon size={20} strokeWidth={1.8} className="feat-block-icon" />
+                  <h3 className="feat-block-h3">{title}</h3>
+                </div>
+                <p className="feat-block-body">{body}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="feat-related">
+            <p className="feat-related-label">Related</p>
+            <p className="feat-related-body">
+              <Link to="/features/ai-coach">Sage</Link> builds the plan. <Link to="/features/daily-streaks">Daily Streak</Link> turns it into daily action.
+            </p>
           </div>
         </div>
       </section>
@@ -106,8 +132,8 @@ export default function VisionBoardsPage() {
       <section className="feat-page-cta-section">
         <div className="mkt-container">
           <h2 className="feat-page-cta-h2">Your best year starts<br />with one <em>clear phase.</em></h2>
-          <p className="feat-page-cta-sub">Join the waitlist and be first when PHASR opens.</p>
-          <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
+          <p className="feat-page-cta-sub">Join the women getting early access when PHASR opens.</p>
+          <Link to="/login" className="mkt-btn-primary">Get early access</Link>
         </div>
       </section>
     </MarketingLayout>

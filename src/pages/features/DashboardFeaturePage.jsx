@@ -1,10 +1,32 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { TrendingUp, BookOpenCheck, Compass, Flag } from 'lucide-react'
+import { Layers, Compass, Flag } from 'lucide-react'
 import MarketingLayout from '../../components/marketing/MarketingLayout'
 
+const BLOCKS = [
+  {
+    Icon: Layers,
+    title: 'Your whole phase, in one place',
+    body: 'Every win, every streak, the photos you added to your journal, the conversations that mattered. All of it, gathered.',
+  },
+  {
+    Icon: Compass,
+    title: "The patterns you couldn't see",
+    body: "Sage names the growth you'd never pinpoint yourself, and the blind spots worth watching in the next phase.",
+  },
+  {
+    Icon: Flag,
+    title: "What's next",
+    body: 'A clear read on where you are now and what the next phase could hold, so you start it on purpose instead of by accident.',
+  },
+]
+
 export default function DashboardFeaturePage() {
-  useEffect(() => { document.title = 'Phase Review — PHASR' }, [])
+  useEffect(() => {
+    document.title = 'Phase Review, See Who You Became | PHASR'
+    const meta = document.querySelector('meta[name="description"]')
+    if (meta) meta.setAttribute('content', "At the end of every phase, Sage shows your wins, streaks, patterns, and growth in one recap, then sets up what's next. Get early access.")
+  }, [])
 
   return (
     <MarketingLayout>
@@ -24,15 +46,18 @@ export default function DashboardFeaturePage() {
         .mkt-btn-ghost:hover { border-color: #c2185b; background: rgba(194,24,91,0.05); }
         .feat-page-divider { height: 1px; background: rgba(240,96,144,0.12); }
         .feat-page-section { padding: 80px 0; }
-        .feat-page-section-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.7rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 16px; }
-        .feat-page-section-h2 em { font-style: italic; color: #c2185b; }
-        .feat-page-section-body { font-size: 1rem; color: #71717a; line-height: 1.7; max-width: 600px; margin: 0 0 40px; }
-        .feat-points { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-        .feat-point { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
-        .feat-point:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
-        .feat-point-icon { margin-bottom: 10px; color: #c2185b; }
-        .feat-point-title { font-size: 1rem; font-weight: 700; color: #1a0a10; margin-bottom: 6px; }
-        .feat-point-body { font-size: 0.875rem; color: #71717a; line-height: 1.6; }
+        .feat-block-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 960px; }
+        .feat-block { padding: 28px; background: #fff; border: 1px solid #f06090; border-radius: 24px; transition: background 0.25s ease, border-color 0.25s ease; }
+        .feat-block:hover { background: rgba(240,96,144,0.10); border-color: #f06090; }
+        .feat-block-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .feat-block-icon { color: #c2185b; flex-shrink: 0; }
+        .feat-block-h3 { font-family: 'Fraunces', serif; font-size: clamp(1.2rem, 2vw, 1.5rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.01em; margin: 0; }
+        .feat-block-body { font-size: 1rem; color: #71717a; line-height: 1.75; margin: 0; }
+        .feat-related { margin-top: 56px; padding-top: 32px; border-top: 1px solid rgba(240,96,144,0.12); max-width: 680px; }
+        .feat-related-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #c2185b; margin: 0 0 10px; }
+        .feat-related-body { font-size: 0.95rem; color: #71717a; line-height: 1.6; margin: 0; }
+        .feat-related-body a { color: #c2185b; font-weight: 600; text-decoration: none; border-bottom: 1px solid rgba(194,24,91,0.3); }
+        .feat-related-body a:hover { border-color: #c2185b; }
         .feat-page-cta-section { padding: 80px 0; text-align: center; border-top: 1px solid rgba(240,96,144,0.1); }
         .feat-page-cta-h2 { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 700; color: #1a0a10; letter-spacing: -0.02em; margin: 0 0 12px; }
         .feat-page-cta-h2 em { font-style: italic; color: #c2185b; }
@@ -46,7 +71,7 @@ export default function DashboardFeaturePage() {
           .feat-page-hero-img-wrap { max-width: 100%; margin: 0; }
           .feat-page-hero-img { max-height: 55vh; border-radius: 20px; }
         }
-        @media (max-width: 640px) { .feat-points { grid-template-columns: 1fr; } .feat-page-hero { padding: 80px 0 60px; } }
+        @media (max-width: 640px) { .feat-page-hero { padding: 80px 0 60px; } }
       `}</style>
 
       <section className="feat-page-hero">
@@ -55,10 +80,10 @@ export default function DashboardFeaturePage() {
             <div className="feat-breadcrumb">
               <Link to="/features">Features</Link><span>/</span><span>Phase Review</span>
             </div>
-            <span className="feat-page-label">The end-of-phase moment</span>
+            <span className="feat-page-label">Proof of follow-through</span>
             <h1 className="feat-page-h1">See who you<br /><em>became.</em></h1>
             <p className="feat-page-sub">
-              When your phase ends, Sage puts together your Phase Review — a Wrapped-style recap of your wins, your patterns, your lessons, and what's next. The data isn't the goal. Your transformation is.
+              At the end of every phase, Sage shows you the whole story, so the work finally becomes visible.
             </p>
             <div className="feat-page-cta-row">
               <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
@@ -75,31 +100,23 @@ export default function DashboardFeaturePage() {
 
       <section className="feat-page-section">
         <div className="mkt-container">
-          <h2 className="feat-page-section-h2">Not a spreadsheet. A <em>recap.</em></h2>
-          <p className="feat-page-section-body">
-            Every phase ends with a moment built to feel earned — not a wall of numbers, but the story of what actually happened and who you were becoming while it did.
-          </p>
-          <div className="feat-points">
-            <div className="feat-point">
-              <div className="feat-point-icon"><TrendingUp size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Your wins</p>
-              <p className="feat-point-body">The check-ins, the streaks, the days you showed up anyway. Phase Review pulls them together so you can actually see them.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><Compass size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Your patterns</p>
-              <p className="feat-point-body">Sage surfaces what your journal and streaks reveal — when you're consistent, when you stall, and why.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><BookOpenCheck size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Your lessons</p>
-              <p className="feat-point-body">The reflections that mattered most, pulled from your journal and weekly check-ins across the whole phase.</p>
-            </div>
-            <div className="feat-point">
-              <div className="feat-point-icon"><Flag size={22} strokeWidth={1.8} /></div>
-              <p className="feat-point-title">Your next phase</p>
-              <p className="feat-point-body">Sage uses everything from this phase to help you set the next one — so you're never starting from zero again.</p>
-            </div>
+          <div className="feat-block-list">
+            {BLOCKS.map(({ Icon, title, body }) => (
+              <div className="feat-block" key={title}>
+                <div className="feat-block-head">
+                  <Icon size={20} strokeWidth={1.8} className="feat-block-icon" />
+                  <h3 className="feat-block-h3">{title}</h3>
+                </div>
+                <p className="feat-block-body">{body}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="feat-related">
+            <p className="feat-related-label">Related</p>
+            <p className="feat-related-body">
+              <Link to="/features/daily-streaks">Daily Streak</Link> is where the streaks it gathers come from. <Link to="/features/journal">Journal</Link> is where the entries it pulls from live.
+            </p>
           </div>
         </div>
       </section>
@@ -107,8 +124,8 @@ export default function DashboardFeaturePage() {
       <section className="feat-page-cta-section">
         <div className="mkt-container">
           <h2 className="feat-page-cta-h2">Your future self is<br /><em>already in there.</em></h2>
-          <p className="feat-page-cta-sub">Join the waitlist and start building your first phase.</p>
-          <Link to="/login" className="mkt-btn-primary">Join the waitlist</Link>
+          <p className="feat-page-cta-sub">Start building your first phase.</p>
+          <Link to="/login" className="mkt-btn-primary">Get early access</Link>
         </div>
       </section>
     </MarketingLayout>
