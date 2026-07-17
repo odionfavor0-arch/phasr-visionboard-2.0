@@ -5,6 +5,7 @@ import OurStory from './pages/OurStory'
 import AuthPage from './pages/AuthPage'
 import AppShell from './AppShell'
 import Onboarding from './components/Onboarding'
+import WelcomeScreen from './components/WelcomeScreen'
 import FeaturesPage from './pages/FeaturesPage'
 import AICoachPage from './pages/features/AICoachPage'
 import VisionBoardsPage from './pages/features/VisionBoardsPage'
@@ -24,6 +25,7 @@ import phasrLogo from './assets/phasr-logo-pink.png'
 
 const AUTH_RETURN_KEY = 'phasr_auth_return'
 const ONBOARDING_KEY_PREFIX = 'phasr_onboarded'
+const WELCOME_KEY_PREFIX = 'phasr_welcome_seen'
 const ONBOARDING_ACTIVE_KEY = 'phasr_onboarding_active'
 const POST_ONBOARDING_KEY = 'phasr_post_onboarding_target'
 const PRODUCT_ENTRY_KEY = 'phasr_enter_product'
@@ -97,6 +99,14 @@ function getOnboardingKey(user) {
   const identifier = user?.id || user?.email || 'guest'
   return `${ONBOARDING_KEY_PREFIX}:${identifier}`
 }
+function getWelcomeKey(user) {
+  const identifier = user?.id || user?.email || 'guest'
+  return `${WELCOME_KEY_PREFIX}:${identifier}`
+}
+function getStoredWelcomeSeen(user) {
+  if (!user) return false
+  try { return localStorage.getItem(getWelcomeKey(user)) === 'true' } catch { return false }
+}
 function getStoredOnboarded(user) {
   if (!user) return false
   if (hasRemoteOnboardingComplete(user)) {
@@ -141,6 +151,14 @@ async function persistOnboardingComplete(user) {
     console.warn('[Phasr] Could not persist onboarding status remotely:', error?.message || error)
   }
 }
+function clearAuthHashFromUrl() {
+  if (typeof window === 'undefined') return
+  if (!window.location.hash) return
+  try {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search)
+  } catch {}
+}
+
 function hasAuthRedirectParams() {
   if (typeof window === 'undefined') return false
   const search = window.location.search || ''
@@ -174,7 +192,16 @@ export default function AppRouter() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [onboarded, setOnboarded] = useState(false)
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false)
   const effectiveUser = user || (!hasExplicitSignOutIntent() ? getCachedUser() : null)
+
+  function dismissWelcome() {
+    const resolvedUser = effectiveUser || getCachedUser()
+    if (resolvedUser) {
+      try { localStorage.setItem(getWelcomeKey(resolvedUser), 'true') } catch {}
+    }
+    setWelcomeDismissed(true)
+  }
 
   function finishOnboarding(nextUser = user, _choice = 'later') {
     const resolvedUser = nextUser || effectiveUser || getCachedUser()
@@ -218,7 +245,16 @@ export default function AppRouter() {
     if (typeof window === 'undefined') return
     const hash = window.location.hash
     if (!hash) return
-    const target = document.querySelector(hash)
+    // OAuth redirects (Google, etc.) land here with tokens/errors in the hash
+    // (e.g. "#access_token=..."), which is not a valid CSS selector and must
+    // never reach querySelector — this effect is scroll-to-anchor only.
+    if (hasAuthRedirectParams() || !/^#[A-Za-z][\w-]*$/.test(hash)) return
+    let target = null
+    try {
+      target = document.querySelector(hash)
+    } catch {
+      return
+    }
     if (!target) return
     setTimeout(() => {
       const top = target.getBoundingClientRect().top + window.scrollY - 90
@@ -303,9 +339,11 @@ export default function AppRouter() {
           safeLocalRemove(POST_ONBOARDING_KEY)
           safeLocalRemove(PRODUCT_ENTRY_KEY)
           if (forceProduct || productReady || returningToAuth || postOnboardingTarget) {
+            clearAuthHashFromUrl()
             navigate('/dashboard', { replace: true })
           }
         } else if (returningToAuth || postOnboardingTarget) {
+          clearAuthHashFromUrl()
           navigate('/login', { replace: true })
         }
 
@@ -349,9 +387,11 @@ export default function AppRouter() {
       }
 
       if (event === 'SIGNED_IN') {
+        clearAuthHashFromUrl()
         navigate('/dashboard', { replace: true })
       } else if (!resolvedUser && !forceProduct && !productReady) {
         if (getAuthReturnValue() === 'google' || hasAuthRedirectParams() || postOnboardingTarget) {
+          clearAuthHashFromUrl()
           navigate('/login', { replace: true })
         }
       }
@@ -403,7 +443,9 @@ export default function AppRouter() {
         <div style={{ textAlign: 'center' }}>
           <img src={phasrLogo} alt="" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: '0.75rem' }} />
           <p style={{ fontFamily: "'Fraunces', serif", fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>Phasr</p>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Loading your workspace...</p>
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+            {hasAuthRedirectParams() ? 'Signing you in...' : 'Loading your workspace...'}
+          </p>
         </div>
       </div>
     )
@@ -473,10 +515,12 @@ export default function AppRouter() {
             !effectiveUser
               ? <Navigate to="/login" replace />
               : !onboarded
-                ? <Onboarding
-                    userName={effectiveUser?.user_metadata?.full_name || 'there'}
-                    onComplete={choice => finishOnboarding(effectiveUser, choice)}
-                  />
+                ? (!welcomeDismissed && !getStoredWelcomeSeen(effectiveUser))
+                  ? <WelcomeScreen onContinue={dismissWelcome} onSkip={dismissWelcome} />
+                  : <Onboarding
+                      userName={effectiveUser?.user_metadata?.full_name || 'there'}
+                      onComplete={choice => finishOnboarding(effectiveUser, choice)}
+                    />
                 : <AppShell
                     user={effectiveUser}
                     theme={theme}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import phasrLogoPink from '../assets/phasr-logo-pink.png'
 
 const PILLAR_PRESETS = [
   { id: 'health-fitness', emoji: '💪', name: 'Health & Fitness', details: 'Body, food, sleep, gym, energy' },
@@ -19,27 +20,26 @@ const slides = [
 ]
 
 const themes = {
-  dark: { bg: 'linear-gradient(135deg, #180711 0%, #2c0f1f 58%, #45182e 100%)', text: '#fff7fb', muted: 'rgba(255,247,251,0.8)', panel: 'rgba(255,255,255,0.12)', border: 'rgba(255,255,255,0.18)' },
-  deep: { bg: 'linear-gradient(135deg, #220915 0%, #4a1630 58%, #6f2c50 100%)', text: '#fff8fb', muted: 'rgba(255,248,251,0.82)', panel: 'rgba(255,255,255,0.14)', border: 'rgba(255,255,255,0.18)' },
-  rose: { bg: 'linear-gradient(135deg, #43142d 0%, #7c2d57 58%, #b04d7c 100%)', text: '#fff9fc', muted: 'rgba(255,249,252,0.84)', panel: 'rgba(255,255,255,0.16)', border: 'rgba(255,255,255,0.2)' },
-  roseBright: { bg: 'linear-gradient(135deg, #6a2447 0%, #b04879 58%, #ee8fb3 100%)', text: '#fff9fc', muted: 'rgba(255,249,252,0.86)', panel: 'rgba(255,255,255,0.18)', border: 'rgba(255,255,255,0.22)' },
-  light: { bg: 'linear-gradient(135deg, #fff7fb 0%, #ffeef5 58%, #ffdfe8 100%)', text: '#5a1737', muted: 'rgba(90,23,55,0.78)', panel: 'rgba(255,255,255,0.88)', border: 'rgba(212,71,120,0.18)' },
+  dark: { bg: 'linear-gradient(135deg, #fff8fa 0%, #fff0f4 58%, #ffe3ec 100%)', text: '#3d1020', muted: '#8a5060', panel: '#ffffff', border: '#f5c0cc' },
+  deep: { bg: 'linear-gradient(135deg, #ffffff 0%, #fff5f8 58%, #ffe9f0 100%)', text: '#3d1020', muted: '#8a5060', panel: '#fff8fa', border: '#f5c0cc' },
+  rose: { bg: 'linear-gradient(135deg, #fff8fa 0%, #ffeef5 58%, #ffdfe8 100%)', text: '#3d1020', muted: '#8a5060', panel: '#ffffff', border: '#f5c0cc' },
+  roseBright: { bg: 'linear-gradient(135deg, #fff0f4 0%, #ffe3ec 58%, #fcc0d4 100%)', text: '#3d1020', muted: '#8a5060', panel: '#ffffff', border: '#f2a6bc' },
+  light: { bg: 'linear-gradient(135deg, #ffffff 0%, #fff8fa 58%, #fff0f4 100%)', text: '#3d1020', muted: '#8a5060', panel: '#fff8fa', border: '#f5c0cc' },
 }
 
 function PreviewCard({ slide, theme, isPhone }) {
-  const isLight = slide.theme === 'light'
   const commonCard = {
     width: '100%', maxWidth: isPhone ? 288 : 460, borderRadius: isPhone ? 22 : 28, padding: isPhone ? 14 : 24,
-    background: isLight ? 'linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,247,251,0.82))' : 'linear-gradient(180deg,rgba(255,255,255,0.36),rgba(255,255,255,0.12))',
-    border: isLight ? '1px solid rgba(240,96,144,0.16)' : '1px solid rgba(255,255,255,0.24)',
-    boxShadow: isLight ? '0 24px 72px rgba(191,110,144,0.18)' : '0 24px 72px rgba(0,0,0,0.18)',
+    background: 'linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,247,251,0.82))',
+    border: '1px solid rgba(240,96,144,0.16)',
+    boxShadow: '0 24px 72px rgba(191,110,144,0.18)',
     backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)', boxSizing: 'border-box', color: theme.text,
   }
 
   if (slide.id === 'phasr') {
     return (
       <div style={commonCard}>
-        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem,8vw,5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>Phasr</div>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem,8vw,5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>Phasr</div>
         <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: '0.92rem', lineHeight: 1.6 }}>Clear structure for consistent action.</p>
       </div>
     )
@@ -58,7 +58,7 @@ function PreviewCard({ slide, theme, isPhone }) {
     return (
       <div style={commonCard}>
         <div style={{ marginLeft: 'auto', width: 'fit-content', maxWidth: '86%', padding: isPhone ? '0.76rem 0.88rem' : '0.92rem 1rem', borderRadius: 18, fontSize: isPhone ? '0.8rem' : '0.88rem', lineHeight: 1.5, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', color: '#fff' }}>What should I do next?</div>
-        <div style={{ marginTop: 12, width: 'fit-content', maxWidth: '86%', padding: isPhone ? '0.76rem 0.88rem' : '0.92rem 1rem', borderRadius: 18, fontSize: isPhone ? '0.8rem' : '0.88rem', lineHeight: 1.5, background: 'rgba(255,255,255,0.82)', color: '#451425' }}>Start with the smallest visible step today.</div>
+        <div style={{ marginTop: 12, width: 'fit-content', maxWidth: '86%', padding: isPhone ? '0.76rem 0.88rem' : '0.92rem 1rem', borderRadius: 18, fontSize: isPhone ? '0.8rem' : '0.88rem', lineHeight: 1.5, background: '#fff0f4', color: '#451425' }}>Start with the smallest visible step today.</div>
         <div style={{ display: 'inline-flex', marginTop: isPhone ? 12 : 16, padding: '0.62rem 0.94rem', borderRadius: 999, background: 'rgba(240,96,144,0.14)', color: '#d14579', fontSize: isPhone ? '0.76rem' : '0.82rem', fontWeight: 700 }}>Think with Sage</div>
       </div>
     )
@@ -162,18 +162,21 @@ export default function Onboarding({ userName = 'there', onComplete }) {
         .ob-delay-2 { animation-delay:0.14s; }
         @keyframes obFadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9000, overflow: 'hidden', background: theme.bg, color: theme.text, fontFamily: "'DM Sans',sans-serif" }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9000, overflow: 'hidden', background: theme.bg, color: theme.text, fontFamily: "'General Sans',sans-serif" }}>
         <div style={{ width: 'min(1120px,calc(100% - 32px))', height: '100dvh', margin: '0 auto', padding: isPhone ? '10px 0 96px' : '18px 0 16px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
 
           {/* Top bar */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: isPhone ? 30 : 38, marginBottom: isPhone ? 8 : 12 }}>
-            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 700, letterSpacing: '-0.03em' }}>
-              {step === 0 ? `Welcome, ${firstName}` : 'Phasr'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <img src={phasrLogoPink} alt="" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
+              <span style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 700, letterSpacing: '-0.03em' }}>
+                {step === 0 ? `Welcome, ${firstName}` : 'Phasr'}
+              </span>
             </div>
             {!slide.isClose && (
               <div style={{ display: 'flex', gap: 7 }}>
                 {slides.map((item, index) => (
-                  <span key={item.id} style={{ width: index === step ? 28 : 7, height: 7, borderRadius: 999, background: index === step ? '#f06090' : index < step ? 'rgba(240,96,144,0.64)' : 'rgba(255,255,255,0.26)' }} />
+                  <span key={item.id} style={{ width: index === step ? 28 : 7, height: 7, borderRadius: 999, background: index === step ? '#f06090' : index < step ? 'rgba(240,96,144,0.64)' : 'rgba(240,96,144,0.18)' }} />
                 ))}
               </div>
             )}
@@ -183,7 +186,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
           {slide.isClose ? (
             <div style={{ flex: 1, display: 'grid', placeItems: 'center', overflowY: isPhone ? 'auto' : 'visible', paddingBottom: isPhone ? 18 : 0 }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', width: '100%', maxWidth: 520, paddingBottom: isPhone ? 12 : 0 }}>
-                <h1 style={{ margin: 0, fontFamily: "'Cormorant Garamond',serif", fontSize: isPhone ? '2.45rem' : 'clamp(2.8rem,6vw,4.8rem)', lineHeight: 1, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
+                <h1 style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.45rem' : 'clamp(2.8rem,6vw,4.8rem)', lineHeight: 1, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
                 <p style={{ margin: '16px 0 24px', fontSize: isPhone ? '0.95rem' : '1rem', lineHeight: 1.7, color: theme.muted }}>{slide.body}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
                   <button type="button" onClick={() => finish('connected')} style={primaryButton}>Yes, connect my calendar</button>
@@ -199,7 +202,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                 <div style={{ display: 'inline-flex', alignItems: 'center', minHeight: 34, padding: '0.38rem 0.85rem', borderRadius: 999, border: `1px solid ${theme.border}`, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', background: theme.panel, marginBottom: 14 }}>
                   {slide.kicker}
                 </div>
-                <h1 style={{ margin: '0 0 12px', fontFamily: "'Cormorant Garamond',serif", fontSize: isPhone ? '2.4rem' : 'clamp(2.6rem,6vw,4.2rem)', lineHeight: 1, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
+                <h1 style={{ margin: '0 0 12px', fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.4rem' : 'clamp(2.6rem,6vw,4.2rem)', lineHeight: 1, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
                 <p style={{ margin: '0 0 24px', fontSize: '0.96rem', lineHeight: 1.65, color: theme.muted }}>Pick up to 3. You can change these later.</p>
               </div>
               <div className="ob-fade-up ob-delay-2" style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr 1fr' : 'repeat(3,1fr)', gap: 10, width: '100%', maxWidth: 580 }}>
@@ -213,7 +216,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                       style={{
                         padding: '14px 12px', borderRadius: 16, border: active ? 'none' : `1px solid ${theme.border}`,
                         background: active ? 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))' : theme.panel,
-                        color: theme.text, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                        color: theme.text, cursor: 'pointer', fontFamily: "'General Sans',sans-serif",
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, textAlign: 'center',
                         transition: 'all 0.18s', boxShadow: active ? '0 10px 24px rgba(232,64,122,0.28)' : 'none',
                       }}
@@ -238,13 +241,13 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                 <div style={{ display: 'inline-flex', alignItems: 'center', minHeight: 34, padding: '0.38rem 0.85rem', borderRadius: 999, border: `1px solid ${theme.border}`, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', background: theme.panel, marginBottom: 14 }}>
                   {slide.kicker}
                 </div>
-                <h1 style={{ margin: '0 0 10px', fontFamily: "'Cormorant Garamond',serif", fontSize: isPhone ? '2.2rem' : 'clamp(2.4rem,5vw,3.8rem)', lineHeight: 1.05, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
+                <h1 style={{ margin: '0 0 10px', fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.2rem' : 'clamp(2.4rem,5vw,3.8rem)', lineHeight: 1.05, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
                 <p style={{ margin: '0 0 20px', fontSize: '0.94rem', lineHeight: 1.65, color: theme.muted }}>{slide.body}</p>
               </div>
 
               <div className="ob-fade-up ob-delay-2" style={{ width: '100%', maxWidth: 520 }}>
                 {letterSealed ? (
-                  <div style={{ padding: '20px', borderRadius: 18, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', textAlign: 'center' }}>
+                  <div style={{ padding: '20px', borderRadius: 18, background: theme.panel, border: `1px solid ${theme.border}`, textAlign: 'center' }}>
                     <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>✉️</div>
                     <p style={{ margin: 0, fontWeight: 800, color: theme.text }}>Letter sealed.</p>
                     <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: theme.muted }}>Sage will share it with you when you complete your first phase.</p>
@@ -258,9 +261,9 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                       rows={isPhone ? 5 : 7}
                       style={{
                         width: '100%', boxSizing: 'border-box', borderRadius: 16,
-                        border: '1px solid rgba(255,255,255,0.3)',
-                        background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)',
-                        color: theme.text, fontFamily: "'DM Sans',sans-serif",
+                        border: `1px solid ${theme.border}`,
+                        background: '#ffffff',
+                        color: theme.text, fontFamily: "'General Sans',sans-serif",
                         fontSize: '0.96rem', lineHeight: 1.65,
                         padding: '16px', resize: 'none', outline: 'none',
                         marginBottom: 12,
@@ -299,7 +302,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                     {slide.id === 'phasr' ? welcomeKicker : slide.kicker}
                   </div>
 
-                  <h1 style={{ margin: 0, fontFamily: "'Cormorant Garamond',serif", fontSize: isPhone ? '2.7rem' : 'clamp(2.9rem,7vw,5.35rem)', lineHeight: 0.98, fontWeight: 300, letterSpacing: '-0.04em', color: theme.text, textShadow: slide.theme === 'light' ? '0 1px 0 rgba(255,255,255,0.6)' : 'none' }}>
+                  <h1 style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.7rem' : 'clamp(2.9rem,7vw,5.35rem)', lineHeight: 0.98, fontWeight: 300, letterSpacing: '-0.04em', color: theme.text, textShadow: slide.theme === 'light' ? '0 1px 0 rgba(255,255,255,0.6)' : 'none' }}>
                     {slide.headline}
                   </h1>
 
@@ -322,7 +325,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, paddingTop: isPhone ? 8 : 10, position: isPhone ? 'fixed' : 'static', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', bottom: isPhone ? 10 : 'auto', zIndex: isPhone ? 4 : 'auto', background: isPhone ? `linear-gradient(180deg,rgba(255,255,255,0) 0%,${slide.theme === 'light' ? 'rgba(255,247,251,0.98)' : 'rgba(24,7,17,0.88)'} 100%)` : 'transparent', backdropFilter: isPhone ? 'blur(10px)' : 'none', WebkitBackdropFilter: isPhone ? 'blur(10px)' : 'none', borderRadius: isPhone ? 20 : 0, padding: isPhone ? '12px 12px 10px' : undefined, boxShadow: isPhone ? '0 -12px 30px rgba(0,0,0,0.08)' : 'none' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, paddingTop: isPhone ? 8 : 10, position: isPhone ? 'fixed' : 'static', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', bottom: isPhone ? 10 : 'auto', zIndex: isPhone ? 4 : 'auto', background: isPhone ? 'linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,247,251,0.98) 100%)' : 'transparent', backdropFilter: isPhone ? 'blur(10px)' : 'none', WebkitBackdropFilter: isPhone ? 'blur(10px)' : 'none', borderRadius: isPhone ? 20 : 0, padding: isPhone ? '12px 12px 10px' : undefined, boxShadow: isPhone ? '0 -12px 30px rgba(0,0,0,0.08)' : 'none' }}>
                 {step > 0 ? (
                   <button type="button" onClick={back} style={{ ...ghostButton, color: theme.text, borderColor: theme.border }}>Back</button>
                 ) : (
