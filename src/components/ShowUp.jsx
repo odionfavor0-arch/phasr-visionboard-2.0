@@ -677,17 +677,17 @@ const SHOW_UP_STYLES = `
 }
 .showup-member-card{
   width:100%;
-  min-height:124px;
-  padding:20px;
+  min-height:auto;
+  padding:12px 14px;
   display:grid;
-  grid-template-columns:1fr;
-  justify-items:center;
-  align-content:center;
-  gap:8px;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  justify-items:stretch;
+  gap:12px;
   background:#fff;
   border:1px solid rgba(249,95,133,0.14);
   border-radius:16px;
-  text-align:center;
+  text-align:left;
   cursor:pointer;
 }
 .showup-member-dot{
@@ -722,7 +722,7 @@ const SHOW_UP_STYLES = `
   font-family:'Syne',sans-serif;
   font-size:13px;
   font-weight:700;
-  text-align:center;
+  text-align:left;
   color:#4d3142;
   max-width:100%;
   overflow:hidden;
@@ -1094,7 +1094,7 @@ const SHOW_UP_STYLES = `
   font-family:'DM Sans',sans-serif;
   cursor:pointer;
   white-space:nowrap;
-  margin-top:4px;
+  flex-shrink:0;
   transition:background .14s;
 }
 .showup-nudge-card-btn:hover{background:rgba(249,95,133,0.06)}
@@ -1110,7 +1110,7 @@ const SHOW_UP_STYLES = `
   font-family:'DM Sans',sans-serif;
   cursor:pointer;
   white-space:nowrap;
-  margin-top:4px;
+  flex-shrink:0;
   transition:opacity .14s;
 }
 .showup-checkin-cta-btn:hover{opacity:.88}
@@ -1166,7 +1166,7 @@ const SHOW_UP_STYLES = `
   font-family:'DM Sans',sans-serif;
   display:inline-flex;
   align-items:center;
-  margin-top:4px;
+  flex-shrink:0;
   white-space:nowrap;
 }
 .showup-nudge-post-btn:disabled{
@@ -2360,183 +2360,173 @@ const SHOW_UP_STYLES = `
 }
 
 .showup-root{
-  background:
-    radial-gradient(circle at 12% 4%, rgba(255,215,226,0.68), transparent 32%),
-    radial-gradient(circle at 92% 10%, rgba(220,204,255,0.42), transparent 28%),
-    linear-gradient(180deg,#fffaf6 0%,#fff5f8 54%,#fffaf8 100%) !important;
+  background:#ffffff;
 }
 .showup-shell{
-  padding:22px 18px 116px !important;
+  padding:22px 18px 116px;
 }
 .showup-room-inline-banner{
-  border:1px solid rgba(249,95,133,0.16) !important;
-  background:rgba(255,255,255,0.72) !important;
+  border:1px solid rgba(249,95,133,0.16);
+  background:rgba(255,255,255,0.72);
   backdrop-filter:blur(18px);
   box-shadow:0 18px 48px rgba(77,49,66,0.08);
 }
 .showup-list-header{
-  padding:8px 2px 16px !important;
+  padding:8px 2px 16px;
 }
 .showup-list-kicker{
-  color:#b98097 !important;
-  letter-spacing:.24em !important;
+  color:#b98097;
+  letter-spacing:.24em;
 }
 .showup-create-link{
-  border:1px solid rgba(249,95,133,0.20) !important;
-  border-radius:999px !important;
-  padding:8px 14px !important;
-  background:rgba(255,255,255,0.74) !important;
+  border:1px solid rgba(249,95,133,0.20);
+  border-radius:999px;
+  padding:8px 14px;
+  background:rgba(255,255,255,0.74);
   box-shadow:0 14px 32px rgba(249,95,133,0.10);
 }
 .showup-list-panel{
-  display:grid !important;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important;
-  gap:14px !important;
-  border:none !important;
-  border-radius:0 !important;
-  background:transparent !important;
-  overflow:visible !important;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:14px;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  overflow:visible;
 }
 .showup-list-row{
-  grid-template-columns:44px minmax(0,1fr) auto !important;
-  align-items:start !important;
-  min-height:138px !important;
-  padding:18px !important;
-  border:1px solid rgba(249,95,133,0.18) !important;
-  border-radius:28px !important;
-  background:rgba(255,255,255,0.78) !important;
-  box-shadow:0 18px 48px rgba(77,49,66,0.08) !important;
-  backdrop-filter:blur(18px);
+  grid-template-columns:44px minmax(0,1fr) auto;
+  align-items:center;
+  min-height:auto;
+  padding:16px 18px;
+  border:1px solid rgba(249,95,133,0.18);
+  border-radius:20px;
+  background:#ffffff;
+  box-shadow:0 4px 16px rgba(77,49,66,0.05);
   transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .showup-list-row:hover{
-  transform:translateY(-3px);
-  box-shadow:0 24px 64px rgba(77,49,66,0.12) !important;
-  border-color:rgba(249,95,133,0.32) !important;
+  transform:translateY(-2px);
+  box-shadow:0 8px 24px rgba(77,49,66,0.08);
+  border-color:rgba(249,95,133,0.32);
 }
 .showup-list-icon{
-  width:42px !important;
-  height:42px !important;
-  border-radius:16px !important;
+  width:42px;
+  height:42px;
+  border-radius:16px;
 }
 .showup-list-content{
-  gap:8px !important;
+  gap:4px;
 }
 .showup-list-name{
-  font-size:17px !important;
-  line-height:1.2 !important;
+  font-size:15px;
+  line-height:1.2;
 }
 .showup-list-meta{
-  font-size:12px !important;
-  line-height:1.4 !important;
-}
-.showup-list-action{
-  align-self:end !important;
-  grid-column:1 / -1 !important;
-  justify-content:space-between !important;
-  margin-top:8px !important;
+  font-size:12px;
+  line-height:1.4;
 }
 .showup-join-pill{
-  min-height:38px !important;
-  padding:0 18px !important;
-  color:#fff !important;
-  background:linear-gradient(135deg,#f95f85,#ff9ab4) !important;
-  box-shadow:0 14px 30px rgba(249,95,133,0.20) !important;
+  min-height:32px;
+  padding:0 16px;
+  color:#fff;
+  background:linear-gradient(135deg,#f95f85,#ff9ab4);
+  box-shadow:0 6px 16px rgba(249,95,133,0.20);
 }
 .showup-join-pill.is-joined{
-  color:#f95f85 !important;
-  background:#fff !important;
-  border-color:rgba(249,95,133,0.22) !important;
-  box-shadow:none !important;
-  padding:0 16px !important;
+  color:#f95f85;
+  background:#fff;
+  border-color:rgba(249,95,133,0.22);
+  box-shadow:none;
+  padding:0 16px;
 }
 .showup-sticky-header{
-  position:relative !important;
-  margin-bottom:12px !important;
-  padding:14px 16px !important;
+  position:relative;
+  margin-bottom:12px;
+  padding:14px 16px;
   border:1px solid rgba(249,95,133,0.14);
   border-radius:28px;
-  background:rgba(255,255,255,0.76);
-  box-shadow:0 18px 48px rgba(77,49,66,0.08);
+  background:rgba(255,255,255,0.96);
+  box-shadow:0 8px 24px rgba(77,49,66,0.05);
   backdrop-filter:blur(18px);
 }
 .showup-topbar{
-  display:grid !important;
-  grid-template-columns:42px minmax(0,1fr) 42px !important;
-  align-items:center !important;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) 42px;
+  align-items:center;
 }
 .showup-room-title{
-  text-align:center !important;
-  font-size:20px !important;
-  letter-spacing:-.02em !important;
+  text-align:center;
+  font-size:20px;
+  letter-spacing:-.02em;
 }
 .showup-room-menu-wrap{
-  visibility:hidden !important;
-  pointer-events:none !important;
+  visibility:hidden;
+  pointer-events:none;
 }
 .showup-header-btn{
-  border-radius:16px !important;
-  background:#fff !important;
-  border:1px solid rgba(249,95,133,0.14) !important;
-  color:#4d3142 !important;
+  border-radius:16px;
+  background:#fff;
+  border:1px solid rgba(249,95,133,0.14);
+  color:#4d3142;
 }
 .showup-tabs{
-  border:1px solid rgba(249,95,133,0.14) !important;
-  background:rgba(255,255,255,0.84) !important;
-  box-shadow:0 18px 48px rgba(77,49,66,0.12) !important;
+  border:1px solid rgba(249,95,133,0.14);
+  background:rgba(255,255,255,0.98);
+  box-shadow:0 8px 24px rgba(77,49,66,0.08);
 }
 .showup-tab{
-  border:none !important;
-  background:transparent !important;
+  border:none;
+  background:transparent;
 }
 .showup-tab.is-active{
-  background:#f95f85 !important;
-  color:#fff !important;
+  background:#f95f85;
+  color:#fff;
 }
 .showup-member-grid{
-  grid-template-columns:repeat(auto-fit,minmax(190px,1fr)) !important;
-  gap:14px !important;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:12px;
 }
 .showup-member-card{
-  border-radius:26px !important;
-  background:rgba(255,255,255,0.82) !important;
-  box-shadow:0 18px 48px rgba(77,49,66,0.08);
-  border-color:rgba(249,95,133,0.16) !important;
+  border-radius:18px;
+  background:#ffffff;
+  box-shadow:0 2px 10px rgba(77,49,66,0.05);
+  border-color:rgba(249,95,133,0.16);
 }
 .showup-feed-view{
-  gap:14px !important;
+  gap:14px;
 }
 .showup-compose-card,
 .showup-feed-card,
 .showup-rank-row,
 .showup-empty{
-  border-radius:26px !important;
-  background:rgba(255,255,255,0.86) !important;
-  box-shadow:0 18px 48px rgba(77,49,66,0.08) !important;
-  border:1px solid rgba(249,95,133,0.14) !important;
+  border-radius:20px;
+  background:#ffffff;
+  box-shadow:0 2px 10px rgba(77,49,66,0.05);
+  border:1px solid rgba(249,95,133,0.14);
 }
 .showup-compose-card{
-  padding:16px !important;
+  padding:16px;
 }
 .showup-compose-input{
-  background:#fff7fa !important;
-  border:1px solid rgba(249,95,133,0.12) !important;
-  border-radius:999px !important;
-  padding:0 16px !important;
+  background:#fff7fa;
+  border:1px solid rgba(249,95,133,0.12);
+  border-radius:999px;
+  padding:0 16px;
 }
 .showup-photo-btn,
 .showup-post-btn{
-  border-radius:999px !important;
+  border-radius:999px;
 }
 .showup-feed-card{
-  padding:18px !important;
+  padding:18px;
 }
 .showup-feed-card.is-sage,
 .showup-feed-card.is-pinned{
   background:
     linear-gradient(135deg,rgba(255,255,255,0.96),rgba(255,243,248,0.96)),
-    radial-gradient(circle at 90% 12%,rgba(249,95,133,0.16),transparent 28%) !important;
-  border-color:rgba(249,95,133,0.24) !important;
+    radial-gradient(circle at 90% 12%,rgba(249,95,133,0.16),transparent 28%);
+  border-color:rgba(249,95,133,0.24);
 }
 .showup-feed-card.is-pinned{
   position:sticky;
@@ -2552,50 +2542,50 @@ const SHOW_UP_STYLES = `
   text-transform:uppercase;
 }
 .showup-feed-header-main{
-  flex-direction:column !important;
-  align-items:flex-start !important;
-  justify-content:center !important;
-  gap:2px !important;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:2px;
 }
 .showup-feed-name{
-  font-size:15px !important;
+  font-size:15px;
 }
 .showup-feed-time{
-  font-size:12px !important;
+  font-size:12px;
 }
 .showup-feed-text{
-  margin-left:52px !important;
+  margin-left:52px;
 }
 .showup-feed-media-wrapper{
-  width:calc(100% - 52px) !important;
-  margin-left:52px !important;
-  border-radius:20px !important;
-  background:#fff5f8 !important;
+  width:calc(100% - 52px);
+  margin-left:52px;
+  border-radius:20px;
+  background:#fff5f8;
 }
 .showup-feed-image{
-  border-radius:20px !important;
+  border-radius:20px;
 }
 .showup-feed-reactions{
-  margin-left:52px !important;
-  padding-top:12px !important;
+  margin-left:52px;
+  padding-top:12px;
   border-top:1px solid rgba(77,49,66,0.08);
-  justify-content:space-between !important;
-  flex-wrap:nowrap !important;
+  justify-content:space-between;
+  flex-wrap:nowrap;
 }
 .showup-reaction-chip,
 .showup-comment-toggle,
 .showup-nudge-post-btn{
-  border-radius:999px !important;
-  background:#fff !important;
+  border-radius:999px;
+  background:#fff;
 }
 .showup-feed-side-panel{
   display:none;
 }
 .showup-side-card{
   border:1px solid rgba(249,95,133,0.14);
-  border-radius:26px;
-  background:rgba(255,255,255,0.82);
-  box-shadow:0 18px 48px rgba(77,49,66,0.08);
+  border-radius:20px;
+  background:#ffffff;
+  box-shadow:0 2px 10px rgba(77,49,66,0.05);
   padding:16px;
 }
 .showup-side-title{
@@ -2628,24 +2618,24 @@ const SHOW_UP_STYLES = `
   font-weight:800;
 }
 .showup-rank-row{
-  border-radius:22px !important;
+  border-radius:16px;
 }
 @media (min-width: 900px){
   .showup-shell{
-    max-width:1180px !important;
-    padding-left:28px !important;
-    padding-right:28px !important;
+    max-width:1180px;
+    padding-left:28px;
+    padding-right:28px;
   }
   .showup-feed-view{
-    grid-template-columns:minmax(0,1fr) 300px !important;
-    align-items:start !important;
-    gap:18px !important;
+    grid-template-columns:minmax(0,1fr) 300px;
+    align-items:start;
+    gap:18px;
   }
   .showup-feed-view > .showup-compose-card,
   .showup-feed-view > .showup-feed-card,
   .showup-feed-view > .showup-empty,
   .showup-feed-view > .showup-progress-toast{
-    grid-column:1 !important;
+    grid-column:1;
   }
   .showup-feed-side-panel{
     display:grid;
@@ -2658,31 +2648,30 @@ const SHOW_UP_STYLES = `
 }
 @media (max-width: 767px){
   .showup-shell{
-    padding:14px 12px 104px !important;
+    padding:14px 12px 104px;
   }
   .showup-list-panel{
-    grid-template-columns:1fr !important;
-    gap:10px !important;
+    grid-template-columns:1fr;
+    gap:10px;
   }
   .showup-list-row{
-    min-height:116px !important;
-    border-radius:24px !important;
-    padding:16px !important;
+    padding:14px 16px;
+    border-radius:18px;
   }
   .showup-room-title{
-    font-size:17px !important;
+    font-size:17px;
   }
   .showup-feed-card{
-    padding:14px !important;
-    border-radius:22px !important;
+    padding:14px;
+    border-radius:18px;
   }
   .showup-feed-text,
   .showup-feed-reactions{
-    margin-left:0 !important;
+    margin-left:0;
   }
   .showup-feed-media-wrapper{
-    width:100% !important;
-    margin-left:0 !important;
+    width:100%;
+    margin-left:0;
   }
 }
 `
@@ -3273,10 +3262,6 @@ function getRoomActivity(roomName) {
   return safeArray(safeRead(getRoomActivityStorageKey(roomName), []))
 }
 
-function getCreatedRoomsKey() {
-  return 'showup_created_rooms'
-}
-
 function getNotificationStorageKey(userId) {
   return `showup_notifications_${userId || 'local-user'}`
 }
@@ -3515,6 +3500,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const [activeTab, setActiveTab] = useState('live')
   const [members, setMembers] = useState([])
   const [roomCounts, setRoomCounts] = useState({})
+  const [customRooms, setCustomRooms] = useState([])
   const [checkedIn, setCheckedIn] = useState(false)
   const [taskDone, setTaskDone] = useState(false)
   const [localSessionMember, setLocalSessionMember] = useState(null)
@@ -3586,21 +3572,23 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   const taskDoneRef = useRef(false)
   const localSessionMemberRef = useRef(null)
   const profileRef = useRef(profile)
+  const selectedRoomRef = useRef(selectedRoom)
 
   membersRef.current = members
   checkedInRef.current = checkedIn
   taskDoneRef.current = taskDone
   localSessionMemberRef.current = localSessionMember
   profileRef.current = profile
+  selectedRoomRef.current = selectedRoom
 
   const preferredRoomName = useMemo(() => detectRoomNameFromBoard(), [])
   const rooms = useMemo(() => {
-    const nextRooms = [...ROOM_DEFINITIONS]
+    const nextRooms = [...ROOM_DEFINITIONS, ...customRooms]
     const preferredIndex = nextRooms.findIndex(room => room.name === preferredRoomName)
     if (preferredIndex <= 0) return nextRooms
     const preferredRoom = nextRooms[preferredIndex]
     return [preferredRoom, ...nextRooms.filter((_, index) => index !== preferredIndex)]
-  }, [preferredRoomName])
+  }, [preferredRoomName, customRooms])
   useEffect(() => {
     if (!selectedRoom) return
     setMembers(current => {
@@ -3897,21 +3885,35 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   async function loadRoomCounts(nextProfile = profile) {
     if (!supabase) {
       setRoomCounts({})
+      setCustomRooms([])
       setError('')
       return
     }
 
     try {
       const counts = {}
+      let nextCustomRooms = []
       try {
         const { data: roomsData, error: roomsError } = await supabase
           .from('rooms')
-          .select('id,current_members')
+          .select('id,name,description,current_members')
         if (roomsError) throw roomsError
         ;(roomsData || []).forEach(row => {
-          const room = ROOM_DEFINITIONS.find(item => item.id === row.id)
-          if (!room) return
-          counts[room.name] = Number(row.current_members || 0)
+          const builtIn = ROOM_DEFINITIONS.find(item => item.id === row.id)
+          if (builtIn) {
+            counts[builtIn.name] = Number(row.current_members || 0)
+            return
+          }
+          // Any row that isn't one of the 6 built-in pillars is a user-created room.
+          if (!row.name) return
+          nextCustomRooms.push({
+            id: row.id,
+            name: row.name,
+            pillar: row.name,
+            description: row.description || 'A room created by a member.',
+            roomColor: '#9a6bd0',
+          })
+          counts[row.name] = Number(row.current_members || 0)
         })
       } catch {
         const { data, error: countsError } = await supabase
@@ -3924,6 +3926,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         })
       }
       setRoomCounts(counts)
+      setCustomRooms(nextCustomRooms)
     } catch (nextError) {
       console.error('Show Up room counts failed', nextError)
       setRoomCounts({})
@@ -3990,6 +3993,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
 
       if (membersError) throw membersError
 
+      // The user may have switched rooms while this request was in flight — drop the stale result.
+      if (selectedRoomRef.current !== roomName) return
+
       const rowCount = data?.length ?? 0
       console.log(
         '[ShowUp] loadMembers room_name:', JSON.stringify(roomName),
@@ -4038,6 +4044,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setError('')
     } catch (nextError) {
       console.error('[ShowUp] loadMembers failed', nextError.message || nextError)
+      if (selectedRoomRef.current !== roomName) return
       const cachedMembers = readLocalMembers(roomName)
       if (cachedMembers.length) {
         setMembers(cachedMembers)
@@ -4085,6 +4092,9 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         .limit(100)
 
       if (feedError) throw feedError
+
+      // The user may have switched rooms while this request was in flight — drop the stale result.
+      if (selectedRoomRef.current !== roomName) return
 
       console.log('[ShowUp] loadFeedPosts room_id:', roomName, '→ rows returned:', data?.length, data?.map(p => p.id + ':' + (p.author_name || '?')))
 
@@ -4164,6 +4174,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       setFeedPosts(mergedPosts)
     } catch (nextError) {
       console.error('[ShowUp] loadFeedPosts failed', nextError.message || nextError)
+      if (selectedRoomRef.current !== roomName) return
       setFeedReady(true)
       const cached = readLocalPosts(roomName)
       const mergedCached = [welcomePost, ...cached.filter(post => post.id !== welcomePost.id)]
@@ -4832,6 +4843,27 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     })
   }
 
+  // Comments live in a single JSON column, so two people commenting close together can race
+  // and silently clobber each other. Re-read the freshest column right before writing and apply
+  // the mutation on top of that instead of the (possibly stale) local state, to shrink the race window.
+  async function syncCommentsPatch(postId, mutate) {
+    if (!supabase || !postId) return
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('room_feed_posts')
+        .select('comments')
+        .eq('id', postId)
+        .maybeSingle()
+      if (fetchError) throw fetchError
+      const nextComments = mutate(safeArray(data?.comments))
+      const { error } = await supabase.from('room_feed_posts').update({ comments: nextComments }).eq('id', postId)
+      if (error) throw error
+    } catch (nextError) {
+      console.error('[ShowUp] comment sync failed', nextError.message || nextError)
+      setBottomToast("Couldn't sync — check your connection")
+    }
+  }
+
   function handleToggleReaction(postId, reactionKey = 'like') {
     let nextReactionsForPost = {}
     setFeedPosts(current => current.map(post => {
@@ -4909,25 +4941,23 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   function handleAddComment(postId) {
     const draft = String(commentDrafts[postId] || '').trim()
     if (!draft) return
+    const newComment = {
+      id: uid(),
+      authorId: profile.id,
+      authorName: profile.name,
+      authorInitials: profile.initials,
+      authorAvatarUrl: profile.avatar || '',
+      anonymous: false,
+      text: draft,
+      image: commentImage,
+      createdAt: new Date().toISOString(),
+      reactions: { love: [] },
+      replies: [],
+    }
     let nextComments = []
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
-      nextComments = [
-        ...safeArray(post.comments),
-        {
-          id: uid(),
-          authorId: profile.id,
-          authorName: profile.name,
-          authorInitials: profile.initials,
-          authorAvatarUrl: profile.avatar || '',
-          anonymous: false,
-          text: draft,
-          image: commentImage,
-          createdAt: new Date().toISOString(),
-          reactions: { love: [] },
-          replies: [],
-        },
-      ]
+      nextComments = [...safeArray(post.comments), newComment]
       return { ...post, comments: nextComments }
     }))
     setCommentDrafts(current => ({ ...current, [postId]: '' }))
@@ -4936,7 +4966,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    syncFeedPostPatch(postId, { comments: nextComments })
+    syncCommentsPatch(postId, baseComments => [...baseComments, newComment])
   }
 
   function handleDeleteComment(postId, commentId) {
@@ -4950,7 +4980,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    syncFeedPostPatch(postId, { comments: nextComments })
+    syncCommentsPatch(postId, baseComments => baseComments.filter(comment => comment.id !== commentId))
   }
 
   function startCommentHold(commentId, isOwnComment) {
@@ -4968,23 +4998,27 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     }
   }
 
+  function toggleCommentReactionIn(comments, commentId) {
+    return comments.map(comment => {
+      if (comment.id !== commentId) return comment
+      const nextSet = new Set(safeArray(comment.reactions?.love))
+      if (nextSet.has(profile.id)) nextSet.delete(profile.id)
+      else nextSet.add(profile.id)
+      return {
+        ...comment,
+        reactions: {
+          ...comment.reactions,
+          love: [...nextSet],
+        },
+      }
+    })
+  }
+
   function handleToggleCommentReaction(postId, commentId) {
     let nextComments = []
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
-      nextComments = safeArray(post.comments).map(comment => {
-        if (comment.id !== commentId) return comment
-        const nextSet = new Set(safeArray(comment.reactions?.love))
-        if (nextSet.has(profile.id)) nextSet.delete(profile.id)
-        else nextSet.add(profile.id)
-        return {
-          ...comment,
-          reactions: {
-            ...comment.reactions,
-            love: [...nextSet],
-          },
-        }
-      })
+      nextComments = toggleCommentReactionIn(safeArray(post.comments), commentId)
       return {
         ...post,
         comments: nextComments,
@@ -4993,33 +5027,32 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    syncFeedPostPatch(postId, { comments: nextComments })
+    syncCommentsPatch(postId, baseComments => toggleCommentReactionIn(baseComments, commentId))
   }
 
   function handleAddReply(postId, commentId) {
     const draftKey = `${postId}:${commentId}`
     const draft = (replyDrafts[draftKey] || '').trim()
     if (!draft) return
+    const newReply = {
+      id: uid(),
+      authorId: profile.id,
+      authorName: profile.name,
+      authorInitials: profile.initials,
+      text: draft,
+      createdAt: new Date().toISOString(),
+    }
+    const addReplyIn = comments => comments.map(comment => {
+      if (comment.id !== commentId) return comment
+      return {
+        ...comment,
+        replies: [...safeArray(comment.replies), newReply],
+      }
+    })
     let nextComments = []
     setFeedPosts(current => current.map(post => {
       if (post.id !== postId) return post
-      nextComments = safeArray(post.comments).map(comment => {
-        if (comment.id !== commentId) return comment
-        return {
-          ...comment,
-          replies: [
-            ...safeArray(comment.replies),
-            {
-              id: uid(),
-              authorId: profile.id,
-              authorName: profile.name,
-              authorInitials: profile.initials,
-              text: draft,
-              createdAt: new Date().toISOString(),
-            },
-          ],
-        }
-      })
+      nextComments = addReplyIn(safeArray(post.comments))
       return {
         ...post,
         comments: nextComments,
@@ -5029,7 +5062,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     if (selectedRoom) {
       writeLocalPosts(selectedRoom, readLocalPosts(selectedRoom).map(p => p.id === postId ? { ...p, comments: nextComments } : p))
     }
-    syncFeedPostPatch(postId, { comments: nextComments })
+    syncCommentsPatch(postId, baseComments => addReplyIn(baseComments))
   }
 
   function openNotifySheet(member, prefill = '') {
@@ -5142,24 +5175,39 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
     setCreateRoomModalOpen(true)
   }
 
-  function handleSaveCreatedRoom() {
+  async function handleSaveCreatedRoom() {
     const trimmedName = String(createRoomName || '').trim()
     if (!trimmedName) return
-    const current = safeArray(safeRead(getCreatedRoomsKey(), []))
-    safeWrite(getCreatedRoomsKey(), [
-      {
-        id: `custom-${normalize(trimmedName)}-${uid()}`,
+    if (!supabase) {
+      setError(supabaseConfigError || 'Creating a room needs Supabase.')
+      return
+    }
+
+    const newRoomId = `custom-${normalize(trimmedName)}-${uid()}`
+    const focusAreaLabel = ROOM_DEFINITIONS.find(room => room.id === createFocusAreaId)?.pillar || ''
+    const description = focusAreaLabel ? `Focus: ${focusAreaLabel}` : 'A room created by a member.'
+
+    try {
+      const { error } = await supabase.from('rooms').insert({
+        id: newRoomId,
         name: trimmedName,
-        focusAreaId: createFocusAreaId,
+        description,
         created_by: profile.id,
-        created_at: new Date().toISOString(),
-      },
-      ...current,
-    ])
-    setCreateRoomName('')
-    setCreateFocusAreaId(ROOM_DEFINITIONS[0].id)
-    setCreateRoomModalOpen(false)
-    setBottomToast('Room request saved.')
+        current_members: 0,
+      })
+      if (error) throw error
+      setCustomRooms(current => [
+        { id: newRoomId, name: trimmedName, pillar: trimmedName, description, roomColor: '#9a6bd0' },
+        ...current,
+      ])
+      setCreateRoomName('')
+      setCreateFocusAreaId(ROOM_DEFINITIONS[0].id)
+      setCreateRoomModalOpen(false)
+      setBottomToast('Room created.')
+    } catch (nextError) {
+      console.error('Show Up create room failed', nextError)
+      setError('Could not create room in Supabase.')
+    }
   }
 
   const realMembers = useMemo(() => {
@@ -5436,7 +5484,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
       <div
         className="showup-root"
         style={{
-          background: 'linear-gradient(180deg,#fff8fb 0%,#fff2f7 100%)',
+          background: '#ffffff',
           color: '#4d3142',
           minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)',
         }}
@@ -5677,7 +5725,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
   }
 
   return (
-    <div className="showup-root" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', overflowX: 'hidden' }}>
+    <div className="showup-root" style={{ '--bg': '#ffffff', background: '#ffffff', width: '100%', overflowX: 'hidden' }}>
       <style>{SHOW_UP_STYLES}</style>
       {nudgeToast ? (
         <div className="showup-toast-stack" role="status" aria-live="polite">
@@ -5704,7 +5752,7 @@ export default function ShowUp({ user, profileData: externalProfileData, onGoToD
         </div>
       ) : null}
 
-      <div className="showup-shell" style={{ '--bg': '#fff8f9', background: '#fff8f9', width: '100%', maxWidth: 1180, minWidth: 0, overflowX: 'hidden' }}>
+      <div className="showup-shell" style={{ '--bg': '#ffffff', background: '#ffffff', width: '100%', maxWidth: 1180, minWidth: 0, overflowX: 'hidden' }}>
         {pulseBanner ? <div className="showup-sync-notice" style={{ marginBottom: 10 }}>{pulseBanner}</div> : null}
         <div className="showup-sticky-header">
           <div className="showup-topbar">

@@ -1479,6 +1479,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [calendarPromptState, setCalendarPromptState] = useState('hidden')
   const [calendarPromptArmed, setCalendarPromptArmed] = useState(false)
   const [calendarBannerMounted, setCalendarBannerMounted] = useState(false)
+  const [showSavePopup, setShowSavePopup] = useState(false)
   const [scheduleRefresh, setScheduleRefresh] = useState(0)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   const [showReview, setShowReview] = useState(false)
@@ -1995,6 +1996,7 @@ Return JSON only:
   async function handleEditingToggle() {
     if (editing) {
       setCalendarPromptArmed(true)
+      setShowSavePopup(true)
       const pillarsToGenerate = (phase?.pillars || []).filter(pillar => {
         const hasBeforeAndAfter = Boolean(cleanText(pillar?.beforeDesc) && cleanText(pillar?.afterDesc))
         const hasPlan = Array.isArray(pillar?.activities) && pillar.activities.filter(Boolean).length > 0
@@ -2606,6 +2608,88 @@ Return JSON only:
             )}
           </div>
         </motion.div>
+
+        {/* Add to Calendar popup — floating fixed card after saving a pillar */}
+        {showSavePopup && !editing && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+            style={{
+              position: 'fixed',
+              bottom: isMobile ? 90 : 32,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 900,
+              width: isMobile ? 'calc(100vw - 2rem)' : 420,
+              borderRadius: 20,
+              background: 'linear-gradient(135deg,#1a0a10,#2e101c)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(249,95,133,0.18)',
+              padding: '1.15rem 1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.9rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent2)', marginBottom: '0.25rem' }}>
+                  Pillar saved
+                </p>
+                <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#fff', fontFamily: "'Syne',sans-serif", lineHeight: 1.2 }}>
+                  Schedule your week
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
+                aria-label="Dismiss"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.5)',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  display: 'grid',
+                  placeItems: 'center',
+                  padding: 0,
+                  flexShrink: 0,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              type="button"
+              onClick={async () => { await addToCalendarPlan(); setShowSavePopup(false) }}
+              disabled={calendarBusy}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: 14,
+                border: 'none',
+                background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: '0.9rem',
+                cursor: calendarBusy ? 'wait' : 'pointer',
+                fontFamily: "'DM Sans',sans-serif",
+                letterSpacing: '0.02em',
+                boxShadow: '0 8px 20px rgba(249,95,133,0.35)',
+              }}
+            >
+              {calendarBusy ? 'Scheduling…' : 'Add to Calendar'}
+            </motion.button>
+          </motion.div>
+        )}
 
         {/* â"€â"€ Header â"€â"€ */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '0.9rem' : '1.4rem' }}>

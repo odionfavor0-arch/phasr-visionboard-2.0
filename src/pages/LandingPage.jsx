@@ -73,7 +73,7 @@ function WeeklyReflectCard() {
       <div className="lp-mock-label">WEEKLY REFLECTION</div>
       <div className="lp-mock-title">Your Sunday reset</div>
       <div className="lp-mock-checkin-q">Sage's note:</div>
-      <div className="lp-mock-checkin-input">"You showed up 5 of 7 days — Tuesdays are still the hard one. Let's plan around that this week."</div>
+      <div className="lp-mock-checkin-input">"You showed up 5 of 7 days. Tuesdays are still the hard one, so let's plan around that this week."</div>
       <div className="lp-mock-pills">
         <span className="lp-mock-pill">Wins</span>
         <span className="lp-mock-pill">Adjust</span>
@@ -97,9 +97,9 @@ const SAGE_LETTER_BODY = [
 ]
 
 const FEATURES = [
-  { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:"You've made these before and watched them collect dust. With PHASR, that vision becomes something you actually work from.", href:'/features/vision-boards' },
+  { Icon:LayoutGrid, name:'Vision Board', front:'Map it', back:"You've made these before and watched them collect dust. The life you pinned finally becomes the life you live.", href:'/features/vision-boards' },
   { Icon:Flame, name:'Daily Streak', front:'Show up daily', back:'Proof you followed through on the plan Sage and your board just built.', href:'/features/daily-streaks' },
-  { Icon:Layers, name:'Weekly Phase', front:'Cut it down', back:'Your goal, cut into phases short enough to finish. One at a time, so you never face the whole mountain at once.', href:'/features/dashboard' },
+  { Icon:Layers, name:'Weekly Phase', front:'Cut it down', back:'Phases short enough that you finish them. And finishing is what changes who you think you are.', href:'/features/dashboard' },
 ]
 
 const FAQ_ITEMS = [
@@ -107,12 +107,13 @@ const FAQ_ITEMS = [
   { q:'What does Sage actually do?', a:'She builds your plan, checks in daily, reflects with you every week, and remembers everything so her advice fits you and not some average user.' },
   { q:'What if I miss a few days?', a:'Nothing breaks. Sage picks the plan back up with you the next time you open the app.' },
   { q:'Is my journal private?', a:'Yes. Your journal and your conversations are yours, private and encrypted, and you can delete them anytime.' },
-  { q:'When does PHASR launch?', a:"We're opening in phases. Join the waitlist to be first in and lock in founding pricing." },
+  { q:'When does PHASR launch?', a:'Access opens in phases. Get early access to be first in and lock your founding price before it goes up.' },
 ]
 
 const PAIN_POINTS = [
-  "You've tried everything — the journals, the apps, the challenges. Nothing stuck.",
-  'The problem was never motivation. It was never having a real system behind the intention.',
+  "You know exactly who you want to become. You've just never known what to do today.",
+  "You start strong every time. Then life gets loud, the plan slips, and you're back at zero.",
+  "You can't see the progress, so you stop trusting it's there. Invisible effort is easy to quit.",
 ]
 
 /* ─────────────── Marketing Ticker ─────────────── */
@@ -121,11 +122,11 @@ function StatsTicker() {
   const inView = useInView(ref, { margin: '0px' })
   const reduced = useReducedMotion()
   const items = [
-    "Your vision, turned into today's task",
-    'Sage remembers everything, so you never explain yourself twice',
+    'Your vision, turned into who you are',
+    'Sage remembers everything, so you never prove yourself twice',
     'One goal, one phase, one clear next step',
     'For women who are done starting over',
-    'From vision to done',
+    'From vision to her',
   ]
   const doubled = [...items, { sep:true }, ...items, { sep:true }]
   return (
@@ -161,7 +162,7 @@ function ToolFlipCard({ tool, index }) {
         role="button"
         tabIndex={0}
         aria-pressed={flipped}
-        aria-label={`${tool.name} — tap to see the benefit`}
+        aria-label={`${tool.name}: tap to see the benefit`}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } }}
       >
         <motion.div
@@ -259,14 +260,14 @@ export default function LandingPage({ onGetStarted }) {
               <motion.p className="lp-hero-sub"
                 initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }}
                 transition={{ duration:0.7, ease:'easeOut', delay:0.3 }}>
-                PHASR turns your biggest goal into a clear plan you can actually follow. Sage keeps you moving every step of the way.
+                PHASR turns your vision into a plan you'll actually follow. It bridges the gap between your goals and your daily actions.
               </motion.p>
               <motion.div className="lp-hero-btns"
                 initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }}
                 transition={{ duration:0.65, ease:'easeOut', delay:0.45 }}>
                 <motion.button className="lp-btn-hero-primary" onClick={onGetStarted}
                   whileHover={{ scale:1.03, boxShadow:'0 8px 28px rgba(0,0,0,0.25)' }} whileTap={{ scale:0.97 }}>
-                  Join the waitlist
+                  Get early access
                 </motion.button>
                 <motion.button className="lp-btn-hero-ghost"
                   onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior:'smooth' })}
@@ -335,7 +336,7 @@ export default function LandingPage({ onGetStarted }) {
 
               <FloatingCard className="lp-hero-card-2" delay={0.7} floatDelay={0.6}>
                 <div className="lp-hcard-label" style={{ marginBottom:2 }}>New Sage Insight</div>
-                <div className="lp-hcard-sage-text">"You've been showing up even on the hard days — that's the pattern that matters."</div>
+                <div className="lp-hcard-sage-text">"You've been showing up even on the hard days. That's the pattern that matters."</div>
               </FloatingCard>
 
               <FloatingCard className="lp-hero-card-3" delay={0.85} floatDelay={1.1}>
@@ -351,7 +352,7 @@ export default function LandingPage({ onGetStarted }) {
                   <img src="/images/avatars/avatar-3.jpg" alt="" className="lp-hcard-av-img" />
                   <img src="/images/avatars/avatar-2.jpg" alt="" className="lp-hcard-av-img" />
                 </div>
-                <div className="lp-hcard-msg">"Nudged you — go finish today's check-in 💗"</div>
+                <div className="lp-hcard-msg">"Nudged you to finish today's check-in 💗"</div>
               </FloatingCard>
             </div>
 
@@ -371,8 +372,8 @@ export default function LandingPage({ onGetStarted }) {
                 still have <em>nothing to show for the year.</em>
               </motion.h2>
               <motion.p className="lp-prob-sub" {...fade(0.14)}>
-                You've downloaded the apps. Bought the planner. Made the vision board.
-                And not one of them ever checked whether you actually follow through.
+                You've downloaded the apps, bought the planner, and made the vision board.
+                Every tool helped you plan, but none of them helped you keep going.
               </motion.p>
               <div className="lp-prob-list">
                 {PAIN_POINTS.map((p, i) => (
@@ -386,8 +387,11 @@ export default function LandingPage({ onGetStarted }) {
                 ))}
               </div>
               <motion.p className="lp-prob-pivot" {...fade(0.1)}>
-                Vision was never your problem.<br />
-                Not having <em>clear action steps</em> was.
+                You weren't failing from a lack of discipline.<br />
+                You were relying on <em>motivation</em> to do a system's job.
+              </motion.p>
+              <motion.p className="lp-prob-close" {...fade(0.16)}>
+                Become the woman you keep promising yourself you'll be.
               </motion.p>
             </div>
             <motion.div className="lp-prob-img-wrap" {...fade(0.15)}>
@@ -399,8 +403,7 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 4. HOW IT WORKS ── */}
         <section id="how-it-works" className="lp-how" aria-labelledby="lp-how-h2">
           <div className="lp-container">
-            <motion.span className="lp-eyebrow" {...fade()}>HOW IT WORKS</motion.span>
-            <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade(0.05)}>
+            <motion.h2 id="lp-how-h2" className="lp-section-display lp-how-h2" {...fade()}>
               How you <em>finish</em> this time.
             </motion.h2>
             <motion.p className="lp-how-intro" {...fade(0.1)}>
@@ -455,7 +458,7 @@ export default function LandingPage({ onGetStarted }) {
         <section className="lp-sage-anchor" aria-labelledby="lp-sage-h2">
           <div className="lp-container">
             <motion.h2 id="lp-sage-h2" className="lp-sage-h2" {...fade()}>Meet Sage, <em>Your AI Coach</em></motion.h2>
-            <motion.p className="lp-sage-sub" {...fade(0.03)}>Always remembers. Always honest. Always moving with you.</motion.p>
+            <motion.p className="lp-sage-sub" {...fade(0.03)}>She remembers. She's honest. She moves with you.</motion.p>
 
             <div className="lp-sage-top">
               <motion.div className="lp-sage-video-col" ref={sagePhotoRef} {...fade(0.05)}>
@@ -503,10 +506,10 @@ export default function LandingPage({ onGetStarted }) {
             <div className="lp-feat-header">
               <motion.span className="lp-eyebrow" {...fade()}>THE VISION BOARD</motion.span>
               <motion.h2 id="lp-feat-h2" className="lp-section-display lp-feat-h2" {...fade(0.05)}>
-                Your vision board,<br />but it actually <em>does something.</em>
+                The board on your wall<br />stops being <em>a wish.</em>
               </motion.h2>
               <motion.p className="lp-feat-intro" {...fade(0.1)}>
-                Put in the life you want. Sage reads it and builds the plan to get there: your phases, your weekly non-negotiables, and today's step.
+                Put in the life you want. Sage reads it and builds the plan to make it real.
               </motion.p>
             </div>
 
@@ -559,16 +562,12 @@ export default function LandingPage({ onGetStarted }) {
         {/* ── 9. FINAL CTA ── */}
         <section className="lp-final-cta" aria-labelledby="lp-final-h2">
           <div className="lp-container lp-final-cta-inner">
-            <motion.span className="lp-eyebrow lp-final-cta-eyebrow" {...fade()}>YOUR NEXT CHAPTER</motion.span>
             <motion.h2 id="lp-final-h2" className="lp-section-display lp-final-cta-h2" {...fade(0.05)}>
-              Are you ready to start <em>working on your dreams?</em>
+              This is the year you <em>stop starting over.</em>
             </motion.h2>
-            <motion.p className="lp-final-cta-sub" {...fade(0.1)}>
-              Join the women who make sure every action counts.
-            </motion.p>
             <motion.button className="lp-final-cta-btn" onClick={onGetStarted} {...fade(0.15)}
               whileHover={{ scale:1.03, boxShadow:'0 8px 28px rgba(0,0,0,0.18)' }} whileTap={{ scale:0.97 }}>
-              Join the waitlist
+              Get early access
             </motion.button>
             <motion.p className="lp-final-cta-trust" {...fade(0.2)}>
               Founding members are joining now.
@@ -813,7 +812,7 @@ const STYLES = `
     color: rgba(61,16,32,0.68); line-height: 1.7;
     max-width: 480px; margin: 0 0 40px;
   }
-  .lp-prob-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
+  .lp-prob-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
   .lp-prob-item {
     font-family: 'General Sans', sans-serif; font-size: 16px;
     color: rgba(61,16,32,0.8); padding: 0;
@@ -828,6 +827,11 @@ const STYLES = `
     max-width: 480px;
   }
   .lp-prob-pivot em { font-style: italic; color: #f06090; }
+  .lp-prob-close {
+    font-family: 'General Sans', sans-serif; font-size: 15px;
+    color: rgba(61,16,32,0.6); line-height: 1.6;
+    max-width: 480px; margin-top: 14px;
+  }
   .lp-prob-img-wrap { width: 100%; max-width: 100%; min-width: 0; }
   .lp-prob-img {
     width: 100%; max-width: 100%; height: auto; max-height: 640px; display: block;
@@ -1034,10 +1038,8 @@ const STYLES = `
     background-size: 48px 48px;
   }
   .lp-final-cta-inner { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
-  .lp-final-cta-eyebrow { color: rgba(255,255,255,0.85); margin-bottom: 8px; }
-  .lp-final-cta-h2 { margin-bottom: 8px; color: #ffffff; font-size: clamp(20px, 2.4vw, 28px); text-wrap: pretty; }
+  .lp-final-cta-h2 { margin-bottom: 20px; color: #ffffff; font-size: clamp(20px, 2.4vw, 28px); text-wrap: pretty; }
   .lp-final-cta-h2 em { color: #ffffff; }
-  .lp-final-cta-sub { font-family: 'General Sans', sans-serif; font-size: 14.5px; color: rgba(255,255,255,0.88); line-height: 1.5; margin-bottom: 14px; }
   .lp-final-cta-trust { font-family: 'General Sans', sans-serif; font-size: 11.5px; color: rgba(255,255,255,0.7); margin-top: 8px; }
   .lp-final-cta-btn {
     display: inline-flex; align-items: center; gap: 8px;
