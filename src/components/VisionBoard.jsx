@@ -2206,24 +2206,27 @@ Return JSON only:
       // several MB — this used to hard-reject that exact case. Instead of
       // rejecting, downscale to fit MAX_UPLOAD_WIDTH/HEIGHT and re-encode.
       if (f.size > MAX_UPLOAD_SOURCE_FILE_BYTES) {
-        setUploadMessage('This file is too big. Please choose an image under 20MB.')
+        const sourceMb = (f.size / (1024 * 1024)).toFixed(1)
+        setUploadMessage(`That photo is ${sourceMb}MB — try a standard photo instead of a Live Photo, video, or panorama.`)
         cleanup()
         return
       }
       const objectUrl = URL.createObjectURL(f)
       const probe = new Image()
       probe.onload = async () => {
-        const scale = Math.min(1, MAX_UPLOAD_WIDTH / probe.naturalWidth, MAX_UPLOAD_HEIGHT / probe.naturalHeight)
-        const outWidth = Math.round(probe.naturalWidth * scale)
-        const outHeight = Math.round(probe.naturalHeight * scale)
-        const canvas = document.createElement('canvas')
-        canvas.width = outWidth
-        canvas.height = outHeight
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(probe, 0, 0, outWidth, outHeight)
+        const toJpegDataUrl = (maxDim, quality) => {
+          const scale = Math.min(1, maxDim / probe.naturalWidth, maxDim / probe.naturalHeight)
+          const outWidth = Math.round(probe.naturalWidth * scale)
+          const outHeight = Math.round(probe.naturalHeight * scale)
+          const canvas = document.createElement('canvas')
+          canvas.width = outWidth
+          canvas.height = outHeight
+          canvas.getContext('2d').drawImage(probe, 0, 0, outWidth, outHeight)
+          return canvas.toDataURL('image/jpeg', quality)
+        }
+        const dataUrl = toJpegDataUrl(MAX_UPLOAD_WIDTH, 0.85)
         URL.revokeObjectURL(objectUrl)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-        let finalUrl = dataUrl
+        let finalUrl = null
         if (supabase) {
           setUploadMessage('Uploading…')
           try {
@@ -2234,11 +2237,19 @@ Return JSON only:
             const { error: uploadError } = await supabase.storage
               .from('room-feed')
               .upload(path, new Blob([bytes], { type: 'image/jpeg' }), { contentType: 'image/jpeg', upsert: true })
-            if (!uploadError) {
-              const { data: urlData } = supabase.storage.from('room-feed').getPublicUrl(path)
-              if (urlData?.publicUrl) finalUrl = urlData.publicUrl
-            }
-          } catch {}
+            if (uploadError) throw uploadError
+            const { data: urlData } = supabase.storage.from('room-feed').getPublicUrl(path)
+            if (urlData?.publicUrl) finalUrl = urlData.publicUrl
+          } catch (error) {
+            console.warn('[Phasr] Vision board image storage upload failed, keeping photo local-only:', error?.message || error)
+          }
+        }
+        if (!finalUrl) {
+          // No Supabase storage URL — the photo still shows up for this user,
+          // but it must stay small: this value rides inside the whole-board
+          // JSON that syncs to Supabase, and a full-size embedded photo there
+          // is what causes sync to hang on a slow connection.
+          finalUrl = toJpegDataUrl(960, 0.6)
         }
         setUploadMessage('')
         updatePillar(plId, slot, finalUrl)

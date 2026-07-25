@@ -234,15 +234,28 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       return undefined
     }
     setHydrated(false)
-    hydrateAllFromSupabase(user)
-      .catch(error => {
+    // A slow or stuck Supabase pull (e.g. a large payload over a poor mobile
+    // connection) must never keep the whole app stuck on this screen — the
+    // underlying hydrate keeps running in the background; local data just
+    // takes over once the timeout wins the race.
+    let timedOut = false
+    const HYDRATE_TIMEOUT_MS = 8000
+    const timeout = new Promise(resolve => {
+      setTimeout(() => { timedOut = true; resolve() }, HYDRATE_TIMEOUT_MS)
+    })
+    Promise.race([
+      hydrateAllFromSupabase(user).catch(error => {
         console.warn('[Phasr] Supabase hydrate failed, continuing with local data:', error?.message || error)
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLockSummary(getLockInSummary(loadLockInState()))
-        setHydrated(true)
-      })
+      }),
+      timeout,
+    ]).finally(() => {
+      if (cancelled) return
+      if (timedOut) {
+        console.warn(`[Phasr] Supabase hydrate did not finish within ${HYDRATE_TIMEOUT_MS}ms — continuing with local data`)
+      }
+      setLockSummary(getLockInSummary(loadLockInState()))
+      setHydrated(true)
+    })
     return () => {
       cancelled = true
     }
@@ -293,8 +306,28 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     // already populated from the SAME stored rows before any of these
     // components' first read.
     content = (
-      <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
-        <p style={{ color: 'var(--app-muted, #7e5d68)', fontSize: '0.9rem' }}>Syncing your data...</p>
+      <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.85rem' }}>
+        <span
+          aria-hidden="true"
+          className="phasr-hydrate-spinner"
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: '50%',
+            border: '2.5px solid var(--app-border, #f5c0cc)',
+            borderTopColor: 'var(--app-accent, #f06090)',
+          }}
+        />
+        <p style={{ color: 'var(--app-muted, #7e5d68)', fontSize: '0.85rem', fontWeight: 500, margin: 0 }}>
+          Pulling up where you left off
+        </p>
+        <style>{`
+          .phasr-hydrate-spinner { animation: phasrHydrateSpin 0.8s linear infinite; }
+          @keyframes phasrHydrateSpin { to { transform: rotate(360deg) } }
+          @media (prefers-reduced-motion: reduce) {
+            .phasr-hydrate-spinner { animation: none; opacity: 0.55; }
+          }
+        `}</style>
       </div>
     )
   } else if (view === 'journal') {
