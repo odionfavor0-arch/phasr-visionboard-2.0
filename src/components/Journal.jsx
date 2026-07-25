@@ -19,58 +19,20 @@ import {
   Volume2,
 } from 'lucide-react'
 import { calculateUserPoints } from '../lib/userLevel'
+import { applyDifficultyDial, getDateKeyFromDate, getTodayTask, getWeekCompletionSummary } from '../lib/lockIn'
+import { getDialPayoffLine } from '../lib/dialCopy'
 
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const STORAGE_KEY = 'phasr_journal_v2'
 const WEEKLY_PULSE_DATE_KEY = 'phasr_weekly_pulse_date'
 const WEEKLY_PULSE_COMPLETION_KEY = 'phasr_weekly_pulse_completion'
 const WEEKLY_PULSE_W1_DONE_KEY = 'phasr_weekly_pulse_w1_done'
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000
 
-const PILLAR_QUESTIONS = {
-  'health and fitness': [
-    'How did your body feel this week honestly?',
-    'Did you do what you planned for your health this week? If not, what got in the way?',
-    'What is one thing your body needs more of next week?',
-  ],
-  'career and business': [
-    'Did you move the needle on anything that actually matters this week?',
-    'What did you avoid that you know you should not have?',
-    'How are you feeling about where things are headed excited, stuck, or somewhere in between?',
-  ],
-  'wealth and finance': [
-    'Did your spending this week reflect your goals?',
-    'Is there a money decision you have been sitting on? What is holding you back?',
-    'How does your financial situation make you feel right now and is that feeling based on facts or fear?',
-  ],
-  relationships: [
-    'Were you actually present with the people who matter to you this week?',
-    'Is there something that needs to be said to someone that you have not said?',
-    'Did you feel supported this week? Did you let yourself be?',
-  ],
-  'inner life': [
-    'How are you actually doing beneath the busy?',
-    'What drained you most this week? What gave you energy?',
-    'Is there something you are carrying right now that you need to put down?',
-  ],
-  'personal growth': [
-    'Did you show up this week as the person you are trying to become?',
-    'What is one thing you did differently compared to a month ago?',
-    'What do you want to do better next week just one thing?',
-  ],
-}
-
-const THERAPIST_MOVES = {
-  'health and fitness': 'Before one meal this week, sit with your food for 60 seconds before eating. Notice what you feel — hunger, habit, stress, boredom. Write one word about it afterward.',
-  'career and business': 'Say out loud, alone in a room, exactly what you are building and why it matters. Say it like you mean it. Notice where your voice gets quiet. That is where the doubt lives.',
-  'wealth and finance': 'Open your bank account or spending history and look at the last 30 days without judgment. Notice your first feeling. Not the numbers — the feeling. Write it down.',
-  relationships: 'Send one message this week to someone you have been meaning to reach out to. Not a long message. Just the one that says you thought of them. Notice how long it takes you to press send.',
-  'inner life': 'Sit somewhere quiet for 5 minutes this week with no phone, no music, nothing. Just you. If thoughts come, let them. If nothing comes, stay anyway. Write one sentence about what came up.',
-  'personal growth': 'Do one thing this week that the version of you from a year ago would not have done. It does not have to be big. It just has to be real. Write what it was and how it felt.',
-}
+const WEEKLY_WORKED_CHIPS = ['Routine clicked', 'Had energy', 'Kept it small']
+const WEEKLY_SLIPPED_CHIPS = ['Needed rest', 'Got busy', 'Lost steam']
 
 const PROMPTS = [
   "What's on your mind?",
@@ -214,8 +176,10 @@ function safeWrite(entries) {
   scopedSetItem(STORAGE_KEY, JSON.stringify(entries))
 }
 
+// Local calendar date, not UTC — see lib/lockIn.js's getDateKeyFromDate for why
+// .toISOString() silently shifts a day backward at positive UTC offsets.
 function getToday() {
-  return new Date().toISOString().slice(0, 10)
+  return getDateKeyFromDate()
 }
 
 function markWeeklyPulseDoneIfWeekOne(weekNumber) {
@@ -324,22 +288,6 @@ function getActivePhase(boardData) {
   return phases[0]
 }
 
-function buildPhaseFingerprint(phase) {
-  const text = [
-    phase?.id || '',
-    phase?.name || '',
-    phase?.startDate || '',
-    phase?.endDate || '',
-    ...(Array.isArray(phase?.pillars) ? phase.pillars.flatMap((pillar, index) => [
-      pillar?.id || index,
-      pillar?.name || '',
-    ]) : []),
-  ].join('|')
-  let hash = 0
-  for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0
-  return `${phase?.id || 'phase'}_${Math.abs(hash)}`
-}
-
 function getPlatformDaysIn() {
   const boardData = readVisionBoardData()
   const phase = getActivePhase(boardData)
@@ -347,68 +295,27 @@ function getPlatformDaysIn() {
     localStorage.getItem('phasr_joined_at') ||
     localStorage.getItem('phasr_phase1_start_date') ||
     phase?.startDate ||
-    new Date().toISOString().slice(0, 10)
+    getDateKeyFromDate()
   const start = new Date(`${String(savedStart).slice(0, 10)}T12:00:00`)
   if (Number.isNaN(start.getTime())) return 1
   return Math.max(1, Math.floor((Date.now() - start.getTime()) / MS_IN_DAY) + 1)
 }
 
-function getMissedDaysForWeeklyReflection(phase, weekNumber, currentDayOfWeek) {
-  const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-  const scope = buildPhaseFingerprint(phase || {})
-  const missed = []
-  for (let day = 1; day < currentDayOfWeek; day += 1) {
-    const scopedValue = localStorage.getItem(`phasr_streak_${scope}_w${weekNumber}_d${day}`)
-    const legacyValue = localStorage.getItem(`phasr_streak_w${weekNumber}_d${day}`)
-    const tasks = (() => {
-      try { return JSON.parse(localStorage.getItem(`phasr_tasks_${scope}_w${weekNumber}_d${day}`) || '[]') } catch { return [] }
-    })()
-    const checked = scopedValue === 'true' || legacyValue === 'true' || (Array.isArray(tasks) && tasks.some(task => task?.done))
-    if (!checked) missed.push(labels[day - 1])
-  }
-  return missed
-}
-
+// Only feeds the "is a reflection due" gate below (weeklyPulseDue) — kept separate from
+// the actual reflection content, which now pulls its real numbers straight from
+// lib/lockIn.js's getWeekCompletionSummary instead of this file's own day-counting.
 function buildWeeklyPulsePayload() {
   const boardData = readVisionBoardData()
   const phase = getActivePhase(boardData) || (Array.isArray(boardData?.phases) ? boardData.phases[0] : null)
   const phaseName = String(phase?.name || 'Phase 1').trim()
-
-  const pillars = Array.isArray(phase?.pillars)
-    ? phase.pillars.map(item => String(item?.name || '').trim()).filter(Boolean)
-    : []
-
   const phaseStart = phase?.startDate ? new Date(`${phase.startDate}T12:00:00`) : null
-  const dayOfPhase = phaseStart && !Number.isNaN(phaseStart.getTime())
-    ? Math.max(1, Math.floor((Date.now() - phaseStart.getTime()) / MS_IN_DAY) + 1)
-    : 1
-  const dayOfWeek = ((dayOfPhase - 1) % 7) + 1
   const currentWeekNumber = phaseStart && !Number.isNaN(phaseStart.getTime())
     ? Math.max(1, Math.floor((Date.now() - phaseStart.getTime()) / (7 * MS_IN_DAY)) + 1)
     : 1
-  const targetWeekNumber = currentWeekNumber > 1 ? currentWeekNumber - 1 : 1
-  const primaryPillar = pillars[0] || 'Personal Growth'
-  const primaryPool = PILLAR_QUESTIONS[normalizeLabel(primaryPillar)] || PILLAR_QUESTIONS['personal growth']
-  const safePillars = [primaryPillar]
-  const weekIndexSeed = Math.floor(Date.now() / (7 * MS_IN_DAY))
-  const questionOne = primaryPool[weekIndexSeed % primaryPool.length] || primaryPool[0]
-  const questionTwo = primaryPool[(weekIndexSeed + 1) % primaryPool.length] || primaryPool[1] || primaryPool[0]
-  const therapistMove = THERAPIST_MOVES[normalizeLabel(primaryPillar)] || THERAPIST_MOVES['personal growth']
-  const missedDays = getMissedDaysForWeeklyReflection(phase, targetWeekNumber, dayOfWeek)
-  const missedLabel = missedDays.length === 1 ? missedDays[0] : `${missedDays.slice(0, -1).join(', ')} and ${missedDays.slice(-1)[0]}`
-  const accountabilityQuestion = missedDays.length
-    ? `I noticed you didn't check in on ${missedLabel} - what got in the way?`
-    : ''
-  const weeklyQuestions = accountabilityQuestion ? [accountabilityQuestion, questionOne] : [questionOne, questionTwo]
 
   return {
     phaseName: removeDashPunctuation(phaseName),
     currentWeekNumber,
-    weekNumber: targetWeekNumber,
-    dayOfWeek,
-    pillars: safePillars,
-    weeklyQuestions: weeklyQuestions.map(removeDashPunctuation),
-    therapistMove: removeDashPunctuation(therapistMove),
   }
 }
 
@@ -515,26 +422,8 @@ async function generateSageAnalysis({ title, content, mood, prompt, isWeeklyPuls
     }),
   }
 
-  const apiKey = import.meta.env.VITE_GROQ_KEY || ''
-  if (!apiKey) {
-    return localFallback
-  }
-
   try {
-    console.log('Groq key before Journal fetch:', import.meta.env.VITE_GROQ_KEY)
-    const response = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: 0.6,
-        messages: [
-          {
-            role: 'system',
-             content: isWeeklyPulse
+    const systemPrompt = isWeeklyPulse
                ? `The user just completed Weekly Reflection. They answered 2 deeply personal questions about their goals and inner life. Read both answers together as one picture of where this person is right now.
 
 Weekly Reflection is the weekly rhythm. Phase Review is a separate quarterly transformation checkpoint. Do not mix them. Do not mention Phase Review unless the user explicitly asks.
@@ -554,7 +443,7 @@ Return strict JSON only with this shape:
   "clarityLabel": "Calm",
   "sageResponse": "string"
 }`
-              : `You are Sage, Phasr's reflective journal guide.
+              : `You are Sage, PHASR's reflective journal guide.
 
 Return strict JSON only with this shape:
 {
@@ -611,8 +500,18 @@ Sage response rules:
 - sageResponse should feel personal, emotionally aware, grounded, and useful.
 - It should reflect what the user is truly feeling, name the pattern underneath the words, and offer one meaningful next step only when that makes sense.
 - Do not use markdown.
-  - Do not include any explanation outside the JSON.`,
-          },
+  - Do not include any explanation outside the JSON.`
+
+    const response = await fetch('/api/groq/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        system: systemPrompt,
+        model: GROQ_MODEL,
+        temperature: 0.6,
+        messages: [
           {
             role: 'user',
             content: JSON.stringify({ title, content, mood: mood?.label || '', prompt }),
@@ -623,7 +522,7 @@ Sage response rules:
 
     if (!response.ok) throw new Error('journal_analysis_failed')
     const payload = await response.json()
-    const raw = String(payload?.choices?.[0]?.message?.content || '').replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim()
+    const raw = String(payload?.content || '').replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim()
     const parsed = JSON.parse(raw)
     return {
       generatedTitle: parsed?.generatedTitle || localFallback.generatedTitle,
@@ -756,114 +655,124 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
   )
 }
 
-function WeeklyPulseWriter({
+function WeeklyChipRow({ options, selected, onSelect }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+      {options.map(option => {
+        const isActive = selected === option
+        return (
+          <button
+            key={option}
+            type="button"
+            onClick={() => onSelect(isActive ? '' : option)}
+            style={{
+              border: isActive ? '1.5px solid var(--app-accent)' : '1px solid #f2c4d0',
+              background: isActive ? 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))' : '#fff',
+              color: isActive ? '#fff' : '#3d1f2b',
+              borderRadius: 999,
+              padding: '0.5rem 0.9rem',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+            }}
+          >
+            {option}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// The ~60-second flow: Sage opens with real proof (no guilt), two chip questions with
+// optional typing/voice, then the easier-or-push dial. One screen, not a step wizard —
+// she can see and answer everything at once.
+function WeeklyReflectionFlow({
   phaseName,
-  questions,
-  therapistMove,
-  answers,
-  setAnswer,
-  questionIndex,
+  completedDays,
+  totalDays,
+  workedChoice,
+  workedCustom,
+  onWorkedChoice,
+  onWorkedCustom,
+  slippedChoice,
+  slippedCustom,
+  onSlippedChoice,
+  onSlippedCustom,
+  difficulty,
+  onDifficulty,
   onVoiceCapture,
-  onPrev,
-  onNext,
+  onBack,
   onSave,
-  isSaving,
+  canSave,
 }) {
-  const currentQuestion = questions[questionIndex] || ''
-  const isLastQuestion = questionIndex === questions.length - 1
+  const inputStyle = { flex: 1, border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)', padding: '0.6rem 0.75rem', outline: 'none', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#3d1f2b' }
+  const voiceButtonStyle = { border: '1px solid #f2c4d0', background: '#fff', color: '#7a5567', borderRadius: 999, width: 40, height: 40, display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer' }
+  const dialButtonStyle = active => ({
+    flex: 1,
+    border: active ? '1.5px solid var(--app-accent)' : '1px solid #f2c4d0',
+    background: active ? 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))' : '#fff',
+    color: active ? '#fff' : '#3d1f2b',
+    borderRadius: 'var(--app-radius-sm)',
+    padding: '0.85rem 0.6rem',
+    fontWeight: 800,
+    fontSize: '0.88rem',
+    cursor: 'pointer',
+  })
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: '#fff', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', borderBottom: '1px solid var(--app-border)' }}>
-        <button type="button" onClick={onPrev} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
+        <button type="button" onClick={onBack} style={ghostIconButtonStyle}><ArrowLeft size={20} /></button>
         <p className="font-display" style={{ margin: 0, fontWeight: 800, color: '#3d1f2b', fontSize: '1.05rem' }}>Weekly Reflection</p>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.38rem' }}>
-          {questions.map((_, idx) => (
-            <span
-              key={`pulse-dot-${idx}`}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: idx === questionIndex ? 'var(--app-accent)' : '#f2c4d0',
-                display: 'inline-block',
-              }}
-            />
-          ))}
-          <span style={{ fontSize: '0.72rem', color: '#8f7180', marginLeft: 6 }}>{questionIndex + 1} / {questions.length}</span>
-        </div>
       </div>
 
-      <div style={{ padding: '20px 16px', display: 'grid', gap: '1rem', flex: 1 }}>
-        <p style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', margin: 0 }}>
-          Weekly Reflection {phaseName}
-        </p>
-        <p style={{ fontFamily: "'Cormorant Garamond, serif", fontSize: '1.15rem', fontWeight: 400, color: '#3d1f2b', lineHeight: 1.7, margin: 0, fontStyle: 'italic' }}>
-          {currentQuestion}
-        </p>
-        <textarea
-          value={answers[questionIndex] || ''}
-          onChange={event => setAnswer(questionIndex, event.target.value)}
-          placeholder="Write your reflection..."
-          style={{
-            width: '100%',
-            minHeight: '36vh',
-            border: '1.5px solid #f2c4d0',
-            borderRadius: 'var(--app-radius-sm)',
-            padding: '0.9rem',
-            outline: 'none',
-            resize: 'vertical',
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '0.98rem',
-            lineHeight: 1.7,
-            color: '#3d1f2b',
-          }}
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            type="button"
-            onClick={() => onVoiceCapture?.(questionIndex)}
-            style={{ border: '1px solid #f2c4d0', background: '#fff', color: '#7a5567', borderRadius: 999, minHeight: 36, padding: '0.42rem 0.74rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700, fontSize: '0.82rem' }}
-          >
-            <Mic size={15} />
-            Voice input
-          </motion.button>
+      <div style={{ padding: '20px 16px', display: 'grid', gap: '1.4rem', flex: 1, overflowY: 'auto' }}>
+        <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(232,64,122,0.2)', borderRadius: 'var(--app-radius-md)', padding: '1rem' }}>
+          <p style={{ margin: 0, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>{phaseName}</p>
+          <p style={{ margin: '0.4rem 0 0', fontFamily: "'Cormorant Garamond, serif", fontSize: '1.2rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+            You showed up <strong>{completedDays} of {totalDays}</strong> days this week. That&apos;s real.
+          </p>
         </div>
-        {isLastQuestion ? (
-          <div style={{ background: '#fff5f7', border: '1px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)', padding: '10px 12px', marginTop: '0.2rem', boxShadow: 'var(--app-shadow-sm)' }}>
-            <p style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--app-accent)', margin: '0 0 4px 0' }}>
-              This week&apos;s practice
-            </p>
-            <p style={{ fontSize: '0.78rem', color: '#3d1f2b', lineHeight: 1.7, margin: 0 }}>{therapistMove}</p>
+
+        <div>
+          <p style={{ fontWeight: 800, color: '#3d1f2b', marginBottom: '0.5rem' }}>What worked?</p>
+          <WeeklyChipRow options={WEEKLY_WORKED_CHIPS} selected={workedChoice} onSelect={onWorkedChoice} />
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <input value={workedCustom} onChange={event => onWorkedCustom(event.target.value)} placeholder="or type your own..." style={inputStyle} />
+            <button type="button" onClick={() => onVoiceCapture('worked')} style={voiceButtonStyle} aria-label="Say what worked"><Mic size={15} /></button>
           </div>
-        ) : null}
+        </div>
+
+        <div>
+          <p style={{ fontWeight: 800, color: '#3d1f2b', marginBottom: '0.5rem' }}>What slipped?</p>
+          <WeeklyChipRow options={WEEKLY_SLIPPED_CHIPS} selected={slippedChoice} onSelect={onSlippedChoice} />
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <input value={slippedCustom} onChange={event => onSlippedCustom(event.target.value)} placeholder="or type your own..." style={inputStyle} />
+            <button type="button" onClick={() => onVoiceCapture('slipped')} style={voiceButtonStyle} aria-label="Say what slipped"><Mic size={15} /></button>
+          </div>
+        </div>
+
+        <div>
+          <p style={{ fontWeight: 800, color: '#3d1f2b', marginBottom: '0.5rem' }}>Next week — easier, or push?</p>
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button type="button" onClick={() => onDifficulty('easier')} style={dialButtonStyle(difficulty === 'easier')}>Make it easier</button>
+            <button type="button" onClick={() => onDifficulty('push')} style={dialButtonStyle(difficulty === 'push')}>Push a bit more</button>
+          </div>
+        </div>
       </div>
 
       <div style={{ borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.8rem 1rem max(0.9rem, env(safe-area-inset-bottom))' }}>
-        {isLastQuestion ? (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="button"
-            onClick={onSave}
-            disabled={isSaving}
-            style={{ width: '100%', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.86rem 1rem', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: 'var(--app-shadow-md)' }}
-          >
-            {isSaving ? 'Saving...' : 'Save Weekly Reflection'}
-          </motion.button>
-        ) : (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="button"
-            onClick={onNext}
-            style={{ width: '100%', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.86rem 1rem', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: 'var(--app-shadow-md)' }}
-          >
-            Next
-          </motion.button>
-        )}
+        <motion.button
+          whileHover={{ scale: canSave ? 1.02 : 1 }}
+          whileTap={{ scale: canSave ? 0.98 : 1 }}
+          type="button"
+          onClick={onSave}
+          disabled={!canSave}
+          style={{ width: '100%', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.86rem 1rem', background: canSave ? 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))' : '#f2c4d0', color: '#fff', fontWeight: 800, fontSize: '0.96rem', boxShadow: canSave ? 'var(--app-shadow-md)' : 'none', cursor: canSave ? 'pointer' : 'not-allowed' }}
+        >
+          Save Weekly Reflection
+        </motion.button>
       </div>
     </div>
   )
@@ -877,11 +786,11 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const weeklySession = entry?.weeklyPulseSession || null
   const sessionMessages = Array.isArray(weeklySession?.messages) ? weeklySession.messages : []
   const sessionCompleted = Boolean(weeklySession?.completedAt || weeklySession?.status === 'completed')
-  const todayIso = new Date().toISOString().slice(0, 10)
+  const todayIso = getDateKeyFromDate()
   const tomorrowIso = (() => {
     const next = new Date()
     next.setDate(next.getDate() + 1)
-    return next.toISOString().slice(0, 10)
+    return getDateKeyFromDate(next)
   })()
   const sessionCtaHideKey = entry?.id ? `phasr_weekly_session_cta_hidden_until_${entry.id}` : ''
   const [sessionCtaHidden, setSessionCtaHidden] = useState(() => {
@@ -1500,12 +1409,14 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   const [weeklyPulseDate, setWeeklyPulseDate] = useState(() => scopedGetItem(WEEKLY_PULSE_DATE_KEY) || '')
   const [weeklyPulseState, setWeeklyPulseState] = useState(() => ({
     phaseName: 'Phase 1',
-    weekNumber: 1,
-    pillars: [],
-    questions: [],
-    therapistMove: '',
-    answers: ['', '', '', ''],
-    index: 0,
+    weekIndex: 1,
+    completedDays: 0,
+    totalDays: 7,
+    workedChoice: '',
+    workedCustom: '',
+    slippedChoice: '',
+    slippedCustom: '',
+    difficulty: '',
   }))
 
   useEffect(() => {
@@ -1535,15 +1446,19 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   }, [currentWeeklyPulsePayload, weeklyPulseDate, daysIn])
 
   function prepareWeeklyPulseState() {
-    const payload = buildWeeklyPulsePayload()
+    const boardData = readVisionBoardData()
+    const phase = getActivePhase(boardData) || (Array.isArray(boardData?.phases) ? boardData.phases[0] : null)
+    const summary = getWeekCompletionSummary(boardData)
     setWeeklyPulseState({
-      phaseName: payload.phaseName,
-      weekNumber: payload.weekNumber || 1,
-      pillars: payload.pillars,
-      questions: payload.weeklyQuestions,
-      therapistMove: payload.therapistMove,
-      answers: payload.weeklyQuestions.map(() => ''),
-      index: 0,
+      phaseName: removeDashPunctuation(String(phase?.name || 'Phase 1').trim()),
+      weekIndex: summary.weekIndex,
+      completedDays: summary.completedDays,
+      totalDays: summary.totalDays,
+      workedChoice: '',
+      workedCustom: '',
+      slippedChoice: '',
+      slippedCustom: '',
+      difficulty: '',
     })
   }
 
@@ -1596,19 +1511,18 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     setScreen('template-detail')
   }
 
-  function setWeeklyPulseAnswer(index, value) {
-    setWeeklyPulseState(current => {
-      const nextAnswers = [...current.answers]
-      nextAnswers[index] = value
-      return { ...current, answers: nextAnswers }
-    })
+  function setWeeklyPulseField(field, value) {
+    setWeeklyPulseState(current => ({ ...current, [field]: value }))
   }
 
-  function captureWeeklyPulseVoice(index) {
+  // Chips answer the question by default; "or say it" reuses the same SpeechRecognition
+  // capture already used elsewhere in this flow, just retargeted at the custom-text field.
+  function captureWeeklyPulseVoice(field) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
       return
     }
+    const customField = field === 'worked' ? 'workedCustom' : 'slippedCustom'
     const recognition = new SpeechRecognition()
     recognition.lang = 'en-US'
     recognition.continuous = false
@@ -1620,132 +1534,105 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         .trim()
       if (!transcript) return
       setWeeklyPulseState(current => {
-        const nextAnswers = [...current.answers]
-        const base = (nextAnswers[index] || '').trim()
-        nextAnswers[index] = base ? `${base}\n${transcript}` : transcript
-        return { ...current, answers: nextAnswers }
+        const base = (current[customField] || '').trim()
+        return { ...current, [customField]: base ? `${base} ${transcript}` : transcript }
       })
     }
     recognition.start()
   }
 
-  function nextWeeklyPulseQuestion() {
-    setWeeklyPulseState(current => ({ ...current, index: Math.min(current.index + 1, current.questions.length - 1) }))
-  }
+  function saveWeeklyPulseToDraft() {
+    if (!weeklyPulseState.difficulty) return
+    const workedAnswer = (weeklyPulseState.workedCustom || '').trim() || weeklyPulseState.workedChoice
+    const slippedAnswer = (weeklyPulseState.slippedCustom || '').trim() || weeklyPulseState.slippedChoice
+    const nextWeekChoiceLabel = weeklyPulseState.difficulty === 'easier' ? 'Make it easier' : 'Push a bit more'
+    const proofLine = `You showed up ${weeklyPulseState.completedDays} of ${weeklyPulseState.totalDays} days this week. That's real.`
 
-  async function saveWeeklyPulseToDraft() {
-    const questions = weeklyPulseState.questions
-    const templateFields = questions.map(question => ({ label: question, subtext: '' }))
-    const templateAnswers = Object.fromEntries(questions.map((question, index) => [question, weeklyPulseState.answers[index] || '']))
-    const content = questions
-      .map((question, index) => `${question}\n${weeklyPulseState.answers[index] || ''}`.trim())
+    const boardData = readVisionBoardData()
+    const phase = getActivePhase(boardData)
+    const dialResult = applyDifficultyDial({
+      phase,
+      difficultyChoice: weeklyPulseState.difficulty,
+      completedDays: weeklyPulseState.completedDays,
+      totalDays: weeklyPulseState.totalDays,
+      weekIndexJustFinished: weeklyPulseState.weekIndex || 1,
+    })
+    const nextTask = getTodayTask(boardData)
+    const payoffLine = getDialPayoffLine(dialResult, {
+      nextTaskLabel: nextTask?.task || '',
+      weekIndex: weeklyPulseState.weekIndex || 1,
+    })
+
+    const templateFields = [
+      { label: 'What worked', subtext: '' },
+      { label: 'What slipped', subtext: '' },
+      { label: 'Next week', subtext: '' },
+    ]
+    const templateAnswers = {
+      'What worked': workedAnswer || 'Not answered',
+      'What slipped': slippedAnswer || 'Not answered',
+      'Next week': nextWeekChoiceLabel,
+    }
+    const content = [
+      proofLine,
+      workedAnswer ? `What worked: ${workedAnswer}` : '',
+      slippedAnswer ? `What slipped: ${slippedAnswer}` : '',
+      `Next week: ${nextWeekChoiceLabel}`,
+    ]
       .join('\n\n')
       .trim()
 
-    if (!content) return
-    const weeklyPulseTitle = `Weekly Reflection — Week ${weeklyPulseState.weekNumber || 1}`
-    const weeklyDraft = {
-      ...blankDraft(),
+    const weeklyPulseTitle = `Weekly Reflection — Week ${weeklyPulseState.weekIndex || 1}`
+
+    // Deterministic copy, not an AI call: the payoff is a mechanical reflection of a
+    // two-choice answer (CLAUDE.md's "use deterministic code for product rules" — AI is
+    // for interpretation, not for restating a choice she just made). This also means the
+    // ~60-second flow doesn't wait on a network round trip.
+    const entry = {
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
       date: getToday(),
       title: weeklyPulseTitle,
-      prompt: 'Weekly Reflection',
       content,
+      prompt: 'Weekly Reflection',
+      mood: MOODS[0],
+      clarityScore: 7,
+      clarityLabel: 'Reflective',
+      sageResponse: payoffLine,
       templateAccent: '#fff5f7',
       templateFields,
       templateAnswers,
-      weeklyPulsePhaseName: weeklyPulseState.phaseName,
-      weeklyPulsePillars: weeklyPulseState.pillars,
-      weeklyPulseWeekNumber: weeklyPulseState.weekNumber,
-      mood: MOODS[0],
+      weeklyPulseMeta: {
+        phaseName: weeklyPulseState.phaseName,
+        pillars: [],
+        weekNumber: weeklyPulseState.weekIndex || 1,
+        completedDays: weeklyPulseState.completedDays,
+        totalDays: weeklyPulseState.totalDays,
+        difficultyChoice: weeklyPulseState.difficulty,
+        // What the dial actually did with that choice — see lib/lockIn.js's
+        // applyDifficultyDial. outcome: 'lighter' | 'harder' | 'held'.
+        dialOutcome: dialResult.outcome,
+        dialReason: dialResult.reason,
+        dialStep: dialResult.step,
+        whatWorked: workedAnswer,
+        whatSlipped: slippedAnswer,
+      },
     }
 
-    setIsSaving(true)
-    setScreen('processing')
-    try {
-      const analysis = await generateSageAnalysis({
-        ...weeklyDraft,
-        isWeeklyPulse: true,
-      })
-      const entry = {
-        id: Date.now(),
-        createdAt: new Date().toISOString(),
-        date: weeklyDraft.date,
-        title: weeklyPulseTitle,
-        content: weeklyDraft.content,
-        prompt: weeklyDraft.prompt,
-        mood: weeklyDraft.mood,
-        clarityScore: Number(analysis.clarityScore || 7),
-        clarityLabel: analysis.clarityLabel || 'Reflective',
-        sageResponse: analysis.sageResponse || '',
-        backgroundId: weeklyDraft.backgroundId,
-        fontId: weeklyDraft.fontId,
-        color: weeklyDraft.color,
-        images: weeklyDraft.images,
-        templateAccent: weeklyDraft.templateAccent,
-        templateFields: weeklyDraft.templateFields,
-        templateAnswers: weeklyDraft.templateAnswers,
-        weeklyPulseMeta: {
-          phaseName: weeklyDraft.weeklyPulsePhaseName,
-          pillars: weeklyDraft.weeklyPulsePillars,
-          weekNumber: weeklyDraft.weeklyPulseWeekNumber || 1,
-        },
-      }
-      setEntries(current => [entry, ...current])
-      setSelectedEntry(entry)
-      const completionStore = (() => {
-        try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
-      })()
-      const phaseKey = normalizeLabel(weeklyDraft.weeklyPulsePhaseName || 'phase 1')
-      completionStore[phaseKey] = completionStore[phaseKey] || {}
-      completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
-      scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
-      setWeeklyPulseDate(getToday())
-      scopedSetItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
-      markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
-      onWeeklyPulseSaved?.()
-      setScreen('detail')
-    } catch {
-      const fallback = {
-        id: Date.now(),
-        createdAt: new Date().toISOString(),
-        date: weeklyDraft.date,
-        title: weeklyPulseTitle,
-        content: weeklyDraft.content,
-        prompt: weeklyDraft.prompt,
-        mood: weeklyDraft.mood,
-        clarityScore: 6,
-        clarityLabel: 'Reflective',
-        sageResponse: localSageResponse({ content: weeklyDraft.content, prompt: 'Weekly Reflection', clarityLabel: 'Reflective' }),
-        backgroundId: weeklyDraft.backgroundId,
-        fontId: weeklyDraft.fontId,
-        color: weeklyDraft.color,
-        images: weeklyDraft.images,
-        templateAccent: weeklyDraft.templateAccent,
-        templateFields: weeklyDraft.templateFields,
-        templateAnswers: weeklyDraft.templateAnswers,
-        weeklyPulseMeta: {
-          phaseName: weeklyDraft.weeklyPulsePhaseName,
-          pillars: weeklyDraft.weeklyPulsePillars,
-          weekNumber: weeklyDraft.weeklyPulseWeekNumber || 1,
-        },
-      }
-      setEntries(current => [fallback, ...current])
-      setSelectedEntry(fallback)
-      const completionStore = (() => {
-        try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
-      })()
-      const phaseKey = normalizeLabel(weeklyDraft.weeklyPulsePhaseName || 'phase 1')
-      completionStore[phaseKey] = completionStore[phaseKey] || {}
-      completionStore[phaseKey][String(weeklyDraft.weeklyPulseWeekNumber || 1)] = getToday()
-      scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
-      setWeeklyPulseDate(getToday())
-      scopedSetItem(`phasr_weekly_pulse_w${weeklyDraft.weeklyPulseWeekNumber || 1}_done`, 'true')
-      markWeeklyPulseDoneIfWeekOne(weeklyDraft.weeklyPulseWeekNumber || 1)
-      onWeeklyPulseSaved?.()
-      setScreen('detail')
-    } finally {
-      setIsSaving(false)
-    }
+    setEntries(current => [entry, ...current])
+    setSelectedEntry(entry)
+    setWeeklyPulseDate(getToday())
+    const phaseKey = normalizeLabel(weeklyPulseState.phaseName || 'phase 1')
+    const completionStore = (() => {
+      try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
+    })()
+    completionStore[phaseKey] = completionStore[phaseKey] || {}
+    completionStore[phaseKey][String(weeklyPulseState.weekIndex || 1)] = getToday()
+    scopedSetItem(WEEKLY_PULSE_COMPLETION_KEY, JSON.stringify(completionStore))
+    scopedSetItem(`phasr_weekly_pulse_w${weeklyPulseState.weekIndex || 1}_done`, 'true')
+    markWeeklyPulseDoneIfWeekOne(weeklyPulseState.weekIndex || 1)
+    onWeeklyPulseSaved?.()
+    setScreen('detail')
   }
 
     async function saveEntry() {
@@ -1898,24 +1785,24 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
   if (screen === 'weekly-pulse') {
     return (
-      <WeeklyPulseWriter
+      <WeeklyReflectionFlow
         phaseName={weeklyPulseState.phaseName}
-        questions={weeklyPulseState.questions}
-        therapistMove={weeklyPulseState.therapistMove}
-        answers={weeklyPulseState.answers}
-        setAnswer={setWeeklyPulseAnswer}
-        questionIndex={weeklyPulseState.index}
+        completedDays={weeklyPulseState.completedDays}
+        totalDays={weeklyPulseState.totalDays}
+        workedChoice={weeklyPulseState.workedChoice}
+        workedCustom={weeklyPulseState.workedCustom}
+        onWorkedChoice={value => setWeeklyPulseField('workedChoice', value)}
+        onWorkedCustom={value => setWeeklyPulseField('workedCustom', value)}
+        slippedChoice={weeklyPulseState.slippedChoice}
+        slippedCustom={weeklyPulseState.slippedCustom}
+        onSlippedChoice={value => setWeeklyPulseField('slippedChoice', value)}
+        onSlippedCustom={value => setWeeklyPulseField('slippedCustom', value)}
+        difficulty={weeklyPulseState.difficulty}
+        onDifficulty={value => setWeeklyPulseField('difficulty', value)}
         onVoiceCapture={captureWeeklyPulseVoice}
-        onPrev={() => {
-          if (weeklyPulseState.index === 0) {
-            setScreen('list')
-            return
-          }
-          setWeeklyPulseState(current => ({ ...current, index: Math.max(0, current.index - 1) }))
-        }}
-        onNext={nextWeeklyPulseQuestion}
+        onBack={() => setScreen('list')}
         onSave={saveWeeklyPulseToDraft}
-        isSaving={isSaving}
+        canSave={Boolean(weeklyPulseState.difficulty)}
       />
     )
   }

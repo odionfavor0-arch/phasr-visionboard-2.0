@@ -18,7 +18,7 @@ const WALKTHROUGH_SLIDES = [
   {
     id: 'vision',
     title: 'Vision Board',
-    body: 'Upload before/after images and a short description. Phasr turns it into a plan with resources, weekly non-negotiables, activities, and outcome.',
+    body: 'Upload before/after images and a short description. PHASR turns it into a plan with resources, weekly non-negotiables, activities, and outcome.',
     detail: 'All you do is upload a photo + short description of what you want. Sage generates a plan and you can edit or regenerate anything.',
     icon: ImageIcon,
     accent: 'linear-gradient(135deg,#f78fb0,#f06090)',
@@ -27,7 +27,7 @@ const WALKTHROUGH_SLIDES = [
     id: 'phases',
     title: 'Phases & Timeframe',
     body: 'Split your year into Phases. Each Phase has 2 pillars and its own start and end date.',
-    detail: 'Set the timeframe you want, and Phasr uses it to break your goals into weeks and remind you to add them to your calendar.',
+    detail: 'Set the timeframe you want, and PHASR uses it to break your goals into weeks and remind you to add them to your calendar.',
     icon: CalendarDays,
     accent: 'linear-gradient(135deg,#ffb3c9,#f95f85)',
   },
@@ -133,7 +133,7 @@ function VisualCard({ slide }) {
             }}
           >
             <span style={{ fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 800 }}>
-              Inside Phasr
+              Inside PHASR
             </span>
             <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.45, fontWeight: 700 }}>
               {slide.title}
@@ -439,7 +439,7 @@ export default function OnboardingFlow({ user, onComplete }) {
               </div>
               <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Calendar</p>
               <h2 style={{ margin: 0, fontFamily: "'Syne', sans-serif", fontSize: 'clamp(1.65rem, 3vw, 2.7rem)', lineHeight: 1.08, color: 'var(--app-text)' }}>
-                Would you like to integrate Phasr with your phone calendar?
+                Would you like to integrate PHASR with your phone calendar?
               </h2>
               <p style={{ margin: 0, color: 'var(--app-muted)', lineHeight: 1.8 }}>
                 So tasks and Phase deadlines are added automatically.

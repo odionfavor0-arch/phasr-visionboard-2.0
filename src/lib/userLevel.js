@@ -1,3 +1,5 @@
+import { getDateKeyFromDate, loadLockInState } from './lockIn'
+
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const LEVEL_STORAGE_KEY = 'phasr_user_level'
 const JOURNAL_KEY = 'phasr_journal_v2'
@@ -86,28 +88,30 @@ function countCompletedWeeklyPulses(userId = getActiveUserId()) {
   return entries.filter(isWeeklyPulseEntry).length
 }
 
-function countPerfectWeeks(userId = getActiveUserId()) {
-  const streakKeys = listMatchingKeys(/^phasr_streak_w\d+_d\d+(?::.+)?$/, userId)
-  const weekDays = new Map()
+// Used to scan its own independent phasr_streak_w{n}_d{n} day-flags, written by
+// DailyCheckin.jsx. Those flags are retired now that DailyCheckin routes completions
+// through lib/lockIn.js's canonical writer (one source of truth for streak/completion
+// data) — so this derives "perfect week" the same way: reading lockIn's own logs
+// (one entry per calendar date, status 'done') and grouping into Mon-Sun weeks.
+function countPerfectWeeks() {
+  const state = loadLockInState()
+  const doneDates = new Set((state.logs || []).filter(log => log?.status === 'done').map(log => log.date))
+  if (!doneDates.size) return 0
 
-  streakKeys.forEach(key => {
-    const [base] = key.split(':')
-    const match = base.match(/^phasr_streak_w(\d+)_d(\d+)$/)
-    if (!match) return
-    const weekNumber = match[1]
-    const dayNumber = match[2]
-    const value = localStorage.getItem(key) === 'true'
-    const bucket = weekDays.get(weekNumber) || {}
-    bucket[dayNumber] = value
-    weekDays.set(weekNumber, bucket)
+  const weekBuckets = new Map()
+  doneDates.forEach(dateStr => {
+    const date = new Date(`${dateStr}T12:00:00`)
+    if (Number.isNaN(date.getTime())) return
+    const mondayOffset = (date.getDay() + 6) % 7
+    const weekStart = new Date(date)
+    weekStart.setDate(date.getDate() - mondayOffset)
+    const weekKey = getDateKeyFromDate(weekStart)
+    const bucket = weekBuckets.get(weekKey) || new Set()
+    bucket.add(dateStr)
+    weekBuckets.set(weekKey, bucket)
   })
 
-  return [...weekDays.values()].filter(days => {
-    for (let day = 1; day <= 7; day += 1) {
-      if (!days[String(day)]) return false
-    }
-    return true
-  }).length
+  return [...weekBuckets.values()].filter(bucket => bucket.size >= 7).length
 }
 
 export function getLevelForPoints(points) {
@@ -125,7 +129,7 @@ export function calculateUserPoints() {
   const dailyTaskPoints = countCompletedDailyTasks(userId)
   const journalEntryPoints = countSavedJournalEntries(userId) * 2
   const weeklyPulsePoints = countCompletedWeeklyPulses(userId) * 5
-  const perfectWeekPoints = countPerfectWeeks(userId) * 10
+  const perfectWeekPoints = countPerfectWeeks() * 10
   const points = dailyTaskPoints + journalEntryPoints + weeklyPulsePoints + perfectWeekPoints
   const currentLevel = getLevelForPoints(points)
   const payload = {

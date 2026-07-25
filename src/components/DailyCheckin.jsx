@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { motion } from 'framer-motion'
-import { buildWeeklyGoals, loadBoardData, loadLockInState } from '../lib/lockIn'
+import { buildWeeklyGoals, getDateKeyFromDate, getDialState, getLockInSummary, getTodayKey, loadBoardData, loadLockInState, logYesterdayIfEmpty, resolveDailyTaskCount, upsertTodayLog } from '../lib/lockIn'
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const DAILY_STREAK_RESET_KEY = 'phasr_daily_streak_reset_2026_05_20_v1'
+const ACTIVE_USER_KEY = 'phasr_active_user'
 const milestones = [
   {
     day: 3,
@@ -49,10 +50,29 @@ function getMilestoneState(milestone, currentStreak) {
   return 'upcoming'
 }
 
+// Scoped by active user so task-completion data (real completion data, feeding the
+// canonical streak) can't bleed across accounts sharing a browser. Mirrors the
+// getScopedKey/legacy-fallback pattern used in lib/lockIn.js and SageCoach.jsx.
+function getScopedKey(base) {
+  const id = localStorage.getItem(ACTIVE_USER_KEY) || ''
+  return id ? `${base}:${id}` : base
+}
+
 function safeRead(key, fallback) {
   try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
+    const scopedKey = getScopedKey(key)
+    const scopedValue = localStorage.getItem(scopedKey)
+    if (scopedValue) return JSON.parse(scopedValue)
+    const legacyValue = localStorage.getItem(key)
+    if (legacyValue) {
+      try {
+        localStorage.setItem(scopedKey, legacyValue)
+      } catch {
+        // Skip legacy migration if storage is full; the legacy value still reads fine.
+      }
+      return JSON.parse(legacyValue)
+    }
+    return fallback
   } catch {
     return fallback
   }
@@ -60,7 +80,7 @@ function safeRead(key, fallback) {
 
 function safeWrite(key, value) {
   try {
-    localStorage.setItem(key, JSON.stringify(value))
+    localStorage.setItem(getScopedKey(key), JSON.stringify(value))
   } catch {
     // Derived task caches should not crash the screen when storage is full.
   }
@@ -72,6 +92,34 @@ function safeSet(key, value) {
   } catch {
     // Ignore storage quota errors for non-critical cache writes.
   }
+}
+
+// Scoped counterpart of safeSet/getItem, for the completion-adjacent string flags
+// (non-negotiable-hit, milestone-shown) that need the same per-user isolation as the
+// JSON task cache above. Phase-timeline bookkeeping (week start, phase start date,
+// current week) intentionally keeps using the unscoped safeSet above in this pass —
+// it isn't streak/completion data and other files still read it unscoped.
+function scopedSafeSet(key, value) {
+  try {
+    localStorage.setItem(getScopedKey(key), value)
+  } catch {
+    // Ignore storage quota errors for non-critical cache writes.
+  }
+}
+
+function scopedGetString(key) {
+  const scopedKey = getScopedKey(key)
+  const scopedValue = localStorage.getItem(scopedKey)
+  if (scopedValue != null) return scopedValue
+  const legacyValue = localStorage.getItem(key)
+  if (legacyValue != null) {
+    try {
+      localStorage.setItem(scopedKey, legacyValue)
+    } catch {
+      // Skip legacy migration if storage is full.
+    }
+  }
+  return legacyValue
 }
 
 function loadVisionBoardFromStorage() {
@@ -191,7 +239,7 @@ function weekStartKey(scope, week) {
 }
 
 function getWeekStartDate(scope, week) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = getTodayKey()
   const key = weekStartKey(scope, week)
   const saved = localStorage.getItem(key)
   if (saved) return saved
@@ -341,17 +389,32 @@ function checkNonNegComplete(nonNegIndex, weekNumber, scope = 'global') {
     }
   }
   if (foundTask && allDone) {
-    safeSet(nonNegCompleteKey(weekNumber, nonNegIndex, scope), 'true')
+    scopedSafeSet(nonNegCompleteKey(weekNumber, nonNegIndex, scope), 'true')
   }
 }
 
-function countDaysDone(week, dayLimit = 7, scope = 'global') {
+// The day-done signal used to live in its own phasr_streak_* flag, written independently
+// of lib/lockIn.js's canonical engine. That's gone now — this reads lockIn's own logs
+// (one entry per calendar date, status 'done', written by upsertTodayLog) so there is
+// exactly one source of truth for "was this day completed".
+function dateKeyForWeekDay(phaseStartKey, week, day) {
+  const start = parseDateOnly(phaseStartKey)
+  if (!start) return null
+  const offsetDays = (week - 1) * 7 + (day - 1)
+  const target = new Date(start)
+  target.setDate(target.getDate() + offsetDays)
+  return getDateKeyFromDate(target)
+}
+
+function isLogDoneForDate(lockInState, dateKey) {
+  if (!dateKey) return false
+  return (lockInState?.logs || []).some(log => log?.date === dateKey && log?.status === 'done')
+}
+
+function countDaysDone(week, dayLimit = 7, phaseStartKey, lockInState) {
   let done = 0
   for (let day = 1; day <= dayLimit; day += 1) {
-    const scopedValue = localStorage.getItem(`phasr_streak_${scope}_w${week}_d${day}`)
-    const legacyValue = localStorage.getItem(`phasr_streak_w${week}_d${day}`)
-    const isDone = (scopedValue ?? legacyValue) === 'true'
-    if (isDone) done += 1
+    if (isLogDoneForDate(lockInState, dateKeyForWeekDay(phaseStartKey, week, day))) done += 1
   }
   return done
 }
@@ -360,13 +423,12 @@ function hasTrackedProgressForScope(scope = 'global') {
   try {
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index) || ''
-      const isScopedTask = key.startsWith(`phasr_tasks_${scope}_w`)
-      const isScopedStreak = key.startsWith(`phasr_streak_${scope}_w`)
-      if (!isScopedTask && !isScopedStreak) continue
-      if (isScopedStreak && localStorage.getItem(key) === 'true') return true
-      if (isScopedTask) {
-        const tasks = safeRead(key, [])
+      if (!key.startsWith(`phasr_tasks_${scope}_w`)) continue
+      try {
+        const tasks = JSON.parse(localStorage.getItem(key) || '[]')
         if (Array.isArray(tasks) && tasks.some(task => task?.done)) return true
+      } catch {
+        // Skip unparsable cache entries.
       }
     }
   } catch {
@@ -388,7 +450,7 @@ function resetDailyStreakToFreshStart() {
   } catch {
     // If storage cleanup fails, the fresh start date below still prevents old week jumps.
   }
-  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayKey = getTodayKey()
   safeSet('phasr_joined_at', todayKey)
   safeSet('phasr_phase1_start_date', todayKey)
   safeSet('phasr_current_week', '1')
@@ -547,19 +609,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const [lockedWeekMessage, setLockedWeekMessage] = useState('')
   const [reflectionHover, setReflectionHover] = useState(false)
 
-  const weekStatuses = useMemo(() => {
-    return (weeklyData.weeks || []).map(item => {
-      const daysDone = hasPillars ? countDaysDone(item.index, 7, phaseScope) : 0
-      const pulseDone = pulseDoneForWeek(currentPhase?.name, item.index) && daysDone === 7
-      return {
-        week: item.index,
-        daysDone,
-        pulseDone,
-      }
-    })
-  }, [weeklyData.weeks, hasPillars, currentPhase, tasks, refresh])
   const phaseStart = useMemo(() => {
-    const todayKey = new Date().toISOString().slice(0, 10)
+    const todayKey = getTodayKey()
     const joinedAt = String(localStorage.getItem('phasr_joined_at') || '').slice(0, 10)
     const stored = localStorage.getItem('phasr_phase1_start_date')
     const storedScope = localStorage.getItem('phasr_phase1_start_scope')
@@ -590,7 +641,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [phaseScope])
   const dayOfPhase = useMemo(() => {
     const start = parseDateOnly(phaseStart)
-    const today = parseDateOnly(new Date().toISOString().slice(0, 10))
+    const today = parseDateOnly(getTodayKey())
     const startMs = start?.getTime()
     const todayMs = today?.getTime()
     if (!Number.isFinite(startMs) || !Number.isFinite(todayMs)) return 1
@@ -600,6 +651,22 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const currentWeek = useMemo(() => Math.max(Math.min(totalWeeks, Math.ceil(dayOfPhase / 7)), 1), [dayOfPhase, totalWeeks])
   const currentDayNumber = useMemo(() => ((dayOfPhase - 1) % 7) + 1, [dayOfPhase])
   const dayOfWeek = currentDayNumber
+  const yesterdayDateReal = new Date()
+  yesterdayDateReal.setDate(yesterdayDateReal.getDate() - 1)
+  const yesterdayKeyReal = getDateKeyFromDate(yesterdayDateReal)
+  const yesterdayLogged = isLogDoneForDate(lockInState, yesterdayKeyReal)
+
+  const weekStatuses = useMemo(() => {
+    return (weeklyData.weeks || []).map(item => {
+      const daysDone = hasPillars ? countDaysDone(item.index, 7, phaseStart, lockInState) : 0
+      const pulseDone = pulseDoneForWeek(currentPhase?.name, item.index) && daysDone === 7
+      return {
+        week: item.index,
+        daysDone,
+        pulseDone,
+      }
+    })
+  }, [weeklyData.weeks, hasPillars, currentPhase, phaseStart, lockInState])
 
   useEffect(() => {
     setActiveWeek(currentWeek)
@@ -613,28 +680,35 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const displayedDay = activeWeek === currentWeek ? dayOfWeek : 7
   const weekDayCards = useMemo(() => WEEKDAY_LABELS.map((label, index) => {
     const day = index + 1
-    const dayTasks = safeRead(taskKey(activeWeek, day, phaseScope), [])
-    const streakValue = localStorage.getItem(`phasr_streak_${phaseScope}_w${activeWeek}_d${day}`) ?? localStorage.getItem(`phasr_streak_w${activeWeek}_d${day}`)
+    const done = isLogDoneForDate(lockInState, dateKeyForWeekDay(phaseStart, activeWeek, day))
     const isFuture = activeWeek > currentWeek || (activeWeek === currentWeek && day > currentDayNumber)
     const isCurrent = activeWeek === currentWeek && day === currentDayNumber
     const isPast = activeWeek < currentWeek || (activeWeek === currentWeek && day < currentDayNumber)
-    const anyTaskDone = Array.isArray(dayTasks) && dayTasks.some(task => task?.done)
-    const done = streakValue === 'true' || anyTaskDone
     return { label, day, done, isCurrent, isPast, isFuture }
-  }), [activeWeek, currentWeek, currentDayNumber, phaseScope, tasks, refresh])
+  }), [activeWeek, currentWeek, currentDayNumber, phaseStart, lockInState])
+
+  // Adaptive difficulty dial (set from the Weekly Reflection's easier/push choice — see
+  // lib/lockIn.js's applyDifficultyDial). Only trims the list for weeks at or after the
+  // week it was set for, so past weeks keep whatever was actually shown at the time.
+  const dialState = useMemo(() => getDialState(currentPhase?.id), [currentPhase])
+  const dialAppliesToActiveWeek = activeWeek >= (dialState.effectiveFromWeek || 1)
+  const dailyTaskCount = dialAppliesToActiveWeek
+    ? resolveDailyTaskCount(activities.length, dialState.step)
+    : activities.length
+  const weekActivities = useMemo(() => activities.slice(0, dailyTaskCount), [activities, dailyTaskCount])
 
   useEffect(() => {
     if (!hasPillars || !week) {
       setTasks([])
       return
     }
-    setTasks(getTodaysTasks(activities, activeWeek, displayedDay, phaseScope))
-  }, [hasPillars, week, activities, displayedDay, activeWeek, phaseScope])
+    setTasks(getTodaysTasks(weekActivities, activeWeek, displayedDay, phaseScope))
+  }, [hasPillars, week, weekActivities, displayedDay, activeWeek, phaseScope])
 
   const todaysTasks = useMemo(() => safeRead(taskKey(activeWeek, displayedDay, phaseScope), []), [activeWeek, displayedDay, phaseScope, tasks, refresh])
   const completedToday = todaysTasks.filter(task => task.done).length
   const totalToday = todaysTasks.length
-  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay, phaseScope) : 0, [hasPillars, activeWeek, displayedDay, phaseScope, tasks])
+  const daysCompleted = useMemo(() => hasPillars ? countDaysDone(activeWeek, displayedDay, phaseStart, lockInState) : 0, [hasPillars, activeWeek, displayedDay, phaseStart, lockInState])
   const completedTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksDone(activeWeek, phaseScope) : 0, [hasPillars, activeWeek, phaseScope, tasks])
   const totalTasksThisWeek = useMemo(() => hasPillars ? countWeekTasksAssigned(activeWeek, phaseScope) : 0, [hasPillars, activeWeek, phaseScope, tasks])
   const weekPercent = totalTasksThisWeek ? Math.round((completedTasksThisWeek / totalTasksThisWeek) * 100) : 0
@@ -649,32 +723,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const pagePadding = isMobile ? '14px 14px 0' : '22px 32px 96px'
   const contentMaxWidth = 1040
 
-  const currentStreak = useMemo(() => {
-    const readStreakValue = (weekNumber, dayNumber) => {
-      const scopedValue = localStorage.getItem(`phasr_streak_${phaseScope}_w${weekNumber}_d${dayNumber}`)
-      if (scopedValue != null) return scopedValue
-      return localStorage.getItem(`phasr_streak_w${weekNumber}_d${dayNumber}`)
-    }
-
-    let streak = 0
-    let weekNumber = currentWeek
-    let dayNumber = currentDayNumber
-
-    if (readStreakValue(weekNumber, dayNumber) !== 'true') return 0
-
-    while (weekNumber >= 1 && dayNumber >= 1) {
-      const isSuccessful = readStreakValue(weekNumber, dayNumber) === 'true'
-      if (!isSuccessful) break
-      streak += 1
-      dayNumber -= 1
-      if (dayNumber < 1) {
-        weekNumber -= 1
-        dayNumber = 7
-      }
-    }
-
-    return streak
-  }, [currentWeek, currentDayNumber, phaseScope, tasks, refresh])
+  // The single source of truth for the displayed streak: lib/lockIn.js's canonical
+  // engine, not a locally recomputed scan of day-flags.
+  const currentStreak = useMemo(() => getLockInSummary(lockInState).currentStreak, [lockInState])
   const currentLevel =
     currentStreak >= 90 ? 5
       : currentStreak >= 61 ? 4
@@ -789,13 +840,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     }
 
     const shownKey = `phasr_milestone_shown_${unlockedMilestone.day}`
-    if (localStorage.getItem(shownKey)) {
+    if (scopedGetString(shownKey)) {
       setMilestoneMessage('')
       return undefined
     }
 
     setMilestoneMessage(unlockedMilestone.description)
-    safeSet(shownKey, 'true')
+    scopedSafeSet(shownKey, 'true')
 
     const timeoutId = window.setTimeout(() => {
       setMilestoneMessage('')
@@ -822,20 +873,36 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     const updated = tasks.map(item => item.id === taskId ? { ...item, done: !item.done } : item)
     safeWrite(taskKey(activeWeek, displayedDay, phaseScope), updated)
     setTasks(updated)
+
+    const task = updated.find(item => item.id === taskId)
+    const checkedInToday = updated.some(item => item.done)
+    const isToday = activeWeek === currentWeek && displayedDay === currentDayNumber
+
+    // Single canonical write for streak/completion data: lib/lockIn.js's upsertTodayLog.
+    // Previously this branch wrote its own phasr_streak_* day-flags, independent of the
+    // canonical engine (the divergence flagged in the data-integrity audit, finding c).
+    // upsertTodayLog is idempotent per calendar day, so checking multiple tasks the same
+    // day still advances the streak once. It only understands "today" (getTodayKey()), so
+    // this is gated to real-today toggles — there is no backfill path for past days, and
+    // unchecking afterward does not revert an already-logged day (lockIn has no undo
+    // primitive, and its math isn't being touched in this pass).
+    if (isToday && checkedInToday) {
+      upsertTodayLog(loadLockInState(), { task: task?.description, pillar: task?.pillar }, phaseBoard)
+    }
+
     setLockInState(loadLockInState())
     onLockInChange?.()
-
-    const checkedInToday = updated.some(item => item.done)
-    if (checkedInToday) {
-      safeSet(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'true')
-      safeSet(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'true')
-    } else {
-      safeSet(`phasr_streak_${phaseScope}_w${activeWeek}_d${displayedDay}`, 'false')
-      safeSet(`phasr_streak_w${activeWeek}_d${displayedDay}`, 'false')
-    }
     setPhaseStats(calculatePhaseTaskStats(activePhaseId, tasksPerWeek))
-    const task = updated.find(item => item.id === taskId)
     if (task) checkNonNegComplete(task.nonNegIndex, activeWeek, phaseScope)
+  }
+
+  // One-day grace window: if yesterday has no log yet, she can mark it done — but
+  // nothing older (lib/lockIn.js's logYesterdayIfEmpty enforces that, and is a no-op
+  // if yesterday is already logged).
+  function handleBackfillYesterday() {
+    logYesterdayIfEmpty(loadLockInState())
+    setLockInState(loadLockInState())
+    onLockInChange?.()
   }
 
   function getPhaseLabel(phaseId) {
@@ -904,10 +971,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
         <div style={{ height: 16 }} />
 
-        <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.95rem' : '1.1rem', marginBottom: '1rem', boxShadow: 'var(--app-shadow-md)' }}>
+        <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.65rem 0.75rem' : '1.1rem', marginBottom: '1rem', boxShadow: 'var(--app-shadow-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: '0.55rem' }}>SAGE</div>
-            <p style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--app-accent)' }}>Live Score</p>
+            <div style={{ width: isMobile ? 22 : 28, height: isMobile ? 22 : 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? '0.48rem' : '0.55rem', flexShrink: 0 }}>SAGE</div>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <motion.button
                 type="button"
@@ -917,13 +983,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 style={{
-                  minHeight: 32,
-                  padding: '0.42rem 0.78rem',
+                  minHeight: isMobile ? 28 : 32,
+                  padding: isMobile ? '0.3rem 0.6rem' : '0.42rem 0.78rem',
                   borderRadius: 999,
                   border: '1px solid rgba(232,64,122,0.32)',
                   background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))',
                   color: '#fff',
-                  fontSize: '0.82rem',
+                  fontSize: isMobile ? '0.7rem' : '0.82rem',
                   fontWeight: 800,
                   letterSpacing: '0.01em',
                   cursor: 'pointer',
@@ -938,9 +1004,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </div>
           </div>
 
-          {!sageCardExpanded && (
+          {!sageCardExpanded && !hasPillars && (
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              {hasPillars ? `Day ${dayOfWeek} of 7. You have completed ${completedToday} of ${totalToday} tasks today.` : 'Add pillar activities in Vision Board to activate your streak.'}
+              Add pillar activities in Vision Board to activate your streak.
             </p>
           )}
 
@@ -982,14 +1048,18 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <button type="button" onClick={openPulse} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', padding: '4px 0', font: 'inherit' }}>Complete now</button>
             </p>
           )}
-          {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && !showReminder && (
-              <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              {`Day ${dayOfWeek} of 7. You have completed ${completedToday} of ${totalToday} tasks today.`}
-            </p>
-          )}
             </>
           )}
         </div>
+
+        {hasPillars && daysIn > 1 && !yesterdayLogged && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: '1px solid #f2c8d6', borderRadius: 'var(--app-radius-md)', background: '#fff9fb', padding: '0.7rem 0.9rem', marginBottom: '1rem' }}>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#7e5d68' }}>Did you do this yesterday?</p>
+            <button type="button" onClick={handleBackfillYesterday} style={{ border: 'none', background: 'transparent', color: accent, fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', padding: '4px 6px', flexShrink: 0 }}>
+              Mark it
+            </button>
+          </div>
+        )}
 
         {!hasPillars && (
           <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 'var(--app-radius-md)', background: '#fff6f9', marginBottom: '1rem', boxShadow: 'var(--app-shadow-sm)' }}>

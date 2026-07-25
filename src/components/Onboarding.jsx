@@ -11,12 +11,12 @@ const PILLAR_PRESETS = [
 ]
 
 const slides = [
-  { id: 'phasr', kicker: '', headline: 'Break your vision into phases, daily tasks, and real accountability.', body: 'Phasr turns your vision into phases, daily tasks, and real accountability. Let\'s set up your first phase.', detail: 'A personal system built for follow-through.', theme: 'dark' },
+  { id: 'phasr', kicker: '', headline: 'Break your vision into phases, daily tasks, and real accountability.', body: 'PHASR turns your vision into phases, daily tasks, and real accountability. Let\'s set up your first phase.', detail: 'A personal system built for follow-through.', theme: 'dark' },
   { id: 'sage', kicker: 'Sage', headline: 'Find what matters next', body: 'Sage helps you think clearly, remove doubt, and turn reflection into focused action.', detail: 'Clarity turns into direction.', theme: 'deep' },
-  { id: 'vision', kicker: 'Vision Board', headline: 'Show it what you want. It builds the road.', body: 'Upload your before and after. Phasr turns that vision into resources, non-negotiables, and outcomes.', detail: 'Your vision becomes a working plan.', theme: 'roseBright' },
-  { id: 'pillars', kicker: 'Your Focus', headline: 'What are you working on?', body: 'Pick your focus areas. Phasr will build your plan around them.', theme: 'rose', isCustom: true },
+  { id: 'vision', kicker: 'Vision Board', headline: 'Show it what you want. It builds the road.', body: 'Upload your before and after. PHASR turns that vision into resources, non-negotiables, and outcomes.', detail: 'Your vision becomes a working plan.', theme: 'roseBright' },
+  { id: 'pillars', kicker: 'Your Focus', headline: 'What are you working on?', body: 'Pick your focus areas. PHASR will build your plan around them.', theme: 'rose', isCustom: true },
   { id: 'letter', kicker: 'Letter to Future You', headline: 'Write to the version of you who finishes this.', body: 'You will see this again when you complete your first phase.', theme: 'dark', isCustom: true },
-  { id: 'close', kicker: '', headline: 'You have the goal. Now you have the plan.', body: 'Would you like to sync Phasr with your calendar so your plan lives where your day already does?', detail: '', theme: 'light', isClose: true },
+  { id: 'close', kicker: '', headline: 'You have the goal. Now you have the plan.', body: 'Would you like to sync PHASR with your calendar so your plan lives where your day already does?', detail: '', theme: 'light', isClose: true },
 ]
 
 const themes = {
@@ -39,7 +39,7 @@ function PreviewCard({ slide, theme, isPhone }) {
   if (slide.id === 'phasr') {
     return (
       <div style={commonCard}>
-        <div style={{ fontFamily: "'Fraunces', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem,8vw,5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>Phasr</div>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem,8vw,5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>PHASR</div>
         <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: '0.92rem', lineHeight: 1.6 }}>Clear structure for consistent action.</p>
       </div>
     )
@@ -170,7 +170,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <img src={phasrLogoPink} alt="" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
               <span style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.8rem,3vw,2.6rem)', fontWeight: 700, letterSpacing: '-0.03em' }}>
-                {step === 0 ? `Welcome, ${firstName}` : 'Phasr'}
+                {step === 0 ? `Welcome, ${firstName}` : 'PHASR'}
               </span>
             </div>
             {!slide.isClose && (

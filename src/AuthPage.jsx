@@ -81,7 +81,7 @@ export default function AuthPage({ onBack, onSuccess }) {
           background: 'linear-gradient(135deg,var(--app-accent2),#ffd6e7)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text', cursor: 'pointer', position: 'relative', zIndex: 1,
-        }}>Phasr</span>
+        }}>PHASR</span>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h2 style={{

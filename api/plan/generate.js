@@ -17,9 +17,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'system_prompt and user_message are required' })
   }
 
-  const groqApiKey = process.env.VITE_GROQ_KEY
+  const groqApiKey = process.env.GROQ_API_KEY
   if (!groqApiKey) {
-    return res.status(500).json({ error: 'VITE_GROQ_KEY is not configured on the server' })
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server' })
   }
 
   const groqModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'

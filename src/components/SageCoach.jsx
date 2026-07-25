@@ -16,17 +16,7 @@ const FULL_THREADS_KEY = 'phasr_sage_threads'
 const FULL_ACTIVE_THREAD_KEY = 'phasr_sage_active_thread'
 const QUICK_POSITION_KEY = 'phasr_sage_quick_position'
 const THINK_USAGE_KEY = 'phasr_sage_think_usage'
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const GROQ_CHAT_MODEL = 'llama-3.1-8b-instant'
-const GROQ_THINK_MODEL = 'llama-3.3-70b-versatile'
 const SAGE_RAG_URL = import.meta.env.VITE_SAGE_RAG_URL || ''
-const INWORLD_API_KEY =
-  import.meta.env.VITE_INWORLD_API_KEY ||
-  (typeof process !== 'undefined' ? process.env.INWORLD_API_KEY : '') ||
-  ''
-const INWORLD_TTS_URL = 'https://api.inworld.ai/tts/v1/voice'
-const INWORLD_TTS_MODEL = import.meta.env.VITE_INWORLD_TTS_MODEL || 'inworld-tts-1'
-const INWORLD_TTS_VOICE = import.meta.env.VITE_INWORLD_TTS_VOICE || 'Eleanor'
 const QUICK_WIDTH = 360
 const QUICK_HEIGHT = 480
 const JOURNAL_STORAGE_KEY = 'phasr_journal_v2'
@@ -239,11 +229,9 @@ function buildStatsContext() {
   const statsLog = safeRead('phasr_stats_log', [])
   const streakState = safeRead('phasr_streak', {})
   const todayTaskState = safeRead('phasr_today_task', null)
-  const showUpState = safeRead('phasr_showup_state', {})
   const journalCount = Array.isArray(journalEntries) ? journalEntries.length : 0
   const boardData = loadBoardData()
   const todayTask = getTodayTask(boardData)
-  const activeRoomCount = Array.isArray(showUpState?.joinedRoomIds) ? showUpState.joinedRoomIds.length : 0
   return {
     currentStreak: summary.currentStreak || 0,
     rank: summary.rank || 'Beginner',
@@ -255,7 +243,6 @@ function buildStatsContext() {
     weeklyGoalCount: Array.isArray(weeklyGoals) ? weeklyGoals.length : 0,
     statsLogCount: Array.isArray(statsLog) ? statsLog.length : 0,
     streakRisk: Boolean(streakState?.risk),
-    activeRoomCount,
     storedTodayTask: todayTaskState?.task || '',
     todayTask: todayTask.task || 'No task set yet',
   }
@@ -322,7 +309,7 @@ Weekly completion rate: ${weeklyCompletionRate}
 Weekly goals tracked: ${stats.weeklyGoalCount}
 Current phase goals:
 ${context.goalsText}
-Today's journal entry: ${todayJournalEntry?.transcript || todayJournalEntry?.summary || 'No journal entry yet today.'}`
+Today's journal entry: ${todayJournalEntry?.content || todayJournalEntry?.sageResponse || 'No journal entry yet today.'}`
 }
 
 function buildPatternDataSection() {
@@ -745,31 +732,24 @@ async function requestSageReply({ system, messages, mode = 'chat' }) {
     return ragData?.answer || 'Something went wrong. Try again.'
   }
 
-  const groqKey = import.meta.env.VITE_GROQ_KEY
-  const groqModel = system.includes('Deep Research Mode') ? GROQ_THINK_MODEL : GROQ_CHAT_MODEL
-
-  if (!groqKey) throw new Error('missing_api_key')
-
-  console.log('Groq key before SageCoach fetch:', import.meta.env.VITE_GROQ_KEY)
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch('/api/groq/chat', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${groqKey}`,
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: groqModel,
+      system,
+      messages: conversationHistory,
+      mode,
       max_tokens: 1000,
-      messages: [
-        { role: 'system', content: system },
-        ...conversationHistory,
-      ],
     }),
   })
 
+  if (!res.ok) {
+    if (res.status === 500) throw new Error('missing_api_key')
+    throw new Error('groq_request_failed')
+  }
+
   const data = await res.json()
-  console.log('Sage response:', data)
-  return data.choices?.[0]?.message?.content || 'Something went wrong. Try again.'
+  return data?.content || 'Something went wrong. Try again.'
 }
 
 function buildFallbackReply({ mode, task, input, boardData }) {
@@ -923,22 +903,14 @@ function speakText(text, preference) {
     activeSageAudio = null
   }
 
-  if (!INWORLD_API_KEY) {
-    console.error('Inworld TTS unavailable', 'missing_api_key')
-    return
-  }
-
   activeSageSpeechRequest = true
-  void fetch(INWORLD_TTS_URL, {
+  void fetch('/api/inworld/tts', {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${INWORLD_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       text: content,
-      voiceId: INWORLD_TTS_VOICE,
-      modelId: INWORLD_TTS_MODEL,
     }),
   })
     .then(async response => {
@@ -946,14 +918,13 @@ function speakText(text, preference) {
         let errorMessage = ''
         try {
           const errorJson = await response.json()
-          errorMessage = errorJson?.message || ''
+          errorMessage = errorJson?.error || ''
         } catch {
           errorMessage = ''
         }
         console.error('Inworld TTS failed', response.status, errorMessage)
         throw new Error(`inworld_tts_failed_${response.status}${errorMessage ? `_${errorMessage}` : ''}`)
       }
-      console.info('Inworld TTS success', response.status)
       const data = await response.json()
       const audioContent = data?.audioContent
       if (!audioContent) throw new Error('inworld_tts_missing_audio')
@@ -1203,11 +1174,9 @@ function MessageContent({ text, role }) {
     'vision board': { view: 'board', label: 'Vision Board' },
     'daily streaks': { view: 'checkin', label: 'Daily Streaks' },
     'daily streak': { view: 'checkin', label: 'Daily Streak' },
-    'show up': { view: 'showup', label: 'Show Up' },
-    statistics: { view: 'analytics', label: 'Statistics' },
     settings: { view: 'settings', label: 'Settings' },
   }
-  const parts = String(text || '').split(/(\bvision board\b|\bdaily streaks?\b|\bshow up\b|\bstatistics\b|\bsettings\b|\bjournal(?:ing)?\b|\bjonah\b)/gi)
+  const parts = String(text || '').split(/(\bvision board\b|\bdaily streaks?\b|\bsettings\b|\bjournal(?:ing)?\b|\bjonah\b)/gi)
 
   return parts.map((part, index) => {
     const key = String(part || '').toLowerCase()
@@ -1432,7 +1401,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
         {
           role: 'assistant',
           content: message.includes('missing_api_key')
-      ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` and reload, then I can answer normally.'
+      ? 'Sage AI is not configured on this environment yet. Add `GROQ_API_KEY` on the server and reload, then I can answer normally.'
             : buildFallbackReply({ mode: 'quick', task, input: content, boardData }),
         },
       ])
@@ -2373,7 +2342,7 @@ Action Steps
         {
           role: 'assistant',
           content: message.includes('missing_api_key')
-      ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` and reload, then I can answer normally.'
+      ? 'Sage AI is not configured on this environment yet. Add `GROQ_API_KEY` on the server and reload, then I can answer normally.'
             : (useDeepResearch
               ? buildResearchFallbackReply(content)
               : buildFallbackReply({
@@ -2421,7 +2390,7 @@ Action Steps
            {
              role: 'assistant',
              content: message.includes('missing_api_key')
-      ? 'Sage AI is not configured on this environment yet. Add `VITE_GROQ_KEY` and reload, then I can answer normally.'
+      ? 'Sage AI is not configured on this environment yet. Add `GROQ_API_KEY` on the server and reload, then I can answer normally.'
                : (useDeepResearch
                  ? buildResearchFallbackReply(previousUserMessage)
                  : buildFallbackReply({

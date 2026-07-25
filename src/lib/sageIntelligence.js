@@ -46,8 +46,13 @@ function parseDate(value) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+// Local calendar date, not UTC — .toISOString() reports the UTC day and silently
+// shifts a day backward at positive UTC offsets (see lib/lockIn.js's getDateKeyFromDate).
 function getDateKey(date = new Date()) {
-  return date.toISOString().slice(0, 10)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function startOfWeek(date) {
@@ -294,10 +299,6 @@ function normalizePlanJson(rawText) {
 }
 
 export async function fetchRealWorldPlan(goalText) {
-  const apiKey = import.meta.env.VITE_GROQ_KEY
-  if (!apiKey) throw new Error('missing_groq_key')
-  const model = 'llama-3.3-70b-versatile'
-
   const systemPrompt = `You are Sage, an AI life coach. The user has set the following goal from their vision board: ${goalText}. Generate a structured plan that includes: recommended resources they will need, a 12-week activity breakdown with progressive weekly targets, weekly non-negotiables for the first 4 weeks, measurable outputs to track, and short-term and long-term outcomes. Base this on proven real-world frameworks for this goal type. Be specific with numbers. Do not be generic.
 
 Return valid JSON only with these keys:
@@ -308,22 +309,17 @@ outputs
 shortTermOutcome
 longTermOutcome`
 
-  console.log('Groq key before fetchRealWorldPlan fetch:', import.meta.env.VITE_GROQ_KEY)
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('/api/groq/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model,
+      system: systemPrompt,
+      model: 'llama-3.3-70b-versatile',
       temperature: 0.2,
       max_tokens: 1800,
       messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
         {
           role: 'user',
           content: goalText,
@@ -332,8 +328,13 @@ longTermOutcome`
     }),
   })
 
+  if (!res.ok) {
+    if (res.status === 500) throw new Error('missing_groq_key')
+    throw new Error('groq_request_failed')
+  }
+
   const data = await res.json()
-  const text = data?.choices?.[0]?.message?.content || '{}'
+  const text = data?.content || '{}'
   return normalizePlanJson(text)
 }
 

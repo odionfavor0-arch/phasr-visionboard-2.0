@@ -9,6 +9,17 @@ const STREAK_HISTORY_KEY = 'phasr_streak_history'
 const STATS_LOG_KEY = 'phasr_stats_log'
 const PHASE_WEEKS_KEY = 'phasr_phase_weeks'
 const ENGINE_META_KEY = 'phasr_engine_meta'
+const WEEK_PROGRESS_KEY = 'phasr_week_progress'
+const DIAL_STATE_KEY = 'phasr_dial_state'
+
+// Raw accumulator bounds for the adaptive difficulty dial. These are a loose safety cap
+// on the stored integer, not the real guardrails — the real "never below floor / never
+// above ceiling" limits are enforced downstream, per-consumer, in resolveDailyTaskCount
+// (floor 1, ceiling = total activities) and the weekly target clamp in
+// calculateWeeklyTargets (floor 1, ceiling 7). See applyDifficultyDial.
+const DIAL_STEP_FLOOR = -6
+const DIAL_STEP_CEILING = 6
+const DIAL_REALITY_CHECK_THRESHOLD = 0.4
 
 export const LOCK_IN_MODE_LABELS = {
   active: 'Active',
@@ -93,9 +104,16 @@ function safeWrite(key, value) {
   }
 }
 
+const MAX_LOG_ENTRIES = 300
+
 function appendLog(key, entry) {
   const items = safeRead(key, [])
   items.unshift(entry)
+  // Unbounded growth here was making every ensureProgressEngine() call parse/stringify
+  // an ever-larger JSON array on every render, degrading to an unresponsive/blank tab
+  // over a long session. Cap it — this only trims log history, not the streak/progress
+  // math itself.
+  if (items.length > MAX_LOG_ENTRIES) items.length = MAX_LOG_ENTRIES
   safeWrite(key, items)
 }
 
@@ -105,8 +123,16 @@ function parseDate(value) {
   return Number.isNaN(next.getTime()) ? null : next
 }
 
-function getDateKeyFromDate(date = new Date()) {
-  return date.toISOString().slice(0, 10)
+// Local calendar date, read straight off the Date object's own local getters — never
+// via .toISOString() (which reports the UTC day and silently shifts a day backward for
+// anyone at a positive UTC offset, e.g. UTC+1, for part of their day). This is the one
+// place PHASR turns a Date into a date-key, so every caller — todayKey, week boundaries,
+// completion keys, yesterday keys — inherits the same local-day guarantee automatically.
+export function getDateKeyFromDate(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function getDateFromKey(dateKey) {
@@ -212,8 +238,26 @@ function getBaseTarget(activityIndex) {
   return 3 + (activityIndex % 2)
 }
 
-function calculateWeeklyTargets(activities, weeks, completions, phaseId) {
+// `dial` is the adaptive-difficulty-dial state for this phase (see applyDifficultyDial).
+// It shifts the target she's SHOWN/held to for weeks at or after dial.effectiveFromWeek,
+// on top of the existing auto-adaptation below.
+//
+// Composition with the auto-adaptation curve: a dial choice and the completion-based ±1
+// both want to move the SAME `target` number, and left alone they can cancel (she hits
+// her target so auto wants +1, but she picks "easier" so the dial wants -1 → net zero,
+// reads as broken) or double (she hits her target so auto wants +1, she also picks
+// "push" so the dial wants +1 → net +2, not the one step she asked for). To prevent
+// that, the auto ±1 sits out for exactly the ONE transition where her choice newly takes
+// effect (`dialTransitionWeek`, the week she just reflected on) — the rolling `target`
+// carries forward UNCHANGED into that week, and the dial's step is the sole thing that
+// moves it from there. Every other week (no choice made, or a week further past the
+// transition) runs the auto ±1 exactly as before — the fallback is unchanged.
+// A "held" outcome (reality-check/floor/ceiling) still updates effectiveFromWeek even
+// though step didn't move, so it gets the same freeze — "holding steady" means next
+// week's target really does equal this week's, not whatever auto would've done to it.
+function calculateWeeklyTargets(activities, weeks, completions, phaseId, dial = null) {
   const goals = []
+  const dialTransitionWeek = dial?.effectiveFromWeek ? dial.effectiveFromWeek - 1 : null
 
   activities.forEach((activity, activityIndex) => {
     let target = getBaseTarget(activityIndex)
@@ -226,6 +270,9 @@ function calculateWeeklyTargets(activities, weeks, completions, phaseId) {
         item.date <= week.endDate,
       ).length
 
+      const dialApplies = week.index >= (dial?.effectiveFromWeek ?? Infinity)
+      const adjustedTarget = dialApplies ? clamp(target + dial.step, 1, 7) : target
+
       goals.push({
         id: `${phaseId}-${week.index}-${activity.id}`,
         phaseId,
@@ -235,15 +282,20 @@ function calculateWeeklyTargets(activities, weeks, completions, phaseId) {
         endDate: week.endDate,
         activity: activity.task,
         activityId: activity.id,
-        target,
+        target: adjustedTarget,
+        baseTarget: target,
         completed,
         pillar: activity.pillar,
       })
 
       if (weekIndex < weeks.length - 1) {
-        if (completed >= target) target += 1
-        else if (completed >= target * 0.5) target = target
-        else target = Math.max(1, target - 1)
+        if (week.index === dialTransitionWeek) {
+          // Her choice governs this transition — auto's ±1 does not also fire here.
+        } else if (completed >= target) {
+          target += 1
+        } else if (completed < target * 0.5) {
+          target = Math.max(1, target - 1)
+        }
       }
     })
   })
@@ -402,6 +454,31 @@ function getWeeklyConsistency(weeklyGoals, phaseId, currentWeekNumber) {
   return { current, best }
 }
 
+export function syncWeekProgress(weeklyGoals, phaseId) {
+  const store = safeRead(WEEK_PROGRESS_KEY, {})
+  const grouped = new Map()
+  weeklyGoals
+    .filter(goal => goal.phaseId === phaseId)
+    .forEach(goal => {
+      const bucket = grouped.get(goal.week) || { completedTasks: 0, assignedTasks: 0 }
+      bucket.completedTasks += Math.min(goal.completed, goal.target)
+      bucket.assignedTasks += goal.target
+      grouped.set(goal.week, bucket)
+    })
+
+  grouped.forEach((totals, week) => {
+    store[`${phaseId}-w${week}`] = {
+      week,
+      phaseId,
+      completedTasks: totals.completedTasks,
+      assignedTasks: totals.assignedTasks,
+    }
+  })
+
+  safeWrite(WEEK_PROGRESS_KEY, store)
+  return store
+}
+
 export function ensureProgressEngine(boardData = loadBoardData(), date = new Date()) {
   const phase = getActivePhase(boardData)
   const dateKey = getDateKeyFromDate(date)
@@ -425,9 +502,10 @@ export function ensureProgressEngine(boardData = loadBoardData(), date = new Dat
   const completions = getCompletionRecords()
   persistPhaseWeeks(phase.id, weeks)
 
-  const weeklyGoals = calculateWeeklyTargets(activities, weeks, completions, phase.id)
+  const weeklyGoals = calculateWeeklyTargets(activities, weeks, completions, phase.id, getDialState(phase.id))
   saveWeeklyGoals(weeklyGoals)
   ensureWeekRollover(phase, weeklyGoals, dateKey)
+  syncWeekProgress(weeklyGoals, phase.id)
 
   const { currentWeek, currentWeekIndex } = getCurrentWeek(phase, dateKey)
   const currentWeekGoals = weeklyGoals.filter(goal => goal.phaseId === phase.id && goal.week === (currentWeek?.index || 1))
@@ -775,6 +853,163 @@ export function upsertTodayLog(state, payload = {}, boardDataOverride = null) {
   saveLockInState(normalized)
   ensureProgressEngine(boardData)
   return normalized
+}
+
+// One-day grace window: she can backfill exactly YESTERDAY if it has no log yet, and
+// nothing older — the streak is proof, so older days stay uneditable. Additive on top
+// of upsertTodayLog: does not change its logic or the today path, and is idempotent
+// (a no-op if yesterday is already logged). Recomputes the rolling streak from full
+// log history rather than patching upsertTodayLog's incremental counter, so this is
+// correct regardless of whether it runs before or after today's own check-in.
+export function logYesterdayIfEmpty(state = loadLockInState(), payload = {}) {
+  const todayKey = getTodayKey()
+  const yesterdayKey = getDateKeyFromDate(new Date(Date.now() - 86400000))
+
+  const alreadyLogged = (state.logs || []).some(log => log?.date === yesterdayKey)
+  if (alreadyLogged) return normalizeLockInState(state)
+
+  const nextLog = {
+    date: yesterdayKey,
+    task: payload.task || 'Backfilled check-in',
+    note: payload.note || '',
+    status: 'done',
+  }
+  const logs = [nextLog, ...state.logs]
+  const normalized = normalizeLockInState({ ...state, logs })
+  saveLockInState(normalized)
+
+  const doneDates = new Set(logs.filter(log => log?.status === 'done').map(log => log.date))
+  const lastCompleted = doneDates.has(todayKey) ? todayKey : yesterdayKey
+  let current = 0
+  let cursor = lastCompleted
+  while (doneDates.has(cursor)) {
+    current += 1
+    cursor = getDateKeyFromDate(new Date(getDateFromKey(cursor).getTime() - 86400000))
+  }
+
+  const prevStreak = loadStreakState()
+  const nextStreak = {
+    ...prevStreak,
+    current,
+    best: Math.max(prevStreak.best || 0, current),
+    lastCompleted,
+    risk: false,
+    warning: '',
+  }
+  saveStreakState(nextStreak)
+  logStats('streak_backfill', { date: yesterdayKey, current, lastCompleted })
+
+  return normalized
+}
+
+// Real completed/total days for a given week, read straight from lockIn's own logs —
+// no separate storage, no hardcoded numbers. Defaults to the week just finished (the
+// one a weekly reflection is about), falling back to week 1 if there isn't one yet.
+export function getWeekCompletionSummary(boardData = loadBoardData()) {
+  const phase = getActivePhase(boardData)
+  if (!phase) return { weekIndex: 1, completedDays: 0, totalDays: 7, startDate: null, endDate: null }
+
+  const weeks = getPhaseWeeks(phase)
+  if (!weeks.length) return { weekIndex: 1, completedDays: 0, totalDays: 7, startDate: null, endDate: null }
+
+  const { currentWeekIndex } = getCurrentWeek(phase)
+  const targetIndex = currentWeekIndex > 0 ? currentWeekIndex - 1 : 0
+  const week = weeks[targetIndex] || weeks[0]
+
+  const state = loadLockInState()
+  const doneDates = new Set((state.logs || []).filter(log => log?.status === 'done').map(log => log.date))
+
+  let totalDays = 0
+  let completedDays = 0
+  let cursor = parseDate(week.startDate)
+  const end = parseDate(week.endDate)
+  while (cursor && end && cursor <= end) {
+    totalDays += 1
+    if (doneDates.has(getDateKeyFromDate(cursor))) completedDays += 1
+    cursor = new Date(cursor)
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return { weekIndex: week.index, completedDays, totalDays, startDate: week.startDate, endDate: week.endDate }
+}
+
+export function getDialState(phaseId) {
+  if (!phaseId) return { step: 0, effectiveFromWeek: 1 }
+  const store = safeRead(DIAL_STATE_KEY, {})
+  return store[phaseId] || { step: 0, effectiveFromWeek: 1 }
+}
+
+function saveDialState(phaseId, state) {
+  const store = safeRead(DIAL_STATE_KEY, {})
+  store[phaseId] = state
+  safeWrite(DIAL_STATE_KEY, store)
+}
+
+// Baseline (loadStep 0) always resolves to the full activity list — the dial can only
+// ever trim toward the floor of 1, never invent tasks beyond what she actually planned.
+export function resolveDailyTaskCount(totalActivities, loadStep = 0) {
+  if (!Number.isFinite(totalActivities) || totalActivities <= 0) return 0
+  return clamp(totalActivities + loadStep, 1, totalActivities)
+}
+
+// The adaptive difficulty dial. Called once, when a weekly reflection is saved, to turn
+// her Q3 choice (easier | push) into next week's actual load — a persistent per-phase
+// step that calculateWeeklyTargets (weekly non-negotiable counts) and
+// resolveDailyTaskCount (daily task list length) both read from that point forward.
+//
+// The reality check: `push` is only honored if she actually showed up for the week she's
+// asking to push from (completionRate >= DIAL_REALITY_CHECK_THRESHOLD). Below that, the
+// choice is heard but not acted on — she doesn't get set up to fail. `easier` always
+// applies; there's no reason to block someone from lightening their own load.
+export function applyDifficultyDial({ phase, difficultyChoice, completedDays = 0, totalDays = 7, weekIndexJustFinished = 1 }) {
+  const phaseId = phase?.id
+  const activities = getPhaseActivities(phase)
+  const totalActivities = activities.length
+  const current = getDialState(phaseId)
+  const prevDailyTaskCount = resolveDailyTaskCount(totalActivities, current.step)
+
+  if (!phaseId || (difficultyChoice !== 'easier' && difficultyChoice !== 'push')) {
+    return {
+      outcome: 'held',
+      reason: 'no-choice',
+      step: current.step,
+      totalActivities,
+      dailyTaskCount: prevDailyTaskCount,
+      prevDailyTaskCount,
+      dailyTaskDelta: 0,
+    }
+  }
+
+  const completionRate = totalDays > 0 ? completedDays / totalDays : 0
+  let nextStep = current.step
+  let outcome = 'held'
+  let reason = null
+
+  if (difficultyChoice === 'easier') {
+    nextStep = clamp(current.step - 1, DIAL_STEP_FLOOR, DIAL_STEP_CEILING)
+    if (nextStep < current.step) outcome = 'lighter'
+    else reason = 'floor'
+  } else if (completionRate < DIAL_REALITY_CHECK_THRESHOLD) {
+    reason = 'reality-check'
+  } else {
+    nextStep = clamp(current.step + 1, DIAL_STEP_FLOOR, DIAL_STEP_CEILING)
+    if (nextStep > current.step) outcome = 'harder'
+    else reason = 'ceiling'
+  }
+
+  saveDialState(phaseId, { step: nextStep, effectiveFromWeek: Math.max(1, weekIndexJustFinished) + 1 })
+
+  const dailyTaskCount = resolveDailyTaskCount(totalActivities, nextStep)
+
+  return {
+    outcome, // 'lighter' | 'harder' | 'held'
+    reason,  // null | 'floor' | 'ceiling' | 'reality-check' | 'no-choice'
+    step: nextStep,
+    totalActivities,
+    dailyTaskCount,
+    prevDailyTaskCount,
+    dailyTaskDelta: dailyTaskCount - prevDailyTaskCount,
+  }
 }
 
 export function toggleWeeklyGoalCompletion(goal, boardData = loadBoardData()) {

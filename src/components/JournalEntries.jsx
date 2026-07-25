@@ -144,7 +144,7 @@ function buildSageResponse(transcript, tags, actions) {
     return `What you said sounds emotionally heavy, and it makes sense that it is sitting with you. Be honest, be calm, and take this next step: ${step}`
   }
   if (/task|deadline|project|work|career|business/.test(text)) {
-    return `You are carrying pressure, but there is still a clear way forward. Let Sage guide you with one move inside Phasr: ${step}`
+    return `You are carrying pressure, but there is still a clear way forward. Let Sage guide you with one move inside PHASR: ${step}`
   }
   if (tags.includes('stress')) {
     return `You sound stretched, not lazy. Slow it down and protect your energy with this next step: ${step}`

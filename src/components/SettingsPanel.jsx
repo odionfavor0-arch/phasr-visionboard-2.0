@@ -14,8 +14,8 @@ const FAQ = [
 ]
 
 function getDisplayName(user) {
-  const raw = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.first_name || 'Phasr user'
-  return String(raw).trim() || 'Phasr user'
+  const raw = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.first_name || 'PHASR user'
+  return String(raw).trim() || 'PHASR user'
 }
 
 function getEmail(user) {

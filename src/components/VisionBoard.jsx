@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { motion } from 'framer-motion'
-import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, Sparkles, Trash2, Wallet } from 'lucide-react'
+import { BookOpen, Briefcase, Dumbbell, Eye, EyeOff, Hand, HandHeart, HeartPulse, Home, ImageDown, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
@@ -227,8 +227,8 @@ function buildDefaultPhaseWindow(index, totalPhases, baseDate = new Date()) {
       const startDate = new Date(year, segmentStart, 1)
       const endDate = new Date(year, segmentEnd + 1, 0)
       return {
-        startDate: startDate.toISOString().slice(0, 10),
-        endDate: endDate.toISOString().slice(0, 10),
+        startDate: getTodayKey(startDate),
+        endDate: getTodayKey(endDate),
       }
     }
 
@@ -238,8 +238,8 @@ function buildDefaultPhaseWindow(index, totalPhases, baseDate = new Date()) {
   const fallbackStart = new Date(year, startMonth, 1)
   const fallbackEnd = new Date(year, 11, 31)
   return {
-    startDate: fallbackStart.toISOString().slice(0, 10),
-    endDate: fallbackEnd.toISOString().slice(0, 10),
+    startDate: getTodayKey(fallbackStart),
+    endDate: getTodayKey(fallbackEnd),
   }
 }
 
@@ -253,8 +253,8 @@ function getQuarterDates(period, year = new Date().getFullYear()) {
   return {
     period: quarter,
     months: QUARTER_MONTHS[quarter],
-    startDate: startDate.toISOString().slice(0, 10),
-    endDate: endDate.toISOString().slice(0, 10),
+    startDate: getTodayKey(startDate),
+    endDate: getTodayKey(endDate),
   }
 }
 
@@ -334,6 +334,7 @@ function PillarGlyph({ code, size = 16 }) {
 function freshPillar(emoji = 'NP', name = 'New Pillar') {
   return {
     id: uid(), emoji, name,
+    visionStyle: 'transformation',
     beforeImage: null, afterImage: null,
     beforeState: '', beforeDesc: '',
     afterState: '', afterDesc: '',
@@ -345,6 +346,7 @@ function freshPillar(emoji = 'NP', name = 'New Pillar') {
     planGenerationCount: 0,
     planWasEdited: false,
     collapsed: false,
+    detailsCollapsed: false,
   }
 }
 
@@ -362,7 +364,6 @@ function freshPhase(n) {
     ],
     impact: 'Write your ultimate transformation for this phase.',
     reviewWorked: '', reviewDrained: '', reviewPaid: '', reviewStrategy: '',
-    reviewCollapsed: false,
     futureMessage: '',
     futureMessageDate: '',
   }
@@ -472,6 +473,10 @@ function save(d, user) {
 }
 
 const FREE_PILLAR_LIMIT = 2
+// Shared subgrid row tracks pillar cards snap their sections to, so Resources/Weekly
+// Non-Negotiables/Activities/Outcome line up across pillars regardless of content length:
+// header, photo slots, generate-plan button, divider, resources, weekly, activities, outcome.
+const PILLAR_ROW_COUNT = 8
 const FREE_PHASE_LIMIT = 4
 const TODO_STATE_KEY = 'phasr_daily_todo_state'
 const MAX_UPLOAD_FILE_BYTES = 5 * 1024 * 1024
@@ -554,9 +559,9 @@ function getCalendarUrl(taskText, pillarName, weekStartDate, dayIndex) {
       + String(date.getMinutes()).padStart(2, '0') + '00'
   }
 
-  const title = encodeURIComponent(`Phasr: ${taskText}`)
+  const title = encodeURIComponent(`PHASR: ${taskText}`)
   const details = encodeURIComponent(
-    `Your weekly non-negotiable from Phasr.\n\nPillar: ${pillarName}\n\nOpen Phasr to log your completion.`
+    `Your weekly non-negotiable from PHASR.\n\nPillar: ${pillarName}\n\nOpen PHASR to log your completion.`
   )
   const dates = `${fmt(taskDate)}/${fmt(endDate)}`
 
@@ -819,7 +824,7 @@ function buildExportMarkup(snapshot, boardTitle, qrUrl, brandUrl) {
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>${escapeHtml(snapshot.name)} - Phasr</title>
+      <title>${escapeHtml(snapshot.name)} - PHASR</title>
       <style>
         * { box-sizing: border-box; }
         body {
@@ -969,10 +974,10 @@ function buildExportMarkup(snapshot, boardTitle, qrUrl, brandUrl) {
     <body>
       <div class="sheet">
         <div class="brand">
-          <img src="${brandUrl}" alt="Phasr" />
+          <img src="${brandUrl}" alt="PHASR" />
           <div>
             <div class="section-label">Weekly export</div>
-            <h1>Phasr</h1>
+            <h1>PHASR</h1>
             <p>${escapeHtml(snapshot.name)}</p>
           </div>
         </div>
@@ -991,14 +996,14 @@ function buildExportMarkup(snapshot, boardTitle, qrUrl, brandUrl) {
         <div class="tag-row">${resourceMarkup}</div>
         <div class="bottom">
           <div>
-            <div class="cta">Update your progress inside Phasr</div>
+            <div class="cta">Update your progress inside PHASR</div>
           </div>
           <div class="qr-wrap">
             <img src="${qrUrl}" alt="QR code" />
             <div>Check in daily with Sage to build momentum</div>
           </div>
         </div>
-        <div class="foot">This plan is valid for one week. Create your next phase inside Phasr.</div>
+        <div class="foot">This plan is valid for one week. Create your next phase inside PHASR.</div>
       </div>
     </body>
   </html>`
@@ -1023,7 +1028,7 @@ function buildExportSvg(snapshot, qrUrl, brandUrl) {
     <rect x="40" y="40" width="1000" height="1270" rx="34" fill="#ffffff" stroke="#f3cad8" />
     <image href="${brandUrl}" x="70" y="68" width="56" height="56" />
     <text x="70" y="88" font-size="18" font-family="Arial, sans-serif" font-weight="700" fill="#d44e7c" letter-spacing="2">WEEKLY EXPORT</text>
-    <text x="140" y="96" font-size="32" font-family="Arial, sans-serif" font-weight="700" fill="#7a2a4a">Phasr</text>
+    <text x="140" y="96" font-size="32" font-family="Arial, sans-serif" font-weight="700" fill="#7a2a4a">PHASR</text>
     <text x="140" y="126" font-size="22" font-family="Arial, sans-serif" fill="#8f6777">${escapeHtml(snapshot.name)}</text>
     ${descriptionMarkup}
     <rect x="70" y="290" width="430" height="300" rx="28" fill="#fff1f6" stroke="#f4d5df" />
@@ -1041,8 +1046,8 @@ function buildExportSvg(snapshot, qrUrl, brandUrl) {
     <text x="180" y="1290" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#6c5361">Check in daily with Sage</text>
     <text x="180" y="1316" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#6c5361">to build momentum</text>
     <rect x="350" y="1148" width="620" height="70" rx="35" fill="url(#ctaGradient)" />
-    <text x="660" y="1191" text-anchor="middle" font-size="24" font-family="Arial, sans-serif" font-weight="700" fill="#fff">Update your progress inside Phasr</text>
-    <text x="540" y="1278" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#8f6777">This plan is valid for one week. Create your next phase inside Phasr.</text>
+    <text x="660" y="1191" text-anchor="middle" font-size="24" font-family="Arial, sans-serif" font-weight="700" fill="#fff">Update your progress inside PHASR</text>
+    <text x="540" y="1278" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#8f6777">This plan is valid for one week. Create your next phase inside PHASR.</text>
     <defs>
       <linearGradient id="ctaGradient" x1="0%" x2="100%" y1="0%" y2="100%">
         <stop offset="0%" stop-color="#ef6b98" />
@@ -1482,7 +1487,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const [showSavePopup, setShowSavePopup] = useState(false)
   const [scheduleRefresh, setScheduleRefresh] = useState(0)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
-  const [showReview, setShowReview] = useState(false)
   const [revealedDeleteTarget, setRevealedDeleteTarget] = useState(null)
   const [uploadMessage, setUploadMessage] = useState('')
   const [generatingPillarId, setGeneratingPillarId] = useState(null)
@@ -1576,37 +1580,22 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }, [])
 
   useEffect(() => {
-    if (!isMobile) setShowReview(false)
-  }, [isMobile])
-
-  useEffect(() => {
+    // Quarterly Review now lives in the Review nav feature, not under the pillar.
+    // This trigger (from Daily Checkin's "review this phase" action) just switches
+    // to the target phase here; it no longer opens an in-page review panel.
     if (!autoOpenQuarterlyReviewPhaseId) return
 
     const targetPhase = data.phases?.find(item => item.id === autoOpenQuarterlyReviewPhaseId)
-    if (!targetPhase) {
-      onQuarterlyReviewOpened?.()
-      return
-    }
-
-    setPhaseId(autoOpenQuarterlyReviewPhaseId)
-    upd(next => {
-      next.activePhaseId = autoOpenQuarterlyReviewPhaseId
-      const phase = next.phases.find(item => item.id === autoOpenQuarterlyReviewPhaseId)
-      if (phase) phase.reviewCollapsed = false
-      return next
-    })
-
-    if (isMobile) {
-      setShowReview(true)
-    } else {
-      requestAnimationFrame(() => {
-        const reviewNode = document.querySelector('[data-quarterly-review="true"]')
-        reviewNode?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (targetPhase) {
+      setPhaseId(autoOpenQuarterlyReviewPhaseId)
+      upd(next => {
+        next.activePhaseId = autoOpenQuarterlyReviewPhaseId
+        return next
       })
     }
 
     onQuarterlyReviewOpened?.()
-  }, [autoOpenQuarterlyReviewPhaseId, data.phases, isMobile, onQuarterlyReviewOpened])
+  }, [autoOpenQuarterlyReviewPhaseId, data.phases, onQuarterlyReviewOpened])
 
   function upd(fn) {
     setData(prev => {
@@ -1628,11 +1617,9 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const phase    = data.phases.find(p => p.id === phaseId) || data.phases[0]
   const timelineEditorPhase = data.phases.find(p => p.id === timelineEditorPhaseId) || null
   const presetPillar = phase?.pillars?.find(pl => pl.id === presetOpen) || null
-  const visiblePillars = isMobile && !editing
-    ? (phase?.pillars || []).slice(0, 1)
-    : !isPro && !editing
-      ? (phase?.pillars || []).slice(0, FREE_PILLAR_LIMIT)
-      : (phase?.pillars || [])
+  const visiblePillars = !isPro && !editing
+    ? (phase?.pillars || []).slice(0, FREE_PILLAR_LIMIT)
+    : (phase?.pillars || [])
   const currentPhaseNumber = Math.max(1, data.phases.findIndex(p => p.id === phase?.id) + 1)
   const phaseDisplayName = `Phase ${currentPhaseNumber}`
   const exportPillars = phase?.pillars || []
@@ -1740,11 +1727,12 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       console.error('[Sage Plan] No targetPillar found for plId:', plId, 'in phaseId:', phaseId)
       return
     }
-    const beforeOk = cleanText(targetPillar.beforeState) || cleanText(targetPillar.beforeDesc)
+    const isDestination = targetPillar.visionStyle === 'destination'
     const afterOk = cleanText(targetPillar.afterState) || cleanText(targetPillar.afterDesc)
+    const beforeOk = isDestination ? true : (cleanText(targetPillar.beforeState) || cleanText(targetPillar.beforeDesc))
     console.log('[Sage Plan] beforeOk:', Boolean(beforeOk), 'afterOk:', Boolean(afterOk))
     if (!beforeOk || !afterOk) {
-      setUploadMessage('Add your Before and After details first, then generate your plan.')
+      setUploadMessage(isDestination ? 'Add a description first, then generate your plan.' : 'Add your Before and After details first, then generate your plan.')
       return
     }
 
@@ -1768,7 +1756,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
           ].filter(Boolean).join('\n\n')
         : ''
       const userId = getActiveUserId(user)
-      const systemPrompt = `You are Sage, an AI life coach inside Phasr. Your job is to generate a specific, personalized plan for a user based on their chosen focus area and their personal description of where they are and where they want to go.
+      const systemPrompt = `You are Sage, an AI life coach inside PHASR. Your job is to generate a specific, personalized plan for a user based on their chosen focus area and their personal description of where they are and where they want to go.
 CRITICAL RULE: You must stay strictly within the focus area provided. Never suggest activities, resources, or habits from a different focus area. If the focus area is Personal Growth, do not suggest gym workouts, meal plans, or physical fitness activities. If the focus area is Health and Fitness, do not suggest career advice or financial tips. Each focus area has defined territory and you must stay inside it.
 Focus area territories:
 	•	Health and Fitness: body, food, sleep, gym, energy, physical habits, nutrition, movement, recovery
@@ -1941,7 +1929,6 @@ Return JSON only:
       setGeneratingPillarId(null)
     }
   }
-  const toggleReviewCollapse = () => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.reviewCollapsed = !ph.reviewCollapsed; return d })
   function loadTodoState() {
     try {
       return JSON.parse(localStorage.getItem(TODO_STATE_KEY) || '{}')
@@ -1998,9 +1985,12 @@ Return JSON only:
       setCalendarPromptArmed(true)
       setShowSavePopup(true)
       const pillarsToGenerate = (phase?.pillars || []).filter(pillar => {
-        const hasBeforeAndAfter = Boolean(cleanText(pillar?.beforeDesc) && cleanText(pillar?.afterDesc))
+        const isDestination = pillar?.visionStyle === 'destination'
+        const hasRequiredDescription = isDestination
+          ? Boolean(cleanText(pillar?.afterDesc))
+          : Boolean(cleanText(pillar?.beforeDesc) && cleanText(pillar?.afterDesc))
         const hasPlan = Array.isArray(pillar?.activities) && pillar.activities.filter(Boolean).length > 0
-        return hasBeforeAndAfter && !hasPlan
+        return hasRequiredDescription && !hasPlan
       })
       for (const pillar of pillarsToGenerate) {
         // Trigger the initial plan immediately once personalize data is saved.
@@ -2078,7 +2068,7 @@ Return JSON only:
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Phasr//Weekly Non-Negotiables//EN',
+      'PRODID:-//PHASR//Weekly Non-Negotiables//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ]
@@ -2093,10 +2083,10 @@ Return JSON only:
       endDate.setMinutes(endDate.getMinutes() + 15)
       const startStamp = `${formatGoogleDate(startDate)}T${String(startDate.getHours()).padStart(2, '0')}${String(startDate.getMinutes()).padStart(2, '0')}00`
       const endStamp = `${formatGoogleDate(endDate)}T${String(endDate.getHours()).padStart(2, '0')}${String(endDate.getMinutes()).padStart(2, '0')}00`
-      const title = `Phasr: ${entry.task}`
+      const title = `PHASR: ${entry.task}`
       const details = entry.pillar
-        ? `Weekly non-negotiable (Phasr)\\n\\nPillar: ${entry.pillar}\\nTask: ${entry.task}`
-        : `Weekly non-negotiable (Phasr)\\n\\nTask: ${entry.task}`
+        ? `Weekly non-negotiable (PHASR)\\n\\nPillar: ${entry.pillar}\\nTask: ${entry.task}`
+        : `Weekly non-negotiable (PHASR)\\n\\nTask: ${entry.task}`
 
       lines.push(
         'BEGIN:VEVENT',
@@ -2109,7 +2099,7 @@ Return JSON only:
          'BEGIN:VALARM',
          'TRIGGER:-PT10M',
          'ACTION:DISPLAY',
-         'DESCRIPTION:Phasr reminder',
+         'DESCRIPTION:PHASR reminder',
          'END:VALARM',
          'END:VEVENT',
        )
@@ -2376,7 +2366,7 @@ Return JSON only:
         anchor.click()
         anchor.remove()
       }
-      setExportNotice('Want both? Upgrade to full weekly view inside Phasr')
+      setExportNotice('Want both? Upgrade to full weekly view inside PHASR')
     } catch (error) {
       console.error(error)
       setExportNotice('Sorry, the image could not be generated. Please try again.')
@@ -2491,28 +2481,8 @@ Return JSON only:
     probe.src = loadUrl
   }
 
-  function startReviewVoice(key) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) return
-
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'en-US'
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.onresult = event => {
-      const heard = Array.from(event.results).map(result => result[0]?.transcript || '').join(' ').trim()
-      if (!heard) return
-      updatePhase(key, `${phase?.[key] ? `${phase[key]} ` : ''}${heard}`.trim())
-    }
-    recognition.start()
-  }
-
-  function appendReviewText(key, text) {
-    updatePhase(key, `${phase?.[key] ? `${phase[key]}\n` : ''}${text}`)
-  }
-
   const todayTodoState = loadTodoState()
-  const todayTodoMap = todayTodoState[new Date().toISOString().slice(0, 10)] || {}
+  const todayTodoMap = todayTodoState[getTodayKey()] || {}
   const dailyPlan = getDailyTaskPlan({ ...data, activePhaseId: phaseId })
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
 
@@ -2528,6 +2498,13 @@ Return JSON only:
     pillars: phase?.pillars || [],
     weekStartKey,
   }), [activeUserId, phaseId, phase?.pillars, scheduleRefresh, weekStartKey])
+  // Derived from real pillar/schedule data, not a local flag: has she written anything
+  // into any pillar yet? That's the only signal for "a pillar is set up."
+  const hasPillarSetUp = useMemo(
+    () => Boolean(phase?.pillars?.some(p => cleanText(p?.beforeDesc) || cleanText(p?.afterDesc))),
+    [phase?.pillars]
+  )
+  const bannerState = !hasPillarSetUp ? 'setup' : !scheduledThisWeek ? 'schedule' : 'start'
   const showCalendarPrompt = !!weeklyPlan.length && !editing && calendarPromptState === 'open'
   const showCalendarPromptChip = !!weeklyPlan.length && !editing && calendarPromptState === 'collapsed'
 
@@ -2551,6 +2528,15 @@ Return JSON only:
     setCalendarBannerMounted(false)
     requestAnimationFrame(() => setCalendarBannerMounted(true))
   }, [showCalendarPrompt])
+
+  // State 2: right after saving a pillar, the "Schedule your week" popup shows briefly
+  // then dismisses on its own — the banner CTA underneath has already switched to
+  // "Schedule your week" by then, so nothing is lost when it disappears.
+  useEffect(() => {
+    if (!showSavePopup) return undefined
+    const timer = window.setTimeout(() => setShowSavePopup(false), 5000)
+    return () => window.clearTimeout(timer)
+  }, [showSavePopup])
 
   return (
     <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
@@ -2582,7 +2568,38 @@ Return JSON only:
             </p>
           </div>
           <div style={{ flexShrink: 0 }}>
-            {scheduledThisWeek ? (
+            {editing ? (
+              // The CTA never disappears mid-flow: once she's in the pillar editor, this
+              // same button becomes the way back out — tap it, it saves, and the next
+              // state (the Add-to-Calendar popup, then "Schedule your week") picks up
+              // right where this one left off.
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                type="button"
+                onClick={handleEditingToggle}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
+              >
+                Done
+              </motion.button>
+            ) : bannerState === 'setup' ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                type="button"
+                onClick={() => {
+                  setEditing(true)
+                  requestAnimationFrame(() => {
+                    document.getElementById('pillar-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  })
+                }}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
+              >
+                Set up your pillar
+              </motion.button>
+            ) : bannerState === 'start' ? (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -2591,7 +2608,7 @@ Return JSON only:
                 onClick={() => onOpenDailyStreak?.()}
                 style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
               >
-                Start Now
+                Start task
               </motion.button>
             ) : (
               <motion.button
@@ -2603,41 +2620,42 @@ Return JSON only:
                 disabled={calendarBusy}
                 style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem' }}
               >
-                {calendarBusy ? 'Scheduling...' : 'Schedule Your Week'}
+                {calendarBusy ? 'Scheduling...' : 'Schedule your week'}
               </motion.button>
             )}
           </div>
         </motion.div>
 
-        {/* Add to Calendar popup — floating fixed card after saving a pillar */}
+        {/* Pillar-saved card — sits inline, directly under the banner and its CTA,
+            not floating over the page. It visually emerges from the button that
+            triggered it and folds back into it (as "Schedule your week") when done. */}
         {showSavePopup && !editing && (
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.95 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+            initial={{ opacity: 0, y: -10, scale: 0.97, height: 0 }}
+            animate={{ opacity: 1, y: 0, scale: 1, height: 'auto' }}
+            exit={{ opacity: 0, y: -10, scale: 0.97, height: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             style={{
-              position: 'fixed',
-              bottom: isMobile ? 90 : 32,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 900,
-              width: isMobile ? 'calc(100vw - 2rem)' : 420,
-              borderRadius: 20,
-              background: 'linear-gradient(135deg,#1a0a10,#2e101c)',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(249,95,133,0.18)',
-              padding: '1.15rem 1.25rem',
+              width: isMobile ? '100%' : 300,
+              marginLeft: isMobile ? 0 : 'auto',
+              marginBottom: isMobile ? '0.5rem' : '0.7rem',
+              borderRadius: 16,
+              background: '#fff',
+              border: '1px solid var(--app-border)',
+              boxShadow: 'var(--app-shadow-md)',
+              padding: '0.85rem 0.9rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.9rem',
+              gap: '0.6rem',
+              overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <div>
-                <p style={{ margin: 0, fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent2)', marginBottom: '0.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
                   Pillar saved
                 </p>
-                <p style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#fff', fontFamily: "'Syne',sans-serif", lineHeight: 1.2 }}>
+                <p style={{ margin: '0.15rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--app-text)', lineHeight: 1.25 }}>
                   Schedule your week
                 </p>
               </div>
@@ -2646,14 +2664,14 @@ Return JSON only:
                 onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
                 aria-label="Dismiss"
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 24,
+                  height: 24,
                   borderRadius: '50%',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.5)',
+                  border: '1px solid var(--app-border)',
+                  background: 'var(--app-bg2)',
+                  color: 'var(--app-muted)',
                   cursor: 'pointer',
-                  fontSize: '1rem',
+                  fontSize: '0.85rem',
                   fontWeight: 800,
                   display: 'grid',
                   placeItems: 'center',
@@ -2666,24 +2684,24 @@ Return JSON only:
               </button>
             </div>
             <motion.button
-              whileHover={{ scale: 1.03 }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               type="button"
               onClick={async () => { await addToCalendarPlan(); setShowSavePopup(false) }}
               disabled={calendarBusy}
               style={{
                 width: '100%',
-                padding: '0.75rem',
-                borderRadius: 14,
+                padding: '0.55rem',
+                borderRadius: 10,
                 border: 'none',
                 background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
                 color: '#fff',
                 fontWeight: 800,
-                fontSize: '0.9rem',
+                fontSize: '0.78rem',
                 cursor: calendarBusy ? 'wait' : 'pointer',
                 fontFamily: "'DM Sans',sans-serif",
                 letterSpacing: '0.02em',
-                boxShadow: '0 8px 20px rgba(249,95,133,0.35)',
+                boxShadow: 'var(--app-shadow-sm)',
               }}
             >
               {calendarBusy ? 'Scheduling…' : 'Add to Calendar'}
@@ -2700,15 +2718,21 @@ Return JSON only:
           <p style={{ color: 'var(--app-muted)', fontSize: isMobile ? '0.74rem' : '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: isMobile ? '0' : '0.3rem' }}>
             {(isMobile ? visiblePillars : phase?.pillars || []).map(p => p.name).join(' · ')}
           </p>
-          <button onClick={handleEditingToggle} style={{
-            marginTop: isMobile ? '0.55rem' : '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-            padding: '0.33rem 1rem', borderRadius: 99,
-            border: `1.5px solid ${editing ? 'transparent' : 'var(--app-border)'}`,
-            background: editing ? 'linear-gradient(135deg,#65c47c,#3da85a)' : 'var(--app-bg2)',
-            color: editing ? '#fff' : 'var(--app-accent)',
-            fontSize: isMobile ? '0.68rem' : '0.72rem', fontWeight: 600, cursor: 'pointer',
-            fontFamily: "'DM Sans',sans-serif", transition: 'all 0.2s',
-          }}>{editing ? 'Save' : 'Personalize'}</button>
+          {/* Before any pillar has content, "Set up your pillar" on the banner above is the
+              only entry point — a second "Personalize" button here is redundant. Once editing
+              starts (from either entry point) or a pillar already has content, show it so
+              there's always a clear, findable way to confirm the save. */}
+          {(editing || bannerState !== 'setup') && (
+            <button onClick={handleEditingToggle} style={{
+              marginTop: isMobile ? '0.55rem' : '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+              padding: '0.33rem 1rem', borderRadius: 99,
+              border: `1.5px solid ${editing ? 'transparent' : 'var(--app-border)'}`,
+              background: editing ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-bg2)',
+              color: editing ? '#fff' : 'var(--app-accent)',
+              fontSize: isMobile ? '0.68rem' : '0.72rem', fontWeight: 600, cursor: 'pointer',
+              fontFamily: "'DM Sans',sans-serif", transition: 'all 0.2s',
+            }}>{editing ? 'Save' : 'Personalize'}</button>
+          )}
         </div>
 
         {/* â"€â"€ Phase Tabs â"€â"€ */}
@@ -2944,6 +2968,43 @@ Return JSON only:
                   Close
                 </button>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.7rem', paddingBottom: '0.7rem', borderBottom: '1px solid var(--app-border)' }}>
+                <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Vision style</p>
+                <div style={{ display: 'inline-flex', border: '1px solid var(--app-border)', borderRadius: 999, padding: 3, background: 'var(--app-bg2)' }}>
+                  {[
+                    { value: 'transformation', label: 'Transformation' },
+                    { value: 'destination', label: 'Destination' },
+                  ].map(option => {
+                    const isActive = (presetPillar.visionStyle || 'transformation') === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => updatePillar(presetPillar.id, 'visionStyle', option.value)}
+                        style={{
+                          border: 'none',
+                          borderRadius: 999,
+                          padding: '0.4rem 0.85rem',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          fontFamily: "'DM Sans',sans-serif",
+                          cursor: 'pointer',
+                          background: isActive ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'transparent',
+                          color: isActive ? '#fff' : 'var(--app-muted)',
+                          transition: 'all 0.18s',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--app-muted)' }}>
+                  {(presetPillar.visionStyle || 'transformation') === 'destination'
+                    ? 'One photo, full width — where you’re going.'
+                    : 'Two photos side by side — where you are and where you’re going.'}
+                </span>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
                 {PILLAR_PRESETS.map((p, presetIndex) => (
                   <motion.button
@@ -2985,11 +3046,16 @@ Return JSON only:
             </div>
           </div>
         )}
-        <div id="pillar-section" className="phase-container" style={{ display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : (isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))'), gap: '1rem', marginBottom: '1.5rem', alignItems: 'start' }}>
+        {(() => {
+          const pillarColumnsPerRow = visiblePillars.length === 1 ? 1 : (isMobile ? 1 : 2)
+          const pillarRowGroupCount = Math.max(1, Math.ceil(visiblePillars.length / pillarColumnsPerRow))
+          return (
+        <div id="pillar-section" className="phase-container pillar-subgrid" style={{ display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : (isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))'), gridTemplateRows: `repeat(${pillarRowGroupCount * PILLAR_ROW_COUNT}, auto)`, gap: '1rem', marginBottom: '0.9rem', alignItems: 'stretch' }}>
           {visiblePillars.map((pl, pillarIndex) => (
             <PillarCard
               key={pl.id} pl={pl} editing={editing} checked={checked} phaseId={phaseId}
               index={pillarIndex}
+              rowGroup={Math.floor(pillarIndex / pillarColumnsPerRow)}
               userId={activeUserId}
               weekStartKey={weekStartKey}
               presetOpen={presetOpen === pl.id}
@@ -3022,105 +3088,29 @@ Return JSON only:
             ) : null
           )}
         </div>
-        {/* â"€â"€ Ultimate Impact â"€â"€ */}
-        <div style={{ margin: '2rem 0 1.5rem', display: 'flex', justifyContent: 'center' }}>
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            style={{ background: '#fffbfc', borderRadius: 'var(--app-radius-lg)', padding: '2rem 3rem', textAlign: 'center', width: '100%', maxWidth: 820, boxShadow: '0 0 0 1.5px var(--app-border),0 0 0 5px var(--app-bg2),0 0 0 6.5px var(--app-border),var(--app-shadow-lg)' }}>
-            <p className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.1rem,3vw,1.6rem)', fontWeight: 700, background: 'linear-gradient(90deg,#ff6b9d,#ffb3c6,#ffa0bc,#ff6b9d)', backgroundSize: '300% auto', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'vbFoil 4s linear infinite', marginBottom: '0.7rem' }}>Ultimate Impact</p>
-            {editing
-              ? <textarea rows={3} value={phase?.impact || ''} onChange={e => updatePhase('impact', e.target.value)} style={ta({ textAlign: 'center', fontStyle: 'italic' })} onFocus={focus} onBlur={blur} />
-              : <p style={{ fontSize: '0.95rem', color: '#7a3a55', lineHeight: 1.7, fontWeight: 500 }}>{phase?.impact}</p>
-            }
-            {isMobile && (
-              <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="quarterly-review-btn"
-                  type="button"
-                  onClick={() => setShowReview(true)}
-                  style={{
-                    width: '100%',
-                    maxWidth: 280,
-                    padding: '0.95rem 1rem',
-                    borderRadius: 'var(--app-radius-md)',
-                    border: '1.5px solid #f2c4d0',
-                    background: '#fff',
-                    color: 'var(--app-cta)',
-                    fontSize: '0.95rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
-                    boxShadow: 'var(--app-shadow-md)',
-                  }}
-                >
-                  Review this phase →
-                </motion.button>
-              </div>
-            )}
-          </motion.div>
-        </div>
-
-        {/* â"€â"€ Quarterly Review â"€â"€ */}
-        {!isMobile && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            data-quarterly-review="true" style={{ background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-lg)', overflow: 'hidden', marginBottom: '1rem' }}>
-            <div onClick={toggleReviewCollapse} style={{ background: 'linear-gradient(135deg,#fff8e6,#fff0d6)', borderBottom: phase?.reviewCollapsed ? 'none' : '1px solid #f5d9a0', padding: '0.45rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <div style={{ width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg,#f5b942,#e8930a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.72rem', flexShrink: 0 }}>Q</div>
-              <h3 style={{ fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', fontWeight: 800, color: '#7a4a00' }}>Quarterly Review - {phaseDisplayName}</h3>
-              </div>
-              <span style={{ color: '#7a4a00', fontSize: '0.9rem' }}>{phase?.reviewCollapsed ? '▼' : '▲'}</span>
-            </div>
-            {!phase?.reviewCollapsed && phase?.futureMessage && (
-              <div style={{ margin: '1rem 1rem 0', padding: '1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 'var(--app-radius-md)' }}>
-                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>
-                  &#9993; A letter from you &middot; {phase.futureMessageDate}
-                </p>
-                <p style={{ fontSize: '0.84rem', fontStyle: 'italic', fontFamily: "'Playfair Display',serif", color: '#4d3142', lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>
-                  "{phase.futureMessage}"
-                </p>
-              </div>
-            )}
-            {!phase?.reviewCollapsed && <div style={{ padding: '1rem', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.85rem' }}>
-              {[
-                { k: 'reviewWorked',  bg: '#f4fbf5', bc: '#b9dfc0', c: '#3a7d4d', l: 'What Worked?',     h: 'What brought results?' },
-                { k: 'reviewDrained', bg: '#fff8f8', bc: '#f9cdd3', c: '#c0445a', l: 'What Drained Me?', h: 'What to drop?' },
-                { k: 'reviewPaid',    bg: '#f2f6ff', bc: '#c5d5f7', c: '#3355a0', l: 'What Paid Off?',   h: 'What to double down on?' },
-              ].map(({ k, bg, bc, c, l, h }, tileIndex) => (
-                <motion.div
-                  key={k}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 30, delay: tileIndex * 0.04 }}
-                  style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 'var(--app-radius-md)', padding: '0.8rem', boxShadow: 'var(--app-shadow-sm)' }}>
-                  <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: c, marginBottom: '0.28rem' }}>{l}</p>
-                  <p style={{ fontSize: '0.7rem', color: '#8a7080', marginBottom: '0.4rem' }}>{h}</p>
-                  <textarea rows={4} value={phase?.[k] || ''} onChange={e => updatePhase(k, e.target.value)} placeholder="" style={ta({ minHeight: 70 })} onFocus={focus} onBlur={blur} />
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => startReviewVoice(k)} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: c, fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: 'var(--app-shadow-sm)' }}>Rec</motion.button>
-                </motion.div>
-              ))}
-            </div>}
-            {!phase?.reviewCollapsed && <div style={{ margin: '0 1rem 1rem', borderRadius: 'var(--app-radius-md)', padding: '0.8rem', background: 'linear-gradient(135deg,#faf0f5,#f5ebff)', border: '1px solid #e8d0f0', boxShadow: 'var(--app-shadow-sm)' }}>
-              <p style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.4rem' }}>Next Phase Strategy</p>
-              <textarea rows={3} value={phase?.reviewStrategy || ''} onChange={e => updatePhase('reviewStrategy', e.target.value)} placeholder="" style={ta()} onFocus={focus} onBlur={blur} />
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => startReviewVoice('reviewStrategy')} style={{ marginTop: '0.5rem', width: 34, height: 34, borderRadius: '50%', border: '1px solid #ffffff', background: '#fff', color: '#7a58b0', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", boxShadow: 'var(--app-shadow-sm)' }}>Rec</motion.button>
-            </div>}
-          </motion.div>
-        )}
+          )
+        })()}
         {/* â"€â"€ Footer â"€â"€ */}
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={openExportModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.3rem', borderRadius: 99, border: '1.5px solid var(--app-border)', background: '#fff', color: 'var(--app-accent)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.7rem' }}>Save as image</motion.button>
-          <p style={{ color: 'var(--app-muted)', fontSize: '0.78rem' }}>Track weekly · Review quarterly · Transform your life</p>
+            whileHover={{ scale: 1.03, boxShadow: '0 10px 28px rgba(240,96,144,0.28)' }}
+            whileTap={{ scale: 0.97 }}
+            onClick={openExportModal}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+              padding: '0.62rem 1.4rem', borderRadius: 99,
+              border: 'none',
+              background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
+              color: '#fff', fontSize: '0.8rem', fontWeight: 700,
+              cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.6rem',
+              boxShadow: '0 6px 18px rgba(240,96,144,0.22)',
+              transition: 'box-shadow 0.2s',
+            }}
+          >
+            <ImageDown size={15} strokeWidth={2.2} />
+            Save vision board
+          </motion.button>
+          <p style={{ color: 'var(--app-muted)', fontSize: '0.78rem', margin: 0 }}>Track weekly · Review quarterly · Transform your life</p>
         </div>
 
         {showExportModal && (
@@ -3192,8 +3182,8 @@ Return JSON only:
                     <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 60% at 20% 50%,rgba(249,95,133,0.22),transparent)', pointerEvents: 'none' }} />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 14 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src={phasrMark} alt="Phasr mark" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
-                        <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, background: 'linear-gradient(135deg,#f472a8,#ffd6e7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Phasr</span>
+                        <img src={phasrMark} alt="PHASR mark" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
+                        <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, background: 'linear-gradient(135deg,#f472a8,#ffd6e7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>PHASR</span>
                       </div>
                       <span style={{ padding: '4px 11px', borderRadius: 99, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.12)', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--app-accent2)' }}>{exportPhaseLabel}</span>
                     </div>
@@ -3207,13 +3197,13 @@ Return JSON only:
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                       {[
                         { type: 'before', label: '📸 Before', image: selectedExportPillar.beforeImage, state: selectedExportPillar.beforeState, desc: selectedExportPillar.beforeDesc, bg: '#fff8f8', border: '#f9cdd3', accent: '#c0445a', ph: 'Before Photo' },
-                        { type: 'after', label: '🎯 After', image: selectedExportPillar.afterImage, state: selectedExportPillar.afterState, desc: selectedExportPillar.afterDesc, bg: '#f4fbf5', border: '#b9dfc0', accent: '#3a7d4d', ph: 'Goal Photo' },
+                        { type: 'after', label: '🎯 After', image: selectedExportPillar.afterImage, state: selectedExportPillar.afterState, desc: selectedExportPillar.afterDesc, bg: '#fff0f4', border: '#f5c0cc', accent: '#f06090', ph: 'Goal Photo' },
                       ].map(frame => (
                         <div key={frame.type} style={{ borderRadius: 14, overflow: 'hidden', background: frame.bg, border: `1.5px solid ${frame.border}` }}>
                           {frame.image ? (
                             <img src={frame.image} alt={frame.label} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }} />
                           ) : (
-                            <div style={{ width: '100%', aspectRatio: '4/3', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: frame.type === 'before' ? '#fff0f0' : '#f0fff4' }}>
+                            <div style={{ width: '100%', aspectRatio: '4/3', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: frame.type === 'before' ? '#fff0f0' : '#fff0f4' }}>
                               <span style={{ fontSize: 22, opacity: 0.5 }}>{frame.type === 'before' ? '📸' : '🎯'}</span>
                               <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.4, color: frame.accent }}>{frame.ph}</span>
                             </div>
@@ -3262,8 +3252,8 @@ Return JSON only:
                   </div>
 
                   <div style={{ background: 'linear-gradient(135deg,#1a0a10,#2e101c)', padding: '10px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>This plan is valid for this week. Create your next phase inside Phasr.</span>
-                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Phasr · {phaseDisplayName}</span>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>This plan is valid for this week. Create your next phase inside PHASR.</span>
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>PHASR · {phaseDisplayName}</span>
                   </div>
                 </div>
                 </div>
@@ -3296,164 +3286,16 @@ Return JSON only:
         )}
       </div>
 
-      {showReview && isMobile && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          style={{
-          position: 'fixed', inset: 0, background: '#fff',
-          zIndex: 500, overflowY: 'auto', padding: '0',
-          fontFamily: "'DM Sans', sans-serif",
-        }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '1rem',
-            padding: '1rem 1.25rem',
-            borderBottom: '1px solid #f2c4d0',
-            position: 'sticky', top: 0, background: '#fff', zIndex: 10,
-          }}>
-            <button onClick={() => setShowReview(false)} style={{
-              background: 'none', border: 'none', fontSize: '1.2rem',
-              cursor: 'pointer', color: 'var(--app-cta)', padding: '0.25rem',
-            }}>←</button>
-            <h2 className="font-display" style={{
-              fontFamily: "'Playfair Display', serif",
-              fontSize: '1.1rem', fontWeight: 700, color: '#3d1f2b',
-              margin: 0,
-            }}>
-              Quarterly Review — {phaseDisplayName}
-            </h2>
-          </div>
-
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {phase?.futureMessage && (
-              <div style={{ padding: '1rem 1.1rem', background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.28)', borderRadius: 'var(--app-radius-md)', boxShadow: 'var(--app-shadow-sm)' }}>
-                <p style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>
-                  &#9993; A letter from you &middot; {phase.futureMessageDate}
-                </p>
-                <p style={{ fontSize: '0.9rem', fontStyle: 'italic', fontFamily: "'Playfair Display',serif", color: '#4d3142', lineHeight: 1.65, whiteSpace: 'pre-wrap', margin: 0 }}>
-                  "{phase.futureMessage}"
-                </p>
-              </div>
-            )}
-            {[
-              { key: 'reviewWorked', label: 'What worked this phase?', hint: 'Habits, routines, and behaviours that felt right', color: '#3a7d4d' },
-              { key: 'reviewDrained', label: 'What drained you?', hint: 'What to drop or do less of next phase', color: '#c0445a' },
-              { key: 'reviewPaid', label: 'What actually paid off?', hint: 'What produced real results and moved the needle', color: '#3355a0' },
-              { key: 'reviewStrategy', label: 'Next phase strategy', hint: 'What will you start, stop, and do more of', color: '#7a58b0' },
-            ].map(({ key, label, hint, color }, reviewIndex) => (
-              <motion.div
-                key={key}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30, delay: reviewIndex * 0.04 }}
-              >
-              <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: '0.3rem' }}>
-                  {label}
-                </p>
-                <p style={{ fontSize: '0.8rem', color: '#7a5a66', marginBottom: '0.6rem' }}>{hint}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
-                  {[
-                    { icon: '•', text: '• ' },
-                    { icon: '✓', text: '✓ ' },
-                    { icon: '💡', text: '💡 ' },
-                    { icon: '❤️', text: '❤️ ' },
-                  ].map(tool => (
-                    <motion.button
-                      key={tool.icon}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      type="button"
-                      onClick={() => appendReviewText(key, tool.text)}
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 'var(--app-radius-sm)',
-                        border: '1px solid #f2c4d0',
-                        background: '#fff7fa',
-                        color: 'var(--app-cta)',
-                        cursor: 'pointer',
-                        fontSize: '0.92rem',
-                        fontWeight: 700,
-                        boxShadow: 'var(--app-shadow-sm)',
-                      }}
-                    >
-                      {tool.icon}
-                    </motion.button>
-                  ))}
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    onClick={() => startReviewVoice(key)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.38rem',
-                      height: 34,
-                      padding: '0 0.8rem',
-                      borderRadius: 'var(--app-radius-sm)',
-                      border: '1px solid #f2c4d0',
-                      background: '#fff',
-                      color: '#7a5a66',
-                      cursor: 'pointer',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    <span style={{ fontSize: '0.95rem' }}>🎙️</span>
-                    Rec
-                  </motion.button>
-                </div>
-                <textarea
-                  value={phase?.[key] || ''}
-                  onChange={e => updatePhase(key, e.target.value)}
-                  placeholder="Write here..."
-                  style={{
-                    width: '100%', minHeight: '100px', padding: '0.85rem',
-                    border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)',
-                    fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem',
-                    color: '#3d1f2b', background: '#fff', outline: 'none',
-                    resize: 'vertical', lineHeight: 1.6,
-                  }}
-                  onFocus={e => { e.target.style.borderColor = 'var(--app-cta)' }}
-                  onBlur={e => { e.target.style.borderColor = '#f2c4d0' }}
-                />
-              </motion.div>
-            ))}
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowReview(false)}
-              style={{
-                width: '100%', padding: '0.95rem', borderRadius: 'var(--app-radius-md)',
-                border: 'none', background: 'linear-gradient(135deg, var(--app-cta), var(--app-accent2))',
-                color: '#fff', fontSize: '0.95rem', fontWeight: 700,
-                cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
-                boxShadow: 'var(--app-shadow-md)',
-                marginBottom: '2rem',
-              }}
-            >
-              Save Review
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
-
       <style>{`
-        @keyframes vbFoil{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
         @media(max-width:768px){ .phase-container{ grid-template-columns:1fr!important } }
         @media(max-width:640px){ [style*="repeat(3,1fr)"],[style*="repeat(4,1fr)"]{ grid-template-columns:1fr!important } }
-        @media(max-width:520px){ .vb-before-after-grid{ grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important } }
       `}</style>
     </div>
   )
 }
 
 /* â"€â"€ Pillar Card â"€â"€ */
-  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
+  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, rowGroup, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const calendarWindowStart = useMemo(() => {
       const base = new Date()
@@ -3462,18 +3304,20 @@ Return JSON only:
     }, [])
     const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
     const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
-    const hasBeforeAndAfter = Boolean(
-      (cleanText(pl.beforeState) || cleanText(pl.beforeDesc)) &&
-      (cleanText(pl.afterState) || cleanText(pl.afterDesc))
-    )
+    const isDestination = pl.visionStyle === 'destination'
+    const hasRequiredDescription = isDestination
+      ? Boolean(cleanText(pl.afterState) || cleanText(pl.afterDesc))
+      : Boolean(
+          (cleanText(pl.beforeState) || cleanText(pl.beforeDesc)) &&
+          (cleanText(pl.afterState) || cleanText(pl.afterDesc))
+        )
     const hasPlan = Array.isArray(pl.activities) && pl.activities.filter(Boolean).length > 0
-    const buttonLabel = !hasBeforeAndAfter
-      ? null
-      : !hasPlan
-        ? 'Generate plan'
-        : 'Regenerate plan'
+    // Always visible from the start — she shouldn't have to write anything before she
+    // can even see the button exists. It's just disabled until there's a description.
+    const buttonLabel = hasPlan ? 'Regenerate plan' : 'Generate plan'
     const [regenerateCount, setRegenerateCount] = useState(0)
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
+    const [linkOpen, setLinkOpen] = useState({ beforeImage: false, afterImage: false })
     const generateTapRef = useRef(0)
 
     useEffect(() => {
@@ -3526,15 +3370,22 @@ Return JSON only:
     onGeneratePlan()
   }
 
+  const cardRowStart = (rowGroup || 0) * PILLAR_ROW_COUNT + 1
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: (index || 0) * 0.04 }}
       whileHover={{ scale: 1.01 }}
-      style={{ background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden', alignSelf: 'start' }}>
+      style={{
+        background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden',
+        display: 'grid',
+        gridTemplateRows: pl.collapsed ? 'auto' : 'subgrid',
+        gridRow: pl.collapsed ? 'auto' : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
+      }}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: pl.collapsed ? 'none' : '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+      <div style={{ gridRow: pl.collapsed ? 'auto' : 1, background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: pl.collapsed ? 'none' : '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <div onClick={e => { e.stopPropagation(); editing && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
         {editing
           ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
@@ -3555,6 +3406,22 @@ Return JSON only:
               <Trash2 size={14} strokeWidth={2.1} />
             </motion.button>
           )}
+          {!pl.collapsed && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={e => {
+                e.stopPropagation()
+                onUpdate('detailsCollapsed', !pl.detailsCollapsed)
+              }}
+              aria-label={pl.detailsCollapsed ? `Show ${pl.name} details` : `Hide ${pl.name} details, keep the vision`}
+              title={pl.detailsCollapsed ? 'Show resources, non-negotiables, activities & outcome' : 'Just show the vision — hide the form fields'}
+              style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid var(--app-border)', background: pl.detailsCollapsed ? 'var(--app-bg2)' : '#fff', color: 'var(--app-accent2)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
+            >
+              {pl.detailsCollapsed ? <EyeOff size={14} /> : <Eye size={14} />}
+            </motion.button>
+          )}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -3572,18 +3439,23 @@ Return JSON only:
       </div>
 
       {!pl.collapsed && (
-        <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {/* Before / After */}
-          <div className="vb-before-after-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem' }}>
-            {[
-              { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#c0445a' },
-              { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#f4fbf5', bc: '#b9dfc0', lc: '#3a7d4d' },
-            ].map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
-              <div key={slot} style={{ display: 'grid', gap: 8 }}>
+        <>
+          {/* Vision style photo slots */}
+          <div className="vb-before-after-grid" style={{ gridRow: 2, padding: '0 1.1rem', display: 'grid', gridTemplateColumns: isDestination ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem', alignItems: 'stretch' }}>
+            {(isDestination
+              ? [
+                  { slot: 'afterImage', src: pl.afterImage, lbl: 'Destination', sk: 'afterState', dk: 'afterDesc', sv: pl.afterState, dv: pl.afterDesc, bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
+                ]
+              : [
+                  { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#8a5060' },
+                  { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
+                ]
+            ).map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
+              <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
                 <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, margin: 0 }}>{lbl}</p>
-                <div style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 'var(--app-radius-md)', padding: '0.7rem', boxShadow: 'var(--app-shadow-sm)' }}>
-                  <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: '3/4', borderRadius: 'var(--app-radius-sm)', background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative' }}>
-                    {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload' : 'add photo'}</p>}
+                <div style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 'var(--app-radius-md)', padding: '0.7rem', boxShadow: 'var(--app-shadow-sm)', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: isDestination ? '16/9' : (isMobile ? '4/3' : '3/4'), borderRadius: 'var(--app-radius-sm)', background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative', flexShrink: 0 }}>
+                    {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload (optional)' : 'add photo'}</p>}
                     {editing && src && (
                       <motion.button
                         whileHover={{ scale: 1.1 }}
@@ -3600,46 +3472,83 @@ Return JSON only:
                       </motion.button>
                     )}
                   </div>
-                  {editing
-                    ? <><input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
-                       <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
-                      {!isMobile ? (
-                        <input value={linkDrafts[slot] || ''} onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))} onBlur={e => onImageLinkUpdate(slot, e.target.value)} placeholder="Paste image link" style={{ width: '100%', padding: '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} />
-                      ) : null}</>
-                    : <><p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5 }}>{sv}</p><p style={{ fontSize: '0.72rem', color: 'var(--app-muted)', marginTop: 2 }}>{dv}</p></>
-                  }
+                  {editing ? (
+                    <>
+                      <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
+                      <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', marginBottom: '0.3rem' }} onFocus={focus} onBlur={blur} />
+                      {linkOpen[slot] ? (
+                        <input
+                          autoFocus
+                          value={linkDrafts[slot] || ''}
+                          onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))}
+                          onBlur={e => { onImageLinkUpdate(slot, e.target.value); if (!e.target.value) setLinkOpen(prev => ({ ...prev, [slot]: false })) }}
+                          placeholder="Paste image link"
+                          style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
+                          onFocus={focus}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setLinkOpen(prev => ({ ...prev, [slot]: true }))}
+                          style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'DM Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
+                        >
+                          or paste a link
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5 }}>{sv}</p>
+                      <p title={dv || undefined} style={{ fontSize: '0.72rem', color: 'var(--app-muted)', marginTop: 2, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{dv}</p>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
           </div>
 
-          {editing && buttonLabel && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <motion.button
-                whileHover={{ scale: isGenerating ? 1 : 1.02 }}
-                whileTap={{ scale: isGenerating ? 1 : 0.98 }}
-                type="button"
-                disabled={isGenerating}
-                onPointerUp={event => {
-                  if (event.pointerType === 'touch') handleGenerateButton(event)
-                }}
-                onClick={handleGenerateButton}
-                style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontWeight: 800, cursor: isGenerating ? 'wait' : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: isGenerating ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation', position: 'relative', zIndex: 5, pointerEvents: 'auto' }}
-              >
-                {isGenerating ? 'Generating...' : buttonLabel}
-              </motion.button>
-            </div>
-          )}
+          {/* Collapsing the details (Eye toggle) hides everything below this point —
+              generate button, resources, weekly non-negotiables, activities, outcome —
+              leaving only the vision photos/descriptions above visible. */}
+          {!pl.detailsCollapsed && (
+          <>
+          <div style={{ gridRow: 3, padding: '0 1.1rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+            {editing && (() => {
+              const blocked = isGenerating || !hasRequiredDescription
+              return (
+                <>
+                  <motion.button
+                    whileHover={{ scale: blocked ? 1 : 1.02 }}
+                    whileTap={{ scale: blocked ? 1 : 0.98 }}
+                    type="button"
+                    disabled={blocked}
+                    onPointerUp={event => {
+                      if (event.pointerType === 'touch') handleGenerateButton(event)
+                    }}
+                    onClick={handleGenerateButton}
+                    style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation', position: 'relative', zIndex: 5, pointerEvents: 'auto' }}
+                  >
+                    {isGenerating ? 'Generating...' : buttonLabel}
+                  </motion.button>
+                  {!hasRequiredDescription && !isGenerating && (
+                    <span style={{ fontSize: '0.66rem', color: 'var(--app-muted)' }}>
+                      {isDestination ? 'Add a description above to unlock this' : 'Add before & after details above to unlock this'}
+                    </span>
+                  )}
+                </>
+              )
+            })()}
+          </div>
 
-          <div style={{ height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
+          <div style={{ gridRow: 4, margin: '0 1.1rem', height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
           {/* List sections */}
           {[
             { lbl: 'Resources',  key: 'resources',  c: 'var(--app-accent2)', m: '•' },
           ].map(({ lbl, key, c, m }) => (
-            <div key={key}>
+            <div key={key} style={{ gridRow: 5, padding: '0 1.1rem' }}>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c, marginBottom: '0.38rem' }}>{lbl}</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 200, overflowY: 'auto' }}>
                 {pl[key].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
                     {editing
@@ -3655,9 +3564,9 @@ Return JSON only:
           ))}
 
           {/* Weekly non-negotiables */}
-          <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
+          <div style={{ gridRow: 6, margin: '0 1.1rem', background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>Weekly Non-Negotiables</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 220, overflowY: 'auto' }}>
               {(Array.isArray(pl.weeklyActions) && pl.weeklyActions.length ? pl.weeklyActions : ['']).map((item, i) => {
                 const ck = `${phaseId}-${pl.id}-wk-${i}`
                 const safeTask = String(item || '').trim()
@@ -3682,7 +3591,7 @@ Return JSON only:
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={event => event.stopPropagation()}
-                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #cbead6', background: '#f3fff7', color: '#2f6a43', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none' }}
+                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #f5c0cc', background: '#fff0f4', color: '#c0445a', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none' }}
                                 title={`Open calendar • ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
                                 <span style={{ fontSize: '0.82rem', lineHeight: 1 }}>📅</span>
@@ -3727,9 +3636,9 @@ Return JSON only:
             </div>
           </div>
 
-          <div>
+          <div style={{ gridRow: 7, padding: '0 1.1rem' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d4773a', marginBottom: '0.38rem' }}>Activities</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 200, overflowY: 'auto' }}>
               {pl.activities.map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
                   {editing
@@ -3744,7 +3653,7 @@ Return JSON only:
           </div>
 
           {/* Outcome */}
-          <div>
+          <div style={{ gridRow: 8, padding: '0 1.1rem 1.1rem' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.38rem' }}>Outcome</p>
             <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff1f6)', border: '1px solid #f0d6e2', borderRadius: 'var(--app-radius-sm)', padding: '0.5rem 0.7rem', boxShadow: 'var(--app-shadow-sm)' }}>
               {editing
@@ -3765,7 +3674,9 @@ Return JSON only:
               }
             </div>
           </div>
-        </div>
+          </>
+          )}
+        </>
       )}
     </motion.div>
   )

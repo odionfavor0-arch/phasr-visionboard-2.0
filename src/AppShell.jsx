@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  BarChart3,
   BookText,
+  Compass,
   Flame,
   Image as ImageIcon,
   Settings,
-  Sparkles,
-  Users,
 } from 'lucide-react'
 import VisionBoard from './components/VisionBoard'
 import Journal from './components/Journal'
 import JournalEntries from './components/JournalEntries'
 import DailyCheckin from './components/DailyCheckin'
-import Analytics from './components/Analytics'
-import ShowUp from './components/ShowUp'
+import Review from './components/Review'
 import SettingsPanel from './components/SettingsPanel'
 import ProfilePage, { fetchProfile, loadCachedProfile } from './components/ProfilePage'
 import { QuickSageBubble } from './components/SageCoach'
@@ -168,8 +165,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     { id: 'board', label: 'Vision Board', title: 'Vision Board', icon: ImageIcon },
     { id: 'checkin', label: 'Daily Streaks', title: 'Daily Streaks', icon: Flame },
     { id: 'journal', label: 'Journal', title: 'Journal', icon: BookText },
-    { id: 'showup', label: 'Show Up', title: 'Show Up', icon: Users },
-    { id: 'analytics', label: 'Statistics', title: 'Statistics', icon: BarChart3 },
+    { id: 'review', label: 'Review', title: 'Review', icon: Compass },
     { id: 'settings', label: 'Settings', title: 'Settings', icon: Settings },
   ]), [])
   const primaryNavItems = navItems.filter(item => item.id !== 'settings')
@@ -285,10 +281,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
         }}
       />
     )
-  } else if (view === 'showup') {
-    content = <ShowUp user={user} profileData={profileData} onGoToDailyStreaks={() => setView('checkin')} />
-  } else if (view === 'analytics') {
-    content = <Analytics />
+  } else if (view === 'review') {
+    content = <Review user={user} onOpenBoard={() => setView('board')} />
   } else if (view === 'settings') {
     content = (
       <SettingsPanel
@@ -379,7 +373,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                   color: 'var(--app-accent)',
                 }}
               >
-                Phasr
+                PHASR
               </span>
               <HamburgerButton mobile open={sidebarOpen} onClick={handleToggleSidebar} />
             </>

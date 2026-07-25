@@ -37,12 +37,10 @@ RULES:
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 
 function getGroqKey() {
-  // Prefer VITE_GROQ_KEY (the key actually configured in this project's env
-  // today) but fall back to a dedicated server-only GROQ_API_KEY if that's
-  // what's set instead. Either way this only ever runs server-side — Vite
-  // only inlines VITE_-prefixed vars into the CLIENT bundle via import.meta.env,
-  // never into server-side process.env reads like this one.
-  return process.env.VITE_GROQ_KEY || process.env.GROQ_API_KEY || ''
+  // Server-only. Vite only inlines VITE_-prefixed vars into the CLIENT bundle
+  // via import.meta.env — it never touches process.env reads like this one —
+  // so falling back to the legacy VITE_GROQ_KEY name here is safe.
+  return process.env.GROQ_API_KEY || process.env.VITE_GROQ_KEY || ''
 }
 
 /**

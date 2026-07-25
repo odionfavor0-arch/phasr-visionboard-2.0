@@ -81,7 +81,7 @@ function cacheUser(user) {
         user?.user_metadata?.full_name ||
         user?.user_metadata?.name ||
         user?.email ||
-        'Phasr User',
+        'PHASR User',
     },
   }
   safeLocalSet(CACHED_USER_KEY, JSON.stringify(nextCachedUser))
@@ -442,7 +442,7 @@ export default function AppRouter() {
       }}>
         <div style={{ textAlign: 'center' }}>
           <img src={phasrLogo} alt="" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: '0.75rem' }} />
-          <p style={{ fontFamily: "'Fraunces', serif", fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>Phasr</p>
+          <p style={{ fontFamily: "'Fraunces', serif", fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>PHASR</p>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
             {hasAuthRedirectParams() ? 'Signing you in...' : 'Loading your workspace...'}
           </p>
