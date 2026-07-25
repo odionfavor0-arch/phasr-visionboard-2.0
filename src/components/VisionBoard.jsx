@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { motion } from 'framer-motion'
-import { BookOpen, Briefcase, Dumbbell, Eye, EyeOff, Hand, HandHeart, HeartPulse, Home, ImageDown, Sparkles, Trash2, Wallet } from 'lucide-react'
+import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, ImageDown, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
@@ -347,7 +347,6 @@ function freshPillar(emoji = 'NP', name = 'New Pillar') {
     planGenerationCount: 0,
     planWasEdited: false,
     collapsed: false,
-    detailsCollapsed: false,
   }
 }
 
@@ -434,7 +433,10 @@ const FREE_PILLAR_LIMIT = 2
 const PILLAR_ROW_COUNT = 8
 const FREE_PHASE_LIMIT = 4
 const TODO_STATE_KEY = 'phasr_daily_todo_state'
-const MAX_UPLOAD_FILE_BYTES = 5 * 1024 * 1024
+// Hard ceiling on the source file picked from disk/camera roll, before it's
+// downscaled — not the stored size. A phone camera photo (commonly 3-8MB) is
+// well under this; it exists only to stop a pathological file from hanging the browser.
+const MAX_UPLOAD_SOURCE_FILE_BYTES = 20 * 1024 * 1024
 const MAX_UPLOAD_WIDTH = 2400
 const MAX_UPLOAD_HEIGHT = 2400
 
@@ -1460,6 +1462,17 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     setPresetOpen(null)
   }, [editing])
 
+  useEffect(() => {
+    // The vision-style/preset panel renders above the pillar list. On a tall
+    // single-column mobile board, opening it from a pillar further down the
+    // page put it off-screen with nothing visibly happening on tap.
+    if (!presetOpen || !isMobile) return undefined
+    const raf = requestAnimationFrame(() => {
+      document.getElementById('vb-preset-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [presetOpen, isMobile])
+
 
   useEffect(() => {
     if (!uploadMessage) return undefined
@@ -2175,52 +2188,66 @@ Return JSON only:
   }
 
   const uploadImg = (plId, slot) => {
-    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'
+    const i = document.createElement('input')
+    i.type = 'file'
+    i.accept = 'image/*'
+    // Phone browsers (iOS Safari in particular) can fail to open the native
+    // picker for a file input that was never attached to the document, so
+    // this stays in the DOM (off-screen) for the duration of the pick.
+    i.style.position = 'fixed'
+    i.style.top = '-1000px'
+    i.style.left = '-1000px'
+    document.body.appendChild(i)
+    const cleanup = () => { i.remove() }
     i.onchange = e => {
-      const f = e.target.files[0]; if (!f) return
-      if (f.size > MAX_UPLOAD_FILE_BYTES) {
-        setUploadMessage('This file is too big. Please choose an image under 5MB.')
+      const f = e.target.files[0]
+      if (!f) { cleanup(); return }
+      // A camera photo straight off a phone is routinely 3000-4000px and
+      // several MB — this used to hard-reject that exact case. Instead of
+      // rejecting, downscale to fit MAX_UPLOAD_WIDTH/HEIGHT and re-encode.
+      if (f.size > MAX_UPLOAD_SOURCE_FILE_BYTES) {
+        setUploadMessage('This file is too big. Please choose an image under 20MB.')
+        cleanup()
         return
       }
       const objectUrl = URL.createObjectURL(f)
       const probe = new Image()
-      probe.onload = () => {
-        const tooWide = probe.naturalWidth > MAX_UPLOAD_WIDTH
-        const tooTall = probe.naturalHeight > MAX_UPLOAD_HEIGHT
+      probe.onload = async () => {
+        const scale = Math.min(1, MAX_UPLOAD_WIDTH / probe.naturalWidth, MAX_UPLOAD_HEIGHT / probe.naturalHeight)
+        const outWidth = Math.round(probe.naturalWidth * scale)
+        const outHeight = Math.round(probe.naturalHeight * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = outWidth
+        canvas.height = outHeight
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(probe, 0, 0, outWidth, outHeight)
         URL.revokeObjectURL(objectUrl)
-        if (tooWide || tooTall) {
-          setUploadMessage(`This file is too big. Please use an image no larger than ${MAX_UPLOAD_WIDTH} x ${MAX_UPLOAD_HEIGHT}.`)
-          return
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        let finalUrl = dataUrl
+        if (supabase) {
+          setUploadMessage('Uploading…')
+          try {
+            const path = `visionboard/${activeUserId || 'local'}/${plId}-${slot}-${Date.now()}.jpg`
+            const byteStr = atob(dataUrl.split(',')[1])
+            const bytes = new Uint8Array(byteStr.length)
+            for (let j = 0; j < byteStr.length; j++) bytes[j] = byteStr.charCodeAt(j)
+            const { error: uploadError } = await supabase.storage
+              .from('room-feed')
+              .upload(path, new Blob([bytes], { type: 'image/jpeg' }), { contentType: 'image/jpeg', upsert: true })
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from('room-feed').getPublicUrl(path)
+              if (urlData?.publicUrl) finalUrl = urlData.publicUrl
+            }
+          } catch {}
         }
-        const r = new FileReader()
-        r.onload = async ev => {
-          const dataUrl = ev.target.result
-          let finalUrl = dataUrl
-          if (supabase) {
-            setUploadMessage('Uploading…')
-            try {
-              const ext = (f.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')
-              const path = `visionboard/${activeUserId || 'local'}/${plId}-${slot}-${Date.now()}.${ext}`
-              const byteStr = atob(dataUrl.split(',')[1])
-              const bytes = new Uint8Array(byteStr.length)
-              for (let j = 0; j < byteStr.length; j++) bytes[j] = byteStr.charCodeAt(j)
-              const { error: uploadError } = await supabase.storage
-                .from('room-feed')
-                .upload(path, new Blob([bytes], { type: f.type }), { contentType: f.type, upsert: true })
-              if (!uploadError) {
-                const { data: urlData } = supabase.storage.from('room-feed').getPublicUrl(path)
-                if (urlData?.publicUrl) finalUrl = urlData.publicUrl
-              }
-            } catch {}
-          }
-          setUploadMessage('')
-          updatePillar(plId, slot, finalUrl)
-        }
-        r.readAsDataURL(f)
+        setUploadMessage('')
+        updatePillar(plId, slot, finalUrl)
+        cleanup()
       }
       probe.onerror = () => {
         URL.revokeObjectURL(objectUrl)
         setUploadMessage('This image could not be loaded. Please try a different image.')
+        cleanup()
       }
       probe.src = objectUrl
     }
@@ -2887,7 +2914,7 @@ Return JSON only:
           </div>
         )}
         {editing && presetPillar && (
-          <div style={{ marginBottom: '0.95rem', display: 'flex', justifyContent: 'center' }}>
+          <div id="vb-preset-panel" style={{ marginBottom: '0.95rem', display: 'flex', justifyContent: 'center' }}>
             <div style={{ width: '100%', maxWidth: 980, borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', background: '#fff', boxShadow: 'var(--app-shadow-md)', padding: '0.8rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
@@ -3253,7 +3280,6 @@ Return JSON only:
     const [regenerateCount, setRegenerateCount] = useState(0)
     const [linkDrafts, setLinkDrafts] = useState({ beforeImage: pl.beforeImage || '', afterImage: pl.afterImage || '' })
     const [linkOpen, setLinkOpen] = useState({ beforeImage: false, afterImage: false })
-    const generateTapRef = useRef(0)
 
     useEffect(() => {
       setLinkDrafts({
@@ -3291,12 +3317,7 @@ Return JSON only:
     })
   }
 
-  const handleGenerateButton = event => {
-    event?.preventDefault?.()
-    event?.stopPropagation?.()
-    const now = Date.now()
-    if (now - generateTapRef.current < 450) return
-    generateTapRef.current = now
+  const handleGenerateButton = () => {
     if (isGenerating) return
     if (hasPlan) {
       regeneratePlan()
@@ -3320,13 +3341,13 @@ Return JSON only:
         gridRow: pl.collapsed ? 'auto' : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
       }}>
       {/* Header */}
-      <div style={{ gridRow: pl.collapsed ? 'auto' : 1, background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: pl.collapsed ? 'none' : '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+      <div style={{ gridRow: 1, background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <div onClick={e => { e.stopPropagation(); editing && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
         {editing
           ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
           : <span className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', flex: 1 }}>{pl.name}</span>
         }
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.35rem', flexShrink: 0 }}>
           {editing && (
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -3336,25 +3357,9 @@ Return JSON only:
                 if (window.confirm('Are you sure you want to delete this pillar?')) onDel()
               }}
               aria-label={`Delete ${pl.name}`}
-              style={{ width: 30, height: 30, borderRadius: 999, background: '#fff3f6', border: '1px solid #f2c7d4', cursor: 'pointer', color: '#d05d86', display: 'grid', placeItems: 'center', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}
+              style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, borderRadius: 999, background: '#fff3f6', border: '1px solid #f2c7d4', cursor: 'pointer', color: '#d05d86', display: 'grid', placeItems: 'center', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}
             >
               <Trash2 size={14} strokeWidth={2.1} />
-            </motion.button>
-          )}
-          {!pl.collapsed && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={e => {
-                e.stopPropagation()
-                onUpdate('detailsCollapsed', !pl.detailsCollapsed)
-              }}
-              aria-label={pl.detailsCollapsed ? `Show ${pl.name} details` : `Hide ${pl.name} details, keep the vision`}
-              title={pl.detailsCollapsed ? 'Show resources, non-negotiables, activities & outcome' : 'Just show the vision — hide the form fields'}
-              style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid var(--app-border)', background: pl.detailsCollapsed ? 'var(--app-bg2)' : '#fff', color: 'var(--app-accent2)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
-            >
-              {pl.detailsCollapsed ? <EyeOff size={14} /> : <Eye size={14} />}
             </motion.button>
           )}
           <motion.button
@@ -3365,89 +3370,84 @@ Return JSON only:
               e.stopPropagation()
               onCollapse()
             }}
-            aria-label={pl.collapsed ? `Open ${pl.name}` : `Close ${pl.name}`}
-            style={{ width: 30, height: 30, borderRadius: 999, border: '1px solid var(--app-border)', background: '#fff', color: 'var(--app-accent2)', fontSize: '0.8rem', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
+            aria-label={pl.collapsed ? `Show ${pl.name} plan details` : `Hide ${pl.name} plan details`}
+            title={pl.collapsed ? 'Show resources, non-negotiables, activities & outcome' : 'Hide resources, non-negotiables, activities & outcome'}
+            style={{ width: isMobile ? 44 : 30, height: isMobile ? 44 : 30, borderRadius: 999, border: '1px solid var(--app-border)', background: '#fff', color: 'var(--app-accent2)', fontSize: '0.8rem', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}
           >
             {pl.collapsed ? '▼' : '▲'}
           </motion.button>
         </div>
       </div>
 
-      {!pl.collapsed && (
-        <>
-          {/* Vision style photo slots */}
-          <div className="vb-before-after-grid" style={{ gridRow: 2, padding: '0 1.1rem', display: 'grid', gridTemplateColumns: isDestination ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem', alignItems: 'stretch' }}>
-            {(isDestination
-              ? [
-                  { slot: 'afterImage', src: pl.afterImage, lbl: 'Destination', sk: 'afterState', dk: 'afterDesc', sv: pl.afterState, dv: pl.afterDesc, bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
-                ]
-              : [
-                  { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#8a5060' },
-                  { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
-                ]
-            ).map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
-              <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
-                <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, margin: 0 }}>{lbl}</p>
-                <div style={{ background: bg, border: `1px solid ${bc}`, borderRadius: 'var(--app-radius-md)', padding: '0.7rem', boxShadow: 'var(--app-shadow-sm)', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: isDestination ? '16/9' : (isMobile ? '4/3' : '3/4'), borderRadius: 'var(--app-radius-sm)', background: 'var(--app-bg2)', border: '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.4rem', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative', flexShrink: 0 }}>
-                    {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.66rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload (optional)' : 'add photo'}</p>}
-                    {editing && src && (
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        type="button"
-                        onClick={event => {
-                          event.stopPropagation()
-                          if (window.confirm('Remove this image?')) onUpdate(slot, null)
-                        }}
-                        aria-label={`Remove ${lbl} image`}
-                        style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: '50%', border: '1px solid #f2c7d4', background: 'rgba(255,255,255,0.96)', color: '#d05d86', display: 'grid', placeItems: 'center', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
-                      >
-                        ×
-                      </motion.button>
-                    )}
-                  </div>
-                  {editing ? (
-                    <>
-                      <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none', marginBottom: '0.25rem' }} onFocus={focus} onBlur={blur} />
-                      <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', marginBottom: '0.3rem' }} onFocus={focus} onBlur={blur} />
-                      {linkOpen[slot] ? (
-                        <input
-                          autoFocus
-                          value={linkDrafts[slot] || ''}
-                          onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))}
-                          onBlur={e => { onImageLinkUpdate(slot, e.target.value); if (!e.target.value) setLinkOpen(prev => ({ ...prev, [slot]: false })) }}
-                          placeholder="Paste image link"
-                          style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
-                          onFocus={focus}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setLinkOpen(prev => ({ ...prev, [slot]: true }))}
-                          style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'DM Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
-                        >
-                          or paste a link
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5 }}>{sv}</p>
-                      <p title={dv || undefined} style={{ fontSize: '0.72rem', color: 'var(--app-muted)', marginTop: 2, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{dv}</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
+      {/* Vision style photo slots — always visible. The vision board is the point;
+          collapsing a pillar only tucks away the plan details below, never this. */}
+      <div className="vb-before-after-grid" style={{ gridRow: 2, padding: '0 1.1rem', display: 'grid', gridTemplateColumns: isDestination ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem', alignItems: 'stretch' }}>
+        {(isDestination
+          ? [
+              { slot: 'afterImage', src: pl.afterImage, lbl: 'Destination', sk: 'afterState', dk: 'afterDesc', sv: pl.afterState, dv: pl.afterDesc, bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
+            ]
+          : [
+              { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#8a5060' },
+              { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
+            ]
+        ).map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
+          <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', height: '100%' }}>
+            <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, margin: 0 }}>{lbl}</p>
+            <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: isDestination ? '16/9' : '3/4', borderRadius: 'var(--app-radius-md)', background: src ? bg : 'var(--app-bg2)', border: src ? `1px solid ${bc}` : '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative', flexShrink: 0, boxShadow: src ? 'var(--app-shadow-sm)' : 'none' }}>
+              {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.7rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload (optional)' : 'add photo'}</p>}
+              {editing && src && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="button"
+                  onClick={event => {
+                    event.stopPropagation()
+                    if (window.confirm('Remove this image?')) onUpdate(slot, null)
+                  }}
+                  aria-label={`Remove ${lbl} image`}
+                  style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', border: '1px solid #f2c7d4', background: 'rgba(255,255,255,0.96)', color: '#d05d86', display: 'grid', placeItems: 'center', fontSize: '0.9rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                >
+                  ×
+                </motion.button>
+              )}
+            </div>
+            {editing ? (
+              <>
+                <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                {linkOpen[slot] ? (
+                  <input
+                    autoFocus
+                    value={linkDrafts[slot] || ''}
+                    onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))}
+                    onBlur={e => { onImageLinkUpdate(slot, e.target.value); if (!e.target.value) setLinkOpen(prev => ({ ...prev, [slot]: false })) }}
+                    placeholder="Paste image link"
+                    style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
+                    onFocus={focus}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setLinkOpen(prev => ({ ...prev, [slot]: true }))}
+                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'DM Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
+                  >
+                    or paste a link
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5, margin: 0 }}>{sv}</p>
+                <p title={dv || undefined} style={{ fontSize: '0.72rem', color: 'var(--app-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>{dv}</p>
+              </>
+            )}
           </div>
+        ))}
+      </div>
 
-          {/* Collapsing the details (Eye toggle) hides everything below this point —
-              generate button, resources, weekly non-negotiables, activities, outcome —
-              leaving only the vision photos/descriptions above visible. */}
-          {!pl.detailsCollapsed && (
-          <>
-          <div style={{ gridRow: 3, padding: '0 1.1rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+      {/* Generate/Regenerate plan — stays reachable even when the pillar is
+          collapsed; only the plan detail sections below fold away. */}
+      <div style={{ gridRow: 3, padding: '0 1.1rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
             {editing && (() => {
               const blocked = isGenerating || !hasRequiredDescription
               return (
@@ -3457,11 +3457,8 @@ Return JSON only:
                     whileTap={{ scale: blocked ? 1 : 0.98 }}
                     type="button"
                     disabled={blocked}
-                    onPointerUp={event => {
-                      if (event.pointerType === 'touch') handleGenerateButton(event)
-                    }}
                     onClick={handleGenerateButton}
-                    style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation', position: 'relative', zIndex: 5, pointerEvents: 'auto' }}
+                    style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation' }}
                   >
                     {isGenerating ? 'Generating...' : buttonLabel}
                   </motion.button>
@@ -3475,6 +3472,11 @@ Return JSON only:
             })()}
           </div>
 
+      {/* Collapsing a pillar hides only these plan-detail sections — resources,
+          weekly non-negotiables, activities, outcome. The vision (photos +
+          descriptions) and the generate-plan button above always stay visible. */}
+      {!pl.collapsed && (
+        <>
           <div style={{ gridRow: 4, margin: '0 1.1rem', height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
           {/* List sections */}
@@ -3609,8 +3611,6 @@ Return JSON only:
               }
             </div>
           </div>
-          </>
-          )}
         </>
       )}
     </motion.div>
