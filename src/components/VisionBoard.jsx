@@ -13,6 +13,7 @@ import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
 import { supabase } from '../lib/supabase'
+import { pushBoardData } from '../lib/supabaseSync'
 import phasrMark from '../assets/phasr-mark.png'
 
 const PILLAR_PRESETS = [
@@ -374,10 +375,6 @@ function getBoardStorageKey(user) {
   return id ? `phasr_vb:${id}` : 'phasr_vb'
 }
 
-function getBoardUserId(user) {
-  return user?.id || user?.email || user?.user_metadata?.email || localStorage.getItem('phasr_active_user') || ''
-}
-
 function load(user) {
   try {
     const key = getBoardStorageKey(user)
@@ -395,59 +392,17 @@ function load(user) {
   }
 }
 
-async function loadRemoteBoard(user) {
-  if (!supabase) return null
-  const userId = getBoardUserId(user)
-  if (!userId) return null
-  try {
-    const attempts = ['board_data', 'data']
-    for (const column of attempts) {
-      const { data, error } = await supabase
-        .from('vision_boards')
-        .select(column)
-        .eq('user_id', userId)
-        .maybeSingle()
-      if (!error) return data?.[column] || null
-    }
-    return null
-  } catch (error) {
-    console.warn('[Phasr] Remote vision board load skipped:', error?.message || error)
-    return null
-  }
-}
-
-async function saveRemoteBoard(d, user) {
-  if (!supabase) return false
-  const userId = getBoardUserId(user)
-  if (!userId) return false
-  const payload = {
-    user_id: userId,
-    board_data: d,
-    updated_at: new Date().toISOString(),
-  }
-  try {
-    const attempts = [
-      payload,
-      { user_id: userId, data: d, updated_at: payload.updated_at },
-      { user_id: userId, board_data: d },
-      { user_id: userId, data: d },
-    ]
-    for (const attemptPayload of attempts) {
-      const { error } = await supabase
-        .from('vision_boards')
-        .upsert(attemptPayload, { onConflict: 'user_id' })
-      if (!error) return true
-    }
-    return false
-  } catch (error) {
-    console.warn('[Phasr] Remote vision board save skipped:', error?.message || error)
-    return false
-  }
-}
-
 function save(d, user) {
   const key = getBoardStorageKey(user)
-  saveRemoteBoard(d, user)
+  // Board hydration/one-time migration happens once, centrally, in
+  // AppShell.jsx before this component ever mounts (see
+  // lib/supabaseSync.js's hydrateAllFromSupabase) — this is just the
+  // ongoing push half, mirroring every local board save to Supabase's
+  // board_data table (replaces an earlier, never-verified attempt at this
+  // that guessed at a `vision_boards` table/column shape and a user_id
+  // that could fall back to an email address; RLS requires the real auth
+  // uuid, which getBoardUserId's fallback chain did not guarantee).
+  if (user?.id) pushBoardData(d)
   try {
     localStorage.setItem(key, JSON.stringify(d))
   } catch {
@@ -1505,26 +1460,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     setPresetOpen(null)
   }, [editing])
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const remoteBoard = await loadRemoteBoard(user)
-      if (cancelled) return
-      if (remoteBoard) {
-        const normalizedRemote = normalizeBoardData(remoteBoard)
-        setData(normalizedRemote)
-        save(normalizedRemote, user)
-        return
-      }
-      const localBoard = load(user)
-      if (localBoard) {
-        saveRemoteBoard(normalizeBoardData(localBoard), user)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [user])
 
   useEffect(() => {
     if (!uploadMessage) return undefined

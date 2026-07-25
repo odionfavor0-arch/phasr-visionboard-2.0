@@ -20,6 +20,7 @@ import {
   loadLockInState,
   ensureProgressEngine,
 } from '../lib/lockIn'
+import { pushPillarReview, pushPillarWrap } from '../lib/supabaseSync'
 
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const JOURNAL_KEY = 'phasr_journal_v2'
@@ -246,6 +247,7 @@ function upsertPillarReview(user, phase, pillar, patch) {
   if (idx >= 0) reviews[idx] = next
   else reviews.unshift(next)
   safeWrite(scopedKey(PILLAR_REVIEWS_KEY, user), reviews)
+  pushPillarReview(next)
   return next
 }
 
@@ -484,6 +486,7 @@ Return plain text only, no headers.`
       if (idx >= 0) wraps[idx] = record
       else wraps.unshift(record)
       safeWrite(scopedKey(PILLAR_WRAPS_KEY, user), wraps)
+      pushPillarWrap(record)
     } catch {
       setSynthesis(`${stats.rate}% complete across ${stats.weeksTouched} weeks — real, steady movement, even without a written synthesis right now.`)
     } finally {

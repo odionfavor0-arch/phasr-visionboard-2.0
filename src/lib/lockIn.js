@@ -1,3 +1,11 @@
+import {
+  syncCompletionsDelta,
+  syncDailyLogsDelta,
+  pushStreakState,
+  pushLockInConfig,
+  pushDialState,
+} from './supabaseSync'
+
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const LOCK_IN_KEY = 'phasr_lock_in'
 const BOARD_KEY = 'phasr_vb'
@@ -388,7 +396,9 @@ export function getCompletionRecords() {
 }
 
 function saveCompletionRecords(records) {
+  const previous = safeRead(COMPLETIONS_KEY, [])
   safeWrite(COMPLETIONS_KEY, records)
+  syncCompletionsDelta(previous, records)
 }
 
 function loadWeeklyGoals() {
@@ -420,6 +430,11 @@ function loadStreakState() {
 
 function saveStreakState(streak) {
   safeWrite(STREAK_KEY, streak)
+  // streak_state in Supabase is fed ONLY from here — the single-writer rule
+  // from the streak-unification pass carries over unchanged: lock_in_completions
+  // (per-tick log, above) is never read back to compute streak.current/best,
+  // only daily_logs (below) and this streak snapshot are.
+  pushStreakState(streak)
 }
 
 function saveStreakHistory(entry) {
@@ -669,7 +684,16 @@ export function loadLockInState() {
 }
 
 export function saveLockInState(state) {
-  safeWrite(LOCK_IN_KEY, normalizeLockInState(state))
+  const previous = safeRead(LOCK_IN_KEY, null)
+  const normalized = normalizeLockInState(state)
+  safeWrite(LOCK_IN_KEY, normalized)
+  // .logs is the actual streak-driving log (one row per calendar day) —
+  // goes to daily_logs, the same table updateStreakRisk/getLockInSummary
+  // will read back. Everything else here (points/commitment/penalties/
+  // custom target) is account config, not streak data — goes to
+  // lock_in_config instead, so daily_logs stays the single streak source.
+  syncDailyLogsDelta(previous?.logs || [], normalized.logs)
+  pushLockInConfig(normalized)
 }
 
 export function getCompletedTierCount(streak) {
@@ -943,6 +967,7 @@ function saveDialState(phaseId, state) {
   const store = safeRead(DIAL_STATE_KEY, {})
   store[phaseId] = state
   safeWrite(DIAL_STATE_KEY, store)
+  pushDialState(phaseId, state)
 }
 
 // Baseline (loadStep 0) always resolves to the full activity list — the dial can only

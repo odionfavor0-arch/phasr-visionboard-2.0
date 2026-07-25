@@ -21,6 +21,7 @@ import {
 import { calculateUserPoints } from '../lib/userLevel'
 import { applyDifficultyDial, getDateKeyFromDate, getTodayTask, getWeekCompletionSummary } from '../lib/lockIn'
 import { getDialPayoffLine } from '../lib/dialCopy'
+import { syncJournalEntriesDelta } from '../lib/supabaseSync'
 
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const STORAGE_KEY = 'phasr_journal_v2'
@@ -166,7 +167,7 @@ function safeRead() {
   try {
     const raw = scopedGetItem(STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
+    return dedupeEntriesById(Array.isArray(parsed) ? parsed : [])
   } catch {
     return []
   }
@@ -248,6 +249,66 @@ function normalizeLabel(value) {
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// One reflection = one entry, no matter which local/Supabase copy it was loaded from.
+// Keeps the first-seen occurrence of each id (arrays here are already newest-first).
+function dedupeEntriesById(entries) {
+  const seen = new Set()
+  const deduped = []
+  for (const entry of entries || []) {
+    const key = String(entry?.id ?? '')
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(entry)
+  }
+  return deduped
+}
+
+// A weekly reflection is uniquely identified by (phase, week number), not by id —
+// the completion flag that gates re-prompting lives in a separate, device-local
+// localStorage key that never syncs to Supabase, so it can go stale (new device,
+// cleared storage) while the actual entry already exists. Falling back to this
+// check on the synced `entries` array is what stops that stale flag from letting
+// the same reflection be saved twice under two different ids/dates.
+function findExistingWeeklyPulseEntry(entries, phaseName, weekNumber) {
+  const phaseKey = normalizeLabel(phaseName || 'phase 1')
+  const week = Number(weekNumber || 1)
+  return (entries || []).find(entry =>
+    entry?.weeklyPulseMeta &&
+    normalizeLabel(entry.weeklyPulseMeta.phaseName || 'phase 1') === phaseKey &&
+    Number(entry.weeklyPulseMeta.weekNumber || 1) === week
+  ) || null
+}
+
+// Retroactive repair for duplicates the pre-fix bug already created: before
+// findExistingWeeklyPulseEntry existed, every weekly-pulse save minted a new
+// id + `date: getToday()` with no check for an existing reflection, so a
+// second trigger for the same (phase, week) — e.g. a stale/unsynced
+// completion flag — wrote a second entry under a different id, dated
+// whatever day that second write happened to land on. Those two rows share
+// no id, so id-based dedupeEntriesById can't merge them. Group by the same
+// (phase, week) identity findExistingWeeklyPulseEntry uses, keep the
+// earliest-dated copy (the true original write date), drop the rest.
+function mergeWeeklyPulseDuplicates(entries) {
+  const list = entries || []
+  const keepByKey = new Map()
+  const dropIds = new Set()
+  list.forEach(entry => {
+    if (!entry?.weeklyPulseMeta) return
+    const key = `${normalizeLabel(entry.weeklyPulseMeta.phaseName || 'phase 1')}::${Number(entry.weeklyPulseMeta.weekNumber || 1)}`
+    const current = keepByKey.get(key)
+    if (!current) {
+      keepByKey.set(key, entry)
+      return
+    }
+    const earlier = String(current.date || '') <= String(entry.date || '') ? current : entry
+    const later = earlier === current ? entry : current
+    keepByKey.set(key, earlier)
+    dropIds.add(String(later.id))
+  })
+  if (!dropIds.size) return entries
+  return list.filter(entry => !dropIds.has(String(entry.id)))
 }
 
 function removeDashPunctuation(text) {
@@ -1419,10 +1480,29 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     difficulty: '',
   }))
 
+  const previousEntriesRef = useRef(entries)
+
   useEffect(() => {
     safeWrite(entries)
     calculateUserPoints()
+    // Push only the delta (added/changed/removed by id) to journal_entries —
+    // hydration/one-time migration itself happens centrally in AppShell.jsx
+    // before this component mounts (see supabaseSync.hydrateAllFromSupabase),
+    // this is just the ongoing save-time push.
+    syncJournalEntriesDelta(previousEntriesRef.current, entries)
+    previousEntriesRef.current = entries
   }, [entries])
+
+  // One-time repair on mount: collapse any pre-existing weekly-pulse duplicates
+  // left over from before findExistingWeeklyPulseEntry existed (see
+  // mergeWeeklyPulseDuplicates above). Runs after the effect above has already
+  // captured the raw, duplicate-containing list in previousEntriesRef, so the
+  // resulting setEntries is seen as a removal by the next run of that effect —
+  // the dropped id gets a deleteMatch pushed to Supabase too, not just cleared
+  // locally, so it doesn't come back on the next hydrate.
+  useEffect(() => {
+    setEntries(current => mergeWeeklyPulseDuplicates(current))
+  }, [])
 
   useEffect(() => {
     if (weeklyPulseDate) {
@@ -1442,8 +1522,12 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     const completionStore = (() => {
       try { return JSON.parse(scopedGetItem(WEEKLY_PULSE_COMPLETION_KEY) || '{}') } catch { return {} }
     })()
-    return !Boolean(completionStore?.[phaseKey]?.[previousWeekNumber])
-  }, [currentWeeklyPulsePayload, weeklyPulseDate, daysIn])
+    if (completionStore?.[phaseKey]?.[previousWeekNumber]) return false
+    // The completion flag above is device-local and never synced to Supabase, so it
+    // can go stale (new device, cleared storage) even though the reflection was
+    // already saved. Fall back to the synced entries themselves before calling it due.
+    return !findExistingWeeklyPulseEntry(entries, currentWeeklyPulsePayload?.phaseName, previousWeekNumber)
+  }, [currentWeeklyPulsePayload, weeklyPulseDate, daysIn, entries])
 
   function prepareWeeklyPulseState() {
     const boardData = readVisionBoardData()
@@ -1584,14 +1668,20 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
 
     const weeklyPulseTitle = `Weekly Reflection — Week ${weeklyPulseState.weekIndex || 1}`
 
+    // A stale completion flag (see findExistingWeeklyPulseEntry above) can make this
+    // screen reappear for a week that was already reflected on — reuse that entry's id
+    // and original write date instead of minting a new one, so a repeat submission
+    // updates the one true entry rather than adding a second one dated "today".
+    const existingEntry = findExistingWeeklyPulseEntry(entries, weeklyPulseState.phaseName, weeklyPulseState.weekIndex || 1)
+
     // Deterministic copy, not an AI call: the payoff is a mechanical reflection of a
     // two-choice answer (CLAUDE.md's "use deterministic code for product rules" — AI is
     // for interpretation, not for restating a choice she just made). This also means the
     // ~60-second flow doesn't wait on a network round trip.
     const entry = {
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      date: getToday(),
+      id: existingEntry?.id ?? Date.now(),
+      createdAt: existingEntry?.createdAt || new Date().toISOString(),
+      date: existingEntry?.date || getToday(),
       title: weeklyPulseTitle,
       content,
       prompt: 'Weekly Reflection',
@@ -1619,7 +1709,9 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       },
     }
 
-    setEntries(current => [entry, ...current])
+    setEntries(current => existingEntry
+      ? current.map(item => item.id === existingEntry.id ? entry : item)
+      : [entry, ...current])
     setSelectedEntry(entry)
     setWeeklyPulseDate(getToday())
     const phaseKey = normalizeLabel(weeklyPulseState.phaseName || 'phase 1')

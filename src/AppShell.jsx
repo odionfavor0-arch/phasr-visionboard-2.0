@@ -15,6 +15,7 @@ import SettingsPanel from './components/SettingsPanel'
 import ProfilePage, { fetchProfile, loadCachedProfile } from './components/ProfilePage'
 import { QuickSageBubble } from './components/SageCoach'
 import { getLockInSummary, loadLockInState } from './lib/lockIn'
+import { hydrateAllFromSupabase } from './lib/supabaseSync'
 
 const MOBILE_QUERY = '(max-width: 768px)'
 const DESKTOP_RAIL_WIDTH = 88
@@ -212,12 +213,40 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   useEffect(() => {
     const syncSummary = () => setLockSummary(getLockInSummary(loadLockInState()))
     window.addEventListener('storage', syncSummary)
-    window.addEventListener('phasr-lockin-update', syncSummary)
+    // Was 'phasr-lockin-update' — lockIn.js's broadcastLockInUpdate() has
+    // always dispatched 'phasr-lock-in-updated'; the two never matched, so
+    // this listener never fired from that source. Fixing the name here
+    // because the hydrate effect below relies on this same event to pick
+    // up freshly-synced data without needing a manual refresh.
+    window.addEventListener('phasr-lock-in-updated', syncSummary)
     return () => {
       window.removeEventListener('storage', syncSummary)
-      window.removeEventListener('phasr-lockin-update', syncSummary)
+      window.removeEventListener('phasr-lock-in-updated', syncSummary)
     }
   }, [])
+
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!user?.id) {
+      queueMicrotask(() => setHydrated(true))
+      return undefined
+    }
+    setHydrated(false)
+    hydrateAllFromSupabase(user)
+      .catch(error => {
+        console.warn('[Phasr] Supabase hydrate failed, continuing with local data:', error?.message || error)
+      })
+      .finally(() => {
+        if (cancelled) return
+        setLockSummary(getLockInSummary(loadLockInState()))
+        setHydrated(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -255,7 +284,20 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     />
   )
 
-  if (view === 'journal') {
+  if (!hydrated) {
+    // Board/DailyCheckin/Journal/Review all read their local caches
+    // synchronously on mount — gating on hydration here (rather than
+    // letting them mount early against possibly-stale local data, then
+    // re-render once the pull finishes) is what makes the recompute in
+    // lockIn.js timezone-stable across devices: every device's caches are
+    // already populated from the SAME stored rows before any of these
+    // components' first read.
+    content = (
+      <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
+        <p style={{ color: 'var(--app-muted, #7e5d68)', fontSize: '0.9rem' }}>Syncing your data...</p>
+      </div>
+    )
+  } else if (view === 'journal') {
     content = (
       <Journal
         user={user}
