@@ -426,7 +426,8 @@ function save(d, user) {
   }
 }
 
-const FREE_PILLAR_LIMIT = 2
+const FREE_PILLAR_LIMIT = 1
+const MAX_PILLAR_LIMIT = 5
 // Shared subgrid row tracks pillar cards snap their sections to, so Resources/Weekly
 // Non-Negotiables/Activities/Outcome line up across pillars regardless of content length:
 // header, photo slots, generate-plan button, divider, resources, weekly, activities, outcome.
@@ -1662,7 +1663,8 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }
 
   const addPillar  = () => {
-    if (!isPro && (phase?.pillars?.length || 0) >= FREE_PILLAR_LIMIT) return
+    const limit = isPro ? MAX_PILLAR_LIMIT : FREE_PILLAR_LIMIT
+    if ((phase?.pillars?.length || 0) >= limit) return
     upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.pillars.push(freshPillar()); return d })
   }
   const delPillar  = (plId) => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph && ph.pillars.length > 1) ph.pillars = ph.pillars.filter(p => p.id !== plId); return d })
@@ -2529,7 +2531,7 @@ Return JSON only:
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
           borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.75rem 0.85rem' : '0.9rem 1.1rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: isMobile ? '0.5rem' : '0.7rem', gap: '0.6rem',
+          marginBottom: isMobile ? '0.85rem' : '1rem', gap: '0.6rem',
           boxShadow: 'var(--app-shadow-md)',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2683,7 +2685,7 @@ Return JSON only:
         )}
 
         {/* â"€â"€ Header â"€â"€ */}
-        <div style={{ textAlign: 'center', marginBottom: isMobile ? '0.9rem' : '1.4rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.2rem' : '1.7rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
             : (!isMobile && <h1 className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
@@ -2709,7 +2711,7 @@ Return JSON only:
         </div>
 
         {/* â"€â"€ Phase Tabs â"€â"€ */}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.2rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.5rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
           {data.phases.map((p, index) => {
             const activePhase = phaseId === p.id
             const draft = getTimelineDraft(p)
@@ -2905,7 +2907,7 @@ Return JSON only:
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.04 }}
-          style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.2rem', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: 'var(--app-shadow-sm)' }}>
+          style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: 'var(--app-shadow-sm)' }}>
           <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
           {editing
             ? <input value={phase?.affirmation || ''} onChange={e => updatePhase('affirmation', e.target.value)} placeholder="Your phase mantra..." style={inp({ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--app-border)', textAlign: 'center', marginBottom: 0, position: 'relative', zIndex: 1 })} onFocus={focus} onBlur={blur} />
@@ -3023,7 +3025,20 @@ Return JSON only:
           const pillarColumnsPerRow = visiblePillars.length === 1 ? 1 : (isMobile ? 1 : 2)
           const pillarRowGroupCount = Math.max(1, Math.ceil(visiblePillars.length / pillarColumnsPerRow))
           return (
-        <div id="pillar-section" className="phase-container pillar-subgrid" style={{ display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : (isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))'), gridTemplateRows: `repeat(${pillarRowGroupCount * PILLAR_ROW_COUNT}, auto)`, gap: '1rem', marginBottom: '0.9rem', alignItems: 'stretch' }}>
+        <div
+          id="pillar-section"
+          className="phase-container pillar-subgrid"
+          style={
+            isMobile
+              // Single column on mobile — the shared row-subgrid below exists only to
+              // align sibling sections across a 2-column desktop layout. On one column
+              // there's nothing to align, and a collapsed card's unused subgrid rows
+              // still consumed `gap`-multiplied empty space between cards. A plain
+              // stack has no such dead tracks — each card is exactly as tall as its content.
+              ? { display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '0.9rem' }
+              : { display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))', gridTemplateRows: `repeat(${pillarRowGroupCount * PILLAR_ROW_COUNT}, auto)`, gap: '1rem', marginBottom: '0.9rem', alignItems: 'stretch' }
+          }
+        >
           {visiblePillars.map((pl, pillarIndex) => (
             <PillarCard
               key={pl.id} pl={pl} editing={editing} checked={checked} phaseId={phaseId}
@@ -3048,7 +3063,7 @@ Return JSON only:
             />
           ))}
           {editing && (
-            (phase?.pillars?.length || 0) < FREE_PILLAR_LIMIT ? (
+            (phase?.pillars?.length || 0) < (isPro ? MAX_PILLAR_LIMIT : FREE_PILLAR_LIMIT) ? (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -3345,12 +3360,20 @@ Return JSON only:
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30, delay: (index || 0) * 0.04 }}
       whileHover={{ scale: 1.01 }}
-      style={{
-        background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden',
-        display: 'grid',
-        gridTemplateRows: pl.collapsed ? 'auto' : 'subgrid',
-        gridRow: pl.collapsed ? 'auto' : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
-      }}>
+      style={
+        isMobile
+          // Plain stack, not a grid item — the numbered gridRow values below are
+          // desktop-only (they align sections across the 2-column subgrid); on a
+          // single mobile column, source order already is the right visual order,
+          // and skipping the grid avoids the collapsed-card dead-row gap entirely.
+          ? { background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }
+          : {
+              background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden',
+              display: 'grid',
+              gridTemplateRows: pl.collapsed ? 'auto' : 'subgrid',
+              gridRow: pl.collapsed ? 'auto' : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
+            }
+      }>
       {/* Header */}
       <div style={{ gridRow: 1, background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <div onClick={e => { e.stopPropagation(); editing && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>

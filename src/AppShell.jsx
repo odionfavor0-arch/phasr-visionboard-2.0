@@ -234,10 +234,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       return undefined
     }
     setHydrated(false)
-    // A slow or stuck Supabase pull (e.g. a large payload over a poor mobile
-    // connection) must never keep the whole app stuck on this screen — the
-    // underlying hydrate keeps running in the background; local data just
-    // takes over once the timeout wins the race.
+    // This never blocks rendering (see `content` below) — it only decides
+    // when to remount with freshly-synced data. A slow or stuck pull (e.g. a
+    // large payload over a poor mobile connection) must still never wait
+    // forever, so local data wins the race after this timeout regardless.
     let timedOut = false
     const HYDRATE_TIMEOUT_MS = 8000
     const timeout = new Promise(resolve => {
@@ -287,8 +287,17 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     }
   }
 
+  // The board is on screen the instant the app opens — local cache renders
+  // immediately, with nothing gating it behind a loading screen. Supabase
+  // hydration still runs (see the effect above); once it lands, `hydrated`
+  // flips and the `key` below remounts these components so they pick up the
+  // freshly-synced localStorage on their next (synchronous, on-mount) read —
+  // that's what keeps lockIn.js's recompute timezone-stable across devices —
+  // but the remount itself is instant and invisible, never a spinner or blank state.
+  const syncKey = hydrated ? 'synced' : 'local'
   let content = (
     <VisionBoard
+      key={syncKey}
       user={user}
       lockInSummary={lockSummary}
       onOpenDailyStreak={() => setView('checkin')}
@@ -297,42 +306,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     />
   )
 
-  if (!hydrated) {
-    // Board/DailyCheckin/Journal/Review all read their local caches
-    // synchronously on mount — gating on hydration here (rather than
-    // letting them mount early against possibly-stale local data, then
-    // re-render once the pull finishes) is what makes the recompute in
-    // lockIn.js timezone-stable across devices: every device's caches are
-    // already populated from the SAME stored rows before any of these
-    // components' first read.
-    content = (
-      <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.85rem' }}>
-        <span
-          aria-hidden="true"
-          className="phasr-hydrate-spinner"
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: '50%',
-            border: '2.5px solid var(--app-border, #f5c0cc)',
-            borderTopColor: 'var(--app-accent, #f06090)',
-          }}
-        />
-        <p style={{ color: 'var(--app-muted, #7e5d68)', fontSize: '0.85rem', fontWeight: 500, margin: 0 }}>
-          Pulling up where you left off
-        </p>
-        <style>{`
-          .phasr-hydrate-spinner { animation: phasrHydrateSpin 0.8s linear infinite; }
-          @keyframes phasrHydrateSpin { to { transform: rotate(360deg) } }
-          @media (prefers-reduced-motion: reduce) {
-            .phasr-hydrate-spinner { animation: none; opacity: 0.55; }
-          }
-        `}</style>
-      </div>
-    )
-  } else if (view === 'journal') {
+  if (view === 'journal') {
     content = (
       <Journal
+        key={syncKey}
         user={user}
         autoOpenWeeklyPulse={autoOpenWeeklyPulse}
         onWeeklyPulseOpened={() => setAutoOpenWeeklyPulse(false)}
@@ -340,10 +317,11 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       />
     )
   } else if (view === 'entries') {
-    content = <JournalEntries onBack={() => setView('journal')} />
+    content = <JournalEntries key={syncKey} onBack={() => setView('journal')} />
   } else if (view === 'checkin') {
     content = (
       <DailyCheckin
+        key={syncKey}
         onOpenBoard={() => setView('board')}
         onOpenJournal={() => setView('journal')}
         onOpenWeeklyPulse={() => {
@@ -357,7 +335,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       />
     )
   } else if (view === 'review') {
-    content = <Review user={user} onOpenBoard={() => setView('board')} />
+    content = <Review key={syncKey} user={user} onOpenBoard={() => setView('board')} />
   } else if (view === 'settings') {
     content = (
       <SettingsPanel

@@ -829,7 +829,7 @@ function PastList({ user, boardData }) {
 const TABS = [
   { id: 'reflection', label: 'Weekly Reflection' },
   { id: 'progress', label: 'Progress' },
-  { id: 'review', label: 'Review' },
+  { id: 'review', label: 'Pillar Reviews' },
   { id: 'past', label: 'Past' },
 ]
 
@@ -853,30 +853,37 @@ export default function Review({ user, onOpenBoard, onOpenJournal }) {
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-          <Compass size={20} color="var(--app-accent)" />
-          <h1 style={{ margin: 0, fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,1.9rem)', color: 'var(--app-text)' }}>Review</h1>
-        </div>
-        <p style={{ margin: '0 0 1.2rem', fontSize: '0.85rem', color: 'var(--app-muted)' }}>
-          Your weekly reflection, progress, reflection-gated wraps, and phase history, in one place.
-        </p>
-
-        <div style={{ display: 'inline-flex', flexWrap: 'wrap', border: '1px solid var(--app-border)', borderRadius: 999, padding: 3, background: '#fff', marginBottom: '1.2rem' }}>
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              style={{
-                border: 'none', borderRadius: 999, padding: '0.45rem 1rem', fontSize: '0.8rem', fontWeight: 700,
-                fontFamily: "'DM Sans',sans-serif", cursor: 'pointer',
-                background: tab === t.id ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'transparent',
-                color: tab === t.id ? '#fff' : 'var(--app-muted)',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* One section picker, not a page title stacked on top of a 4-button row where
+            one of the buttons is *also* labeled "Review" — confusing, and it ate space
+            better spent on the section itself, especially on mobile. Selecting a section
+            here is the only chrome above it; that section then fills the rest of the page. */}
+        <div style={{ position: 'relative', marginBottom: '1.2rem' }}>
+          <Compass size={16} color="var(--app-accent)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <select
+            value={tab}
+            onChange={e => setTab(e.target.value)}
+            aria-label="Choose review section"
+            style={{
+              width: '100%',
+              minHeight: 48,
+              padding: '0.6rem 2.2rem 0.6rem 2.4rem',
+              borderRadius: 999,
+              border: '1px solid var(--app-border)',
+              background: '#fff',
+              color: 'var(--app-text)',
+              fontFamily: "'DM Sans',sans-serif",
+              fontSize: '0.92rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+            }}
+          >
+            {TABS.map(t => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+          <ChevronRight size={16} color="var(--app-muted)" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none' }} />
         </div>
 
         {!hasPillar ? (

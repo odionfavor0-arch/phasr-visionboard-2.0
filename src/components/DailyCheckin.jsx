@@ -553,7 +553,6 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   resetDailyStreakToFreshStart()
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [refresh, setRefresh] = useState(0)
-  const [sageCardExpanded] = useState(false)
   const [milestoneMessage, setMilestoneMessage] = useState('')
   const [phaseStats, setPhaseStats] = useState({
     completedTasks: 0,
@@ -1004,17 +1003,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
             </div>
           </div>
 
-          {!sageCardExpanded && !hasPillars && (
+          {!hasPillars && (
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               Add pillar activities in Vision Board to activate your streak.
-            </p>
-          )}
-
-          {sageCardExpanded && (
-            <>
-          {!hasPillars && (
-            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              Add your pillar activities in Vision Board and they will appear in your daily to-do automatically.
             </p>
           )}
           {hasPillars && isNewUser && (
@@ -1048,7 +1039,17 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <button type="button" onClick={openPulse} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', padding: '4px 0', font: 'inherit' }}>Complete now</button>
             </p>
           )}
-            </>
+          {/* Ordinary mid-week day: no milestone, no reflection due, week still open.
+              This is the most common state for an active user, so it must never be
+              blank — grounded in their actual numbers, never generic filler. */}
+          {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && !showReminder && (
+            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+              {totalToday === 0
+                ? `Day ${displayedDay} of week ${activeWeek}. No tasks logged yet today.`
+                : completedToday >= totalToday
+                  ? `Day ${displayedDay} of week ${activeWeek} done — all ${totalToday} task${totalToday === 1 ? '' : 's'} complete. Week ${activeWeek} is at ${weekPercent}%.`
+                  : `${completedToday} of ${totalToday} task${totalToday === 1 ? '' : 's'} done today. Week ${activeWeek} is at ${weekPercent}%.`}
+            </p>
           )}
         </div>
 
