@@ -6,6 +6,7 @@
 // ---------------------------------------------------------
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { motion } from 'framer-motion'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, ImageDown, Sparkles, Trash2, Wallet } from 'lucide-react'
@@ -391,6 +392,20 @@ function load(user) {
   }
 }
 
+const RECENT_LOCAL_SAVE_WINDOW_MS = 30000
+
+function wasSavedLocallyRecently(user) {
+  try {
+    const savedAt = Number(localStorage.getItem(`${getBoardStorageKey(user)}:savedAt`) || 0)
+    return savedAt > 0 && Date.now() - savedAt < RECENT_LOCAL_SAVE_WINDOW_MS
+  } catch {
+    return false
+  }
+}
+
+// Returns true if the save went through with images intact, false if the
+// quota-exceeded fallback below had to strip them — the caller uses this to
+// warn the user instead of letting photos silently vanish on next load.
 function save(d, user) {
   const key = getBoardStorageKey(user)
   // Board hydration/one-time migration happens once, centrally, in
@@ -404,6 +419,8 @@ function save(d, user) {
   if (user?.id) pushBoardData(d)
   try {
     localStorage.setItem(key, JSON.stringify(d))
+    try { localStorage.setItem(`${key}:savedAt`, String(Date.now())) } catch {}
+    return true
   } catch {
     // Storage is full (usually base64 images). Strip images and retry so text/plans still persist.
     try {
@@ -419,10 +436,12 @@ function save(d, user) {
         })),
       }
       localStorage.setItem(key, JSON.stringify(stripped))
+      try { localStorage.setItem(`${key}:savedAt`, String(Date.now())) } catch {}
       console.warn('[Phasr] Board saved without images (storage quota reached).')
     } catch (e2) {
       console.warn('[Phasr] Board save failed even without images:', e2)
     }
+    return false
   }
 }
 
@@ -498,6 +517,20 @@ function addDays(date, days) {
 }
 
 const NON_NEGOTIABLE_DAY_OFFSETS = [0, 1, 2, 3] // Mon, Tue, Wed, Thu
+
+// The Monday of the current week is the right anchor most of the week, but
+// once "today" is already past the last offset day (Thursday), every
+// assigned date would land in the past — scheduling a non-negotiable for a
+// day that's already gone. Roll forward to next week's Monday in that case,
+// so a plan generated on a Friday/Saturday/Sunday always schedules into days
+// that haven't happened yet.
+function getNonNegotiableWindowStart(now = new Date()) {
+  const weekStart = getWeekStartDate(now)
+  const lastOffsetDay = addDays(weekStart, NON_NEGOTIABLE_DAY_OFFSETS[NON_NEGOTIABLE_DAY_OFFSETS.length - 1])
+  const today = new Date(now)
+  today.setHours(0, 0, 0, 0)
+  return today > lastOffsetDay ? addDays(weekStart, 7) : weekStart
+}
 
 function getCalendarUrl(taskText, pillarName, weekStartDate, dayIndex) {
   const taskDate = new Date(weekStartDate)
@@ -1468,7 +1501,18 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     // after this component already mounted from local cache. This quietly
     // folds in whatever it pulled down — a plain setState on the already-
     // mounted board, not a remount, so nothing here re-animates or flashes.
+    //
+    // Guarded by a recent-local-save check: the push half of the sync (see
+    // save() below) is fire-and-forget, so a hydrate pull can land — even on
+    // a fresh page load right after a refresh — before a very recent local
+    // edit (e.g. a photo upload) has actually reached Supabase. Without this
+    // guard, that pull fetches the still-old server copy and overwrites the
+    // correct just-edited local data with it, which is exactly what made a
+    // freshly-uploaded photo vanish on refresh. If this device saved locally
+    // in roughly the last half-minute, its copy is trusted over the pull —
+    // the async push already keeps Supabase converging toward it regardless.
     function refreshFromHydrate() {
+      if (wasSavedLocallyRecently(user)) return
       const saved = load(user)
       if (saved) setData(normalizeBoardData(saved))
     }
@@ -1562,7 +1606,10 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   function upd(fn) {
     setData(prev => {
       const next = normalizeBoardData(fn(JSON.parse(JSON.stringify(prev))))
-        save(next, user)
+        const savedWithImages = save(next, user)
+        if (!savedWithImages) {
+          setUploadMessage('Your board is too full to keep all photos saved on this device — the newest one may not survive a refresh. Try removing an older photo.')
+        }
         return next
       })
   }
@@ -1945,8 +1992,6 @@ Return JSON only:
 
   async function handleEditingToggle() {
     if (editing) {
-      setCalendarPromptArmed(true)
-      setShowSavePopup(true)
       const pillarsToGenerate = (phase?.pillars || []).filter(pillar => {
         const isDestination = pillar?.visionStyle === 'destination'
         const hasRequiredDescription = isDestination
@@ -1959,6 +2004,18 @@ Return JSON only:
         // Trigger the initial plan immediately once personalize data is saved.
         // eslint-disable-next-line no-await-in-loop
         await forceGeneratePlan(pillar.id, { forceNewApproach: false, attempt: 0 })
+      }
+      // "Schedule your week" only makes sense if there's actually something
+      // dated to schedule — re-read after generation (forceGeneratePlan saves
+      // through its own upd() calls, so the `phase` captured above is stale)
+      // and only show the popup when a pillar really has weekly non-negotiables.
+      const latestPhase = normalizeBoardData(load(user))?.phases?.find(item => item.id === phaseId)
+      const hasSchedulableActions = (latestPhase?.pillars || []).some(pl =>
+        Array.isArray(pl.weeklyActions) && pl.weeklyActions.some(action => cleanText(action))
+      )
+      if (hasSchedulableActions) {
+        setCalendarPromptArmed(true)
+        setShowSavePopup(true)
       }
       setEditing(false)
       return
@@ -2102,9 +2159,11 @@ Return JSON only:
     setCalendarBusy(true)
     try {
       // NON_NEGOTIABLE_DAY_OFFSETS assumes offset 0 = Monday, so this window
-      // must start on the actual Monday of the current week — anchoring to
-      // "today" mislabeled every scheduled day whenever today wasn't Monday.
-      const windowStart = getWeekStartDate(new Date())
+      // must start on the actual Monday of the current week (rolling to next
+      // week once today is already past Thursday, so nothing is scheduled
+      // into a day that's already gone) — anchoring to "today" directly
+      // mislabeled every scheduled day whenever today wasn't Monday.
+      const windowStart = getNonNegotiableWindowStart()
 
       const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
       const userId = getActiveUserId(user)
@@ -2523,7 +2582,7 @@ Return JSON only:
   // "Schedule your week" by then, so nothing is lost when it disappears.
   useEffect(() => {
     if (!showSavePopup) return undefined
-    const timer = window.setTimeout(() => setShowSavePopup(false), 5000)
+    const timer = window.setTimeout(() => setShowSavePopup(false), 60000)
     return () => window.clearTimeout(timer)
   }, [showSavePopup])
 
@@ -2627,7 +2686,7 @@ Return JSON only:
               marginLeft: isMobile ? 0 : 'auto',
               marginBottom: isMobile ? '0.5rem' : '0.7rem',
               borderRadius: 16,
-              background: '#fff',
+              background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)',
               border: '1px solid var(--app-border)',
               boxShadow: 'var(--app-shadow-md)',
               padding: '0.85rem 0.9rem',
@@ -2806,68 +2865,88 @@ Return JSON only:
                 </button>
               </div>
 
-              {editing && timelineEditorPhaseId === p.id && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                  onClick={event => event.stopPropagation()}
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    left: isMobile ? '50%' : (alignRight ? 'auto' : 0),
-                    right: isMobile ? 'auto' : (alignRight ? 0 : 'auto'),
-                    transform: 'none',
-                    width: isMobile ? 'min(220px, calc(100vw - 2.2rem))' : 'min(260px, calc(100vw - 2rem))',
-                    maxWidth: isMobile ? 'calc(100vw - 2.2rem)' : 'calc(100vw - 2rem)',
-                    background: '#fff',
-                    border: '1px solid var(--app-border)',
-                    borderRadius: 'var(--app-radius-md)',
-                    padding: isMobile ? '0.72rem' : '0.85rem',
-                    boxShadow: 'var(--app-shadow-lg)',
-                    zIndex: 30,
-                    marginLeft: isMobile ? '-110px' : 0,
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Set timeframe</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: '0.45rem', marginTop: '0.65rem' }}>
-                    <label style={{ display: 'grid', gap: '0.22rem' }}>
-                      <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--app-muted)' }}>Start date</span>
-                      <input
-                        type="date"
-                        value={draft.startDate || ''}
-                        onChange={e => updateTimelineDraft(p.id, 'startDate', e.target.value)}
-                        onClick={e => e.currentTarget.showPicker?.()}
-                        onFocus={e => e.currentTarget.showPicker?.()}
-                        style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
-                      />
-                    </label>
-                    <label style={{ display: 'grid', gap: '0.22rem' }}>
-                      <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--app-muted)' }}>End date</span>
-                      <input
-                        type="date"
-                        value={draft.endDate || ''}
-                        onChange={e => updateTimelineDraft(p.id, 'endDate', e.target.value)}
-                        onClick={e => e.currentTarget.showPicker?.()}
-                        onFocus={e => e.currentTarget.showPicker?.()}
-                        style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
-                      />
-                    </label>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: '0.5rem', marginTop: '0.7rem' }}>
-                    <span style={{ fontSize: isMobile ? '0.66rem' : '0.7rem', color: 'var(--app-muted)', fontWeight: 700, textAlign: isMobile ? 'center' : 'left' }}>
-                      {formatMonthRange(draft.startDate, draft.endDate)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => saveTimelineDraft(p.id)}
-                      style={{ border: '1px solid var(--app-border)', background: '#fff1f6', color: '#b85a82', borderRadius: 999, padding: isMobile ? '0.45rem 0.7rem' : '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", width: isMobile ? '100%' : 'auto' }}
-                    >
-                      Save
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+              {editing && timelineEditorPhaseId === p.id && (() => {
+                const panel = (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    onClick={event => event.stopPropagation()}
+                    style={
+                      isMobile
+                        ? {
+                            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+                            width: 'min(300px, calc(100vw - 2.2rem))',
+                            background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)',
+                            padding: '0.9rem', boxShadow: 'var(--app-shadow-lg)', zIndex: 60,
+                          }
+                        : {
+                            position: 'absolute', top: 'calc(100% + 8px)',
+                            left: alignRight ? 'auto' : 0, right: alignRight ? 0 : 'auto',
+                            width: 'min(260px, calc(100vw - 2rem))', maxWidth: 'calc(100vw - 2rem)',
+                            background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)',
+                            padding: '0.85rem', boxShadow: 'var(--app-shadow-lg)', zIndex: 30,
+                          }
+                    }
+                  >
+                    <p style={{ margin: 0, fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Set timeframe</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: '0.45rem', marginTop: '0.65rem' }}>
+                      <label style={{ display: 'grid', gap: '0.22rem' }}>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--app-muted)' }}>Start date</span>
+                        <input
+                          type="date"
+                          value={draft.startDate || ''}
+                          onChange={e => updateTimelineDraft(p.id, 'startDate', e.target.value)}
+                          onClick={e => e.currentTarget.showPicker?.()}
+                          onFocus={e => e.currentTarget.showPicker?.()}
+                          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+                        />
+                      </label>
+                      <label style={{ display: 'grid', gap: '0.22rem' }}>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--app-muted)' }}>End date</span>
+                        <input
+                          type="date"
+                          value={draft.endDate || ''}
+                          onChange={e => updateTimelineDraft(p.id, 'endDate', e.target.value)}
+                          onClick={e => e.currentTarget.showPicker?.()}
+                          onFocus={e => e.currentTarget.showPicker?.()}
+                          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+                        />
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: '0.5rem', marginTop: '0.7rem' }}>
+                      <span style={{ fontSize: isMobile ? '0.66rem' : '0.7rem', color: 'var(--app-muted)', fontWeight: 700, textAlign: isMobile ? 'center' : 'left' }}>
+                        {formatMonthRange(draft.startDate, draft.endDate)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => saveTimelineDraft(p.id)}
+                        style={{ border: '1px solid var(--app-border)', background: '#fff1f6', color: '#b85a82', borderRadius: 999, padding: isMobile ? '0.45rem 0.7rem' : '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", width: isMobile ? '100%' : 'auto' }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </motion.div>
+                )
+
+                if (!isMobile) return panel
+
+                // Mobile phase tabs scroll horizontally (overflowX: auto), and a
+                // scrolling ancestor clips any position:absolute child that
+                // extends past its box — which is exactly what made this pop
+                // up look "broken" (it was rendering, just invisible, clipped
+                // by the tab strip). A portal to the document body plus a
+                // fixed-position centered panel sidesteps that entirely.
+                return createPortal(
+                  <div
+                    onClick={() => setTimelineEditorPhaseId(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 59, background: 'rgba(20,10,15,0.35)' }}
+                  >
+                    {panel}
+                  </div>,
+                  document.body,
+                )
+              })()}
 
               {editing && data.phases.length > 1 && (
                 <button
@@ -3287,20 +3366,15 @@ Return JSON only:
 /* â"€â"€ Pillar Card â"€â"€ */
   function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, rowGroup, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-    const calendarWindowStart = useMemo(() => {
+    const calendarWindowStart = useMemo(() => (
       // NON_NEGOTIABLE_DAY_OFFSETS assumes offset 0 = Monday — this must anchor
-      // to the actual Monday of the current week (weekStartKey), not "today".
-      // Anchoring to today meant every assigned day was mislabeled whenever
-      // today wasn't Monday (e.g. a Sunday login showed Sunday's date under
-      // the "Monday" slot).
-      if (weekStartKey) {
-        const parsed = new Date(`${weekStartKey}T00:00:00`)
-        if (!Number.isNaN(parsed.getTime())) return parsed
-      }
-      const base = new Date()
-      base.setHours(0, 0, 0, 0)
-      return base
-    }, [weekStartKey])
+      // to the actual Monday of the current week, rolling forward to next week
+      // once today is already past Thursday (offset 3), so nothing gets
+      // scheduled into a day that's already passed. Anchoring to "today"
+      // directly used to mislabel every assigned day whenever today wasn't
+      // Monday (e.g. a Sunday login showed Sunday's date under the "Monday" slot).
+      getNonNegotiableWindowStart()
+    ), [])
     const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
     const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
     const isDestination = pl.visionStyle === 'destination'

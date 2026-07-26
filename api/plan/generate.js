@@ -17,7 +17,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'system_prompt and user_message are required' })
   }
 
-  const groqApiKey = process.env.GROQ_API_KEY
+  // Server-only. Vite only inlines VITE_-prefixed vars into the CLIENT bundle
+  // via import.meta.env — it never touches process.env reads like this one —
+  // so falling back to the legacy VITE_GROQ_KEY name here is safe.
+  const groqApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_KEY
   if (!groqApiKey) {
     return res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server' })
   }

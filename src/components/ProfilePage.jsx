@@ -280,13 +280,10 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
             <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#9a7088', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Tell Sage about yourself
             </label>
-            <p style={{ margin: '0 0 8px', fontSize: '0.76rem', color: '#9a7088', lineHeight: 1.5 }}>
-              Not a public bio — this is what Sage remembers about you. What are you working toward? What's one thing you struggle with? What keeps you motivated?
-            </p>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
-              placeholder="e.g. I tend to procrastinate when I'm overwhelmed, and I'm trying to build a business without burning out..."
+              placeholder="What should Sage know about you?"
               rows={4}
               style={{
                 width: '100%', boxSizing: 'border-box',
@@ -310,10 +307,8 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
             style={{
               width: '100%', minHeight: 48, borderRadius: 14,
               border: 'none',
-              background: saved
-                ? 'rgba(47,182,109,0.18)'
-                : 'linear-gradient(135deg,#f95f85,#ff8ca8)',
-              color: saved ? '#2fb66d' : '#fff',
+              background: 'linear-gradient(135deg,#f95f85,#ff8ca8)',
+              color: '#fff',
               fontWeight: 800, fontSize: '0.92rem',
               fontFamily: "'DM Sans',sans-serif",
               cursor: saving || saved ? 'default' : 'pointer',
