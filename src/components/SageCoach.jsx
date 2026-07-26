@@ -1062,7 +1062,7 @@ function ChatBubble({ role, children, onSpeak, onCopy, onEdit, onRerun }) {
             border: role === 'assistant' ? '1px solid var(--app-border)' : 'none',
             boxShadow: 'var(--app-shadow-sm)',
             color: role === 'user' ? '#fff' : 'var(--app-text)',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "'General Sans', sans-serif",
             fontSize: '0.84rem',
             lineHeight: 1.65,
             whiteSpace: 'pre-wrap',
@@ -1213,8 +1213,22 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
 }
 
+// Mobile browsers reserve real, variable screen space at the very bottom edge
+// (collapsing/expanding toolbar chrome, the iOS home-indicator gesture bar, and
+// any bottom-anchored nav/sheet UI the product adds later). 40px of clearance
+// keeps the bubble's resting spot out of that zone; desktop has no such chrome,
+// so it keeps the original tight default.
+const MOBILE_BUBBLE_BREAKPOINT = '(max-width: 768px)'
+const MOBILE_BUBBLE_BOTTOM_CLEARANCE = 40
+
+function isMobileBubbleViewport() {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(MOBILE_BUBBLE_BREAKPOINT).matches
+}
+
 function getDefaultBubblePosition() {
-  return { right: 24, bottom: 24 }
+  return isMobileBubbleViewport()
+    ? { right: 24, bottom: MOBILE_BUBBLE_BOTTOM_CLEARANCE }
+    : { right: 24, bottom: 24 }
 }
 
 function getPanelPosition(position, panelWidth = QUICK_WIDTH, panelHeight = QUICK_HEIGHT) {
@@ -1607,7 +1621,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             background: '#fff',
             color: 'var(--app-text)',
             cursor: 'pointer',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "'General Sans', sans-serif",
             fontWeight: 700,
           }}
         >
@@ -1705,7 +1719,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             borderRadius: 'var(--app-radius-sm)',
             padding: '0.55rem 0.75rem',
             outline: 'none',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "'General Sans', sans-serif",
             fontSize: isMobile ? 16 : '0.84rem',
             background: '#fff',
             color: 'var(--app-text)',
@@ -1734,7 +1748,7 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
             background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
             color: '#fff',
             cursor: 'pointer',
-            fontFamily: "'DM Sans', sans-serif",
+            fontFamily: "'General Sans', sans-serif",
             fontWeight: 800,
             position: 'relative',
             zIndex: 2,
@@ -1800,9 +1814,12 @@ export function QuickSageBubble() {
   function clampBubblePosition(nextRight, nextBottom) {
     const sidebarWidth = document.querySelector('.hamburger-menu-shell')?.getBoundingClientRect().width || 0
     const maxRight = Math.max(8, window.innerWidth - 68 - sidebarWidth - 12)
+    // Floor matches the mobile default's bottom clearance so a drag can never wedge
+    // the bubble back into the bottom-chrome/nav-safe zone the default was raised to avoid.
+    const minBottom = isMobileBubbleViewport() ? MOBILE_BUBBLE_BOTTOM_CLEARANCE : 8
     return {
       right: clamp(nextRight, 8, maxRight),
-      bottom: clamp(nextBottom, 8, Math.max(8, window.innerHeight - 68 - 8)),
+      bottom: clamp(nextBottom, minBottom, Math.max(minBottom, window.innerHeight - 68 - 8)),
     }
   }
 
@@ -2000,7 +2017,7 @@ export function QuickSageBubble() {
         {avatarUrl ? (
           <FemaleSageAvatar size={avatarSize} soft imageUrl={avatarUrl} />
         ) : (
-          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.08em', color: '#fff' }}>
+          <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.08em', color: '#fff' }}>
             SAGE
           </span>
         )}
@@ -2050,7 +2067,7 @@ function PromptRow({ children, onClick }) {
         justifyContent: 'space-between',
         gap: '1rem',
         cursor: 'pointer',
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'General Sans', sans-serif",
         textAlign: 'left',
       }}
     >
@@ -2082,7 +2099,7 @@ function VoiceButton({ listening, onClick, disabled = false }) {
           : 'var(--app-bg2)',
         color: listening ? '#fff' : 'var(--app-text)',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'General Sans', sans-serif",
         fontSize: '1rem',
         opacity: disabled ? 0.45 : 1,
         flexShrink: 0,
@@ -2469,7 +2486,7 @@ Action Steps
         height: 'calc(100vh - 56px)',
         background: 'var(--app-bg)',
         padding: '1rem',
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'General Sans', sans-serif",
         overflow: 'hidden',
       }}
     >
@@ -2506,7 +2523,7 @@ Action Steps
               padding: '0.6rem 1rem',
               fontWeight: 800,
               cursor: 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'General Sans', sans-serif",
               flexShrink: 0,
             }}
           >
@@ -2544,7 +2561,7 @@ Action Steps
                     color: 'var(--app-text)',
                     cursor: 'pointer',
                     textAlign: 'left',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'General Sans', sans-serif",
                     flexShrink: 0,
                   }}
                 >
@@ -2628,7 +2645,7 @@ Action Steps
                   padding: '0.6rem 0.9rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                 }}
               >
                 {prompt}
@@ -2724,7 +2741,7 @@ Action Steps
                 borderRadius: 16,
                 padding: '0.78rem 0.9rem',
                 outline: 'none',
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "'General Sans', sans-serif",
                 fontSize: '0.96rem',
                 lineHeight: 1.6,
                 background: '#fff',
@@ -2782,7 +2799,7 @@ Action Steps
                 background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
                 color: '#fff',
                 cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "'General Sans', sans-serif",
                 fontWeight: 800,
                 opacity: !input.trim() || loading ? 0.45 : 1,
               }}

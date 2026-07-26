@@ -948,36 +948,52 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden', paddingBottom: isMobile ? 0 : 0 }}>
       <div style={{ width: '100%', maxWidth: contentMaxWidth, margin: '0 auto', padding: pagePadding, boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          {phases.map((phase, index) => (
-            <motion.button
-              key={phase.id}
-              type="button"
-              onClick={() => handlePhaseChange(phase.id)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                minHeight: 44,
-                padding: '10px 18px',
-                borderRadius: 999,
-                border: phase.id === activePhaseId ? '1px solid transparent' : '1px solid #f2c8d6',
-                background: phase.id === activePhaseId ? `linear-gradient(135deg,${accent2},${accent})` : '#fff',
-                color: phase.id === activePhaseId ? '#fff' : 'var(--app-text)',
-                fontFamily: "'Syne', sans-serif",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {`Phase ${index + 1}`}
-            </motion.button>
-          ))}
+          {phases.length > 1 ? (
+            // Multiple phases: this row is a real switcher, keep it as-is.
+            phases.map((phase, index) => (
+              <motion.button
+                key={phase.id}
+                type="button"
+                onClick={() => handlePhaseChange(phase.id)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  minHeight: 44,
+                  padding: '10px 18px',
+                  borderRadius: 999,
+                  border: phase.id === activePhaseId ? '1px solid transparent' : '1px solid #f2c8d6',
+                  background: phase.id === activePhaseId ? `linear-gradient(135deg,${accent2},${accent})` : '#fff',
+                  color: phase.id === activePhaseId ? '#fff' : 'var(--app-text)',
+                  fontFamily: "'General Sans', sans-serif",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {`Phase ${index + 1}`}
+              </motion.button>
+            ))
+          ) : (
+            // Only one phase: a "Phase 1" pill here would just repeat the one
+            // already shown in the card below. Show something that's actually
+            // live instead — this week's real completion, not a static label.
+            <div style={{
+              minHeight: 44, padding: '10px 18px', borderRadius: 999,
+              border: '1px solid #f2c8d6', background: '#fff',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              fontFamily: "'General Sans', sans-serif", fontSize: 13, fontWeight: 700, color: 'var(--app-text)',
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: `linear-gradient(135deg,${accent2},${accent})`, flexShrink: 0 }} />
+              Week {activeWeek} · {weekPercent}% done
+            </div>
+          )}
         </div>
-
-        <div style={{ height: 16 }} />
 
         <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.65rem 0.75rem' : '1.1rem', marginBottom: '1rem', boxShadow: 'var(--app-shadow-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
-            <div style={{ width: isMobile ? 22 : 28, height: isMobile ? 22 : 28, borderRadius: '50%', background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, fontSize: isMobile ? '0.48rem' : '0.55rem', flexShrink: 0 }}>SAGE</div>
+            <div style={{ minHeight: isMobile ? 22 : 28, padding: isMobile ? '4px 12px' : '6px 16px', borderRadius: 999, border: '1px solid transparent', background: `linear-gradient(135deg,${accent2},${accent})`, color: '#fff', fontFamily: "'General Sans', sans-serif", fontSize: isMobile ? 12 : 13, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              {getPhaseLabel(activePhaseId)}
+            </div>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <motion.button
                 type="button"
@@ -999,7 +1015,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   fontWeight: 800,
                   letterSpacing: '0.01em',
                   cursor: weekComplete ? 'pointer' : 'not-allowed',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                   boxShadow: weekComplete && reflectionHover ? '0 12px 26px rgba(232,64,122,0.32)' : weekComplete ? '0 7px 16px rgba(232,64,122,0.18)' : 'none',
                   transform: weekComplete && reflectionHover ? 'translateY(-1px)' : 'translateY(0)',
                   transition: 'all 0.18s ease',
@@ -1012,7 +1028,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
           {!hasPillars && (
             <p style={{ margin: 0, fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              Add pillar activities in Vision Board to activate your streak.
+              Add pillar activities in Vision Board to activate your streak — that's what unlocks a Weekly Reflection with Sage every 7 days.
             </p>
           )}
           {hasPillars && isNewUser && (
@@ -1073,7 +1089,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           <div style={{ textAlign: 'center', padding: '1.5rem 1rem', border: '1px solid #f2c8d6', borderRadius: 'var(--app-radius-md)', background: '#fff6f9', marginBottom: '1rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '1rem', fontWeight: 700, color: '#3d1f2b', marginBottom: 8 }}>Set up your Vision Board first</p>
             <p style={{ fontSize: '0.82rem', color: '#7a5a66', lineHeight: 1.6, marginBottom: 12 }}>
-              Your daily tasks come from your pillar activities. Add them to your Vision Board to activate your streak.
+              Your daily tasks come from your pillar activities. Add them to your Vision Board to activate your streak and start earning a Weekly Reflection with Sage every 7 days.
             </p>
             <motion.button type="button" onClick={onOpenBoard} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ minHeight: 44, borderRadius: 999, border: `1px solid ${accent}`, background: 'transparent', color: accent, padding: '0.55rem 0.95rem', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
               Go to Vision Board
@@ -1238,7 +1254,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
                   borderRadius: 'var(--app-radius-sm)',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                   opacity: 1,
                 }}
               >

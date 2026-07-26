@@ -190,7 +190,18 @@ export default function AppRouter() {
     return saved === 'slate' ? 'slate' : 'rose'
   })
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Optimistic bootstrap: if a cached identity already exists (and the user
+  // hasn't explicitly signed out), render the app immediately with it instead
+  // of blocking on the Supabase network round-trip below. The effect further
+  // down still runs in the background to reconcile/upgrade the real session —
+  // if it turns out invalid, the existing branches handle that (unchanged);
+  // if it's valid, nothing visibly changes since the cached user already
+  // matches. Only a genuinely cold cache (or an explicit sign-out) keeps the
+  // loading gate up.
+  const [loading, setLoading] = useState(() => {
+    const cachedUserAtMount = getCachedUser()
+    return !(cachedUserAtMount && !hasExplicitSignOutIntent())
+  })
   const [onboarded, setOnboarded] = useState(false)
   const [welcomeDismissed, setWelcomeDismissed] = useState(false)
   const effectiveUser = user || (!hasExplicitSignOutIntent() ? getCachedUser() : null)
@@ -431,21 +442,54 @@ export default function AppRouter() {
   }
 
   if (loading) {
+    // Genuinely-cold-cache fallback only (see the loading initializer above) —
+    // hints at the shape of the app shell (nav rail, header, content blocks)
+    // instead of a blank centered spinner, so the wait doesn't read as broken.
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        background: 'var(--bg)',
-        color: 'var(--text)',
-        fontFamily: "'General Sans', sans-serif",
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <img src={phasrLogo} alt="" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: '0.75rem' }} />
-          <p style={{ fontFamily: "'Fraunces', serif", fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem' }}>PHASR</p>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-            {hasAuthRedirectParams() ? 'Signing you in...' : 'Loading your workspace...'}
-          </p>
+      <div
+        role="status"
+        aria-busy="true"
+        aria-label={hasAuthRedirectParams() ? 'Signing you in' : 'Loading your workspace'}
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          background: 'var(--bg)',
+        }}
+      >
+        <style>{`
+          @keyframes phasrSkeletonPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+          .phasr-skel-shape { animation: phasrSkeletonPulse 1.6s ease-in-out infinite; }
+          @media (prefers-reduced-motion: reduce) {
+            .phasr-skel-shape { animation: none; opacity: 0.8; }
+          }
+        `}</style>
+        <div
+          className="phasr-skel-shape"
+          style={{
+            width: 84,
+            flexShrink: 0,
+            minHeight: '100vh',
+            background: 'var(--bg2)',
+            borderRight: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            paddingTop: '1.25rem',
+          }}
+        >
+          <img src={phasrLogo} alt="" style={{ width: 28, height: 28, objectFit: 'contain', opacity: 0.85 }} />
+        </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem 2rem', minWidth: 0 }}>
+          <div
+            className="phasr-skel-shape"
+            style={{ height: 44, width: '40%', minWidth: 160, borderRadius: 10, background: 'var(--bg2)', border: '1px solid var(--border)' }}
+          />
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div className="phasr-skel-shape" style={{ flex: '1 1 220px', height: 110, borderRadius: 14, background: 'var(--bg2)', border: '1px solid var(--border)' }} />
+            <div className="phasr-skel-shape" style={{ flex: '1 1 220px', height: 110, borderRadius: 14, background: 'var(--bg2)', border: '1px solid var(--border)' }} />
+            <div className="phasr-skel-shape" style={{ flex: '1 1 220px', height: 110, borderRadius: 14, background: 'var(--bg2)', border: '1px solid var(--border)' }} />
+          </div>
+          <div className="phasr-skel-shape" style={{ flex: 1, minHeight: 220, borderRadius: 16, background: 'var(--bg2)', border: '1px solid var(--border)' }} />
         </div>
       </div>
     )

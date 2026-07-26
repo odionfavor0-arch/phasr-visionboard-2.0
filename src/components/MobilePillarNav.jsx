@@ -66,7 +66,7 @@ export default function MobilePillarNav({ pillars = [], activePillarId, onSwitch
               fontSize: '0.75rem',
               fontWeight: 600,
               cursor: 'pointer',
-              fontFamily: "'DM Sans', sans-serif",
+              fontFamily: "'General Sans', sans-serif",
               transition: 'all 0.18s',
               whiteSpace: 'nowrap',
             }}
@@ -124,7 +124,7 @@ export default function MobilePillarNav({ pillars = [], activePillarId, onSwitch
             }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--app-border)', margin: '0 auto 1rem' }} />
-            <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-muted)', marginBottom: '0.75rem', fontFamily: "'DM Sans',sans-serif" }}>
+            <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-muted)', marginBottom: '0.75rem', fontFamily: "'General Sans',sans-serif" }}>
               Switch focus area
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
@@ -145,7 +145,7 @@ export default function MobilePillarNav({ pillars = [], activePillarId, onSwitch
                     fontSize: '0.82rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'General Sans', sans-serif",
                     textAlign: 'left',
                   }}
                 >

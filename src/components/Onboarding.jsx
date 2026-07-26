@@ -10,12 +10,17 @@ const PILLAR_PRESETS = [
   { id: 'personal-growth', emoji: '🌱', name: 'Personal Growth', details: 'Learning, creativity, self-development' },
 ]
 
+const BOARD_TYPE_OPTIONS = [
+  { id: 'transformation', name: 'Transformation Board', details: "Two photos side by side — where you are and where you're going." },
+  { id: 'destination', name: 'Destination Board', details: "One photo, full width — where you're going." },
+]
+
 const slides = [
   { id: 'phasr', kicker: '', headline: 'Break your vision into phases, daily tasks, and real accountability.', body: 'PHASR turns your vision into phases, daily tasks, and real accountability. Let\'s set up your first phase.', detail: 'A personal system built for follow-through.', theme: 'dark' },
   { id: 'sage', kicker: 'Sage', headline: 'Find what matters next', body: 'Sage helps you think clearly, remove doubt, and turn reflection into focused action.', detail: 'Clarity turns into direction.', theme: 'deep' },
-  { id: 'about-me', kicker: 'About You', headline: 'Tell Sage about yourself', body: 'A photo and a few honest lines — not a public bio. This is what Sage remembers about you going forward.', theme: 'deep', isCustom: true },
-  { id: 'vision', kicker: 'Vision Board', headline: 'Show it what you want. It builds the road.', body: 'Upload your before and after. PHASR turns that vision into resources, non-negotiables, and outcomes.', detail: 'Your vision becomes a working plan.', theme: 'roseBright' },
+  { id: 'vision', kicker: 'Vision Board', headline: 'Show it what you want. It builds the road.', body: 'Pick how you want to see your progress. PHASR turns that vision into resources, non-negotiables, and outcomes.', theme: 'roseBright', isCustom: true },
   { id: 'pillars', kicker: 'Your Focus', headline: 'What are you working on?', body: 'Pick your focus areas. PHASR will build your plan around them.', theme: 'rose', isCustom: true },
+  { id: 'about-me', kicker: 'About You', headline: 'Tell Sage about yourself', body: 'Sage knows your focus areas now. Add a photo and a few honest lines, not a public bio, and it\'ll remember this about you going forward.', theme: 'deep', isCustom: true },
   { id: 'letter', kicker: 'Letter to Future You', headline: 'Write to the version of you who finishes this.', body: 'You will see this again when you complete your first phase.', theme: 'dark', isCustom: true },
   { id: 'close', kicker: '', headline: 'You have the goal. Now you have the plan.', body: 'Would you like to sync PHASR with your calendar so your plan lives where your day already does?', detail: '', theme: 'light', isClose: true },
 ]
@@ -42,15 +47,6 @@ function PreviewCard({ slide, theme, isPhone }) {
       <div style={commonCard}>
         <div style={{ fontFamily: "'Fraunces', serif", fontSize: isPhone ? '3.1rem' : 'clamp(3.4rem,8vw,5.8rem)', lineHeight: 0.9, textAlign: 'center', letterSpacing: '-0.05em' }}>PHASR</div>
         <p style={{ margin: '16px 0 0', textAlign: 'center', fontSize: '0.92rem', lineHeight: 1.6 }}>Clear structure for consistent action.</p>
-      </div>
-    )
-  }
-
-  if (slide.id === 'vision') {
-    return (
-      <div style={{ ...commonCard, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 14 }}>
-        <div style={{ minHeight: isPhone ? 140 : 180, borderRadius: 22, padding: 14, display: 'flex', alignItems: 'flex-end', fontWeight: 700, background: 'linear-gradient(135deg,#d2c4cb,#bcaab2)', color: '#5d4050' }}><span>Before</span></div>
-        <div style={{ minHeight: isPhone ? 140 : 180, borderRadius: 22, padding: 14, display: 'flex', alignItems: 'flex-end', fontWeight: 700, background: 'linear-gradient(135deg,#ef6d9c,#c83068)', color: '#fff' }}><span>After</span></div>
       </div>
     )
   }
@@ -102,6 +98,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   const [letterSealed, setLetterSealed] = useState(false)
   const [aboutMeText, setAboutMeText] = useState('')
   const [aboutMePhoto, setAboutMePhoto] = useState('')
+  const [boardType, setBoardType] = useState('transformation')
 
   const slide = slides[step] || slides[0]
   const theme = themes[slide.theme] || themes.dark
@@ -149,6 +146,9 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   }
 
   function next() {
+    if (slide.id === 'vision') {
+      try { localStorage.setItem('phasr_onboarding_board_type', boardType) } catch {}
+    }
     if (slide.id === 'pillars') {
       if (selectedPillars.length === 0) return
       savePillars()
@@ -253,6 +253,52 @@ export default function Onboarding({ userName = 'there', onComplete }) {
               <div style={{ position: isPhone ? 'fixed' : 'static', bottom: isPhone ? 10 : 'auto', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', marginTop: isPhone ? 0 : 24, display: 'flex', justifyContent: 'space-between', gap: 12, width: isPhone ? 'calc(100% - 24px)' : '100%', maxWidth: 580, zIndex: 4 }}>
                 <button type="button" onClick={back} style={{ ...ghostButton, color: theme.text, borderColor: theme.border }}>Back</button>
                 <button type="button" onClick={next} disabled={!canProceed} style={{ ...primaryButton, opacity: canProceed ? 1 : 0.45 }}>Continue</button>
+              </div>
+            </div>
+
+          ) : slide.id === 'vision' ? (
+            /* Vision board type selection slide */
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0, overflowY: 'auto', paddingBottom: isPhone ? 120 : 0 }}>
+              <div className="ob-fade-up ob-delay-1" style={{ width: '100%', maxWidth: 560, textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', minHeight: 34, padding: '0.38rem 0.85rem', borderRadius: 999, border: `1px solid ${theme.border}`, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', background: theme.panel, marginBottom: 14 }}>
+                  {slide.kicker}
+                </div>
+                <h1 style={{ margin: '0 0 12px', fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.4rem' : 'clamp(2.6rem,6vw,4.2rem)', lineHeight: 1, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
+                <p style={{ margin: '0 0 24px', fontSize: '0.96rem', lineHeight: 1.65, color: theme.muted }}>{slide.body}</p>
+              </div>
+              <div className="ob-fade-up ob-delay-2" style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr' : 'repeat(2,1fr)', gap: 14, width: '100%', maxWidth: 560 }}>
+                {BOARD_TYPE_OPTIONS.map(opt => {
+                  const active = boardType === opt.id
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setBoardType(opt.id)}
+                      style={{
+                        padding: '18px 16px', borderRadius: 20, border: active ? 'none' : `1px solid ${theme.border}`,
+                        background: active ? 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))' : theme.panel,
+                        color: active ? '#fff' : theme.text, cursor: 'pointer', fontFamily: "'General Sans',sans-serif",
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center',
+                        transition: 'all 0.18s', boxShadow: active ? '0 10px 24px rgba(232,64,122,0.28)' : 'none',
+                      }}
+                    >
+                      {opt.id === 'transformation' ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, width: '100%', maxWidth: 160 }}>
+                          <div style={{ height: 44, borderRadius: 10, background: active ? 'rgba(255,255,255,0.28)' : 'rgba(240,96,144,0.14)' }} />
+                          <div style={{ height: 44, borderRadius: 10, background: active ? 'rgba(255,255,255,0.5)' : 'rgba(240,96,144,0.32)' }} />
+                        </div>
+                      ) : (
+                        <div style={{ width: '100%', maxWidth: 160, height: 44, borderRadius: 10, background: active ? 'rgba(255,255,255,0.4)' : 'rgba(240,96,144,0.24)' }} />
+                      )}
+                      <span style={{ fontSize: '0.92rem', fontWeight: 800, lineHeight: 1.2 }}>{opt.name}</span>
+                      <span style={{ fontSize: '0.76rem', opacity: 0.85, lineHeight: 1.4 }}>{opt.details}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ position: isPhone ? 'fixed' : 'static', bottom: isPhone ? 10 : 'auto', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', marginTop: isPhone ? 0 : 24, display: 'flex', justifyContent: 'space-between', gap: 12, width: isPhone ? 'calc(100% - 24px)' : '100%', maxWidth: 560, zIndex: 4 }}>
+                <button type="button" onClick={back} style={{ ...ghostButton, color: theme.text, borderColor: theme.border }}>Back</button>
+                <button type="button" onClick={next} style={primaryButton}>Continue</button>
               </div>
             </div>
 
@@ -361,7 +407,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
             </div>
 
           ) : (
-            /* Regular slides (phasr, sage, vision) */
+            /* Regular slides (phasr, sage) */
             <>
               <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', alignItems: 'center', gap: isMobile ? 16 : 48, overflowY: isPhone ? 'auto' : 'visible', paddingBottom: isPhone ? 120 : 0 }}>
                 <div className="ob-fade-up ob-delay-1" style={{ display: 'flex', justifyContent: 'center' }}>

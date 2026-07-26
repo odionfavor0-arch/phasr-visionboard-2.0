@@ -257,7 +257,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                   <Sparkles size={14} />
                   Welcome
                 </div>
-                <h1 style={{ margin: '1rem 0 0.75rem', fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 'clamp(2.2rem, 5vw, 4rem)', lineHeight: 1.03, color: 'var(--app-text)' }}>
+                <h1 style={{ margin: '1rem 0 0.75rem', fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 'clamp(2.2rem, 5vw, 4rem)', lineHeight: 1.03, color: 'var(--app-text)' }}>
                   Hello, welcome to phasr.
                 </h1>
                 <p style={{ margin: 0, fontSize: '1rem', lineHeight: 1.8, color: 'var(--app-muted)', maxWidth: 540 }}>
@@ -322,7 +322,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                   padding: '1rem 1.1rem',
                   background: '#fff',
                   color: '#b74872',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                   fontWeight: 800,
                   fontSize: '1.05rem',
                   letterSpacing: '0.01em',
@@ -345,7 +345,7 @@ export default function OnboardingFlow({ user, onComplete }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <div>
                 <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Mini talk</p>
-                <h2 style={{ margin: '0.35rem 0 0', fontFamily: "'Syne', sans-serif", fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', color: 'var(--app-text)' }}>
+                <h2 style={{ margin: '0.35rem 0 0', fontFamily: "'Fraunces', serif", fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', color: 'var(--app-text)' }}>
                   See how your flow works
                 </h2>
               </div>
@@ -369,7 +369,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                   padding: '0.8rem 1.05rem',
                   background: '#fff',
                   color: 'var(--app-text)',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                   fontWeight: 700,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -397,7 +397,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                   padding: '0.82rem 1.08rem',
                   background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
                   color: '#fff',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -438,7 +438,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                 <CalendarDays size={28} />
               </div>
               <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Calendar</p>
-              <h2 style={{ margin: 0, fontFamily: "'Syne', sans-serif", fontSize: 'clamp(1.65rem, 3vw, 2.7rem)', lineHeight: 1.08, color: 'var(--app-text)' }}>
+              <h2 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: 'clamp(1.65rem, 3vw, 2.7rem)', lineHeight: 1.08, color: 'var(--app-text)' }}>
                 Would you like to integrate PHASR with your phone calendar?
               </h2>
               <p style={{ margin: 0, color: 'var(--app-muted)', lineHeight: 1.8 }}>
@@ -480,7 +480,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                     padding: '1rem 1.1rem',
                     background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
                     color: '#fff',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'General Sans', sans-serif",
                     fontWeight: 800,
                     fontSize: '1.05rem',
                     letterSpacing: '0.01em',
@@ -499,7 +499,7 @@ export default function OnboardingFlow({ user, onComplete }) {
                     padding: '1rem 1.1rem',
                     background: '#fff',
                     color: 'var(--app-text)',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "'General Sans', sans-serif",
                     fontWeight: 600,
                     fontSize: '0.95rem',
                     cursor: busy ? 'wait' : 'pointer',

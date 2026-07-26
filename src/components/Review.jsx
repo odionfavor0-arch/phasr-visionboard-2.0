@@ -149,32 +149,34 @@ function WeeklyReflectionCard({ entry, phase, defaultOpen = false }) {
           <p style={{ margin: 0, fontSize: '0.85rem', color: '#4d3142', lineHeight: 1.6 }}>{entry.sageResponse}</p>
         </div>
       )}
-      <button type="button" onClick={openSageFloat} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <button type="button" onClick={openSageFloat} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         Continue with Sage <ArrowRight size={13} />
       </button>
     </div>
   )
 }
 
-// Closed by default — a week is a title bar until tapped open, so a long
-// history reads as a list of dates, not a wall of paragraphs.
-function PastReflectionRow({ entry, phase }) {
-  const [open, setOpen] = useState(false)
+// Closed by default — a week is a title bar (week, phase, date) until tapped
+// open, so hundreds of reflections stack as a list of rows on mobile, not a
+// wall of paragraphs. This applies to every entry, current week included —
+// nothing forces itself open just for being the newest.
+function ReflectionRow({ entry, phase, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
     <div style={{ border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', overflow: 'hidden' }}>
       <button
         type="button"
         onClick={() => setOpen(current => !current)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', padding: '0.7rem 0.9rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans',sans-serif" }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', padding: '0.7rem 0.9rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'General Sans',sans-serif" }}
       >
         <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--app-text)' }}>
-          Week {entry?.weeklyPulseMeta?.weekNumber || '?'} · {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          Week {entry?.weeklyPulseMeta?.weekNumber || '?'} · {entry?.weeklyPulseMeta?.phaseName || phase?.name} · {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
         </span>
         <ChevronRight size={15} color="var(--app-muted)" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease', flexShrink: 0 }} />
       </button>
       {open && (
         <div style={{ padding: '0 0.9rem 0.9rem' }}>
-          <WeeklyReflectionCard entry={entry} phase={phase} />
+          <WeeklyReflectionCard entry={entry} phase={phase} defaultOpen />
         </div>
       )}
     </div>
@@ -209,9 +211,9 @@ function WeeklyReflection({ user, boardData, phase, onOpenJournal }) {
           Showing your most recent reflection — week {mostRecent?.weeklyPulseMeta?.weekNumber || '?'}. This week's isn't written yet.
         </div>
       )}
-      <WeeklyReflectionCard entry={mostRecent} phase={phase} defaultOpen />
+      <ReflectionRow entry={mostRecent} phase={phase} />
       {onOpenJournal && (
-        <button type="button" onClick={onOpenJournal} style={{ alignSelf: 'flex-start', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <button type="button" onClick={onOpenJournal} style={{ alignSelf: 'flex-start', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           Open in Journal <ArrowRight size={13} />
         </button>
       )}
@@ -222,7 +224,7 @@ function WeeklyReflection({ user, boardData, phase, onOpenJournal }) {
             Past reflections
           </p>
           {pastEntries.map(entry => (
-            <PastReflectionRow key={entry.id || entry.date} entry={entry} phase={phase} />
+            <ReflectionRow key={entry.id || entry.date} entry={entry} phase={phase} />
           ))}
         </div>
       )}
@@ -422,7 +424,7 @@ function QuestionField({ label, hint, value, onChange, placeholder = 'In your ow
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          style={{ width: '100%', padding: '0.55rem 2.6rem 0.55rem 0.7rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, fontFamily: "'DM Sans',sans-serif", fontSize: '0.82rem', color: '#fff', background: 'rgba(255,255,255,0.08)', outline: 'none', resize: 'vertical' }}
+          style={{ width: '100%', padding: '0.55rem 2.6rem 0.55rem 0.7rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, fontFamily: "'General Sans',sans-serif", fontSize: '0.82rem', color: '#fff', background: 'rgba(255,255,255,0.08)', outline: 'none', resize: 'vertical' }}
         />
         <button
           type="button"
@@ -457,7 +459,7 @@ function QuestionsStep({ pillar, answers, setAnswers, onNext }) {
         <button
           type="button"
           onClick={onNext}
-          style={{ width: '100%', padding: '0.85rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f78fb0,#f06090)', color: '#fff', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+          style={{ width: '100%', padding: '0.85rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f78fb0,#f06090)', color: '#fff', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif" }}
         >
           Next
         </button>
@@ -489,17 +491,17 @@ function DecisionStep({ pillar, onEditAnswers, onDecide }) {
       <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '1rem' }}>
         {pillar?.name}
       </p>
-      <p style={{ color: '#fff', fontSize: 'clamp(1.15rem,4vw,1.5rem)', fontFamily: "'Playfair Display',serif", lineHeight: 1.4, marginBottom: '1.6rem' }}>
+      <p style={{ color: '#fff', fontSize: 'clamp(1.15rem,4vw,1.5rem)', fontFamily: "'Fraunces',serif", lineHeight: 1.4, marginBottom: '1.6rem' }}>
         Continue this journey toward a bigger goal, or end it here?
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%' }}>
-        <button type="button" onClick={() => onDecide('continue')} style={{ padding: '0.85rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f78fb0,#f06090)', color: '#fff', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+        <button type="button" onClick={() => onDecide('continue')} style={{ padding: '0.85rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f78fb0,#f06090)', color: '#fff', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif" }}>
           Continue this journey
         </button>
-        <button type="button" onClick={() => onDecide('end')} style={{ padding: '0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.25)', background: 'transparent', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+        <button type="button" onClick={() => onDecide('end')} style={{ padding: '0.85rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.25)', background: 'transparent', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif" }}>
           End it here
         </button>
-        <button type="button" onClick={onEditAnswers} style={{ padding: '0.5rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: '0.76rem', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+        <button type="button" onClick={onEditAnswers} style={{ padding: '0.5rem', border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: '0.76rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif" }}>
           Edit my answers
         </button>
       </div>
@@ -549,7 +551,7 @@ Return plain text only, no headers.`
       render: () => (
         <>
           <Gift size={38} color="#f78fb0" />
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.5rem,5vw,2.2rem)', color: '#fff', margin: '1rem 0 0.4rem' }}>{pillar?.name} is complete.</h1>
+          <h1 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.5rem,5vw,2.2rem)', color: '#fff', margin: '1rem 0 0.4rem' }}>{pillar?.name} is complete.</h1>
           <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.92rem' }}>Here's the journey.</p>
         </>
       ),
@@ -558,7 +560,7 @@ Return plain text only, no headers.`
       render: () => (
         <>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Follow-through</p>
-          <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(3rem,12vw,5rem)', color: '#fff', margin: '0.3rem 0' }}>{stats.rate}%</p>
+          <p style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(3rem,12vw,5rem)', color: '#fff', margin: '0.3rem 0' }}>{stats.rate}%</p>
           <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.92rem' }}>{stats.totalCompleted} of {stats.totalTarget} weekly actions, across {stats.weeksTouched} week{stats.weeksTouched === 1 ? '' : 's'}</p>
         </>
       ),
@@ -567,7 +569,7 @@ Return plain text only, no headers.`
       render: () => (
         <>
           <Flame size={30} color="#f78fb0" />
-          <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(2.6rem,10vw,4.5rem)', color: '#fff', margin: '0.3rem 0' }}>{stats.bestStreak}</p>
+          <p style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(2.6rem,10vw,4.5rem)', color: '#fff', margin: '0.3rem 0' }}>{stats.bestStreak}</p>
           <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.92rem' }}>day best streak this phase</p>
         </>
       ),
@@ -578,7 +580,7 @@ Return plain text only, no headers.`
           <BookOpen size={30} color="#f78fb0" />
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '1rem 0 0.6rem' }}>The pattern</p>
           {synthesis ? (
-            <p style={{ color: '#fff', fontSize: '1.02rem', lineHeight: 1.6, fontFamily: "'Playfair Display',serif", fontStyle: 'italic' }}>{synthesis}</p>
+            <p style={{ color: '#fff', fontSize: '1.02rem', lineHeight: 1.6, fontFamily: "'Fraunces',serif", fontStyle: 'italic' }}>{synthesis}</p>
           ) : (
             <button type="button" disabled={busy} onClick={generateSynthesis} style={{ padding: '0.7rem 1.4rem', borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f78fb0,#f06090)', color: '#fff', fontWeight: 800, cursor: busy ? 'wait' : 'pointer' }}>
               {busy ? 'Sage is thinking...' : 'Reveal the pattern'}
@@ -744,7 +746,7 @@ function ReviewTab({ user, boardData, phase }) {
           key={pillar.id}
           type="button"
           onClick={() => setOpenPillarId(pillar.id)}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '1rem 1.1rem', boxShadow: 'var(--app-shadow-sm)', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '1rem 1.1rem', boxShadow: 'var(--app-shadow-sm)', cursor: 'pointer', fontFamily: "'General Sans',sans-serif" }}
         >
           <div>
             <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--app-text)' }}>{pillar.name}</p>
@@ -777,7 +779,7 @@ function ReviewTab({ user, boardData, phase }) {
 function PillarReviewSummary({ phase, pillar, review, onBack }) {
   return (
     <div style={{ background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '1.1rem', boxShadow: 'var(--app-shadow-sm)', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-      <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, padding: 0, fontFamily: "'DM Sans',sans-serif" }}>
+      <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, padding: 0, fontFamily: "'General Sans',sans-serif" }}>
         <ChevronLeft size={14} /> Back
       </button>
       <div>
@@ -806,7 +808,7 @@ function PastPillarRow({ user, phase, pillar, isActivePhase, engine, onOpenRevie
         <button
           type="button"
           onClick={() => onOpenReview(pillar, review)}
-          style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", display: 'inline-flex', alignItems: 'center', gap: 3 }}
+          style={{ border: 'none', background: 'transparent', color: 'var(--app-accent)', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", display: 'inline-flex', alignItems: 'center', gap: 3 }}
         >
           {review.decision === 'continue' ? 'Continuing' : 'Ended'} <ChevronRight size={13} />
         </button>
@@ -844,7 +846,7 @@ function PastList({ user, boardData }) {
             <button
               type="button"
               onClick={() => setExpandedPhaseId(expanded ? null : phase.id)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.9rem 1rem', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.9rem 1rem', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: "'General Sans',sans-serif" }}
             >
               <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--app-text)' }}>{phase.name}{isActivePhase ? ' · current' : ''}</span>
               <ChevronRight size={16} color="var(--app-muted)" style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
@@ -885,6 +887,7 @@ const TABS = [
 
 export default function Review({ user, onOpenBoard, onOpenJournal }) {
   const [tab, setTab] = useState('reflection')
+  const [tabMenuOpen, setTabMenuOpen] = useState(false)
   const [boardData, setBoardData] = useState(() => loadBoardData())
 
   useEffect(() => {
@@ -899,11 +902,23 @@ export default function Review({ user, onOpenBoard, onOpenJournal }) {
     }
   }, [])
 
+  // Native <select> option-list popups can't be themed on Windows Chrome/Edge —
+  // the OS paints hovered/selected rows in default blue no matter what CSS says.
+  // This closes the app-controlled dropdown on Escape while it's open.
+  useEffect(() => {
+    if (!tabMenuOpen) return
+    const onKeyDown = e => {
+      if (e.key === 'Escape') setTabMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [tabMenuOpen])
+
   const phase = useMemo(() => getActivePhase(boardData), [boardData])
   const hasPillar = (phase?.pillars || []).some(p => cleanText(p.beforeDesc) || cleanText(p.afterDesc))
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'General Sans',sans-serif" }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
         {/* One section picker, not a page title stacked on top of a 4-button row where
             one of the buttons is *also* labeled "Review" — confusing, and it ate space
@@ -911,10 +926,12 @@ export default function Review({ user, onOpenBoard, onOpenJournal }) {
             here is the only chrome above it; that section then fills the rest of the page. */}
         <div style={{ position: 'relative', marginBottom: '1.2rem' }}>
           <Compass size={16} color="var(--app-accent)" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          <select
-            value={tab}
-            onChange={e => setTab(e.target.value)}
+          <button
+            type="button"
+            onClick={() => setTabMenuOpen(o => !o)}
             aria-label="Choose review section"
+            aria-haspopup="listbox"
+            aria-expanded={tabMenuOpen}
             style={{
               width: '100%',
               minHeight: 48,
@@ -923,19 +940,79 @@ export default function Review({ user, onOpenBoard, onOpenJournal }) {
               border: '1px solid var(--app-border)',
               background: '#fff',
               color: 'var(--app-text)',
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "'General Sans',sans-serif",
               fontSize: '0.92rem',
               fontWeight: 700,
               cursor: 'pointer',
-              appearance: 'none',
-              WebkitAppearance: 'none',
+              textAlign: 'left',
             }}
           >
-            {TABS.map(t => (
-              <option key={t.id} value={t.id}>{t.label}</option>
-            ))}
-          </select>
-          <ChevronRight size={16} color="var(--app-muted)" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none' }} />
+            {TABS.find(t => t.id === tab)?.label || 'Choose section'}
+          </button>
+          <ChevronRight size={16} color="var(--app-muted)" style={{ position: 'absolute', right: 16, top: '50%', transform: `translateY(-50%) rotate(${tabMenuOpen ? -90 : 90}deg)`, pointerEvents: 'none', transition: 'transform 0.15s ease' }} />
+
+          <AnimatePresence>
+            {tabMenuOpen && (
+              <>
+                <div
+                  onClick={() => setTabMenuOpen(false)}
+                  style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'transparent' }}
+                />
+                <motion.div
+                  role="listbox"
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    left: 0,
+                    right: 0,
+                    zIndex: 41,
+                    background: '#fff',
+                    border: '1px solid var(--app-border)',
+                    borderRadius: 'var(--app-radius-md)',
+                    boxShadow: 'var(--app-shadow-md)',
+                    padding: '0.4rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.15rem',
+                  }}
+                >
+                  {TABS.map(t => {
+                    const isActive = t.id === tab
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
+                        onClick={() => { setTab(t.id); setTabMenuOpen(false) }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.6rem 0.8rem',
+                          borderRadius: 'var(--app-radius-sm)',
+                          border: 'none',
+                          background: isActive ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'transparent',
+                          color: isActive ? '#fff' : 'var(--app-text)',
+                          fontFamily: "'General Sans',sans-serif",
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--app-bg2)' }}
+                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                      >
+                        {t.label}
+                      </button>
+                    )
+                  })}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         {!hasPillar ? (

@@ -293,15 +293,15 @@ export default function JournalEntries({ onBack }) {
   }, [activeId])
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: '#ffffff', padding: '1.25rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: '#ffffff', padding: '1.25rem 1rem 4rem', fontFamily: "'General Sans', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: '1320px', margin: '0 auto', display: 'grid', gap: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: 'clamp(1.9rem,4vw,2.7rem)', color: '#2e1e28' }}>All journal entries</h1>
+            <h1 style={{ margin: 0, fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 'clamp(1.9rem,4vw,2.7rem)', color: '#2e1e28' }}>All journal entries</h1>
           </div>
           <button
             onClick={onBack}
-            style={{ minHeight: 44, borderRadius: 14, border: '1px solid #efd6de', background: '#fff7fa', color: '#7a4c61', padding: '0.75rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+            style={{ minHeight: 44, borderRadius: 14, border: '1px solid #efd6de', background: '#fff7fa', color: '#7a4c61', padding: '0.75rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'General Sans', sans-serif" }}
           >
             Back to Journal
           </button>
@@ -334,7 +334,7 @@ export default function JournalEntries({ onBack }) {
                       background: 'transparent',
                       padding: 0,
                       cursor: 'pointer',
-                      fontFamily: "'DM Sans', sans-serif",
+                      fontFamily: "'General Sans', sans-serif",
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
@@ -409,7 +409,7 @@ export default function JournalEntries({ onBack }) {
                   color: '#c5537f',
                   fontWeight: 800,
                   cursor: 'pointer',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "'General Sans', sans-serif",
                 }}
               >
                 {showAllEntries ? 'Show less' : 'See all entries'}
@@ -429,13 +429,13 @@ export default function JournalEntries({ onBack }) {
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
                       onClick={saveEdit}
-                      style={{ minHeight: 38, borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f65f96,#e0406a)', color: '#fff', padding: '0.5rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                      style={{ minHeight: 38, borderRadius: 999, border: 'none', background: 'linear-gradient(135deg,#f65f96,#e0406a)', color: '#fff', padding: '0.5rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'General Sans', sans-serif" }}
                     >
                       Save changes
                     </button>
                     <button
                       onClick={cancelEdit}
-                      style={{ minHeight: 38, borderRadius: 999, border: '1px solid #efd6de', background: '#fff', color: '#7a4c61', padding: '0.5rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                      style={{ minHeight: 38, borderRadius: 999, border: '1px solid #efd6de', background: '#fff', color: '#7a4c61', padding: '0.5rem 1rem', fontWeight: 800, cursor: 'pointer', fontFamily: "'General Sans', sans-serif" }}
                     >
                       Cancel
                     </button>
@@ -473,7 +473,7 @@ export default function JournalEntries({ onBack }) {
                         borderRadius: 999,
                         fontWeight: 700,
                         cursor: 'pointer',
-                        fontFamily: "'DM Sans', sans-serif",
+                        fontFamily: "'General Sans', sans-serif",
                       }}
                     >
                       {expandedSage ? 'View less' : 'View more'}
@@ -495,7 +495,7 @@ export default function JournalEntries({ onBack }) {
                       autoCorrect="on"
                       spellCheck
                       ref={editTextareaRef}
-                      style={{ width: '100%', border: '1px solid #efd6de', borderRadius: 12, padding: '0.75rem 0.8rem', fontFamily: "'DM Sans', sans-serif", fontSize: '0.92rem', color: '#5f4450', lineHeight: 1.7, resize: 'vertical', background: '#fff' }}
+                      style={{ width: '100%', border: '1px solid #efd6de', borderRadius: 12, padding: '0.75rem 0.8rem', fontFamily: "'General Sans', sans-serif", fontSize: '0.92rem', color: '#5f4450', lineHeight: 1.7, resize: 'vertical', background: '#fff' }}
                     />
                   ) : (
                     <>
@@ -525,7 +525,7 @@ export default function JournalEntries({ onBack }) {
                             borderRadius: 999,
                             fontWeight: 700,
                             cursor: 'pointer',
-                            fontFamily: "'DM Sans', sans-serif",
+                            fontFamily: "'General Sans', sans-serif",
                           }}
                         >
                           {expandedDetail ? 'View less' : 'View more'}

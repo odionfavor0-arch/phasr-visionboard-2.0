@@ -203,7 +203,7 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
           >
             <ArrowLeft size={17} strokeWidth={2.4} />
           </button>
-          <p style={{ margin: 0, fontFamily: "'Syne',sans-serif", fontSize: '1.05rem', fontWeight: 700, color: '#4d3142' }}>
+          <p style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: '1.05rem', fontWeight: 700, color: '#4d3142' }}>
             Your Profile
           </p>
         </div>
@@ -230,7 +230,7 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
                 width: 88, height: 88, borderRadius: '50%',
                 background: 'linear-gradient(135deg,var(--app-accent2,#ff8ca8),var(--app-accent,#f95f85))',
                 color: '#fff', display: 'grid', placeItems: 'center',
-                fontFamily: "'Syne',sans-serif", fontSize: '1.6rem', fontWeight: 700,
+                fontFamily: "'Fraunces',serif", fontSize: '1.6rem', fontWeight: 700,
               }}>
                 {initials}
               </span>
@@ -270,7 +270,7 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
                 width: '100%', boxSizing: 'border-box',
                 border: '1px solid rgba(249,95,133,0.28)',
                 borderRadius: 12, padding: '11px 13px',
-                fontSize: '0.95rem', fontFamily: "'DM Sans',sans-serif",
+                fontSize: '0.95rem', fontFamily: "'General Sans',sans-serif",
                 color: '#4d3142', background: 'transparent', outline: 'none',
               }}
             />
@@ -289,7 +289,7 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
                 width: '100%', boxSizing: 'border-box',
                 border: '1px solid rgba(249,95,133,0.28)',
                 borderRadius: 12, padding: '11px 13px',
-                fontSize: '0.88rem', fontFamily: "'DM Sans',sans-serif",
+                fontSize: '0.88rem', fontFamily: "'General Sans',sans-serif",
                 color: '#4d3142', background: 'transparent', outline: 'none',
                 resize: 'none', lineHeight: 1.55,
               }}
@@ -310,7 +310,7 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
               background: 'linear-gradient(135deg,#f95f85,#ff8ca8)',
               color: '#fff',
               fontWeight: 800, fontSize: '0.92rem',
-              fontFamily: "'DM Sans',sans-serif",
+              fontFamily: "'General Sans',sans-serif",
               cursor: saving || saved ? 'default' : 'pointer',
               opacity: saving ? 0.7 : 1,
               transition: 'all 0.2s',

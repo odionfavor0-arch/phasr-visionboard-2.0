@@ -59,7 +59,7 @@ export default function AuthPage({ onBack, onSuccess }) {
     borderRadius: 12, border: '1.5px solid var(--border)',
     background: 'rgba(255,255,255,0.03)', color: 'var(--text)',
     fontSize: '0.92rem', outline: 'none',
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "'General Sans', sans-serif",
     transition: 'border-color 0.2s',
   }
 
@@ -77,7 +77,7 @@ export default function AuthPage({ onBack, onSuccess }) {
 
         {/* Logo */}
         <span onClick={onBack} style={{
-          fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.4rem',
+          fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: '1.4rem',
           background: 'linear-gradient(135deg,var(--app-accent2),#ffd6e7)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text', cursor: 'pointer', position: 'relative', zIndex: 1,
@@ -85,7 +85,7 @@ export default function AuthPage({ onBack, onSuccess }) {
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h2 style={{
-            fontFamily: "'Syne', sans-serif", fontSize: '2.4rem', fontWeight: 800,
+            fontFamily: "'Fraunces', serif", fontSize: '2.4rem', fontWeight: 800,
             lineHeight: 1.15, marginBottom: '1.2rem',
           }}>
             Turn your goals into{' '}
@@ -98,7 +98,7 @@ export default function AuthPage({ onBack, onSuccess }) {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {[
-              { icon: '🧠', text: 'AI Life Coach — Sage — available 24/7' },
+              { icon: '🧠', text: 'Sage, your AI life coach — available 24/7' },
               { icon: '📋', text: 'Phased planning across your whole year' },
               { icon: '📸', text: 'Before & after transformation tracking' },
               { icon: '📓', text: 'Daily journal to build your reflection habit' },
@@ -129,7 +129,7 @@ export default function AuthPage({ onBack, onSuccess }) {
       {/* ── Right panel — form ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.5rem', position: 'relative', background: 'var(--bg)' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.4rem' }}>
+          <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.4rem' }}>
             {mode === 'signin' ? 'Welcome back 👋' : 'Create your account ✨'}
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>
@@ -144,7 +144,7 @@ export default function AuthPage({ onBack, onSuccess }) {
                 background: mode === m ? 'linear-gradient(135deg,var(--accent),var(--accent2))' : 'transparent',
                 color: mode === m ? '#fff' : 'var(--muted)',
                 fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
+                fontFamily: "'General Sans', sans-serif", transition: 'all 0.2s',
               }}>
                 {m === 'signin' ? 'Sign In' : 'Sign Up'}
               </button>
@@ -157,7 +157,7 @@ export default function AuthPage({ onBack, onSuccess }) {
             border: '1.5px solid var(--border)', background: 'rgba(255,255,255,0.03)',
             color: 'var(--text)', fontSize: '0.9rem', fontWeight: 500, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.7rem',
-            fontFamily: "'DM Sans', sans-serif", marginBottom: '1.5rem',
+            fontFamily: "'General Sans', sans-serif", marginBottom: '1.5rem',
           }}>
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -207,7 +207,7 @@ export default function AuthPage({ onBack, onSuccess }) {
               width: '100%', padding: '0.9rem', borderRadius: 12, border: 'none',
               background: 'linear-gradient(135deg,var(--accent),var(--accent2))',
               color: '#fff', fontSize: '0.95rem', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily: "'DM Sans', sans-serif", opacity: loading ? 0.7 : 1,
+              fontFamily: "'General Sans', sans-serif", opacity: loading ? 0.7 : 1,
               boxShadow: '0 4px 20px rgba(232,64,122,0.35)', marginTop: '0.5rem',
             }}>
               {loading ? '...' : mode === 'signin' ? 'Sign In →' : 'Create Free Account →'}

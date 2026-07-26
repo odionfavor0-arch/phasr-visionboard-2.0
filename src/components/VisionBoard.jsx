@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { motion } from 'framer-motion'
-import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, ImageDown, Sparkles, Trash2, Wallet } from 'lucide-react'
+import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, ImageDown, Lock, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { getUserAccess } from '../lib/access'
@@ -272,6 +272,18 @@ function formatMonthRange(startDate, endDate) {
 
 function getPhaseTimelineLabel(phase) {
   return phase?.timeframeLabel || formatMonthRange(phase?.startDate, phase?.endDate)
+}
+
+// The only fields that actually change what would land on a calendar: the
+// phase window and each pillar's weekly non-negotiables. Used to tell "she
+// re-saved without touching anything schedulable" apart from "she actually
+// changed her week," so the calendar popup doesn't reappear on every edit.
+function getScheduleFingerprint(ph) {
+  return JSON.stringify({
+    start: ph?.startDate || '',
+    end: ph?.endDate || '',
+    actions: (ph?.pillars || []).map(pl => (pl.weeklyActions || []).map(a => cleanText(a)).filter(Boolean)),
+  })
 }
 
 function normalizePillarShape(pillar) {
@@ -1422,7 +1434,7 @@ function buildGeneratedPlan(pillar, isPro) {
 const inp = (extra = {}) => ({
   width: '100%', padding: '0.38rem 0.6rem',
   border: '1.5px solid var(--app-border)', borderRadius: 8,
-  fontFamily: "'DM Sans',sans-serif", fontSize: '0.8rem',
+  fontFamily: "'General Sans',sans-serif", fontSize: '0.8rem',
   color: 'var(--app-text)', background: '#fff', outline: 'none',
   marginBottom: '0.28rem', transition: 'border-color 0.2s',
   ...extra,
@@ -1430,7 +1442,7 @@ const inp = (extra = {}) => ({
 const ta = (extra = {}) => ({
   width: '100%', padding: '0.4rem 0.6rem',
   border: '1.5px solid var(--app-border)', borderRadius: 8,
-  fontFamily: "'DM Sans',sans-serif", fontSize: '0.8rem',
+  fontFamily: "'General Sans',sans-serif", fontSize: '0.8rem',
   color: 'var(--app-text)', background: '#fff', outline: 'none',
   resize: 'vertical', minHeight: 56, lineHeight: 1.5,
   transition: 'border-color 0.2s', ...extra,
@@ -1450,9 +1462,10 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       try {
         const onboardingPillars = JSON.parse(localStorage.getItem('phasr_onboarding_pillars') || 'null')
         const letter = JSON.parse(localStorage.getItem('phasr_future_letter_p1') || 'null')
+        const boardType = localStorage.getItem('phasr_onboarding_board_type') || 'transformation'
         if (onboardingPillars?.length && board.phases[0]) {
           board.phases[0].pillars = onboardingPillars.slice(0, 6).map((name, i) =>
-            normalizePillarShape({ id: `pillar-${i + 1}`, name })
+            normalizePillarShape({ id: `pillar-${i + 1}`, name, visionStyle: boardType })
           )
         }
         if (letter && board.phases[0]) {
@@ -1461,6 +1474,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         }
         localStorage.removeItem('phasr_onboarding_pillars')
         localStorage.removeItem('phasr_future_letter_p1')
+        localStorage.removeItem('phasr_onboarding_board_type')
       } catch {}
     }
     return board
@@ -1491,6 +1505,7 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const qrCodeRef = useRef(null)
   const editing = editingProp ?? editingState
   const setEditing = onEditingChange ?? setEditingState
+  const scheduleSnapshotRef = useRef(null)
 
   useEffect(() => {
     setPresetOpen(null)
@@ -1626,9 +1641,11 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   const phase    = data.phases.find(p => p.id === phaseId) || data.phases[0]
   const timelineEditorPhase = data.phases.find(p => p.id === timelineEditorPhaseId) || null
   const presetPillar = phase?.pillars?.find(pl => pl.id === presetOpen) || null
-  const visiblePillars = !isPro && !editing
-    ? (phase?.pillars || []).slice(0, FREE_PILLAR_LIMIT)
-    : (phase?.pillars || [])
+  // Free tier limits how many NEW pillars you can add (see addPillar's own
+  // limit check below) — it does not hide pillars you've already added and
+  // kept. A saved-but-not-yet-filled-in pillar stays visible until she
+  // deletes it herself.
+  const visiblePillars = phase?.pillars || []
   const currentPhaseNumber = Math.max(1, data.phases.findIndex(p => p.id === phase?.id) + 1)
   const phaseDisplayName = `Phase ${currentPhaseNumber}`
   const exportPillars = phase?.pillars || []
@@ -2013,7 +2030,12 @@ Return JSON only:
       const hasSchedulableActions = (latestPhase?.pillars || []).some(pl =>
         Array.isArray(pl.weeklyActions) && pl.weeklyActions.some(action => cleanText(action))
       )
-      if (hasSchedulableActions) {
+      // Once she's already scheduled this week, re-showing the popup on every
+      // save (even when nothing schedulable changed) is noise — only surface
+      // it again if the week/non-negotiables actually moved since she opened
+      // the editor.
+      const scheduleChanged = getScheduleFingerprint(latestPhase) !== scheduleSnapshotRef.current
+      if (hasSchedulableActions && (!scheduledThisWeek || scheduleChanged)) {
         setCalendarPromptArmed(true)
         setShowSavePopup(true)
       }
@@ -2534,7 +2556,10 @@ Return JSON only:
   const dailyPlan = getDailyTaskPlan({ ...data, activePhaseId: phaseId })
   const currentTodo = dailyPlan.tasks.find(task => !todayTodoMap[task.id]) || dailyPlan.primaryTask
 
-  const todayTask = currentTodo?.task || 'Complete 1 action from your phase'
+  // This fallback only shows when this phase genuinely has no activities yet
+  // to pull a task from (dailyPlan.tasks empty and no primaryTask) — real
+  // pillars with real activities always produce a real currentTodo.task.
+  const todayTask = currentTodo?.task || 'Add an activity to a pillar to see today\'s task here.'
   const weeklyPlan = phase?.pillars?.flatMap(p => {
     const tasks = (p.weeklyActions || []).filter(Boolean)
     const fallbackTasks = tasks.length ? tasks : (p.activities || []).filter(Boolean).slice(0, 3)
@@ -2553,6 +2578,16 @@ Return JSON only:
     [phase?.pillars]
   )
   const bannerState = !hasPillarSetUp ? 'setup' : !scheduledThisWeek ? 'schedule' : 'start'
+
+  useEffect(() => {
+    // Deliberately only keyed on `editing` flipping true, not on `phase` (which
+    // is a new object every render) — this must capture a snapshot once, at the
+    // moment editing starts, not keep re-capturing the (possibly already-edited)
+    // current state on every re-render while still editing.
+    if (editing) scheduleSnapshotRef.current = getScheduleFingerprint(phase)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
+
   const showCalendarPrompt = !!weeklyPlan.length && !editing && calendarPromptState === 'open'
   const showCalendarPromptChip = !!weeklyPlan.length && !editing && calendarPromptState === 'collapsed'
 
@@ -2587,7 +2622,7 @@ Return JSON only:
   }, [showSavePopup])
 
   return (
-    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 40px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 40px' : '1.5rem 1rem 4rem', fontFamily: "'General Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
         {uploadMessage && (
           <div id="vb-status-message" style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
@@ -2607,10 +2642,10 @@ Return JSON only:
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: isMobile ? '0.54rem' : '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: '0.45rem' }}>
-              Today · {phaseDisplayName}
+              {bannerState === 'setup' ? 'Your Vision Board' : `Today · ${phaseDisplayName}`}
             </p>
             <p style={{ fontSize: isMobile ? '0.72rem' : '0.82rem', fontWeight: 600, color: '#fff', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>
-              {todayTask}
+              {bannerState === 'setup' ? 'Turn your goal into a plan you can follow, one day at a time.' : todayTask}
             </p>
           </div>
           <div style={{ flexShrink: 0 }}>
@@ -2625,7 +2660,7 @@ Return JSON only:
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 type="button"
                 onClick={handleEditingToggle}
-                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
               >
                 Done
               </motion.button>
@@ -2641,9 +2676,9 @@ Return JSON only:
                     document.getElementById('pillar-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   })
                 }}
-                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
               >
-                Set up your pillar
+                Build your vision board
               </motion.button>
             ) : bannerState === 'start' ? (
               <motion.button
@@ -2652,9 +2687,9 @@ Return JSON only:
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 type="button"
                 onClick={() => onOpenDailyStreak?.()}
-                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: 'none', background: '#fff', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem', boxShadow: '0 8px 18px rgba(105,33,63,0.14)' }}
               >
-                Start task
+                Start your goal
               </motion.button>
             ) : (
               <motion.button
@@ -2664,7 +2699,7 @@ Return JSON only:
                 type="button"
                 onClick={addToCalendarPlan}
                 disabled={calendarBusy}
-                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem' }}
+                style={{ minHeight: isMobile ? 28 : 34, display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: isMobile ? '0.36rem 0.65rem' : '0.45rem 0.8rem', borderRadius: 999, border: '1px solid rgba(255,255,255,0.38)', background: 'rgba(255,255,255,0.14)', color: '#fff', fontWeight: 800, cursor: calendarBusy ? 'wait' : 'pointer', fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '0.68rem' : '0.78rem' }}
               >
                 {calendarBusy ? 'Scheduling...' : 'Schedule your week'}
               </motion.button>
@@ -2677,34 +2712,30 @@ Return JSON only:
             triggered it and folds back into it (as "Schedule your week") when done. */}
         {showSavePopup && !editing && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.97, height: 0 }}
-            animate={{ opacity: 1, y: 0, scale: 1, height: 'auto' }}
-            exit={{ opacity: 0, y: -10, scale: 0.97, height: 0 }}
+            initial={{ opacity: 0, y: -10, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             style={{
-              width: isMobile ? '100%' : 300,
-              marginLeft: isMobile ? 0 : 'auto',
-              marginBottom: isMobile ? '0.5rem' : '0.7rem',
-              borderRadius: 16,
-              background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)',
-              border: '1px solid var(--app-border)',
-              boxShadow: 'var(--app-shadow-md)',
-              padding: '0.85rem 0.9rem',
+              width: 'min(320px, calc(100vw - 2.4rem))',
+              margin: '0 auto 0.7rem',
+              borderRadius: 18,
+              background: 'rgba(255,255,255,0.68)',
+              backdropFilter: 'blur(18px) saturate(160%)',
+              WebkitBackdropFilter: 'blur(18px) saturate(160%)',
+              border: '1px solid rgba(255,255,255,0.6)',
+              boxShadow: 'var(--app-shadow-lg)',
+              padding: '1rem 1.05rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.6rem',
+              gap: '0.75rem',
               overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
-                  Pillar saved
-                </p>
-                <p style={{ margin: '0.15rem 0 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--app-text)', lineHeight: 1.25 }}>
-                  Schedule your week
-                </p>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <p style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: '1rem', fontWeight: 600, color: 'var(--app-text)', lineHeight: 1.3 }}>
+                Put your week where you'll actually see it.
+              </p>
               <button
                 type="button"
                 onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
@@ -2713,8 +2744,8 @@ Return JSON only:
                   width: 24,
                   height: 24,
                   borderRadius: '50%',
-                  border: '1px solid var(--app-border)',
-                  background: 'var(--app-bg2)',
+                  border: '1px solid rgba(255,255,255,0.7)',
+                  background: 'rgba(255,255,255,0.5)',
                   color: 'var(--app-muted)',
                   cursor: 'pointer',
                   fontSize: '0.85rem',
@@ -2729,37 +2760,46 @@ Return JSON only:
                 ×
               </button>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              type="button"
-              onClick={async () => { await addToCalendarPlan(); setShowSavePopup(false) }}
-              disabled={calendarBusy}
-              style={{
-                width: '100%',
-                padding: '0.55rem',
-                borderRadius: 10,
-                border: 'none',
-                background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
-                color: '#fff',
-                fontWeight: 800,
-                fontSize: '0.78rem',
-                cursor: calendarBusy ? 'wait' : 'pointer',
-                fontFamily: "'DM Sans',sans-serif",
-                letterSpacing: '0.02em',
-                boxShadow: 'var(--app-shadow-sm)',
-              }}
-            >
-              {calendarBusy ? 'Scheduling…' : 'Add to Calendar'}
-            </motion.button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                onClick={async () => { await addToCalendarPlan(); setShowSavePopup(false) }}
+                disabled={calendarBusy}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  cursor: calendarBusy ? 'wait' : 'pointer',
+                  fontFamily: "'General Sans',sans-serif",
+                  letterSpacing: '0.02em',
+                  boxShadow: 'var(--app-shadow-sm)',
+                }}
+              >
+                {calendarBusy ? 'Scheduling…' : 'Add to calendar'}
+              </motion.button>
+              <button
+                type="button"
+                onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
+                style={{ border: 'none', background: 'transparent', color: 'var(--app-muted)', fontWeight: 600, fontSize: '0.76rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif", padding: '0.2rem' }}
+              >
+                Maybe later
+              </button>
+            </div>
           </motion.div>
         )}
 
         {/* â"€â"€ Header â"€â"€ */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.7rem' : '2.1rem' }}>
           {editing
-            ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
-            : (!isMobile && <h1 className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
+            ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
+            : (!isMobile && <h1 className="font-display" style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
           }
           <p style={{ color: 'var(--app-muted)', fontSize: isMobile ? '0.74rem' : '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: isMobile ? '0' : '0.3rem' }}>
             {(isMobile ? visiblePillars : phase?.pillars || []).map(p => p.name).join(' · ')}
@@ -2776,7 +2816,7 @@ Return JSON only:
               background: editing ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-bg2)',
               color: editing ? '#fff' : 'var(--app-accent)',
               fontSize: isMobile ? '0.68rem' : '0.72rem', fontWeight: 600, cursor: 'pointer',
-              fontFamily: "'DM Sans',sans-serif", transition: 'all 0.2s',
+              fontFamily: "'General Sans',sans-serif", transition: 'all 0.2s',
             }}>{editing ? 'Save' : 'Personalize'}</button>
           )}
         </div>
@@ -2829,7 +2869,7 @@ Return JSON only:
                     padding: 0,
                     margin: 0,
                     cursor: 'pointer',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "'General Sans',sans-serif",
                     fontSize: isMobile ? '0.8rem' : '0.88rem',
                     fontWeight: 700,
                     lineHeight: 1,
@@ -2857,7 +2897,7 @@ Return JSON only:
                     textAlign: 'center',
                     padding: isMobile ? '0.2rem 0.5rem' : '0.26rem 0.62rem',
                     cursor: editing ? 'pointer' : 'default',
-                    fontFamily: "'DM Sans',sans-serif",
+                    fontFamily: "'General Sans',sans-serif",
                     outline: 'none',
                   }}
                 >
@@ -2875,8 +2915,14 @@ Return JSON only:
                     style={
                       isMobile
                         ? {
-                            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+                            // No position/transform here on purpose — framer-motion's own
+                            // `animate={{ y: 0 }}` compiles its own `transform` onto this
+                            // node and silently overwrites any `translate(...)` set via
+                            // `style`, which is what made this centering hack never
+                            // actually apply. Centering now happens on the flex backdrop
+                            // below instead, which doesn't touch `transform` at all.
                             width: 'min(300px, calc(100vw - 2.2rem))',
+                            maxHeight: 'calc(100dvh - 3rem)', overflowY: 'auto',
                             background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)',
                             padding: '0.9rem', boxShadow: 'var(--app-shadow-lg)', zIndex: 60,
                           }
@@ -2899,7 +2945,7 @@ Return JSON only:
                           onChange={e => updateTimelineDraft(p.id, 'startDate', e.target.value)}
                           onClick={e => e.currentTarget.showPicker?.()}
                           onFocus={e => e.currentTarget.showPicker?.()}
-                          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+                          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
                         />
                       </label>
                       <label style={{ display: 'grid', gap: '0.22rem' }}>
@@ -2910,7 +2956,7 @@ Return JSON only:
                           onChange={e => updateTimelineDraft(p.id, 'endDate', e.target.value)}
                           onClick={e => e.currentTarget.showPicker?.()}
                           onFocus={e => e.currentTarget.showPicker?.()}
-                          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+                          style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', padding: isMobile ? '0.56rem 0.42rem' : '0.5rem 0.45rem', borderRadius: 10, border: '1px solid var(--app-border)', fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '0.74rem' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }}
                         />
                       </label>
                     </div>
@@ -2921,7 +2967,7 @@ Return JSON only:
                       <button
                         type="button"
                         onClick={() => saveTimelineDraft(p.id)}
-                        style={{ border: '1px solid var(--app-border)', background: '#fff1f6', color: '#b85a82', borderRadius: 999, padding: isMobile ? '0.45rem 0.7rem' : '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", width: isMobile ? '100%' : 'auto' }}
+                        style={{ border: '1px solid var(--app-border)', background: '#fff1f6', color: '#b85a82', borderRadius: 999, padding: isMobile ? '0.45rem 0.7rem' : '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", width: isMobile ? '100%' : 'auto' }}
                       >
                         Save
                       </button>
@@ -2940,7 +2986,7 @@ Return JSON only:
                 return createPortal(
                   <div
                     onClick={() => setTimelineEditorPhaseId(null)}
-                    style={{ position: 'fixed', inset: 0, zIndex: 59, background: 'rgba(20,10,15,0.35)' }}
+                    style={{ position: 'fixed', inset: 0, zIndex: 59, background: 'rgba(20,10,15,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
                   >
                     {panel}
                   </div>,
@@ -2980,7 +3026,7 @@ Return JSON only:
           )})}
 
           {editing && (isPro || data.phases.length < FREE_PHASE_LIMIT) ? (
-            <button onClick={addPhase} style={{ padding: '0.48rem 1.1rem', borderRadius: 99, border: '1.5px dashed var(--app-border)', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <button onClick={addPhase} style={{ padding: '0.48rem 1.1rem', borderRadius: 99, border: '1.5px dashed var(--app-border)', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               + add it
             </button>
           ) : null}
@@ -2989,10 +3035,10 @@ Return JSON only:
 
         {/* â"€â"€ Affirmation â"€â"€ */}
         <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.9rem', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: 'var(--app-shadow-sm)' }}>
-          <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
+          <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Fraunces',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
           {editing
-            ? <input value={phase?.affirmation || ''} onChange={e => updatePhase('affirmation', e.target.value)} placeholder="Your phase mantra..." style={inp({ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--app-border)', textAlign: 'center', marginBottom: 0, position: 'relative', zIndex: 1 })} onFocus={focus} onBlur={blur} />
-            : <p className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
+            ? <input value={phase?.affirmation || ''} onChange={e => updatePhase('affirmation', e.target.value)} placeholder="Your phase mantra..." style={inp({ fontFamily: "'Fraunces',serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--app-border)', textAlign: 'center', marginBottom: 0, position: 'relative', zIndex: 1 })} onFocus={focus} onBlur={blur} />
+            : <p className="font-display" style={{ fontFamily: "'Fraunces',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
           }
         </div>
 
@@ -3020,7 +3066,7 @@ Return JSON only:
                     <p style={{ margin: '0.15rem 0 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--app-text)' }}>{presetPillar.name}</p>
                   </div>
                 </div>
-                <button type="button" onClick={() => setPresetOpen(null)} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: '#fff', color: 'var(--app-muted)', padding: '0.45rem 0.8rem', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", fontWeight: 700 }}>
+                <button type="button" onClick={() => setPresetOpen(null)} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: '#fff', color: 'var(--app-muted)', padding: '0.45rem 0.8rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif", fontWeight: 700 }}>
                   Close
                 </button>
               </div>
@@ -3043,7 +3089,7 @@ Return JSON only:
                           padding: '0.4rem 0.85rem',
                           fontSize: '0.76rem',
                           fontWeight: 700,
-                          fontFamily: "'DM Sans',sans-serif",
+                          fontFamily: "'General Sans',sans-serif",
                           cursor: 'pointer',
                           background: isActive ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'transparent',
                           color: isActive ? '#fff' : 'var(--app-muted)',
@@ -3084,7 +3130,7 @@ Return JSON only:
                       cursor: 'pointer',
                       fontSize: '0.76rem',
                       color: 'var(--app-text)',
-                      fontFamily: "'DM Sans',sans-serif",
+                      fontFamily: "'General Sans',sans-serif",
                       textAlign: 'left',
                       maxWidth: 260,
                     }}
@@ -3152,7 +3198,7 @@ Return JSON only:
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--app-bg2)'; e.currentTarget.style.borderColor = 'var(--app-accent2)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--app-border)' }}>
                 <span style={{ fontSize: '1.4rem', color: 'var(--app-accent2)' }}>+</span>
-                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--app-accent2)', fontFamily: "'DM Sans',sans-serif" }}>add pillar</span>
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--app-accent2)', fontFamily: "'General Sans',sans-serif" }}>add pillar</span>
               </motion.button>
             ) : null
           )}
@@ -3171,7 +3217,7 @@ Return JSON only:
               border: 'none',
               background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
               color: '#fff', fontSize: '0.8rem', fontWeight: 700,
-              cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", marginBottom: '0.6rem',
+              cursor: 'pointer', fontFamily: "'General Sans',sans-serif", marginBottom: '0.6rem',
               boxShadow: '0 6px 18px rgba(240,96,144,0.22)',
               transition: 'box-shadow 0.2s',
             }}
@@ -3200,7 +3246,7 @@ Return JSON only:
               <>
                 <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 10 }}>Step 1 of 1</p>
                 <div style={{ width: '100%', maxWidth: 480 }}>
-                  <h2 className="font-display" style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 6 }}>Pick one pillar to save</h2>
+                  <h2 className="font-display" style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: 6 }}>Pick one pillar to save</h2>
                   <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 18 }}>This goes on your wall. Choose what matters most right now.</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(phase?.pillars || []).map((item, exportIndex) => {
@@ -3219,7 +3265,7 @@ Return JSON only:
                         >
                           <span style={{ fontSize: 18, flexShrink: 0 }}>{item.emoji}</span>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>{item.name}</div>
+                            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 13, fontWeight: 700, color: '#fff' }}>{item.name}</div>
                             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{cleanText(item.beforeState) || 'Before'} → {cleanText(item.afterState) || 'After'}</div>
                           </div>
                           <div style={{ width: 18, height: 18, borderRadius: '50%', border: active ? '2px solid var(--app-accent)' : '2px solid rgba(255,255,255,0.2)', background: active ? 'var(--app-accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, flexShrink: 0 }}>
@@ -3236,7 +3282,7 @@ Return JSON only:
                   type="button"
                   onClick={generateExportCard}
                   disabled={!selectedExportPillarId}
-                  style={{ width: '100%', maxWidth: 480, padding: 14, borderRadius: 'var(--app-radius-md)', border: 'none', background: `linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))`, color: '#fff', fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: selectedExportPillarId ? 'pointer' : 'not-allowed', boxShadow: 'var(--app-shadow-md)', opacity: selectedExportPillarId ? 1 : 0.4 }}
+                  style={{ width: '100%', maxWidth: 480, padding: 14, borderRadius: 'var(--app-radius-md)', border: 'none', background: `linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))`, color: '#fff', fontFamily: "'General Sans', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: selectedExportPillarId ? 'pointer' : 'not-allowed', boxShadow: 'var(--app-shadow-md)', opacity: selectedExportPillarId ? 1 : 0.4 }}
                 >
                   Create My Vision Card →
                 </motion.button>
@@ -3252,13 +3298,13 @@ Return JSON only:
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 14 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <img src={phasrMark} alt="PHASR mark" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
-                        <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, background: 'linear-gradient(135deg,#f472a8,#ffd6e7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>PHASR</span>
+                        <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 800, fontSize: 20, background: 'linear-gradient(135deg,#f472a8,#ffd6e7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>PHASR</span>
                       </div>
                       <span style={{ padding: '4px 11px', borderRadius: 99, border: '1px solid rgba(249,95,133,0.3)', background: 'rgba(249,95,133,0.12)', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--app-accent2)' }}>{exportPhaseLabel}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, position: 'relative', zIndex: 1 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{selectedExportPillar.emoji}</div>
-                      <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: '#fff' }}>{selectedExportPillar.name}</span>
+                      <span style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 700, color: '#fff' }}>{selectedExportPillar.name}</span>
                     </div>
                   </div>
 
@@ -3287,8 +3333,8 @@ Return JSON only:
                     </div>
 
                     <div style={{ background: 'linear-gradient(135deg,#fff5f7,#fff)', border: '1px solid #f2c4d0', borderRadius: 12, padding: '12px 14px', position: 'relative', overflow: 'hidden' }}>
-                      <span style={{ position: 'absolute', top: -6, left: 8, fontFamily: "'Playfair Display', serif", fontSize: 48, color: 'rgba(249,95,133,0.12)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
-                      <p style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: 13, color: '#3d1f2b', lineHeight: 1.55, position: 'relative', zIndex: 1 }}>
+                      <span style={{ position: 'absolute', top: -6, left: 8, fontFamily: "'Fraunces', serif", fontSize: 48, color: 'rgba(249,95,133,0.12)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
+                      <p style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 13, color: '#3d1f2b', lineHeight: 1.55, position: 'relative', zIndex: 1 }}>
                         {shortenText(selectedExportPillar.description || selectedExportPillar.afterDesc || selectedExportPillar.beforeDesc || selectedExportPillar.shortOutcome || selectedExportPillar.afterState || selectedExportPillar.name, 220)}
                       </p>
                     </div>
@@ -3310,7 +3356,7 @@ Return JSON only:
 
                   <div style={{ padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 16, fontWeight: 700, color: '#1a0a10', lineHeight: 1.3, marginBottom: 6 }}>Check in daily.<br /><em style={{ fontStyle: 'italic', color: 'var(--app-accent)' }}>Sage remembers everything.</em></div>
+                      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 16, fontWeight: 700, color: '#1a0a10', lineHeight: 1.3, marginBottom: 6 }}>Check in daily.<br /><em style={{ fontStyle: 'italic', color: 'var(--app-accent)' }}>Sage remembers everything.</em></div>
                       <div style={{ fontSize: 11, color: '#7a5a66', lineHeight: 1.55 }}>This plan is valid for this week. Open your dashboard daily and let Sage guide the next move.</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flexShrink: 0 }}>
@@ -3334,7 +3380,7 @@ Return JSON only:
                     type="button"
                     onClick={downloadExportCard}
                     disabled={exportBusy || !exportScriptsReady}
-                    style={{ width: '100%', padding: 14, borderRadius: 'var(--app-radius-md)', border: 'none', background: 'linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))', color: '#fff', fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: exportBusy || !exportScriptsReady ? 'not-allowed' : 'pointer', boxShadow: 'var(--app-shadow-md)', opacity: exportBusy || !exportScriptsReady ? 0.5 : 1 }}
+                    style={{ width: '100%', padding: 14, borderRadius: 'var(--app-radius-md)', border: 'none', background: 'linear-gradient(135deg, var(--app-cta), var(--app-cta-hover))', color: '#fff', fontFamily: "'General Sans', sans-serif", fontSize: 14, fontWeight: 800, letterSpacing: '0.04em', cursor: exportBusy || !exportScriptsReady ? 'not-allowed' : 'pointer', boxShadow: 'var(--app-shadow-md)', opacity: exportBusy || !exportScriptsReady ? 0.5 : 1 }}
                   >
                     {exportBusy ? 'Saving...' : '⬇ Save as Image'}
                   </motion.button>
@@ -3343,7 +3389,7 @@ Return JSON only:
                     whileTap={{ scale: 0.98 }}
                     type="button"
                     onClick={() => setExportStage('picker')}
-                    style={{ width: '100%', padding: 12, borderRadius: 'var(--app-radius-md)', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+                    style={{ width: '100%', padding: 12, borderRadius: 'var(--app-radius-md)', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'rgba(255,255,255,0.4)', fontFamily: "'General Sans', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
                   >
                     ← Pick a different pillar
                   </motion.button>
@@ -3384,6 +3430,11 @@ Return JSON only:
           (cleanText(pl.beforeState) || cleanText(pl.beforeDesc)) &&
           (cleanText(pl.afterState) || cleanText(pl.afterDesc))
         )
+    // Sage can't act on a board edit yet (no split-view) — so a lock with no
+    // escape is a dead end. "Edit anyway" clears it for this pillar/session;
+    // she isn't ever stuck.
+    const [descriptionUnlocked, setDescriptionUnlocked] = useState(false)
+    const isLocked = hasRequiredDescription && !descriptionUnlocked
     const hasPlan = Array.isArray(pl.activities) && pl.activities.filter(Boolean).length > 0
     // Always visible from the start — she shouldn't have to write anything before she
     // can even see the button exists. It's just disabled until there's a description.
@@ -3412,6 +3463,9 @@ Return JSON only:
     }, [phaseId, scheduleStateKey, userId, weekStartKey])
 
   function handleImageTap(slot) {
+    // The photo is inspiration, not data — it doesn't generate anything, the
+    // description does. So the image stays swappable even after the pillar
+    // has content; only the description (below) locks.
     if (!editing) return
     onUpload(slot)
   }
@@ -3451,16 +3505,20 @@ Return JSON only:
           : {
               background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden',
               display: 'grid',
-              gridTemplateRows: pl.collapsed ? 'auto' : 'subgrid',
-              gridRow: pl.collapsed ? 'auto' : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
+              // Always stay in the shared subgrid, even collapsed — the {!pl.collapsed && ...}
+              // guard below already hides rows 4-8's content. Dropping out of subgrid here
+              // (as this used to do for collapsed cards) breaks the shared row-track sizing
+              // that keeps this card's sibling in the same row-group aligned.
+              gridTemplateRows: 'subgrid',
+              gridRow: `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
             }
       }>
       {/* Header */}
       <div style={{ gridRow: 1, background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        <div onClick={e => { e.stopPropagation(); editing && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
-        {editing
-          ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
-          : <span className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', flex: 1 }}>{pl.name}</span>
+        <div onClick={e => { e.stopPropagation(); editing && !isLocked && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing && !isLocked ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
+        {editing && !isLocked
+          ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Fraunces',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
+          : <span className="font-display" style={{ fontFamily: "'Fraunces',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', flex: 1 }}>{pl.name}</span>
         }
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.35rem', flexShrink: 0 }}>
           {editing && (
@@ -3526,10 +3584,10 @@ Return JSON only:
                 </motion.button>
               )}
             </div>
-            {editing ? (
+            {editing && !isLocked ? (
               <>
-                <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
-                <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                 {linkOpen[slot] ? (
                   <input
                     autoFocus
@@ -3537,14 +3595,14 @@ Return JSON only:
                     onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))}
                     onBlur={e => { onImageLinkUpdate(slot, e.target.value); if (!e.target.value) setLinkOpen(prev => ({ ...prev, [slot]: false })) }}
                     placeholder="Paste image link"
-                    style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
+                    style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
                     onFocus={focus}
                   />
                 ) : (
                   <button
                     type="button"
                     onClick={() => setLinkOpen(prev => ({ ...prev, [slot]: true }))}
-                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'DM Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
+                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'General Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
                   >
                     or paste a link
                   </button>
@@ -3573,7 +3631,7 @@ Return JSON only:
                     type="button"
                     disabled={blocked}
                     onClick={handleGenerateButton}
-                    style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'DM Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation' }}
+                    style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'General Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation' }}
                   >
                     {isGenerating ? 'Generating...' : buttonLabel}
                   </motion.button>
@@ -3585,6 +3643,29 @@ Return JSON only:
                 </>
               )
             })()}
+            {editing && isLocked && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event('phasr-open-sage-float'))}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', background: 'var(--app-bg2)', color: 'var(--app-accent2)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', padding: '0.4rem 0.7rem', borderRadius: 999, fontFamily: "'General Sans',sans-serif" }}
+                >
+                  <Lock size={11} strokeWidth={2.2} />
+                  Talk to Sage to change your goal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Editing this directly will change the plan Sage built around it, and Sage won\'t know until your next check-in. Edit anyway?')) {
+                      setDescriptionUnlocked(true)
+                    }
+                  }}
+                  style={{ border: 'none', background: 'transparent', color: 'var(--app-border)', fontSize: '0.64rem', fontWeight: 600, cursor: 'pointer', padding: '0 0.2rem', fontFamily: "'General Sans',sans-serif" }}
+                >
+                  Edit anyway
+                </button>
+              </div>
+            )}
           </div>
 
       {/* Collapsing a pillar hides only these plan-detail sections — resources,
@@ -3604,13 +3685,13 @@ Return JSON only:
                 {pl[key].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
                     {editing
-                      ? <><input value={item} onChange={e => onUpdateArr(key, i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                      ? <><input value={item} onChange={e => onUpdateArr(key, i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr(key, i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                       : <span style={{ fontSize: '0.8rem', color: '#5a3d47', lineHeight: 1.5, flex: 1 }}>{m} {item}</span>
                     }
                   </div>
                 ))}
-                {editing && <button onClick={() => onAddArr(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'DM Sans',sans-serif" }}>+ add item</button>}
+                {editing && <button onClick={() => onAddArr(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add item</button>}
               </div>
             </div>
           ))}
@@ -3632,7 +3713,7 @@ Return JSON only:
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.48rem', padding: '0.26rem 0.33rem', borderRadius: 7, cursor: 'pointer' }} onClick={() => !editing && onCheck(ck)}>
                     <input type="checkbox" checked={!!checked[ck]} onChange={() => onCheck(ck)} onClick={e => e.stopPropagation()} style={{ width: 14, height: 14, marginTop: 3, accentColor: 'var(--app-accent)', flexShrink: 0, cursor: 'pointer' }} />
                     {editing
-                      ? <><input value={item} onChange={e => onUpdateArr('weeklyActions', i, e.target.value)} style={{ flex: 1, minWidth: 0, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                      ? <><input value={item} onChange={e => onUpdateArr('weeklyActions', i, e.target.value)} style={{ flex: 1, minWidth: 0, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr('weeklyActions', i)} style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: '#fff0f4', border: '1px solid #f5c0cc', cursor: 'pointer', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, lineHeight: 1, padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                       : <>
                           <span style={{ fontSize: '0.8rem', color: checked[ck] ? '#c4a0ac' : '#5a3d47', lineHeight: 1.5, flex: 1, textDecoration: checked[ck] ? 'line-through' : 'none' }}>{item}</span>
@@ -3643,7 +3724,7 @@ Return JSON only:
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={event => event.stopPropagation()}
-                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #f5c0cc', background: '#fff0f4', color: '#c0445a', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'DM Sans',sans-serif", textDecoration: 'none' }}
+                                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid #f5c0cc', background: '#fff0f4', color: '#c0445a', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'General Sans',sans-serif", textDecoration: 'none' }}
                                 title={`Open calendar • ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
                                 <span style={{ fontSize: '0.82rem', lineHeight: 1 }}>📅</span>
@@ -3671,7 +3752,7 @@ Return JSON only:
                                   color: '#7a5a66', fontSize: '0.72rem', fontWeight: 700,
                                   textDecoration: 'none', whiteSpace: 'nowrap',
                                   flexShrink: 0,
-                                  fontFamily: "'DM Sans',sans-serif",
+                                  fontFamily: "'General Sans',sans-serif",
                                 }}
                                 title={`Schedule for ${formatAssignedDateTooltip(assignedDateKey)}`}
                               >
@@ -3684,7 +3765,7 @@ Return JSON only:
                   </div>
                 )
               })}
-              {editing && <button onClick={() => onAddArr('weeklyActions')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'DM Sans',sans-serif" }}>+ add action</button>}
+              {editing && <button onClick={() => onAddArr('weeklyActions')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add action</button>}
             </div>
           </div>
 
@@ -3694,13 +3775,13 @@ Return JSON only:
               {pl.activities.map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
                   {editing
-                    ? <><input value={item} onChange={e => onUpdateArr('activities', i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                    ? <><input value={item} onChange={e => onUpdateArr('activities', i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr('activities', i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                     : <span style={{ fontSize: '0.8rem', color: '#5a3d47', lineHeight: 1.5, flex: 1 }}>→ {item}</span>
                   }
                 </div>
               ))}
-              {editing && <button onClick={() => onAddArr('activities')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'DM Sans',sans-serif" }}>+ add item</button>}
+              {editing && <button onClick={() => onAddArr('activities')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add item</button>}
             </div>
           </div>
 
@@ -3717,7 +3798,7 @@ Return JSON only:
                       onUpdate('shortOutcome', e.target.value)
                       onUpdate('longOutcome', e.target.value)
                     }}
-                    style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1.5px solid #e8d0f0', borderRadius: 7, fontFamily: "'DM Sans',sans-serif", fontSize: '0.78rem', color: '#5a3d60', background: '#fff', outline: 'none', resize: 'vertical', minHeight: 56, lineHeight: 1.5 }}
+                    style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1.5px solid #e8d0f0', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: '#5a3d60', background: '#fff', outline: 'none', resize: 'vertical', minHeight: 56, lineHeight: 1.5 }}
                     onFocus={focus}
                     onBlur={blur}
                   />

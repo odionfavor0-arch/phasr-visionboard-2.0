@@ -61,7 +61,7 @@ function NavItem({ item, active, expanded, onClick, mobile }) {
         alignContent: 'center',
         gap: expanded ? 7 : 0,
         cursor: 'pointer',
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'General Sans', sans-serif",
         fontWeight: active ? 800 : 700,
         fontSize: expanded ? '0.76rem' : '0.72rem',
         minHeight: expanded ? (mobile ? 72 : 76) : (mobile ? 50 : 54),
@@ -414,7 +414,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
             <>
               <span
                 style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "'Fraunces', serif",
                   fontSize: '1.05rem',
                   fontWeight: 800,
                   letterSpacing: '0.04em',
@@ -601,7 +601,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
                 color: 'var(--app-text)',
               }}
             >
-              {displayName}
+              {firstName}
             </span>
           </button>
         </header>
@@ -621,7 +621,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           border: '1px solid rgba(249,95,133,0.22)',
           boxShadow: '0 18px 44px rgba(77,49,66,0.16)',
           padding: '14px 16px', zIndex: 80,
-          fontFamily: "'DM Sans',sans-serif",
+          fontFamily: "'General Sans',sans-serif",
           animation: 'sageWelcomeIn 0.35s cubic-bezier(0.22,1,0.36,1) both',
         }}>
           <style>{`@keyframes sageWelcomeIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}`}</style>

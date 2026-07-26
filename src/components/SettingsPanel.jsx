@@ -28,7 +28,7 @@ function AccordionItem({ title, children, isOpen, onToggle, danger = false }) {
       <button
         type="button"
         onClick={onToggle}
-        style={{ width: '100%', border: 'none', background: 'transparent', padding: '1rem 1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", color: danger ? '#c0445a' : 'var(--app-text)', fontWeight: 800, textAlign: 'left' }}
+        style={{ width: '100%', border: 'none', background: 'transparent', padding: '1rem 1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', cursor: 'pointer', fontFamily: "'General Sans', sans-serif", color: danger ? '#c0445a' : 'var(--app-text)', fontWeight: 800, textAlign: 'left' }}
       >
         {title}
         <span style={{ color: 'var(--app-muted)', transform: isOpen ? 'rotate(45deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>+</span>
@@ -45,7 +45,7 @@ function FaqItem({ q, a }) {
       <button
         type="button"
         onClick={() => setOpen(current => !current)}
-        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.8rem 0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', cursor: 'pointer', color: 'var(--app-text)', fontWeight: 700, fontFamily: "'DM Sans', sans-serif", textAlign: 'left' }}
+        style={{ width: '100%', border: 'none', background: 'transparent', padding: '0.8rem 0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', cursor: 'pointer', color: 'var(--app-text)', fontWeight: 700, fontFamily: "'General Sans', sans-serif", textAlign: 'left' }}
       >
         {q}
         <span style={{ color: 'var(--app-muted)' }}>{open ? '-' : '+'}</span>
@@ -71,7 +71,7 @@ function ThemeButton({ active, label, swatch, onClick }) {
         gap: '0.55rem',
         cursor: 'pointer',
         fontWeight: 700,
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "'General Sans', sans-serif",
       }}
     >
       <span style={{ width: 12, height: 12, borderRadius: '50%', background: swatch, border: active ? '1px solid rgba(255,255,255,0.55)' : '1px solid rgba(0,0,0,0.08)' }} />
@@ -138,7 +138,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'General Sans', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', display: 'grid', gap: '0.9rem' }}>
         <AccordionItem title="Profile" isOpen={openSection === 'profile'} onToggle={() => setOpenSection(current => current === 'profile' ? null : 'profile')}>
           <div style={{ display: 'grid', gap: '0.8rem' }}>
@@ -159,7 +159,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
               <p style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--app-text)' }}>Nudges</p>
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.84rem', color: 'var(--app-muted)' }}>Turn reminders on or off.</p>
             </div>
-            <button type="button" onClick={() => setNotificationsOn(value => !value)} style={{ minWidth: 110, border: 'none', borderRadius: 999, padding: '0.72rem 1rem', background: notificationsOn ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-bg2)', color: notificationsOn ? '#fff' : 'var(--app-text)', cursor: 'pointer', fontWeight: 800, fontFamily: "'DM Sans', sans-serif" }}>{notificationsOn ? 'On' : 'Off'}</button>
+            <button type="button" onClick={() => setNotificationsOn(value => !value)} style={{ minWidth: 110, border: 'none', borderRadius: 999, padding: '0.72rem 1rem', background: notificationsOn ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-bg2)', color: notificationsOn ? '#fff' : 'var(--app-text)', cursor: 'pointer', fontWeight: 800, fontFamily: "'General Sans', sans-serif" }}>{notificationsOn ? 'On' : 'Off'}</button>
           </div>
         </AccordionItem>
 
@@ -169,7 +169,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
               <p style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--app-text)' }}>Calendar</p>
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.84rem', color: 'var(--app-muted)' }}>{calendarStatus === 'allowed' ? 'Connected.' : 'Add your plan to your calendar.'}</p>
             </div>
-            <button type="button" onClick={connectCalendar} style={{ border: '1px solid var(--app-border)', borderRadius: 999, padding: '0.72rem 1rem', background: '#fff', color: 'var(--app-accent)', cursor: 'pointer', fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>{calendarStatus === 'allowed' ? 'Connected' : 'Connect'}</button>
+            <button type="button" onClick={connectCalendar} style={{ border: '1px solid var(--app-border)', borderRadius: 999, padding: '0.72rem 1rem', background: '#fff', color: 'var(--app-accent)', cursor: 'pointer', fontWeight: 700, fontFamily: "'General Sans', sans-serif" }}>{calendarStatus === 'allowed' ? 'Connected' : 'Connect'}</button>
           </div>
         </AccordionItem>
 
@@ -195,7 +195,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
         <AccordionItem title="Privacy" isOpen={openSection === 'privacy'} onToggle={() => setOpenSection(current => current === 'privacy' ? null : 'privacy')}>
           <div style={{ display: 'grid', gap: '0.7rem' }}>
             {['standard', 'private'].map(value => (
-              <button key={value} type="button" onClick={() => setPrivacyMode(value)} style={{ border: privacyMode === value ? '1px solid transparent' : '1px solid var(--app-border)', borderRadius: 16, padding: '0.9rem 1rem', background: privacyMode === value ? 'var(--app-bg2)' : '#fff', color: 'var(--app-text)', textAlign: 'left', cursor: 'pointer', fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>
+              <button key={value} type="button" onClick={() => setPrivacyMode(value)} style={{ border: privacyMode === value ? '1px solid transparent' : '1px solid var(--app-border)', borderRadius: 16, padding: '0.9rem 1rem', background: privacyMode === value ? 'var(--app-bg2)' : '#fff', color: 'var(--app-text)', textAlign: 'left', cursor: 'pointer', fontWeight: 700, fontFamily: "'General Sans', sans-serif" }}>
                 {value === 'standard' ? 'Standard' : 'Private'}
               </button>
             ))}
@@ -204,7 +204,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
 
         <AccordionItem title="Support" isOpen={openSection === 'support'} onToggle={() => setOpenSection(current => current === 'support' ? null : 'support')}>
           <div style={{ display: 'grid', gap: '0.8rem' }}>
-            <input value={faqSearch} onChange={event => setFaqSearch(event.target.value)} placeholder="Search for help..." style={{ width: '100%', border: '1px solid var(--app-border)', borderRadius: 12, padding: '0.72rem 0.9rem', background: 'var(--app-bg2)', color: 'var(--app-text)', fontFamily: "'DM Sans', sans-serif", outline: 'none' }} />
+            <input value={faqSearch} onChange={event => setFaqSearch(event.target.value)} placeholder="Search for help..." style={{ width: '100%', border: '1px solid var(--app-border)', borderRadius: 12, padding: '0.72rem 0.9rem', background: 'var(--app-bg2)', color: 'var(--app-text)', fontFamily: "'General Sans', sans-serif", outline: 'none' }} />
             <div style={{ display: 'grid', gap: '0.55rem' }}>
               {filteredFaq.map(item => <FaqItem key={item.q} q={item.q} a={item.a} />)}
             </div>
@@ -224,9 +224,9 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
               <div style={{ padding: '0.85rem 0.95rem', borderRadius: 12, background: '#f4fbf5', border: '1px solid #b9dfc0', color: '#3a7d4d', fontWeight: 700 }}>Report submitted. Thank you.</div>
             ) : (
               <>
-                <textarea value={reportText} onChange={event => setReportText(event.target.value)} placeholder="Describe the issue." rows={5} style={{ width: '100%', border: '1px solid var(--app-border)', borderRadius: 12, padding: '0.8rem 0.9rem', background: 'var(--app-bg2)', color: 'var(--app-text)', fontFamily: "'DM Sans', sans-serif", resize: 'vertical', outline: 'none', lineHeight: 1.6 }} />
+                <textarea value={reportText} onChange={event => setReportText(event.target.value)} placeholder="Describe the issue." rows={5} style={{ width: '100%', border: '1px solid var(--app-border)', borderRadius: 12, padding: '0.8rem 0.9rem', background: 'var(--app-bg2)', color: 'var(--app-text)', fontFamily: "'General Sans', sans-serif", resize: 'vertical', outline: 'none', lineHeight: 1.6 }} />
                 {reportError && <div style={{ padding: '0.75rem 0.9rem', borderRadius: 12, background: '#fff6f6', border: '1px solid #f4ccd3', color: '#b54962', fontSize: '0.82rem', lineHeight: 1.5 }}>{supabaseConfigError ? supabaseConfigError : reportError}</div>}
-                <button type="button" onClick={submitReport} disabled={!reportText.trim() || reporting} style={{ width: 'fit-content', border: 'none', borderRadius: 999, padding: '0.72rem 1rem', background: reportText.trim() && !reporting ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-border)', color: reportText.trim() && !reporting ? '#fff' : 'var(--app-muted)', cursor: reportText.trim() && !reporting ? 'pointer' : 'not-allowed', fontWeight: 800, fontFamily: "'DM Sans', sans-serif" }}>{reporting ? 'Submitting...' : 'Submit report'}</button>
+                <button type="button" onClick={submitReport} disabled={!reportText.trim() || reporting} style={{ width: 'fit-content', border: 'none', borderRadius: 999, padding: '0.72rem 1rem', background: reportText.trim() && !reporting ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-border)', color: reportText.trim() && !reporting ? '#fff' : 'var(--app-muted)', cursor: reportText.trim() && !reporting ? 'pointer' : 'not-allowed', fontWeight: 800, fontFamily: "'General Sans', sans-serif" }}>{reporting ? 'Submitting...' : 'Submit report'}</button>
               </>
             )}
           </div>
@@ -235,7 +235,7 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
         <AccordionItem title="Log out" isOpen={openSection === 'logout'} onToggle={() => setOpenSection(current => current === 'logout' ? null : 'logout')} danger>
           <div style={{ display: 'grid', gap: '0.7rem' }}>
             <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--app-muted)' }}>You will be signed out on this device.</p>
-            <button type="button" onClick={onSignOut} style={{ width: 'fit-content', border: '1px solid #f9cdd3', borderRadius: 999, padding: '0.72rem 1rem', background: '#fff8f8', color: '#c0445a', cursor: 'pointer', fontWeight: 800, fontFamily: "'DM Sans', sans-serif" }}>Sign out</button>
+            <button type="button" onClick={onSignOut} style={{ width: 'fit-content', border: '1px solid #f9cdd3', borderRadius: 999, padding: '0.72rem 1rem', background: '#fff8f8', color: '#c0445a', cursor: 'pointer', fontWeight: 800, fontFamily: "'General Sans', sans-serif" }}>Sign out</button>
           </div>
         </AccordionItem>
       </div>

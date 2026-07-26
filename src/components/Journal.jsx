@@ -683,7 +683,7 @@ function TemplateDetail({ template, answers, onChange, onBack, onApply }) {
           <button type="button" onClick={onBack} style={{ ...ghostIconButtonStyle, background: 'rgba(255,255,255,0.86)' }}>
             <ArrowLeft size={20} />
           </button>
-          <h2 className="font-display" style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 600, color: '#fff' }}>{template.name}</h2>
+          <h2 className="font-display" style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: '2rem', fontWeight: 600, color: '#fff' }}>{template.name}</h2>
         </div>
         <p style={{ margin: 0, color: '#fff6fb', fontSize: '1rem', lineHeight: 1.65 }}>{template.useWhen}</p>
 
@@ -767,7 +767,7 @@ function WeeklyReflectionFlow({
   onSave,
   canSave,
 }) {
-  const inputStyle = { flex: 1, border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)', padding: '0.6rem 0.75rem', outline: 'none', fontFamily: "'DM Sans', sans-serif", fontSize: '0.9rem', color: '#3d1f2b' }
+  const inputStyle = { flex: 1, border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-sm)', padding: '0.6rem 0.75rem', outline: 'none', fontFamily: "'General Sans', sans-serif", fontSize: '0.9rem', color: '#3d1f2b' }
   const voiceButtonStyle = { border: '1px solid #f2c4d0', background: '#fff', color: '#7a5567', borderRadius: 999, width: 40, height: 40, display: 'grid', placeItems: 'center', flexShrink: 0, cursor: 'pointer' }
   const dialButtonStyle = active => ({
     flex: 1,
@@ -791,7 +791,7 @@ function WeeklyReflectionFlow({
       <div style={{ padding: '20px 16px', display: 'grid', gap: '1.4rem', flex: 1, overflowY: 'auto' }}>
         <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(232,64,122,0.2)', borderRadius: 'var(--app-radius-md)', padding: '1rem' }}>
           <p style={{ margin: 0, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>{phaseName}</p>
-          <p style={{ margin: '0.4rem 0 0', fontFamily: "'Cormorant Garamond, serif", fontSize: '1.2rem', color: '#3d1f2b', lineHeight: 1.6 }}>
+          <p style={{ margin: '0.4rem 0 0', fontFamily: "'Fraunces', serif", fontSize: '1.2rem', color: '#3d1f2b', lineHeight: 1.6 }}>
             You showed up <strong>{completedDays} of {totalDays}</strong> days this week. That&apos;s real.
           </p>
         </div>
@@ -898,7 +898,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
       <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
         <div>
           <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
-          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 700, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
+          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Fraunces', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 700, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
         </div>
         {isWeeklyPulse ? (
           <>
@@ -1006,7 +1006,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
                             background: role === 'user' ? 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))' : '#fff',
                             border: role === 'user' ? 'none' : '1px solid var(--app-border)',
                             color: role === 'user' ? '#fff' : 'var(--app-text)',
-                            fontFamily: "'DM Sans', sans-serif",
+                            fontFamily: "'General Sans', sans-serif",
                             fontSize: '0.84rem',
                             lineHeight: 1.65,
                             whiteSpace: 'pre-wrap',
@@ -1221,10 +1221,10 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
             {!draft.templateFields ? (
-              <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 700 }} />
+              <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Fraunces', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 700 }} />
             ) : (
               <div style={{ display: 'grid', gap: '1rem' }}>
-                <p style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: draft.color, fontFamily: "'Playfair Display', serif" }}>{draft.prompt}</p>
+                <p style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: draft.color, fontFamily: "'Fraunces', serif" }}>{draft.prompt}</p>
                 {draft.templateFields.map((field, index) => (
                   <div key={field.label} style={{ display: 'grid', gap: '0.42rem' }}>
                     <p style={{ margin: 0, color: 'var(--app-accent)', fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.5 }}>
@@ -1934,7 +1934,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
         <div style={{ textAlign: 'center', display: 'grid', gap: '1rem' }}>
           <div style={{ width: 88, height: 88, margin: '0 auto', borderRadius: '50%', border: '6px solid #fde2ec', borderTopColor: 'var(--app-accent)', animation: 'phasr-spin 1s linear infinite' }} />
           <div style={{ width: 82, height: 82, margin: '0 auto', borderRadius: '50%', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>SAGE</div>
-          <p style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', lineHeight: 1.25, color: '#3b2330' }}>Sage is reading your entry...</p>
+          <p style={{ margin: 0, fontFamily: "'Fraunces', serif", fontSize: '1.8rem', lineHeight: 1.25, color: '#3b2330' }}>Sage is reading your entry...</p>
           <p style={{ margin: 0, color: '#8f7180', lineHeight: 1.8 }}>Generating your clarity score and personal response.</p>
           <style>{`@keyframes phasr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
@@ -2012,9 +2012,16 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
           </div>
         </div>
 
-        <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} type="button" onClick={startNewEntry} style={{ position: 'fixed', right: '50%', transform: 'translateX(50%)', bottom: '1.2rem', width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', boxShadow: 'var(--app-shadow-lg)', display: 'grid', placeItems: 'center', zIndex: 8 }}>
-          <Plus size={30} />
-        </motion.button>
+        {/* Plain wrapper does the centering via flexbox, not transform — the
+            button itself uses framer-motion's own transform for whileHover/
+            whileTap scale, and a manual `transform: translateX(50%)` on the
+            same element gets silently overwritten by that, which is what
+            made the button appear to "move" out from under a tap. */}
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: '1.2rem', display: 'flex', justifyContent: 'center', zIndex: 8, pointerEvents: 'none' }}>
+          <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} type="button" onClick={startNewEntry} style={{ width: 68, height: 68, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', boxShadow: 'var(--app-shadow-lg)', display: 'grid', placeItems: 'center', pointerEvents: 'auto' }}>
+            <Plus size={30} />
+          </motion.button>
+        </div>
       </div>
 
       <BottomSheet open={showSortSheet} onClose={() => setShowSortSheet(false)} title="Sort entries">
