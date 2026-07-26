@@ -841,9 +841,11 @@ export default function Review({ user, onOpenBoard, onOpenJournal }) {
     const sync = () => setBoardData(loadBoardData())
     window.addEventListener('phasr-vb-updated', sync)
     window.addEventListener('storage', sync)
+    window.addEventListener('phasr-hydrated', sync)
     return () => {
       window.removeEventListener('phasr-vb-updated', sync)
       window.removeEventListener('storage', sync)
+      window.removeEventListener('phasr-hydrated', sync)
     }
   }, [])
 

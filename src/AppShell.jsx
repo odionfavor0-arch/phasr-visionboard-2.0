@@ -225,23 +225,19 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
     }
   }, [])
 
-  const [hydrated, setHydrated] = useState(false)
-
   useEffect(() => {
     let cancelled = false
-    if (!user?.id) {
-      queueMicrotask(() => setHydrated(true))
-      return undefined
-    }
-    setHydrated(false)
-    // This never blocks rendering (see `content` below) — it only decides
-    // when to remount with freshly-synced data. A slow or stuck pull (e.g. a
+    if (!user?.id) return undefined
+    // Nothing here ever gates rendering — the board/journal/checkin/review
+    // are on screen immediately from local cache. When this finishes, views
+    // that care about freshly-synced data listen for 'phasr-hydrated' and
+    // quietly update their own state in place (no remount, no re-animation,
+    // no visible loading state of any kind). A slow or stuck pull (e.g. a
     // large payload over a poor mobile connection) must still never wait
     // forever, so local data wins the race after this timeout regardless.
-    let timedOut = false
     const HYDRATE_TIMEOUT_MS = 8000
     const timeout = new Promise(resolve => {
-      setTimeout(() => { timedOut = true; resolve() }, HYDRATE_TIMEOUT_MS)
+      setTimeout(resolve, HYDRATE_TIMEOUT_MS)
     })
     Promise.race([
       hydrateAllFromSupabase(user).catch(error => {
@@ -250,11 +246,8 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       timeout,
     ]).finally(() => {
       if (cancelled) return
-      if (timedOut) {
-        console.warn(`[Phasr] Supabase hydrate did not finish within ${HYDRATE_TIMEOUT_MS}ms — continuing with local data`)
-      }
       setLockSummary(getLockInSummary(loadLockInState()))
-      setHydrated(true)
+      window.dispatchEvent(new CustomEvent('phasr-hydrated'))
     })
     return () => {
       cancelled = true
@@ -288,16 +281,13 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   }
 
   // The board is on screen the instant the app opens — local cache renders
-  // immediately, with nothing gating it behind a loading screen. Supabase
-  // hydration still runs (see the effect above); once it lands, `hydrated`
-  // flips and the `key` below remounts these components so they pick up the
-  // freshly-synced localStorage on their next (synchronous, on-mount) read —
-  // that's what keeps lockIn.js's recompute timezone-stable across devices —
-  // but the remount itself is instant and invisible, never a spinner or blank state.
-  const syncKey = hydrated ? 'synced' : 'local'
+  // immediately, with nothing gating it behind a loading screen and no key
+  // remount trick (that caused its own flash/re-animation). Views that care
+  // about freshly-synced data listen for 'phasr-hydrated' themselves and
+  // update their own state in place — see the matching listeners in
+  // VisionBoard.jsx, DailyCheckin.jsx, and Review.jsx.
   let content = (
     <VisionBoard
-      key={syncKey}
       user={user}
       lockInSummary={lockSummary}
       onOpenDailyStreak={() => setView('checkin')}
@@ -309,7 +299,6 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   if (view === 'journal') {
     content = (
       <Journal
-        key={syncKey}
         user={user}
         autoOpenWeeklyPulse={autoOpenWeeklyPulse}
         onWeeklyPulseOpened={() => setAutoOpenWeeklyPulse(false)}
@@ -317,11 +306,10 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       />
     )
   } else if (view === 'entries') {
-    content = <JournalEntries key={syncKey} onBack={() => setView('journal')} />
+    content = <JournalEntries onBack={() => setView('journal')} />
   } else if (view === 'checkin') {
     content = (
       <DailyCheckin
-        key={syncKey}
         onOpenBoard={() => setView('board')}
         onOpenJournal={() => setView('journal')}
         onOpenWeeklyPulse={() => {
@@ -335,7 +323,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
       />
     )
   } else if (view === 'review') {
-    content = <Review key={syncKey} user={user} onOpenBoard={() => setView('board')} />
+    content = <Review user={user} onOpenBoard={() => setView('board')} />
   } else if (view === 'settings') {
     content = (
       <SettingsPanel
@@ -350,11 +338,14 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
   return (
     <div
       style={{
+        // No fixed height + overflow:hidden here on purpose — that pattern traps
+        // scrolling inside the <main> below and stops the mobile browser's own
+        // address bar from ever collapsing on scroll (it only does that when the
+        // real page/document scrolls). The real page scrolls now; the sidebar and
+        // header stay put via position: fixed/sticky instead of a clipped parent.
         minHeight: '100vh',
         background: 'var(--app-bg)',
         display: 'flex',
-        height: '100vh',
-        overflow: 'hidden',
         width: '100%',
       }}
     >
@@ -381,10 +372,14 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
 
       <aside
         style={{
-          position: isMobile ? 'fixed' : 'relative',
+          // Fixed on mobile (independent of document scroll entirely). Sticky, not
+          // relative, on desktop — with the page itself now able to grow past 100vh,
+          // a `relative` sidebar would scroll away with the content; `sticky` pins
+          // it to the viewport the same way the header already does.
+          position: isMobile ? 'fixed' : 'sticky',
           top: 0,
           left: 0,
-          bottom: 0,
+          bottom: isMobile ? 0 : 'auto',
           width: sidebarWidth,
           height: '100vh',
           transform: isMobile ? (sidebarOpen ? 'translateX(0)' : `translateX(-${MOBILE_RAIL_WIDTH + 12}px)`) : 'none',
@@ -474,7 +469,6 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden',
         }}
       >
         <header
@@ -612,7 +606,7 @@ export default function AppShell({ user, theme, onThemeChange, onSignOut }) {
           </button>
         </header>
 
-        <main style={{ minWidth: 0, width: '100%', flex: 1, overflowY: 'auto' }}>
+        <main style={{ minWidth: 0, width: '100%', flex: 1 }}>
           {content}
         </main>
       </div>

@@ -568,10 +568,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
     window.addEventListener('focus', sync)
     window.addEventListener('storage', sync)
     window.addEventListener('phasr-user-level-updated', sync)
+    window.addEventListener('phasr-hydrated', sync)
     return () => {
       window.removeEventListener('focus', sync)
       window.removeEventListener('storage', sync)
       window.removeEventListener('phasr-user-level-updated', sync)
+      window.removeEventListener('phasr-hydrated', sync)
     }
   }, [])
 

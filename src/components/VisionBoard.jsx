@@ -1464,6 +1464,19 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }, [editing])
 
   useEffect(() => {
+    // Supabase hydration runs in the background (see AppShell) and can land
+    // after this component already mounted from local cache. This quietly
+    // folds in whatever it pulled down — a plain setState on the already-
+    // mounted board, not a remount, so nothing here re-animates or flashes.
+    function refreshFromHydrate() {
+      const saved = load(user)
+      if (saved) setData(normalizeBoardData(saved))
+    }
+    window.addEventListener('phasr-hydrated', refreshFromHydrate)
+    return () => window.removeEventListener('phasr-hydrated', refreshFromHydrate)
+  }, [user])
+
+  useEffect(() => {
     // The vision-style/preset panel renders above the pillar list. On a tall
     // single-column mobile board, opening it from a pillar further down the
     // page put it off-screen with nothing visibly happening on tap.
@@ -1873,7 +1886,7 @@ Return JSON only:
       setUploadMessage(
         message.includes('groq_network_error')
           ? 'Could not reach the server. Check your connection and try again.'
-          : `Sage plan error: ${message || 'unknown'}. Check console for details.`,
+          : 'Sage could not generate a plan right now. Please try again in a moment.',
       )
     } finally {
       setGeneratingPillarId(null)
@@ -2088,9 +2101,10 @@ Return JSON only:
 
     setCalendarBusy(true)
     try {
-      const today = new Date()
-      const windowStart = new Date(today)
-      windowStart.setHours(0, 0, 0, 0)
+      // NON_NEGOTIABLE_DAY_OFFSETS assumes offset 0 = Monday, so this window
+      // must start on the actual Monday of the current week — anchoring to
+      // "today" mislabeled every scheduled day whenever today wasn't Monday.
+      const windowStart = getWeekStartDate(new Date())
 
       const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent || '')
       const userId = getActiveUserId(user)
@@ -2514,7 +2528,7 @@ Return JSON only:
   }, [showSavePopup])
 
   return (
-    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 80px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: isMobile ? '1rem 0.85rem 40px' : '1.5rem 1rem 4rem', fontFamily: "'DM Sans',sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 'none', margin: '0 auto' }}>
         {uploadMessage && (
           <div id="vb-status-message" style={{ marginBottom: '1rem', borderRadius: 16, padding: '0.9rem 1rem', background: '#fff3f6', border: '1px solid #f2c7d4', color: '#a54f71', fontSize: '0.88rem', fontWeight: 700, boxShadow: '0 12px 30px rgba(185,87,122,0.1)' }}>
@@ -2522,16 +2536,14 @@ Return JSON only:
           </div>
         )}
 
-        {/* Today's Task */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        {/* Today's Task — static, no mount animation. The board should just be
+            there; only the numbers inside it (today's task/streak) ever change. */}
+        <div
           style={{
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
           borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.75rem 0.85rem' : '0.9rem 1.1rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: isMobile ? '0.85rem' : '1rem', gap: '0.6rem',
+          marginBottom: isMobile ? '1.3rem' : '1.5rem', gap: '0.6rem',
           boxShadow: 'var(--app-shadow-md)',
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2599,7 +2611,7 @@ Return JSON only:
               </motion.button>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Pillar-saved card — sits inline, directly under the banner and its CTA,
             not floating over the page. It visually emerges from the button that
@@ -2685,7 +2697,7 @@ Return JSON only:
         )}
 
         {/* â"€â"€ Header â"€â"€ */}
-        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.2rem' : '1.7rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.7rem' : '2.1rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
             : (!isMobile && <h1 className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
@@ -2711,26 +2723,20 @@ Return JSON only:
         </div>
 
         {/* â"€â"€ Phase Tabs â"€â"€ */}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.5rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', marginBottom: '1.9rem', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', whiteSpace: isMobile ? 'nowrap' : 'normal', paddingBottom: isMobile ? 2 : 0 }}>
           {data.phases.map((p, index) => {
             const activePhase = phaseId === p.id
             const draft = getTimelineDraft(p)
             const alignRight = index === data.phases.length - 1
             return (
-            <motion.div
+            <div
               key={p.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30, delay: index * 0.04 }}
               style={{ position: 'relative' }}
               onMouseEnter={() => setRevealedDeleteTarget(`phase:${p.id}`)}
               onMouseLeave={() => setRevealedDeleteTarget(current => current === `phase:${p.id}` ? null : current)}
               onTouchStart={() => setRevealedDeleteTarget(`phase:${p.id}`)}
             >
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              <div
                 onClick={() => {
                   setPhaseId(p.id)
                   if (timelineEditorPhaseId && timelineEditorPhaseId !== p.id) setTimelineEditorPhaseId(null)
@@ -2798,7 +2804,7 @@ Return JSON only:
                 >
                   {getPhaseTimelineLabel(p)}
                 </button>
-              </motion.div>
+              </div>
 
               {editing && timelineEditorPhaseId === p.id && (
                 <motion.div
@@ -2891,7 +2897,7 @@ Return JSON only:
                   ×
                 </button>
               )}
-            </motion.div>
+            </div>
           )})}
 
           {editing && (isPro || data.phases.length < FREE_PHASE_LIMIT) ? (
@@ -2903,17 +2909,13 @@ Return JSON only:
 
 
         {/* â"€â"€ Affirmation â"€â"€ */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.04 }}
-          style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.5rem', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: 'var(--app-shadow-sm)' }}>
+        <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: isMobile ? '0.72rem 1rem' : '0.85rem 1.4rem', marginBottom: '1.9rem', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: 'var(--app-shadow-sm)' }}>
           <span style={{ position: 'absolute', top: isMobile ? -6 : -10, left: isMobile ? 8 : 10, fontFamily: "'Playfair Display',serif", fontSize: isMobile ? '3.8rem' : '5rem', color: 'var(--app-border)', lineHeight: 1, pointerEvents: 'none' }}>"</span>
           {editing
             ? <input value={phase?.affirmation || ''} onChange={e => updatePhase('affirmation', e.target.value)} placeholder="Your phase mantra..." style={inp({ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: '1rem', color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '1.5px solid var(--app-border)', textAlign: 'center', marginBottom: 0, position: 'relative', zIndex: 1 })} onFocus={focus} onBlur={blur} />
             : <p className="font-display" style={{ fontFamily: "'Playfair Display',serif", fontStyle: 'italic', fontSize: isMobile ? '0.84rem' : 'clamp(0.9rem,2.2vw,1.05rem)', color: 'var(--app-accent)', position: 'relative', zIndex: 1, lineHeight: isMobile ? 1.45 : 1.6, margin: 0 }}>{phase?.affirmation}</p>
           }
-        </motion.div>
+        </div>
 
         {/* ── Pillars ── */}
         {editing && (
@@ -3286,10 +3288,19 @@ Return JSON only:
   function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, rowGroup, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const calendarWindowStart = useMemo(() => {
+      // NON_NEGOTIABLE_DAY_OFFSETS assumes offset 0 = Monday — this must anchor
+      // to the actual Monday of the current week (weekStartKey), not "today".
+      // Anchoring to today meant every assigned day was mislabeled whenever
+      // today wasn't Monday (e.g. a Sunday login showed Sunday's date under
+      // the "Monday" slot).
+      if (weekStartKey) {
+        const parsed = new Date(`${weekStartKey}T00:00:00`)
+        if (!Number.isNaN(parsed.getTime())) return parsed
+      }
       const base = new Date()
       base.setHours(0, 0, 0, 0)
       return base
-    }, [])
+    }, [weekStartKey])
     const scheduleStateKey = useMemo(() => ({ userId, phaseId, pillarId: pl.id, weekStartKey }), [userId, phaseId, pl.id, weekStartKey])
     const [scheduleState, setScheduleState] = useState(() => userId && weekStartKey ? loadNonNegotiableSchedule(scheduleStateKey) : {})
     const isDestination = pl.visionStyle === 'destination'
@@ -3355,11 +3366,7 @@ Return JSON only:
   const cardRowStart = (rowGroup || 0) * PILLAR_ROW_COUNT + 1
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30, delay: (index || 0) * 0.04 }}
-      whileHover={{ scale: 1.01 }}
+    <div
       style={
         isMobile
           // Plain stack, not a grid item — the numbered gridRow values below are
@@ -3647,6 +3654,6 @@ Return JSON only:
           </div>
         </>
       )}
-    </motion.div>
+    </div>
   )
 }

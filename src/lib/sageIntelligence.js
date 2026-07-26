@@ -385,7 +385,11 @@ export async function fetchPillarPlanWithGroq({
     let errorBody = ''
     try { errorBody = await res.text() } catch { /* ignore */ }
     console.error('[Sage Plan] API error response:', errorBody)
-    throw new Error('groq_error')
+    // Surface the server's actual reason (e.g. "GROQ_API_KEY is not configured
+    // on the server") instead of a bare "groq_error" code the user can't act on.
+    let detail = ''
+    try { detail = JSON.parse(errorBody)?.error || '' } catch { detail = errorBody }
+    throw new Error(detail ? `groq_error: ${detail}` : 'groq_error')
   }
 
   const data = await res.json()
