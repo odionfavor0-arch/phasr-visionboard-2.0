@@ -912,6 +912,9 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }
 
   function openPulse() {
+    // Weekly Reflection is about the week that just happened — it has nothing
+    // to reflect on until that week's 7 days are actually done.
+    if (!weekComplete) return
     onOpenWeeklyPulse?.({
       weekNumber: activeWeek,
       completionPercent: weekPercent,
@@ -979,24 +982,26 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               <motion.button
                 type="button"
                 onClick={openPulse}
-                onMouseEnter={() => setReflectionHover(true)}
+                disabled={!weekComplete}
+                title={weekComplete ? undefined : `Unlocks when week ${activeWeek}'s 7 days are done`}
+                onMouseEnter={() => weekComplete && setReflectionHover(true)}
                 onMouseLeave={() => setReflectionHover(false)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={weekComplete ? { scale: 1.02 } : undefined}
+                whileTap={weekComplete ? { scale: 0.98 } : undefined}
                 style={{
                   minHeight: isMobile ? 28 : 32,
                   padding: isMobile ? '0.3rem 0.6rem' : '0.42rem 0.78rem',
                   borderRadius: 999,
-                  border: '1px solid rgba(232,64,122,0.32)',
-                  background: 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))',
-                  color: '#fff',
+                  border: weekComplete ? '1px solid rgba(232,64,122,0.32)' : '1px solid var(--app-border)',
+                  background: weekComplete ? 'linear-gradient(135deg, var(--app-accent), var(--app-accent2))' : 'var(--app-bg2)',
+                  color: weekComplete ? '#fff' : 'var(--app-muted)',
                   fontSize: isMobile ? '0.7rem' : '0.82rem',
                   fontWeight: 800,
                   letterSpacing: '0.01em',
-                  cursor: 'pointer',
+                  cursor: weekComplete ? 'pointer' : 'not-allowed',
                   fontFamily: "'DM Sans', sans-serif",
-                  boxShadow: reflectionHover ? '0 12px 26px rgba(232,64,122,0.32)' : '0 7px 16px rgba(232,64,122,0.18)',
-                  transform: reflectionHover ? 'translateY(-1px)' : 'translateY(0)',
+                  boxShadow: weekComplete && reflectionHover ? '0 12px 26px rgba(232,64,122,0.32)' : weekComplete ? '0 7px 16px rgba(232,64,122,0.18)' : 'none',
+                  transform: weekComplete && reflectionHover ? 'translateY(-1px)' : 'translateY(0)',
                   transition: 'all 0.18s ease',
                 }}
               >
