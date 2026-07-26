@@ -13,6 +13,7 @@ const PILLAR_PRESETS = [
 const slides = [
   { id: 'phasr', kicker: '', headline: 'Break your vision into phases, daily tasks, and real accountability.', body: 'PHASR turns your vision into phases, daily tasks, and real accountability. Let\'s set up your first phase.', detail: 'A personal system built for follow-through.', theme: 'dark' },
   { id: 'sage', kicker: 'Sage', headline: 'Find what matters next', body: 'Sage helps you think clearly, remove doubt, and turn reflection into focused action.', detail: 'Clarity turns into direction.', theme: 'deep' },
+  { id: 'about-me', kicker: 'About You', headline: 'Tell Sage about yourself', body: 'A photo and a few honest lines — not a public bio. This is what Sage remembers about you going forward.', theme: 'deep', isCustom: true },
   { id: 'vision', kicker: 'Vision Board', headline: 'Show it what you want. It builds the road.', body: 'Upload your before and after. PHASR turns that vision into resources, non-negotiables, and outcomes.', detail: 'Your vision becomes a working plan.', theme: 'roseBright' },
   { id: 'pillars', kicker: 'Your Focus', headline: 'What are you working on?', body: 'Pick your focus areas. PHASR will build your plan around them.', theme: 'rose', isCustom: true },
   { id: 'letter', kicker: 'Letter to Future You', headline: 'Write to the version of you who finishes this.', body: 'You will see this again when you complete your first phase.', theme: 'dark', isCustom: true },
@@ -99,6 +100,8 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   const [selectedPillars, setSelectedPillars] = useState([])
   const [letterText, setLetterText] = useState('')
   const [letterSealed, setLetterSealed] = useState(false)
+  const [aboutMeText, setAboutMeText] = useState('')
+  const [aboutMePhoto, setAboutMePhoto] = useState('')
 
   const slide = slides[step] || slides[0]
   const theme = themes[slide.theme] || themes.dark
@@ -122,6 +125,22 @@ export default function Onboarding({ userName = 'there', onComplete }) {
     setLetterSealed(true)
   }
 
+  function handleAboutMePhoto(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setAboutMePhoto(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  function saveAboutMe() {
+    if (!aboutMeText.trim() && !aboutMePhoto) return
+    try {
+      if (aboutMeText.trim()) localStorage.setItem('phasr_onboarding_about_me', aboutMeText.trim())
+      if (aboutMePhoto) localStorage.setItem('phasr_onboarding_avatar', aboutMePhoto)
+    } catch {}
+  }
+
   function savePillars() {
     const names = selectedPillars.map(id => PILLAR_PRESETS.find(p => p.id === id)?.name).filter(Boolean)
     try {
@@ -136,6 +155,9 @@ export default function Onboarding({ userName = 'there', onComplete }) {
     }
     if (slide.id === 'letter' && !letterSealed && letterText.trim()) {
       sealLetter()
+    }
+    if (slide.id === 'about-me') {
+      saveAboutMe()
     }
     if (step < slides.length - 1) { setStep(c => c + 1); return }
     onComplete?.('later')
@@ -286,6 +308,55 @@ export default function Onboarding({ userName = 'there', onComplete }) {
               <div style={{ position: isPhone ? 'fixed' : 'static', bottom: isPhone ? 10 : 'auto', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', marginTop: isPhone ? 0 : 24, display: 'flex', justifyContent: 'space-between', gap: 12, width: isPhone ? 'calc(100% - 24px)' : '100%', maxWidth: 520, zIndex: 4 }}>
                 <button type="button" onClick={back} style={{ ...ghostButton, color: theme.text, borderColor: theme.border }}>Back</button>
                 <button type="button" onClick={next} style={primaryButton}>{letterSealed ? 'Continue' : 'Skip for now'}</button>
+              </div>
+            </div>
+
+          ) : slide.id === 'about-me' ? (
+            /* About-you-for-Sage slide: photo + a few honest lines, not a public bio */
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflowY: 'auto', paddingBottom: isPhone ? 120 : 0 }}>
+              <div className="ob-fade-up ob-delay-1" style={{ width: '100%', maxWidth: 520, textAlign: 'center', marginBottom: 20 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', minHeight: 34, padding: '0.38rem 0.85rem', borderRadius: 999, border: `1px solid ${theme.border}`, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', background: theme.panel, marginBottom: 14 }}>
+                  {slide.kicker}
+                </div>
+                <h1 style={{ margin: '0 0 10px', fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.2rem' : 'clamp(2.4rem,5vw,3.8rem)', lineHeight: 1.05, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
+                <p style={{ margin: '0 0 20px', fontSize: '0.94rem', lineHeight: 1.65, color: theme.muted }}>{slide.body}</p>
+              </div>
+
+              <div className="ob-fade-up ob-delay-2" style={{ width: '100%', maxWidth: 520 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
+                  <div style={{
+                    width: 84, height: 84, borderRadius: '50%', overflow: 'hidden',
+                    background: aboutMePhoto ? 'transparent' : theme.panel,
+                    border: `1.5px dashed ${theme.border}`,
+                    display: 'grid', placeItems: 'center', color: theme.muted, fontSize: '0.7rem',
+                  }}>
+                    {aboutMePhoto ? (
+                      <img src={aboutMePhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : 'Add photo'}
+                  </div>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: theme.muted }}>{aboutMePhoto ? 'Change photo' : 'Upload a photo (optional)'}</span>
+                  <input type="file" accept="image/*" onChange={handleAboutMePhoto} style={{ display: 'none' }} />
+                </label>
+                <textarea
+                  value={aboutMeText}
+                  onChange={e => setAboutMeText(e.target.value)}
+                  placeholder="What are you working toward? What's one thing you struggle with? What keeps you motivated?"
+                  rows={isPhone ? 5 : 6}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', borderRadius: 16,
+                    border: `1px solid ${theme.border}`,
+                    background: '#ffffff',
+                    color: theme.text, fontFamily: "'General Sans',sans-serif",
+                    fontSize: '0.96rem', lineHeight: 1.65,
+                    padding: '16px', resize: 'none', outline: 'none',
+                    marginBottom: 12,
+                  }}
+                />
+              </div>
+
+              <div style={{ position: isPhone ? 'fixed' : 'static', bottom: isPhone ? 10 : 'auto', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', marginTop: isPhone ? 0 : 24, display: 'flex', justifyContent: 'space-between', gap: 12, width: isPhone ? 'calc(100% - 24px)' : '100%', maxWidth: 520, zIndex: 4 }}>
+                <button type="button" onClick={back} style={{ ...ghostButton, color: theme.text, borderColor: theme.border }}>Back</button>
+                <button type="button" onClick={next} style={primaryButton}>{aboutMeText.trim() || aboutMePhoto ? 'Continue' : 'Skip for now'}</button>
               </div>
             </div>
 

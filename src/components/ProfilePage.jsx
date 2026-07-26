@@ -4,19 +4,41 @@ import { supabase, supabaseConfigError } from '../lib/supabaseClient'
 
 const PROFILE_KEY = 'phasr_profile_cache'
 
-export function loadCachedProfile() {
-  try {
-    const raw = localStorage.getItem(PROFILE_KEY)
-    return raw ? JSON.parse(raw) : {}
-  } catch {
-    return {}
-  }
-}
-
 function saveCachedProfile(data) {
   try {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(data))
   } catch {}
+}
+
+// Onboarding's "tell Sage about yourself" step stashes here (same pattern as
+// phasr_onboarding_pillars / phasr_future_letter_p1 in VisionBoard.jsx) since
+// onboarding runs before there's a saved profile to write into directly. Folded
+// into loadCachedProfile() itself (not just the ProfilePage component) so Sage
+// picks this up on the very first session, even if the user never opens Profile.
+function adoptOnboardingAboutMe(cached) {
+  if (cached.bio || cached.avatar_url) return cached
+  try {
+    const aboutMe = localStorage.getItem('phasr_onboarding_about_me') || ''
+    const avatar = localStorage.getItem('phasr_onboarding_avatar') || ''
+    if (!aboutMe && !avatar) return cached
+    localStorage.removeItem('phasr_onboarding_about_me')
+    localStorage.removeItem('phasr_onboarding_avatar')
+    const merged = { ...cached, bio: aboutMe || cached.bio, avatar_url: avatar || cached.avatar_url }
+    saveCachedProfile(merged)
+    return merged
+  } catch {
+    return cached
+  }
+}
+
+export function loadCachedProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY)
+    const cached = raw ? JSON.parse(raw) : {}
+    return adoptOnboardingAboutMe(cached)
+  } catch {
+    return {}
+  }
 }
 
 export async function fetchProfile(userId) {
@@ -29,7 +51,14 @@ export async function fetchProfile(userId) {
       .eq('user_id', userId)
       .maybeSingle()
     if (data) {
-      const merged = { ...cached, ...data }
+      // Prefer the remote value but never let a null/empty remote column
+      // clobber a value adopted locally moments ago (e.g. onboarding's about-me
+      // text, saved locally before this row's first real Supabase write).
+      const merged = {
+        display_name: data.display_name || cached.display_name,
+        bio: data.bio || cached.bio,
+        avatar_url: data.avatar_url || cached.avatar_url,
+      }
       saveCachedProfile(merged)
       return merged
     }
@@ -249,13 +278,16 @@ export default function ProfilePage({ user, onClose, onProfileSaved }) {
 
           <div>
             <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#9a7088', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Bio
+              Tell Sage about yourself
             </label>
+            <p style={{ margin: '0 0 8px', fontSize: '0.76rem', color: '#9a7088', lineHeight: 1.5 }}>
+              Not a public bio — this is what Sage remembers about you. What are you working toward? What's one thing you struggle with? What keeps you motivated?
+            </p>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
-              placeholder="A short line about what you're working toward..."
-              rows={3}
+              placeholder="e.g. I tend to procrastinate when I'm overwhelmed, and I'm trying to build a business without burning out..."
+              rows={4}
               style={{
                 width: '100%', boxSizing: 'border-box',
                 border: '1px solid rgba(249,95,133,0.28)',

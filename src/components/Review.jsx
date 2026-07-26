@@ -129,6 +129,58 @@ function getWeeklyPulseEntries(user, phase) {
     .sort((a, b) => new Date(b?.date || 0) - new Date(a?.date || 0))
 }
 
+function openSageFloat() {
+  window.dispatchEvent(new CustomEvent('phasr-open-sage-float'))
+}
+
+function WeeklyReflectionCard({ entry, phase, defaultOpen = false }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '1.1rem', boxShadow: 'var(--app-shadow-sm)' }}>
+      <p style={{ margin: '0 0 0.2rem', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
+        {entry.title || `Weekly Reflection — Week ${entry?.weeklyPulseMeta?.weekNumber || 1}`}
+      </p>
+      <p style={{ margin: '0 0 0.9rem', fontSize: '0.72rem', color: 'var(--app-muted)' }}>
+        {entry?.weeklyPulseMeta?.phaseName || phase?.name} · {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+      </p>
+      <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: 'var(--app-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{entry.content}</p>
+      {entry.sageResponse && (
+        <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.2)', borderRadius: 'var(--app-radius-sm)', padding: '0.85rem', marginBottom: defaultOpen ? 0 : '0.7rem' }}>
+          <p style={{ margin: '0 0 0.3rem', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Sage's read</p>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#4d3142', lineHeight: 1.6 }}>{entry.sageResponse}</p>
+        </div>
+      )}
+      <button type="button" onClick={openSageFloat} style={{ marginTop: '0.7rem', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        Continue with Sage <ArrowRight size={13} />
+      </button>
+    </div>
+  )
+}
+
+// Closed by default — a week is a title bar until tapped open, so a long
+// history reads as a list of dates, not a wall of paragraphs.
+function PastReflectionRow({ entry, phase }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', padding: '0.7rem 0.9rem', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans',sans-serif" }}
+      >
+        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--app-text)' }}>
+          Week {entry?.weeklyPulseMeta?.weekNumber || '?'} · {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </span>
+        <ChevronRight size={15} color="var(--app-muted)" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease', flexShrink: 0 }} />
+      </button>
+      {open && (
+        <div style={{ padding: '0 0.9rem 0.9rem' }}>
+          <WeeklyReflectionCard entry={entry} phase={phase} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function WeeklyReflection({ user, boardData, phase, onOpenJournal }) {
   const engine = useMemo(() => ensureProgressEngine(boardData), [boardData])
   const currentWeekNumber = engine.currentWeek?.index || 1
@@ -147,6 +199,7 @@ function WeeklyReflection({ user, boardData, phase, onOpenJournal }) {
   }
 
   const isCurrentWeek = mostRecent === thisWeekEntry
+  const pastEntries = pulses.filter(e => e !== mostRecent)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
@@ -156,25 +209,22 @@ function WeeklyReflection({ user, boardData, phase, onOpenJournal }) {
           Showing your most recent reflection — week {mostRecent?.weeklyPulseMeta?.weekNumber || '?'}. This week's isn't written yet.
         </div>
       )}
-      <div style={{ background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '1.1rem', boxShadow: 'var(--app-shadow-sm)' }}>
-        <p style={{ margin: '0 0 0.2rem', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>
-          {mostRecent.title || `Weekly Reflection — Week ${mostRecent?.weeklyPulseMeta?.weekNumber || 1}`}
-        </p>
-        <p style={{ margin: '0 0 0.9rem', fontSize: '0.72rem', color: 'var(--app-muted)' }}>
-          {mostRecent?.weeklyPulseMeta?.phaseName || phase?.name} · {new Date(mostRecent.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </p>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.9rem', color: 'var(--app-text)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{mostRecent.content}</p>
-        {mostRecent.sageResponse && (
-          <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff0f7)', border: '1px solid rgba(249,95,133,0.2)', borderRadius: 'var(--app-radius-sm)', padding: '0.85rem' }}>
-            <p style={{ margin: '0 0 0.3rem', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Sage's read</p>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#4d3142', lineHeight: 1.6 }}>{mostRecent.sageResponse}</p>
-          </div>
-        )}
-      </div>
+      <WeeklyReflectionCard entry={mostRecent} phase={phase} defaultOpen />
       {onOpenJournal && (
         <button type="button" onClick={onOpenJournal} style={{ alignSelf: 'flex-start', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           Open in Journal <ArrowRight size={13} />
         </button>
+      )}
+
+      {pastEntries.length > 0 && (
+        <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+          <p style={{ margin: 0, fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-muted)' }}>
+            Past reflections
+          </p>
+          {pastEntries.map(entry => (
+            <PastReflectionRow key={entry.id || entry.date} entry={entry} phase={phase} />
+          ))}
+        </div>
       )}
     </div>
   )

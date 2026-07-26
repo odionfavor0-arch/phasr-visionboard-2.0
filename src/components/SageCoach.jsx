@@ -6,6 +6,7 @@ import { Copy, Globe, Pencil, RotateCcw, Trash2, Volume2 } from 'lucide-react'
 import { getLockInSummary, getTodayTask, loadBoardData, loadLockInState } from '../lib/lockIn'
 import { getUserAccess } from '../lib/access'
 import { getSageAvatarUrl, getVoicePreference } from '../lib/userPreferences'
+import { loadCachedProfile } from './ProfilePage'
 
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const QUICK_SESSION_KEY = 'phasr_sage_float'
@@ -297,9 +298,11 @@ function buildUserContextSection(user, boardData) {
   const completed = Number(latestProgress?.completedTasks || latestProgress?.completed || 0)
   const assigned = Number(latestProgress?.assignedTasks || latestProgress?.totalTasks || latestProgress?.target || 0)
   const weeklyCompletionRate = assigned ? `${Math.round((completed / assigned) * 100)} percent` : '0 percent'
+  const aboutMe = String(loadCachedProfile()?.bio || '').trim()
 
   return `USER CONTEXT
 The user's name is: ${user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.first_name || 'there'}
+${aboutMe ? `What they told you about themselves: ${aboutMe}` : ''}
 Their vision board is called: ${boardData?.boardTitle || 'My Vision Board'}
 Current phase: ${boardData?.currentPhase || context.phaseName || 'Phase 1'}
 Current phase period: ${context.phasePeriod || 'Q1'}

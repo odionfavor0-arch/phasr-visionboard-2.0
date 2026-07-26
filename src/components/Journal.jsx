@@ -1962,8 +1962,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
             </motion.div>
           ) : weeklyPulseDue ? (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ borderRadius: 'var(--app-radius-md)', border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem', boxShadow: 'var(--app-shadow-md)' }}>
-              <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Before starting a new week, complete your Weekly Reflection.</p>
-              <p style={{ margin: 0, color: '#7b6671', fontSize: '0.9rem', lineHeight: 1.5 }}>Tap to open Weekly Reflection. Sage returns 1 key pattern, 1 correction, and 1 sharp focus.</p>
+              <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Your week is done.</p>
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={openWeeklyPulse} style={{ justifySelf: 'start', border: 'none', borderRadius: 'var(--app-radius-sm)', padding: '0.62rem 0.9rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800 }}>
                 Weekly Reflection
               </motion.button>
