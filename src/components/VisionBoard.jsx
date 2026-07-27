@@ -2662,99 +2662,102 @@ Return JSON only:
               </motion.button>
             )}
           </div>
-        </div>
 
-        {/* Floats beside the button that triggered it, anchored to the banner —
-            it used to sit inline in the page flow, pushing everything below it
-            down every time it opened. A side popover doesn't disturb the layout. */}
-        {showSavePopup && !editing && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 10px)',
-              right: 0,
-              left: isMobile ? 0 : 'auto',
-              zIndex: 40,
-              width: isMobile ? 'auto' : 320,
-              borderRadius: 18,
-              background: 'rgba(255,255,255,0.68)',
-              backdropFilter: 'blur(18px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(18px) saturate(160%)',
-              border: '1px solid rgba(255,255,255,0.6)',
-              boxShadow: 'var(--app-shadow-lg)',
-              padding: '1rem 1.05rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <p style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: '1rem', fontWeight: 600, color: 'var(--app-text)', lineHeight: 1.3 }}>
-                Put your week where you'll actually see it.
-              </p>
-              <button
-                type="button"
-                onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
-                aria-label="Dismiss"
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(255,255,255,0.7)',
-                  background: 'rgba(255,255,255,0.5)',
-                  color: 'var(--app-muted)',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: 800,
-                  display: 'grid',
-                  placeItems: 'center',
-                  padding: 0,
-                  flexShrink: 0,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                type="button"
-                onClick={async () => { await addToCalendarPlan(); setShowSavePopup(false) }}
-                disabled={calendarBusy}
-                style={{
-                  width: '100%',
-                  padding: '0.6rem',
-                  borderRadius: 10,
-                  border: 'none',
-                  background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
-                  color: '#fff',
-                  fontWeight: 800,
-                  fontSize: '0.8rem',
-                  cursor: calendarBusy ? 'wait' : 'pointer',
-                  fontFamily: "'General Sans',sans-serif",
-                  letterSpacing: '0.02em',
-                  boxShadow: 'var(--app-shadow-sm)',
-                }}
-              >
-                {calendarBusy ? 'Scheduling…' : 'Add to calendar'}
-              </motion.button>
-              <button
-                type="button"
-                onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
-                style={{ border: 'none', background: 'transparent', color: 'var(--app-muted)', fontWeight: 600, fontSize: '0.76rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif", padding: '0.2rem' }}
-              >
-                Maybe later
-              </button>
-            </div>
-          </motion.div>
-        )}
+          {/* Floats beside the button that triggered it, anchored to this banner
+              (its position:relative is what makes "top:100%" land right below the
+              banner instead of one full viewport down — this block used to live
+              OUTSIDE the banner div, past its closing tag, so it had no positioned
+              ancestor at all and anchored to <body>, landing a whole viewport's
+              height down the page instead of beside the button that opened it). */}
+          {showSavePopup && !editing && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 10px)',
+                right: 0,
+                left: isMobile ? 0 : 'auto',
+                zIndex: 40,
+                width: isMobile ? 'auto' : 320,
+                borderRadius: 18,
+                background: 'rgba(255,255,255,0.68)',
+                backdropFilter: 'blur(18px) saturate(160%)',
+                WebkitBackdropFilter: 'blur(18px) saturate(160%)',
+                border: '1px solid rgba(255,255,255,0.6)',
+                boxShadow: 'var(--app-shadow-lg)',
+                padding: '1rem 1.05rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                <p style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: '1rem', fontWeight: 600, color: 'var(--app-text)', lineHeight: 1.3 }}>
+                  Put your week where you'll actually see it.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
+                  aria-label="Dismiss"
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    border: '1px solid rgba(255,255,255,0.7)',
+                    background: 'rgba(255,255,255,0.5)',
+                    color: 'var(--app-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    display: 'grid',
+                    placeItems: 'center',
+                    padding: 0,
+                    flexShrink: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  type="button"
+                  onClick={async () => { await addToCalendarPlan(); setShowSavePopup(false) }}
+                  disabled={calendarBusy}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: '0.8rem',
+                    cursor: calendarBusy ? 'wait' : 'pointer',
+                    fontFamily: "'General Sans',sans-serif",
+                    letterSpacing: '0.02em',
+                    boxShadow: 'var(--app-shadow-sm)',
+                  }}
+                >
+                  {calendarBusy ? 'Scheduling…' : 'Add to calendar'}
+                </motion.button>
+                <button
+                  type="button"
+                  onClick={() => { setShowSavePopup(false); closeCalendarPrompt() }}
+                  style={{ border: 'none', background: 'transparent', color: 'var(--app-muted)', fontWeight: 600, fontSize: '0.76rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif", padding: '0.2rem' }}
+                >
+                  Maybe later
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </div>
 
         {/* â"€â"€ Header â"€â"€ */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.7rem' : '2.1rem' }}>
