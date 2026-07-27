@@ -1,14 +1,21 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, Briefcase, Dumbbell, HandHeart, Home, Palette, Plane, Sprout, Wallet } from 'lucide-react'
+import { BookOpen, Briefcase, Dumbbell, HandHeart, HeartPulse, Home, Palette, Plane, Sparkles, Sprout, Wallet } from 'lucide-react'
 
+// HF/CB/WE/RE/IL/PG are the six real focus-area category codes (see
+// lib/focusAreas.js) and must match VisionBoard.jsx's own PILLAR_ICONS so a
+// pillar's icon looks the same on the desktop card and this mobile nav.
 const PILLAR_ICONS = {
+  HF: HeartPulse,
+  CB: Briefcase,
+  WE: Wallet,
+  RE: HandHeart,
+  IL: Sparkles,
+  PG: BookOpen,
   WC: Briefcase,
   FH: Dumbbell,
   FW: Wallet,
   TR: Plane,
-  RE: HandHeart,
   CG: Palette,
-  PG: BookOpen,
   MF: Sprout,
   SP: Sprout,
   HL: Home,

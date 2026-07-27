@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { enableCalendarIntegration, getCalendarPreference } from '../lib/calendarNotifications'
 import { loadBoardData } from '../lib/lockIn'
-import { getUserAccess } from '../lib/access'
 import { submitIssueReport, supabaseConfigError } from '../lib/supabase'
 
 const FAQ = [
-  { q: 'How do I add a new phase?', a: 'Go to Vision Board and add a new phase from the phase tabs. Free users get 2 phases.' },
+  { q: 'How do I add a new phase?', a: 'Go to Vision Board and add a new phase from the phase tabs.' },
   { q: 'What is a Vision Circle?', a: 'A small accountability group where you can see who showed up and who needs a nudge.' },
   { q: 'How does the streak work?', a: 'Your streak grows when you log progress. Missing a day resets it.' },
   { q: 'What does Sage do?', a: 'Sage gives you daily direction, quick chat help, and deeper thinking sessions.' },
@@ -90,7 +89,6 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
   const [reportSent, setReportSent] = useState(false)
   const [reporting, setReporting] = useState(false)
   const [reportError, setReportError] = useState('')
-  const access = useMemo(() => getUserAccess(user), [user])
 
   const themeOptions = useMemo(() => ([
     { value: 'rose', label: 'Pink', swatch: 'linear-gradient(135deg,#f78fb0,#f06090)' },
@@ -122,8 +120,6 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
         context: {
           theme,
           calendarStatus,
-          accessPlan: access.plan,
-          trialDaysLeft: access.trialDaysLeft,
           screen: 'settings',
         },
       })
@@ -179,15 +175,6 @@ export default function SettingsPanel({ user, theme, onThemeChange, onSignOut })
               {themeOptions.map(option => (
                 <ThemeButton key={option.value} active={theme === option.value} label={option.label} swatch={option.swatch} onClick={() => onThemeChange?.(option.value)} />
               ))}
-            </div>
-            <div style={{ borderRadius: 14, background: 'var(--app-bg2)', padding: '0.9rem 1rem' }}>
-              <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Access</p>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--app-text)' }}>
-                {access.isTrial ? `Pro trial active · ${access.trialDaysLeft} day${access.trialDaysLeft === 1 ? '' : 's'} left` : access.isPro ? 'Pro active' : 'Free plan'}
-              </p>
-              <p style={{ margin: '0.22rem 0 0', fontSize: '0.82rem', color: 'var(--app-muted)' }}>
-                New users start with a 3-day Pro trial so they can experience the full app before dropping back to free.
-              </p>
             </div>
           </div>
         </AccordionItem>

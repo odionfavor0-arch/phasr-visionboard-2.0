@@ -44,6 +44,39 @@ const milestones = [
   },
 ]
 
+const CONFETTI_COLORS = ['#f06090', '#f78fb0', '#fcc0d4', '#4a6cf7', '#ffd166']
+
+// A milestone unlock is a rare, celebratory moment — worth a real burst, not just
+// a text change. Skips entirely under reduced-motion rather than offering a static
+// substitute, since the accompanying bubble message already carries the news.
+function MilestoneConfetti() {
+  const particles = useMemo(() => Array.from({ length: 26 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    width: 5 + Math.random() * 5,
+    height: 10 + Math.random() * 6,
+    delay: Math.random() * 0.3,
+    duration: 1.3 + Math.random() * 0.7,
+    rotate: Math.random() * 360 * (Math.random() < 0.5 ? -1 : 1),
+    drift: (Math.random() - 0.5) * 120,
+  })), [])
+
+  return (
+    <div aria-hidden="true" className="phasr-confetti-layer" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 500, overflow: 'hidden' }}>
+      {particles.map(p => (
+        <motion.span
+          key={p.id}
+          initial={{ opacity: 1, y: -20, x: 0, rotate: 0 }}
+          animate={{ opacity: 0, y: '100vh', x: p.drift, rotate: p.rotate }}
+          transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
+          style={{ position: 'absolute', top: 0, left: `${p.left}%`, width: p.width, height: p.height, background: p.color, borderRadius: 2 }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function getMilestoneState(milestone, currentStreak) {
   if (currentStreak >= milestone.day) return 'achieved'
   if (milestones.find(m => m.day > currentStreak)?.day === milestone.day) return 'next'
@@ -553,7 +586,8 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   resetDailyStreakToFreshStart()
   const [lockInState, setLockInState] = useState(() => loadLockInState())
   const [refresh, setRefresh] = useState(0)
-  const [milestoneMessage, setMilestoneMessage] = useState('')
+  const [unlockedMilestone, setUnlockedMilestone] = useState(null)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [phaseStats, setPhaseStats] = useState({
     completedTasks: 0,
     totalTasksInPhase: 0,
@@ -679,9 +713,15 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   const week = weeklyData.weeks.find(item => item.index === activeWeek) || weeklyData.weeks[0] || null
   const displayedDay = activeWeek === currentWeek ? dayOfWeek : 7
-  const weekDayCards = useMemo(() => WEEKDAY_LABELS.map((label, index) => {
+  const weekDayCards = useMemo(() => WEEKDAY_LABELS.map((fallbackLabel, index) => {
     const day = index + 1
-    const done = isLogDoneForDate(lockInState, dateKeyForWeekDay(phaseStart, activeWeek, day))
+    const dateKey = dateKeyForWeekDay(phaseStart, activeWeek, day)
+    // Label must reflect the real calendar weekday for that slot's actual date, not the
+    // day's position in the phase (day 1, day 2, ...) — a phase that didn't start on a
+    // Monday used to have every slot's real date mislabeled with the wrong weekday name.
+    const realDate = dateKey ? parseDateOnly(dateKey) : null
+    const label = realDate ? WEEKDAY_LABELS[(realDate.getDay() + 6) % 7] : fallbackLabel
+    const done = isLogDoneForDate(lockInState, dateKey)
     const isFuture = activeWeek > currentWeek || (activeWeek === currentWeek && day > currentDayNumber)
     const isCurrent = activeWeek === currentWeek && day === currentDayNumber
     const isPast = activeWeek < currentWeek || (activeWeek === currentWeek && day < currentDayNumber)
@@ -722,7 +762,10 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   const accent = 'var(--app-accent)'
   const accent2 = 'var(--app-accent2)'
   const pagePadding = isMobile ? '14px 14px 0' : '22px 32px 96px'
-  const contentMaxWidth = 1040
+  // Uncapped, matching Journal's desktop width — was 1040, then 1240, both still
+  // leaving a dead margin on both sides of a real laptop/desktop viewport next to
+  // an 88px icon rail. Every page should fill the screen the same way.
+  const contentMaxWidth = '100%'
 
   // The single source of truth for the displayed streak: lib/lockIn.js's canonical
   // engine, not a locally recomputed scan of day-flags.
@@ -834,26 +877,31 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
   }, [currentStreak, completedTasksThisWeek, currentLevel, currentMilestone, nextMilestone, streakLabel])
 
   useEffect(() => {
-    const unlockedMilestone = milestones.find(item => item.day === daysIn)
-    if (!unlockedMilestone) {
-      setMilestoneMessage('')
+    const justUnlocked = milestones.find(item => item.day === daysIn)
+    if (!justUnlocked) {
+      setUnlockedMilestone(null)
       return undefined
     }
 
-    const shownKey = `phasr_milestone_shown_${unlockedMilestone.day}`
+    const shownKey = `phasr_milestone_shown_${justUnlocked.day}`
     if (scopedGetString(shownKey)) {
-      setMilestoneMessage('')
+      setUnlockedMilestone(null)
       return undefined
     }
 
-    setMilestoneMessage(unlockedMilestone.description)
+    setUnlockedMilestone(justUnlocked)
+    setShowConfetti(true)
     scopedSafeSet(shownKey, 'true')
 
+    const confettiTimeoutId = window.setTimeout(() => setShowConfetti(false), 2200)
     const timeoutId = window.setTimeout(() => {
-      setMilestoneMessage('')
-    }, 5000)
+      setUnlockedMilestone(null)
+    }, 6500)
 
-    return () => window.clearTimeout(timeoutId)
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.clearTimeout(confettiTimeoutId)
+    }
   }, [daysIn])
 
   function recalculatePhaseStats() {
@@ -946,11 +994,16 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
 
   return (
     <div style={{ minHeight: isMobile ? 'auto' : 'calc(100vh - 56px)', background: 'var(--app-bg)', color: 'var(--app-text)', width: '100%', overflowX: 'hidden', paddingBottom: isMobile ? 0 : 0 }}>
+      <style>{`@media (prefers-reduced-motion: reduce) { .phasr-confetti-layer { display: none; } }`}</style>
+      {showConfetti && <MilestoneConfetti />}
       <div style={{ width: '100%', maxWidth: contentMaxWidth, margin: '0 auto', padding: pagePadding, boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          {phases.length > 1 ? (
-            // Multiple phases: this row is a real switcher, keep it as-is.
-            phases.map((phase, index) => (
+        {/* Single-phase users already have a real, working entry point to the board —
+            the "Phase" stat card further down is clickable and goes there. A second
+            "Phase 1" pill up here duplicated it for no reason, so it only renders
+            when there's an actual switcher to show. */}
+        {phases.length > 1 && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            {phases.map((phase, index) => (
               <motion.button
                 key={phase.id}
                 type="button"
@@ -972,29 +1025,26 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               >
                 {`Phase ${index + 1}`}
               </motion.button>
-            ))
-          ) : (
-            // Only one phase: a "Phase 1" pill here would just repeat the one
-            // already shown in the card below. Show something that's actually
-            // live instead — this week's real completion, not a static label.
-            <div style={{
-              minHeight: 44, padding: '10px 18px', borderRadius: 999,
-              border: '1px solid #f2c8d6', background: '#fff',
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              fontFamily: "'General Sans', sans-serif", fontSize: 13, fontWeight: 700, color: 'var(--app-text)',
-            }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: `linear-gradient(135deg,${accent2},${accent})`, flexShrink: 0 }} />
-              Week {activeWeek} · {weekPercent}% done
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ background: '#fff', border: '1.5px solid #f2c4d0', borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.65rem 0.75rem' : '1.1rem', marginBottom: '1rem', boxShadow: 'var(--app-shadow-md)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 0 }}>
-            <div style={{ minHeight: isMobile ? 22 : 28, padding: isMobile ? '4px 12px' : '6px 16px', borderRadius: 999, border: '1px solid transparent', background: `linear-gradient(135deg,${accent2},${accent})`, color: '#fff', fontFamily: "'General Sans', sans-serif", fontSize: isMobile ? 12 : 13, fontWeight: 700, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-              {getPhaseLabel(activePhaseId)}
+          {/* The "Phase 1" pill used to repeat here too — now that the row above is a
+              real, clickable Phase pill, showing the same static label again right
+              underneath it was a pure duplicate. Removing it left this row with
+              nothing on the left and one button pinned to the right — a real title
+              on the left balances it into an actual card header instead of dead air. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', paddingBottom: '0.75rem', marginBottom: '0.75rem', borderBottom: '1px solid #f6dde5' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-muted)' }}>
+                Week {activeWeek}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: '1.15rem', fontWeight: 800, color: 'var(--app-text)', fontFamily: "'General Sans', sans-serif" }}>
+                {weekPercent}% complete
+              </p>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <motion.button
                 type="button"
                 onClick={openPulse}
@@ -1036,12 +1086,30 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               Your week 1 starts today. Complete your daily tasks and come back tomorrow. Sage will track your progress and guide you as the week builds.
             </p>
           )}
-          {hasPillars && !isNewUser && milestoneMessage && (
-            <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
-              {milestoneMessage}
-            </p>
+          {hasPillars && !isNewUser && unlockedMilestone && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '0.85rem 0.95rem', borderRadius: 14,
+                background: 'linear-gradient(135deg, #f78fb0, #d04070)',
+                boxShadow: '0 10px 26px rgba(208,64,112,0.28)',
+              }}
+            >
+              <span style={{ fontSize: '1.3rem', lineHeight: 1, flexShrink: 0 }}>{unlockedMilestone.icon}</span>
+              <div>
+                <p style={{ margin: '0 0 3px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
+                  Unlocked — {unlockedMilestone.label}
+                </p>
+                <p style={{ margin: 0, fontSize: '0.82rem', color: '#fff', lineHeight: 1.55 }}>
+                  {unlockedMilestone.description}
+                </p>
+              </div>
+            </motion.div>
           )}
-          {hasPillars && !isNewUser && !milestoneMessage && weekComplete && !currentPulseDone && (
+          {hasPillars && !isNewUser && !unlockedMilestone && weekComplete && !currentPulseDone && (
             <>
               <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6, marginBottom: 12 }}>
                 Week {activeWeek} closed at {weekPercent}%. Complete Weekly Reflection before week {activeWeek + 1} opens.
@@ -1051,12 +1119,12 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
               </button>
             </>
           )}
-          {hasPillars && !isNewUser && !milestoneMessage && weekComplete && currentPulseDone && (
+          {hasPillars && !isNewUser && !unlockedMilestone && weekComplete && currentPulseDone && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               Week {activeWeek} done. Reflection complete. Week {activeWeek + 1} is open.
             </p>
           )}
-          {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && showReminder && (
+          {hasPillars && !isNewUser && !unlockedMilestone && !weekComplete && showReminder && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               You are {displayedDay} days into week {activeWeek}. Your week {activeWeek - 1} reflection with Sage is still pending.
               <button type="button" onClick={openPulse} style={{ marginLeft: 6, border: 'none', background: 'transparent', color: 'var(--app-accent)', fontWeight: 800, cursor: 'pointer', padding: '4px 0', font: 'inherit' }}>Complete now</button>
@@ -1065,13 +1133,13 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           {/* Ordinary mid-week day: no milestone, no reflection due, week still open.
               This is the most common state for an active user, so it must never be
               blank — grounded in their actual numbers, never generic filler. */}
-          {hasPillars && !isNewUser && !milestoneMessage && !weekComplete && !showReminder && (
+          {hasPillars && !isNewUser && !unlockedMilestone && !weekComplete && !showReminder && (
             <p style={{ fontSize: '0.82rem', color: '#3d1f2b', lineHeight: 1.6 }}>
               {totalToday === 0
                 ? `Day ${displayedDay} of week ${activeWeek}. No tasks logged yet today.`
                 : completedToday >= totalToday
-                  ? `Day ${displayedDay} of week ${activeWeek} done — all ${totalToday} task${totalToday === 1 ? '' : 's'} complete. Week ${activeWeek} is at ${weekPercent}%.`
-                  : `${completedToday} of ${totalToday} task${totalToday === 1 ? '' : 's'} done today. Week ${activeWeek} is at ${weekPercent}%.`}
+                  ? `Day ${displayedDay} of week ${activeWeek} done — all ${totalToday} task${totalToday === 1 ? '' : 's'} complete.`
+                  : `${completedToday} of ${totalToday} task${totalToday === 1 ? '' : 's'} done today.`}
             </p>
           )}
         </div>
@@ -1212,7 +1280,7 @@ export default function DailyCheckin({ onLockInChange, onOpenBoard, onOpenWeekly
           </div>
 
           <div style={{ fontSize: 11, color: '#7e5d68', marginBottom: 14 }}>
-            {hasPillars ? 'These tasks are generated from your pillar activities and update with your daily streak progress.' : 'Set up your pillar activities first to activate your daily streak plan.'}
+            {hasPillars ? 'These come from your pillar activities. Finish all 7 days this week and Sage gives you a full Weekly Reflection.' : 'Set up your pillar activities first to activate your daily streak plan.'}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -1,27 +1,37 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { motion, AnimatePresence } from 'framer-motion'
+import EmojiPicker from 'emoji-picker-react'
 import {
+  ArrowRight,
   ArrowUpDown,
   ArrowLeft,
+  CheckSquare,
+  Heart,
   Image as ImageIcon,
   List,
+  ListOrdered,
   Mic,
+  Minus,
   MoreHorizontal,
   Paintbrush,
   Pencil,
   Plus,
   Search,
   Smile,
+  Sparkles,
+  Star,
   Tag,
   Trash2,
   Type,
   Volume2,
+  X,
 } from 'lucide-react'
 import { calculateUserPoints } from '../lib/userLevel'
 import { applyDifficultyDial, getDateKeyFromDate, getTodayTask, getWeekCompletionSummary } from '../lib/lockIn'
 import { getDialPayoffLine } from '../lib/dialCopy'
 import { syncJournalEntriesDelta } from '../lib/supabaseSync'
+import { supabase } from '../lib/supabase'
 
 const ACTIVE_USER_KEY = 'phasr_active_user'
 const STORAGE_KEY = 'phasr_journal_v2'
@@ -125,24 +135,255 @@ const TEMPLATES = [
       { label: 'What are my options?', subtext: 'List the real choices in front of you.' },
       { label: 'What feels right long term?', subtext: 'Think beyond pressure and focus on the life you are building.' },
       { label: 'What is the next small step?', subtext: 'Pick one move that gives you more clarity.' },
+      { label: 'What would you tell a friend in this situation?', subtext: "You'd see it clearly if it were someone else." },
+      { label: 'What are you actually afraid of?', subtext: 'The blocker is usually fear, not missing information.' },
+      // {{PILLARS}} is resolved at template-apply time (see resolveTemplateFields)
+      // by reading her actual vision board pillars — this question has to name
+      // HER goals, not a generic "what you want" prompt.
+      { label: 'Which option moves you toward what you said you wanted?', subtext: 'Think about {{PILLARS}} — which option actually moves you toward that?' },
+    ],
+  },
+  {
+    id: 'bible-study',
+    tier: 'Pro',
+    name: 'Bible study',
+    useWhen: 'Use this when you want to sit with scripture and let it speak to your life.',
+    accent: '#f5ecd7',
+    fields: [
+      { label: 'What passage did I read today?', subtext: 'Note the book, chapter, and verses.' },
+      { label: 'What stood out to me?', subtext: 'Write the verse or phrase that caught your attention.' },
+      { label: 'What is this saying to me?', subtext: 'Consider the meaning behind what stood out.' },
+      { label: 'How will I apply this today?', subtext: 'Name one concrete way to live this out.' },
+      { label: 'What is my prayer in response?', subtext: 'Write it in your own words.' },
     ],
   },
 ]
 
+// `bg` + `gradient` kept separate (rather than one opaque `background` shorthand)
+// so the paper system below can layer its own pattern as an additional
+// background-image on top of a theme's gradient without one clobbering the
+// other — a shorthand `background` and a longhand `backgroundImage` applied as
+// two separate React style keys fight over the same CSS property.
 const BACKGROUNDS = [
-  { id: 'original', name: 'Original', style: { background: '#ffffff' }, deco: '' },
-  { id: 'rosy', name: 'Rosy', style: { background: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)' }, deco: '🌸 ✨ 🌸' },
-  { id: 'dark-cute', name: 'Dark Cute', style: { background: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', color: '#fff7fb' }, deco: '🌙 ✨ 🌙' },
-  { id: 'butterfly', name: 'Butterfly', style: { background: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)' }, deco: '🦋 ✨ 🦋' },
-  { id: 'bows', name: 'Bows', style: { background: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)' }, deco: '🎀 ✨ 🎀' },
+  { id: 'original', name: 'Original', bg: '#ffffff', gradient: null, deco: '' },
+  { id: 'rosy', name: 'Rosy', bg: '#fff8fb', gradient: 'linear-gradient(180deg, #fff8fb 0%, #ffe9f2 100%)', deco: '🌸 ✨ 🌸' },
+  { id: 'dark-cute', name: 'Dark Cute', bg: '#2d1730', gradient: 'linear-gradient(180deg, #2d1730 0%, #4f274d 100%)', textColor: '#fff7fb', deco: '🌙 ✨ 🌙' },
+  { id: 'butterfly', name: 'Butterfly', bg: '#eef1ff', gradient: 'linear-gradient(180deg, #eef1ff 0%, #f7ebff 100%)', deco: '🦋 ✨ 🦋' },
+  { id: 'bows', name: 'Bows', bg: '#fff3f7', gradient: 'linear-gradient(180deg, #fff3f7 0%, #fffdfd 100%)', deco: '🎀 ✨ 🎀' },
 ]
 
-const STICKERS = ['✨', '🌸', '🦋', '💗', '🌷']
-const COLORS = ['#2f1e2a', '#7b243e', '#b03060', 'var(--app-accent)', '#ff7aaa', '#6e2fb8']
+// Combines a background theme's own color/gradient with the paper pattern
+// selected on top of it — the two systems are picked independently but must
+// render as one coherent surface, paper lines drawn above the theme wash.
+function getPaperLayeredStyle(theme, paperStyleId, lineColor, spacingPx) {
+  const paperImage = getPaperBackgroundImage(paperStyleId, lineColor, spacingPx)
+  const hasPaper = paperImage !== 'none'
+  const imageLayers = []
+  const sizeLayers = []
+  if (hasPaper) {
+    imageLayers.push(paperImage)
+    sizeLayers.push(getPaperBackgroundSize(paperStyleId, spacingPx))
+  }
+  if (theme.gradient) {
+    imageLayers.push(theme.gradient)
+    sizeLayers.push('auto')
+  }
+  return {
+    backgroundColor: theme.bg,
+    backgroundImage: imageLayers.length ? imageLayers.join(', ') : 'none',
+    backgroundSize: sizeLayers.length ? sizeLayers.join(', ') : undefined,
+    color: theme.textColor,
+  }
+}
+
+const COLORS = ['#2f1e2a', '#7b243e', '#b03060', 'var(--app-accent)', '#ff7aaa', '#6e2fb8', '#3a4a6b', '#2f6b4f', '#8a5a2f', '#5b4636']
+
+// A few of each register, per the brief: sans for clean default reading, serif for
+// warmth (Fraunces already carries the app's own voice elsewhere), handwriting for
+// a genuinely personal page. All three already load in index.html.
 const FONTS = [
-  { id: 'dm', name: 'Default', family: "'DM Sans', sans-serif" },
-  { id: 'playfair', name: 'Playfair', family: "'Playfair Display', serif" },
-  { id: 'georgia', name: 'Georgia', family: 'Georgia, serif' },
+  { id: 'general-sans', name: 'Sans', tier: 'sans', family: "'General Sans', sans-serif" },
+  { id: 'fraunces', name: 'Fraunces', tier: 'serif', family: "'Fraunces', serif" },
+  { id: 'playfair', name: 'Playfair', tier: 'serif', family: "'Playfair Display', serif" },
+  { id: 'georgia', name: 'Georgia', tier: 'serif', family: 'Georgia, serif' },
+  { id: 'caveat', name: 'Caveat', tier: 'handwriting', family: "'Caveat', cursive" },
+  { id: 'patrick-hand', name: 'Patrick Hand', tier: 'handwriting', family: "'Patrick Hand', cursive" },
+]
+
+const TEXT_TIERS = [
+  { id: 'headline', label: 'Headline', fontSize: '2rem', fontWeight: 700, lineHeight: 1.2 },
+  { id: 'subheadline', label: 'Subheadline', fontSize: '1.15rem', fontWeight: 600, lineHeight: 1.35 },
+  { id: 'body', label: 'Body', fontSize: '1.08rem', fontWeight: 400, lineHeight: 1.9 },
+]
+
+// Paper is a texture layered on top of a background theme's color, not a
+// replacement for it — every function below returns only a background-image
+// (lines/grid/dots), leaving the theme's own background/gradient untouched
+// underneath. CSS patterns, not images, so they tint correctly over any theme.
+const PAPER_STYLES = [
+  { id: 'plain', name: 'Plain' },
+  { id: 'lined', name: 'Lined' },
+  { id: 'grid', name: 'Grid' },
+  { id: 'dotted', name: 'Dotted' },
+]
+
+const PAPER_LINE_COLORS = [
+  { id: 'rose', value: 'rgba(232,64,122,0.22)' },
+  { id: 'lavender', value: 'rgba(120,100,200,0.2)' },
+  { id: 'slate', value: 'rgba(90,100,120,0.22)' },
+  { id: 'graphite', value: 'rgba(40,30,35,0.16)' },
+  { id: 'gold', value: 'rgba(180,140,40,0.22)' },
+]
+
+const PAPER_SPACINGS = [
+  { id: 'tight', label: 'Tight', px: 22 },
+  { id: 'regular', label: 'Regular', px: 30 },
+  { id: 'wide', label: 'Wide', px: 40 },
+]
+
+function getPaperBackgroundImage(paperStyleId, lineColor, spacingPx) {
+  const gap = Number(spacingPx) || 30
+  if (paperStyleId === 'lined') {
+    return `repeating-linear-gradient(to bottom, transparent 0, transparent ${gap - 1}px, ${lineColor} ${gap - 1}px, ${lineColor} ${gap}px)`
+  }
+  if (paperStyleId === 'grid') {
+    return `repeating-linear-gradient(to bottom, transparent 0, transparent ${gap - 1}px, ${lineColor} ${gap - 1}px, ${lineColor} ${gap}px), repeating-linear-gradient(to right, transparent 0, transparent ${gap - 1}px, ${lineColor} ${gap - 1}px, ${lineColor} ${gap}px)`
+  }
+  if (paperStyleId === 'dotted') {
+    return `radial-gradient(circle, ${lineColor} 1.2px, transparent 1.2px)`
+  }
+  return 'none'
+}
+
+function getPaperBackgroundSize(paperStyleId, spacingPx) {
+  const gap = Number(spacingPx) || 30
+  return paperStyleId === 'dotted' || paperStyleId === 'grid' ? `${gap}px ${gap}px` : `100% ${gap}px`
+}
+
+// ── Stickers ────────────────────────────────────────────────────────────────
+// Real vector graphics, not emoji characters — per the brief, this must not be
+// text. A handful of hand-picked shapes, each recolored across the app's own
+// Petal/slate/gold palette, gets us a real ~30-piece sheet without needing 30
+// one-off illustrations.
+const STICKER_PALETTE = {
+  petal: '#f06090',
+  petalLight: '#f78fb0',
+  petalBlush: '#fcc0d4',
+  slate: '#4a6cf7',
+  gold: '#dba53c',
+  mint: '#4fb286',
+}
+
+const STICKER_SHAPE_PATHS = {
+  heart: 'M12 21s-7.5-4.6-10-9.3C.5 8.4 2.3 5 5.8 5c2 0 3.4 1.1 4.2 2.4C10.8 6.1 12.2 5 14.2 5 17.7 5 19.5 8.4 22 11.7 19.5 16.4 12 21 12 21z',
+  star: 'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8L5.7 21l1.7-7L2 9.2l7.1-.6L12 2z',
+  sparkle: 'M12 1c.7 4.6 2.7 6.7 7 7.4-4.3.7-6.3 2.8-7 7.4-.7-4.6-2.7-6.7-7-7.4 4.3-.7 6.3-2.8 7-7.4z',
+  moon: 'M20 14.8A8.7 8.7 0 1 1 9.2 4a7.2 7.2 0 1 0 10.8 10.8z',
+  bow: 'M12 12 5.4 7.3A2 2 0 0 0 2 8.9v6.2a2 2 0 0 0 3.4 1.6L12 12Zm0 0 6.6 4.7A2 2 0 0 0 22 15.1V8.9a2 2 0 0 0-3.4-1.6L12 12Z',
+  flame: 'M12 2c1.2 3.3-2.6 4.4-2.6 8.2a2.6 2.6 0 0 0 5.2 0c0-1-.4-1.9-.9-2.4.7 2.8 2.8 3.4 2.8 6.1a5 5 0 0 1-10 0c0-5 4.3-6.2 5.5-11.9z',
+  drop: 'M12 2c3.6 4.6 6.5 8.6 6.5 12.3a6.5 6.5 0 1 1-13 0C5.5 10.6 8.4 6.6 12 2z',
+}
+
+function StickerGlyph({ shapeId, color, size = 26 }) {
+  const path = STICKER_SHAPE_PATHS[shapeId] || STICKER_SHAPE_PATHS.heart
+  if (shapeId === 'flower') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <g fill={color}>
+          <circle cx="12" cy="6.6" r="3.1" /><circle cx="17.4" cy="12" r="3.1" />
+          <circle cx="12" cy="17.4" r="3.1" /><circle cx="6.6" cy="12" r="3.1" />
+        </g>
+        <circle cx="12" cy="12" r="2.4" fill="#fff8fa" />
+      </svg>
+    )
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d={path} fill={color} />
+    </svg>
+  )
+}
+
+const STICKERS = [
+  ...['petal', 'petalLight', 'petalBlush', 'slate'].map(c => ({ id: `heart-${c}`, shape: 'heart', color: STICKER_PALETTE[c] })),
+  ...['petal', 'gold', 'petalLight', 'slate'].map(c => ({ id: `star-${c}`, shape: 'star', color: STICKER_PALETTE[c] })),
+  ...['petal', 'gold', 'petalLight', 'petalBlush'].map(c => ({ id: `sparkle-${c}`, shape: 'sparkle', color: STICKER_PALETTE[c] })),
+  ...['petal', 'petalLight', 'gold', 'mint'].map(c => ({ id: `flower-${c}`, shape: 'flower', color: STICKER_PALETTE[c] })),
+  ...['slate', 'petal', 'gold'].map(c => ({ id: `moon-${c}`, shape: 'moon', color: STICKER_PALETTE[c] })),
+  ...['petal', 'petalLight', 'petalBlush'].map(c => ({ id: `bow-${c}`, shape: 'bow', color: STICKER_PALETTE[c] })),
+  ...['petal', 'gold', 'slate'].map(c => ({ id: `flame-${c}`, shape: 'flame', color: STICKER_PALETTE[c] })),
+  ...['slate', 'petal', 'mint'].map(c => ({ id: `drop-${c}`, shape: 'drop', color: STICKER_PALETTE[c] })),
+  { id: 'heart-mint', shape: 'heart', color: STICKER_PALETTE.mint },
+  { id: 'star-mint', shape: 'star', color: STICKER_PALETTE.mint },
+]
+
+// ── List styles ─────────────────────────────────────────────────────────────
+// The old picker inserted the literal string '?' for both Check list and Star
+// list — a real glyph-loss bug. Every marker below is a plain-text character
+// that renders everywhere (content must stay plain text for Sage), paired with
+// a real lucide icon in the picker row itself instead of a second unicode char.
+const LIST_STYLES = [
+  { id: 'bullet', label: 'Bullet points', icon: List, prefix: '• ' },
+  { id: 'check', label: 'Check list', icon: CheckSquare, prefix: '☐ ' },
+  { id: 'star', label: 'Star list', icon: Star, prefix: '★ ' },
+  { id: 'arrow', label: 'Arrows', icon: ArrowRight, prefix: '→ ' },
+  { id: 'dash', label: 'Dashes', icon: Minus, prefix: '– ' },
+  { id: 'heart', label: 'Hearts', icon: Heart, prefix: '♥ ' },
+  { id: 'numbered', label: 'Numbered', icon: ListOrdered, prefix: null },
+]
+
+const TAG_SUGGESTIONS = ['gratitude', 'clarity', 'work', 'rest', 'mindset', 'healing']
+
+const MAX_JOURNAL_IMAGE_WIDTH = 1280
+
+function resizeImageFileToJpegDataUrl(file, maxDim = MAX_JOURNAL_IMAGE_WIDTH, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const probe = new Image()
+    probe.onload = () => {
+      const scale = Math.min(1, maxDim / probe.naturalWidth, maxDim / probe.naturalHeight)
+      const outWidth = Math.round(probe.naturalWidth * scale)
+      const outHeight = Math.round(probe.naturalHeight * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = outWidth
+      canvas.height = outHeight
+      canvas.getContext('2d').drawImage(probe, 0, 0, outWidth, outHeight)
+      URL.revokeObjectURL(objectUrl)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    probe.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not read image')) }
+    probe.src = objectUrl
+  })
+}
+
+// Never throws — a failed Storage upload falls back to the local data URL so the
+// photo (and everything she wrote around it) is never lost, matching the same
+// graceful-degradation pattern VisionBoard.jsx already uses for its own uploads.
+async function uploadJournalImage(file) {
+  const dataUrl = await resizeImageFileToJpegDataUrl(file)
+  if (!supabase) return dataUrl
+  try {
+    const userId = localStorage.getItem(ACTIVE_USER_KEY) || 'local'
+    const path = `journal/${userId}/${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`
+    const byteStr = atob(dataUrl.split(',')[1])
+    const bytes = new Uint8Array(byteStr.length)
+    for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i)
+    const { error: uploadError } = await supabase.storage
+      .from('room-feed')
+      .upload(path, new Blob([bytes], { type: 'image/jpeg' }), { contentType: 'image/jpeg', upsert: true })
+    if (uploadError) throw uploadError
+    const { data: urlData } = supabase.storage.from('room-feed').getPublicUrl(path)
+    return urlData?.publicUrl || dataUrl
+  } catch (error) {
+    console.warn('[Phasr] Journal image storage upload failed, keeping photo local-only:', error?.message || error)
+    return dataUrl
+  }
+}
+
+const IMAGE_SIZE_PRESETS = [
+  { id: 'small', label: 'S', width: 96 },
+  { id: 'medium', label: 'M', width: 160 },
+  { id: 'large', label: 'L', width: 240 },
 ]
 
 function getScopedKey(base) {
@@ -349,6 +590,27 @@ function getActivePhase(boardData) {
   return phases[0]
 }
 
+// Reads her actual vision board pillars (not a placeholder) so the Decision
+// helper's "what you said you wanted" question names her real goals.
+function getActivePillarNames() {
+  const boardData = readVisionBoardData()
+  const phase = getActivePhase(boardData)
+  return (phase?.pillars || []).map(pillar => String(pillar?.name || '').trim()).filter(Boolean)
+}
+
+function resolveTemplateFields(fields) {
+  const pillarNames = getActivePillarNames()
+  const pillarText = pillarNames.length
+    ? pillarNames.length === 1
+      ? pillarNames[0]
+      : `${pillarNames.slice(0, -1).join(', ')} or ${pillarNames[pillarNames.length - 1]}`
+    : 'what you said you wanted'
+  return fields.map(field => ({
+    ...field,
+    subtext: String(field.subtext || '').replace('{{PILLARS}}', pillarText),
+  }))
+}
+
 function getPlatformDaysIn() {
   const boardData = readVisionBoardData()
   const phase = getActivePhase(boardData)
@@ -454,10 +716,16 @@ function blankDraft() {
   return {
     date: getToday(),
     title: '',
+    subheadline: '',
     content: '',
     prompt: PROMPTS[0],
     mood: MOODS[0],
+    tags: [],
     backgroundId: 'original',
+    paperStyleId: 'plain',
+    paperLineColorId: 'rose',
+    paperSpacingId: 'regular',
+    bookFrame: false,
     templateAccent: '',
     templateFields: null,
     templateAnswers: {},
@@ -465,8 +733,9 @@ function blankDraft() {
     weeklyPulsePillars: [],
     weeklyPulseWeekNumber: 1,
     color: '#2f1e2a',
-    fontId: 'dm',
+    fontId: 'general-sans',
     images: [],
+    stickers: [],
   }
 }
 
@@ -844,6 +1113,23 @@ function EntryDetail({ entry, onBack, onEdit }) {
   const hideSessionCtaTapRef = useRef(0)
   const detailBody = entry.content || getTemplateSummary(entry) || ''
   const isWeeklyPulse = ['weekly reflection', 'sage reflect'].includes(String(entry?.prompt || '').toLowerCase())
+  // Everything chosen while writing (theme, paper, font, color, book frame,
+  // images, stickers) used to be thrown away the moment the entry was saved —
+  // this view rendered plain white regardless. The page she designed should
+  // still look like that page when she comes back to read it.
+  const entryBackground = BACKGROUNDS.find(item => item.id === entry.backgroundId) || BACKGROUNDS[0]
+  const entryFont = FONTS.find(item => item.id === entry.fontId) || FONTS[0]
+  const entryTextColor = entry.color || '#2f1e2a'
+  const entryPaperLineColor = (PAPER_LINE_COLORS.find(item => item.id === entry.paperLineColorId) || PAPER_LINE_COLORS[0]).value
+  const entryPaperSpacingPx = (PAPER_SPACINGS.find(item => item.id === entry.paperSpacingId) || PAPER_SPACINGS[1]).px
+  const entryPageStyle = entry.templateAccent
+    ? { background: `linear-gradient(180deg, ${entry.templateAccent}33 0%, ${entry.templateAccent}14 100%)` }
+    : getPaperLayeredStyle(entryBackground, entry.paperStyleId, entryPaperLineColor, entryPaperSpacingPx)
+  const entryBookFrameStyle = entry.bookFrame ? {
+    borderLeft: '11px solid rgba(58,28,38,0.16)',
+    borderRadius: '3px 12px 12px 3px',
+    boxShadow: 'inset 14px 0 22px -16px rgba(0,0,0,0.4), 7px 7px 0 -3px rgba(0,0,0,0.05), 13px 13px 0 -6px rgba(0,0,0,0.035)',
+  } : {}
   const weeklySession = entry?.weeklyPulseSession || null
   const sessionMessages = Array.isArray(weeklySession?.messages) ? weeklySession.messages : []
   const sessionCompleted = Boolean(weeklySession?.completedAt || weeklySession?.status === 'completed')
@@ -895,11 +1181,42 @@ function EntryDetail({ entry, onBack, onEdit }) {
           <p style={{ margin: 0, fontSize: '0.98rem', color: '#7f6672', marginLeft: 'auto' }}>{formatDate(entry.date)}</p>
           <button type="button" onClick={onEdit} style={ghostIconButtonStyle}><Pencil size={16} /></button>
         </div>
-      <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem' }}>
+      <div style={{ width: '100%', maxWidth: '100%', margin: 0, padding: '1.2rem 1rem 5rem', display: 'grid', gap: '1.2rem', ...entryPageStyle, ...entryBookFrameStyle }}>
         <div>
-          <p style={{ margin: 0, color: '#7f6672', fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
-          <h1 style={{ margin: '0.55rem 0 0', fontFamily: "'Fraunces', serif", fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 700, color: '#2f1e2a' }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
+          <p style={{ margin: 0, color: entryTextColor, opacity: 0.75, fontSize: '0.95rem' }}>{entry.mood?.emoji || ''}</p>
+          <h1 style={{ margin: '0.55rem 0 0', fontFamily: entryFont.family, fontSize: 'clamp(2rem, 7vw, 3rem)', fontWeight: 700, color: entryTextColor }}>{getEntryTitle(entry) || 'Untitled reflection'}</h1>
+          {entry.subheadline ? (
+            <p style={{ margin: '0.4rem 0 0', fontFamily: entryFont.family, fontSize: '1.15rem', fontWeight: 600, color: entryTextColor, opacity: 0.8 }}>{entry.subheadline}</p>
+          ) : null}
         </div>
+        {Array.isArray(entry.stickers) && entry.stickers.length ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {entry.stickers.map(sticker => (
+              <div key={sticker.id} style={{ border: '1px solid var(--app-border)', borderRadius: 12, background: 'rgba(255,255,255,0.7)', padding: 6, display: 'grid', placeItems: 'center' }}>
+                <StickerGlyph shapeId={sticker.shape} color={sticker.color} size={26} />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {Array.isArray(entry.images) && entry.images.length ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.7rem' }}>
+            {entry.images.map(image => {
+              const preset = IMAGE_SIZE_PRESETS.find(item => item.id === (image.size || 'medium')) || IMAGE_SIZE_PRESETS[1]
+              return (
+                <div key={image.id} style={{ width: preset.width, aspectRatio: '3 / 4', borderRadius: 'var(--app-radius-sm)', overflow: 'hidden', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-sm)', flexShrink: 0 }}>
+                  <img src={image.url} alt={image.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
+        {Array.isArray(entry.tags) && entry.tags.length ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {entry.tags.map(tag => (
+              <span key={tag} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: 'rgba(255,255,255,0.6)', color: entryTextColor, padding: '0.3rem 0.65rem', fontSize: '0.76rem', fontWeight: 700 }}>#{tag}</span>
+            ))}
+          </div>
+        ) : null}
         {isWeeklyPulse ? (
           <>
             <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.8rem' }}>
@@ -1037,7 +1354,7 @@ function EntryDetail({ entry, onBack, onEdit }) {
         ) : (
           <>
             <div style={{ borderTop: '1px solid var(--app-border)', paddingTop: '1rem', display: 'grid', gap: '0.7rem' }}>
-              <div style={{ color: '#2f1e2a', fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+              <div style={{ color: entryTextColor, fontFamily: entryFont.family, fontSize: '1.05rem', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
                 {expanded ? detailBody : makeTwoParagraphPreview(detailBody)}
               </div>
               {detailBody.length > 180 ? (
@@ -1072,20 +1389,38 @@ function EntryDetail({ entry, onBack, onEdit }) {
 function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSaving }) {
   const [showMenu, setShowMenu] = useState(false)
   const [activeTray, setActiveTray] = useState(null)
-  const [activeImageActionsId, setActiveImageActionsId] = useState(null)
-  const [editorFocused, setEditorFocused] = useState(false)
+  // Local to this component, unlike the old bug — the "Change emoji" button used
+  // to call setShowMoodPicker from the *outer* Journal component's scope, which
+  // JournalWriter (a separate top-level component) never had access to. Tapping
+  // it threw a ReferenceError and did nothing.
+  const [showMoodPicker, setShowMoodPicker] = useState(false)
+  const [customTagDraft, setCustomTagDraft] = useState('')
+  const [keyboardInset, setKeyboardInset] = useState(0)
   const fileInputRef = useRef(null)
   const dateInputRef = useRef(null)
   const recognitionRef = useRef(null)
-  const longPressTimerRef = useRef(null)
-  const dragRef = useRef(null)
   const contentRef = useRef(null)
+  const objectUrlsRef = useRef(new Set())
   const currentBackground = BACKGROUNDS.find(item => item.id === draft.backgroundId) || BACKGROUNDS[0]
   const currentFont = FONTS.find(item => item.id === draft.fontId) || FONTS[0]
+  const paperLineColor = (PAPER_LINE_COLORS.find(item => item.id === draft.paperLineColorId) || PAPER_LINE_COLORS[0]).value
+  const paperSpacingPx = (PAPER_SPACINGS.find(item => item.id === draft.paperSpacingId) || PAPER_SPACINGS[1]).px
   const writerBackgroundStyle = draft.templateAccent
     ? { background: `linear-gradient(180deg, ${draft.templateAccent}33 0%, ${draft.templateAccent}14 100%)` }
-    : currentBackground.style
+    : getPaperLayeredStyle(currentBackground, draft.paperStyleId, paperLineColor, paperSpacingPx)
   const wordCount = countWords(draft.content)
+  const headline = TEXT_TIERS[0]
+  const subheadlineTier = TEXT_TIERS[1]
+  const bodyTier = TEXT_TIERS[2]
+
+  // A book frame is a real physical page, not a flat rectangle — a spine shadow
+  // on the left, a thicker cover edge, and stacked shadows on the trailing edges
+  // to suggest pages underneath. Pure CSS decoration; no page-turn interaction.
+  const bookFrameStyle = draft.bookFrame ? {
+    borderLeft: '11px solid rgba(58,28,38,0.16)',
+    borderRadius: '3px 12px 12px 3px',
+    boxShadow: 'inset 14px 0 22px -16px rgba(0,0,0,0.4), 7px 7px 0 -3px rgba(0,0,0,0.05), 13px 13px 0 -6px rgba(0,0,0,0.035)',
+  } : {}
 
   useEffect(() => () => recognitionRef.current?.stop?.(), [])
   useEffect(() => {
@@ -1104,19 +1439,35 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
     })
   }, [])
 
-  function insertText(text) {
-    setDraft(prev => ({ ...prev, content: `${prev.content}${text}` }))
-  }
+  // The bottom toolbar used to sit at the literal bottom of the page, which on
+  // mobile is *behind* the software keyboard — the mic button in particular was
+  // unreachable while typing. visualViewport reports the actually-visible area
+  // once the keyboard is up; the gap between that and the full layout height is
+  // exactly how far to lift the toolbar.
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return undefined
+    const handleViewportChange = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+      setKeyboardInset(inset)
+    }
+    handleViewportChange()
+    viewport.addEventListener('resize', handleViewportChange)
+    viewport.addEventListener('scroll', handleViewportChange)
+    return () => {
+      viewport.removeEventListener('resize', handleViewportChange)
+      viewport.removeEventListener('scroll', handleViewportChange)
+    }
+  }, [])
 
-  function insertList(prefix) {
-    setDraft(prev => ({ ...prev, content: `${prev.content}${prev.content && !prev.content.endsWith('\n') ? '\n' : ''}${prefix}` }))
-    setActiveTray(null)
-  }
+  useEffect(() => () => {
+    objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url))
+  }, [])
 
   function startRecording() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
-      insertText('\n[Voice input unavailable on this browser]')
+      setDraft(prev => ({ ...prev, content: `${prev.content}\n[Voice input unavailable on this browser]` }))
       setActiveTray(null)
       return
     }
@@ -1138,65 +1489,82 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
     setActiveTray(null)
   }
 
-  function handleImagePick(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setDraft(prev => ({
-        ...prev,
-        images: [
-          ...prev.images,
-          {
-            id: `${Date.now()}-${file.name}`,
-            name: file.name,
-            url: reader.result,
-            x: 0,
-            y: 0,
-          },
-        ],
-      }))
-      setActiveTray(null)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function startImageHold(image) {
-    clearTimeout(longPressTimerRef.current)
-    longPressTimerRef.current = setTimeout(() => {
-      setActiveImageActionsId(current => (current === image.id ? null : image.id))
-    }, 420)
-  }
-
-  function clearImageHold() {
-    clearTimeout(longPressTimerRef.current)
-  }
-
-  function beginDrag(event, image) {
-    dragRef.current = {
-      id: image.id,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: image.x || 0,
-      originY: image.y || 0,
-    }
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-
-  function moveDrag(event) {
-    if (!dragRef.current) return
-    const nextX = Math.max(0, dragRef.current.originX + (event.clientX - dragRef.current.startX))
-    const nextY = Math.max(0, dragRef.current.originY + (event.clientY - dragRef.current.startY))
+  // Images live in their own structured array rather than being interspersed as
+  // characters — `content` stays pure plain text for Sage either way, and a real
+  // graphic could never live inside a plain-text string regardless.
+  async function addImageFile(file) {
+    if (!file || !String(file.type || '').startsWith('image/')) return
+    const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`
+    const previewUrl = URL.createObjectURL(file)
+    objectUrlsRef.current.add(previewUrl)
     setDraft(prev => ({
       ...prev,
-      images: prev.images.map(image => (
-        image.id === dragRef.current.id ? { ...image, x: nextX, y: nextY } : image
-      )),
+      images: [...prev.images, { id, name: file.name || 'photo', url: previewUrl, size: 'medium', uploading: true }],
+    }))
+    const finalUrl = await uploadJournalImage(file)
+    setDraft(prev => ({
+      ...prev,
+      images: prev.images.map(image => (image.id === id ? { ...image, url: finalUrl, uploading: false } : image)),
     }))
   }
 
-  function endDrag() {
-    dragRef.current = null
+  function handleImagePick(event) {
+    const file = event.target.files?.[0]
+    if (file) addImageFile(file)
+    event.target.value = ''
+    setActiveTray(null)
+  }
+
+  function handlePaste(event) {
+    const items = Array.from(event.clipboardData?.items || [])
+    const imageItem = items.find(item => item.type?.startsWith('image/'))
+    if (!imageItem) return
+    const file = imageItem.getAsFile()
+    if (!file) return
+    event.preventDefault()
+    addImageFile(file)
+  }
+
+  function handleDrop(event) {
+    const files = Array.from(event.dataTransfer?.files || []).filter(file => file.type?.startsWith('image/'))
+    if (!files.length) return
+    event.preventDefault()
+    files.forEach(addImageFile)
+  }
+
+  function addSticker(sticker) {
+    setDraft(prev => ({
+      ...prev,
+      stickers: [...prev.stickers, { id: `${Date.now()}-${Math.round(Math.random() * 1e6)}`, shape: sticker.shape, color: sticker.color }],
+    }))
+  }
+
+  function insertList(style) {
+    setDraft(prev => {
+      let prefix = style.prefix
+      if (style.id === 'numbered') {
+        const lines = prev.content.split('\n')
+        const lastLine = lines[lines.length - 1] || ''
+        const match = lastLine.match(/^(\d+)\.\s/)
+        prefix = `${match ? Number(match[1]) + 1 : 1}. `
+      }
+      return { ...prev, content: `${prev.content}${prev.content && !prev.content.endsWith('\n') ? '\n' : ''}${prefix}` }
+    })
+    setActiveTray(null)
+  }
+
+  function toggleTag(tag) {
+    setDraft(prev => {
+      const has = (prev.tags || []).includes(tag)
+      return { ...prev, tags: has ? prev.tags.filter(item => item !== tag) : [...(prev.tags || []), tag] }
+    })
+  }
+
+  function commitCustomTag() {
+    const clean = customTagDraft.trim().toLowerCase().replace(/^#/, '').replace(/\s+/g, '-')
+    if (!clean) return
+    setDraft(prev => ((prev.tags || []).includes(clean) ? prev : { ...prev, tags: [...(prev.tags || []), clean] }))
+    setCustomTagDraft('')
   }
 
   return (
@@ -1208,20 +1576,38 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={onSave} disabled={isSaving} style={{ border: 'none', borderRadius: 999, padding: '0.8rem 1.25rem', background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>{isSaving ? 'Saving...' : 'Save'}</motion.button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', ...writerBackgroundStyle }}>
+      <div
+        onPaste={handlePaste}
+        onDragOver={event => event.preventDefault()}
+        onDrop={handleDrop}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', ...writerBackgroundStyle, ...bookFrameStyle }}
+      >
         <div style={{ position: 'relative', padding: '1rem 1rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.7rem', color: '#7f6672', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.16, fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.85rem', color: currentBackground.id === 'dark-cute' ? '#fff' : '#d1588b' }}>{currentBackground.deco}</div>
           <button type="button" onClick={() => dateInputRef.current?.click()} style={{ border: 'none', background: 'transparent', padding: 0, color: '#7f6672', fontSize: '0.96rem' }}>{formatDate(draft.date)}</button>
           <input ref={dateInputRef} type="date" value={draft.date} onChange={event => setDraft(prev => ({ ...prev, date: event.target.value }))} style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
           <div style={{ flex: 1 }} />
-          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} type="button" onClick={() => setShowMoodPicker(true)} aria-label="Change emoji" title="Change emoji" style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--app-accent)' }}>
+          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} type="button" onClick={() => setShowMoodPicker(true)} aria-label="Set mood" title="Set mood" style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--app-accent)' }}>
             <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{draft.mood?.emoji || MOODS[0]?.emoji || '😌'}</span>
           </motion.button>
         </div>
 
         <div style={{ padding: '0 1rem 1rem', display: 'grid', gap: '1rem', flex: 1 }}>
             {!draft.templateFields ? (
-              <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Title" style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.55rem', outline: 'none', color: draft.color, fontFamily: "'Fraunces', serif", fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', fontWeight: 700 }} />
+              <>
+                <input
+                  value={draft.title}
+                  onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))}
+                  placeholder="Title"
+                  style={{ border: 'none', borderBottom: '1px solid var(--app-border)', background: 'transparent', padding: '0.1rem 0 0.4rem', outline: 'none', color: draft.color, fontFamily: currentFont.family, fontSize: headline.fontSize, fontWeight: headline.fontWeight, lineHeight: headline.lineHeight }}
+                />
+                <input
+                  value={draft.subheadline}
+                  onChange={event => setDraft(prev => ({ ...prev, subheadline: event.target.value }))}
+                  placeholder="Subheadline (optional)"
+                  style={{ border: 'none', background: 'transparent', padding: 0, outline: 'none', color: draft.color, opacity: 0.8, fontFamily: currentFont.family, fontSize: subheadlineTier.fontSize, fontWeight: subheadlineTier.fontWeight, lineHeight: subheadlineTier.lineHeight }}
+                />
+              </>
             ) : (
               <div style={{ display: 'grid', gap: '1rem' }}>
                 <p style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: draft.color, fontFamily: "'Fraunces', serif" }}>{draft.prompt}</p>
@@ -1237,8 +1623,6 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                         ...prev,
                         templateAnswers: { ...(prev.templateAnswers || {}), [field.label]: event.target.value },
                       }))}
-                      onFocus={() => setEditorFocused(true)}
-                      onBlur={() => setEditorFocused(false)}
                       placeholder="Enter your thoughts..."
                       style={{ width: '100%', minHeight: 72, border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: '0.7rem 0.8rem', outline: 'none', resize: 'vertical', background: '#fff', color: draft.color, fontFamily: currentFont.family, fontSize: '1rem', lineHeight: 1.6 }}
                     />
@@ -1246,55 +1630,73 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
                 ))}
               </div>
             )}
-          {draft.images.length ? (
-            <div style={{ position: 'relative', minHeight: 190, marginBottom: '0.2rem' }}>
-              {draft.images.map(image => (
+          {draft.stickers.length ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {draft.stickers.map(sticker => (
                 <button
-                  key={image.id}
+                  key={sticker.id}
                   type="button"
-                  onPointerDown={event => {
-                    startImageHold(image)
-                    beginDrag(event, image)
-                  }}
-                  onPointerMove={moveDrag}
-                  onPointerUp={() => {
-                    clearImageHold()
-                    endDrag()
-                  }}
-                  onPointerLeave={() => {
-                    clearImageHold()
-                    endDrag()
-                  }}
-                  onContextMenu={event => {
-                    event.preventDefault()
-                    setActiveImageActionsId(image.id)
-                  }}
-                  onClick={() => {
-                    if (activeImageActionsId === image.id) {
-                      setActiveImageActionsId(null)
-                      return
-                    }
-                  }}
-                  style={{ width: 112, height: 148, borderRadius: 'var(--app-radius-md)', overflow: 'hidden', border: '1px solid var(--app-border)', background: '#fff', padding: 0, position: 'absolute', left: image.x || 0, top: image.y || 0, boxShadow: 'var(--app-shadow-md)', touchAction: 'none' }}
+                  onClick={() => setDraft(prev => ({ ...prev, stickers: prev.stickers.filter(item => item.id !== sticker.id) }))}
+                  aria-label="Remove sticker"
+                  title="Tap to remove"
+                  style={{ border: '1px solid var(--app-border)', borderRadius: 12, background: 'rgba(255,255,255,0.7)', padding: 6, cursor: 'pointer', display: 'grid', placeItems: 'center' }}
                 >
-                  <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  {activeImageActionsId === image.id ? (
-                    <button type="button" onClick={event => { event.stopPropagation(); setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) })); setActiveImageActionsId(null) }} style={{ position: 'absolute', right: 8, top: 8, width: 28, height: 28, borderRadius: '50%', border: 'none', background: '#ffffffeb', color: '#d24b78', fontWeight: 800 }}>×</button>
-                  ) : null}
+                  <StickerGlyph shapeId={sticker.shape} color={sticker.color} size={26} />
                 </button>
               ))}
             </div>
           ) : null}
+          {draft.images.length ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.7rem' }}>
+              {draft.images.map(image => {
+                const preset = IMAGE_SIZE_PRESETS.find(item => item.id === (image.size || 'medium')) || IMAGE_SIZE_PRESETS[1]
+                return (
+                  <div key={image.id} style={{ width: preset.width, flexShrink: 0 }}>
+                    <div style={{ position: 'relative', width: '100%', aspectRatio: '3 / 4', borderRadius: 'var(--app-radius-sm)', overflow: 'hidden', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-sm)', background: '#f3e9ee' }}>
+                      <img src={image.url} alt={image.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: image.uploading ? 0.5 : 1 }} />
+                      {image.uploading ? (
+                        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+                          <div style={{ width: 22, height: 22, borderRadius: '50%', border: '3px solid #fde2ec', borderTopColor: 'var(--app-accent)', animation: 'phasr-spin 0.8s linear infinite' }} />
+                        </div>
+                      ) : null}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 4 }}>
+                      {IMAGE_SIZE_PRESETS.map(sizeOption => (
+                        <button
+                          key={sizeOption.id}
+                          type="button"
+                          onClick={() => setDraft(prev => ({ ...prev, images: prev.images.map(item => (item.id === image.id ? { ...item, size: sizeOption.id } : item)) }))}
+                          style={{ width: 20, height: 20, borderRadius: 6, border: sizeOption.id === (image.size || 'medium') ? '1.5px solid var(--app-accent)' : '1px solid var(--app-border)', background: '#fff', fontSize: 9, fontWeight: 800, color: '#5d4450', cursor: 'pointer', padding: 0 }}
+                        >
+                          {sizeOption.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setDraft(prev => ({ ...prev, images: prev.images.filter(item => item.id !== image.id) }))}
+                        aria-label="Remove image"
+                        style={{ width: 20, height: 20, borderRadius: 6, border: '1px solid #f2c4d0', background: '#fff6fa', color: '#d24b78', cursor: 'pointer', padding: 0, fontSize: 11, fontWeight: 800 }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
             {!draft.templateFields ? (
-              <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} onFocus={() => setEditorFocused(true)} onBlur={() => setEditorFocused(false)} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: '1.08rem', lineHeight: 1.9 }} />
+              <textarea ref={contentRef} value={draft.content} onChange={event => setDraft(prev => ({ ...prev, content: event.target.value }))} placeholder="Start writing..." style={{ flex: 1, minHeight: '42vh', border: 'none', outline: 'none', resize: 'none', background: 'transparent', color: draft.color, fontFamily: currentFont.family, fontSize: bodyTier.fontSize, lineHeight: bodyTier.lineHeight }} />
             ) : null}
         </div>
       </div>
 
-      <div style={{ position: editorFocused || activeTray ? 'fixed' : 'sticky', left: 0, right: 0, bottom: 0, zIndex: 22, borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.55rem 0.8rem max(0.75rem, env(safe-area-inset-bottom))', display: 'grid', gap: '0.55rem' }}>
+      <style>{`@keyframes phasr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: keyboardInset, zIndex: 22, borderTop: '1px solid var(--app-border)', background: '#fff', padding: '0.55rem 0.8rem max(0.75rem, env(safe-area-inset-bottom))', display: 'grid', gap: '0.55rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#8f7180', fontSize: '0.82rem' }}><span>{wordCount} words</span><span>{draft.images.length ? `${draft.images.length} image${draft.images.length === 1 ? '' : 's'}` : 'Ready to write'}</span></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '0.45rem' }}>
-          {[{ id: 'background', icon: Paintbrush }, { id: 'image', icon: ImageIcon }, { id: 'emoji', icon: Smile }, { id: 'font', icon: Type }, { id: 'list', icon: List }, { id: 'tag', icon: Tag }, { id: 'mic', icon: Mic }].map(item => {
+          {[{ id: 'background', icon: Paintbrush }, { id: 'image', icon: ImageIcon }, { id: 'sticker', icon: Sparkles }, { id: 'font', icon: Type }, { id: 'list', icon: List }, { id: 'tag', icon: Tag }, { id: 'mic', icon: Mic }].map(item => {
             const Icon = item.icon
             return (
               <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} key={item.id} type="button" onClick={() => {
@@ -1312,71 +1714,177 @@ function JournalWriter({ draft, setDraft, onBack, onSave, onOpenTemplates, isSav
 
       <BottomSheet open={showMenu} onClose={() => setShowMenu(false)} title="">
         <div style={{ display: 'grid', gap: '0.2rem' }}>
-          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span><span>?</span></button>
+          <button type="button" onClick={() => { setShowMenu(false); onOpenTemplates() }} style={menuRowStyle}><span>Templates</span></button>
           <div style={menuStatStyle}><span>Words</span><strong>{wordCount}</strong></div>
         </div>
       </BottomSheet>
 
-      <BottomSheet open={activeTray === 'background'} onClose={() => setActiveTray(null)} title="Background">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
-          {BACKGROUNDS.map(item => (
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={item.id} type="button" onClick={() => { setDraft(prev => ({ ...prev, backgroundId: item.id })); setActiveTray(null) }} style={{ border: item.id === draft.backgroundId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', overflow: 'hidden', padding: 0, background: '#fff' }}>
-              <div style={{ height: 76, ...item.style }} />
-              <div style={{ padding: '0.7rem', textAlign: 'left', fontWeight: 700, color: '#3c2430' }}>{item.name}</div>
+      <BottomSheet open={activeTray === 'background'} onClose={() => setActiveTray(null)} title="Background & paper">
+        <div style={{ display: 'grid', gap: '1.1rem' }}>
+          <div>
+            <p style={sheetLabelStyle}>Theme</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+              {BACKGROUNDS.map(item => (
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={item.id} type="button" onClick={() => setDraft(prev => ({ ...prev, backgroundId: item.id }))} style={{ border: item.id === draft.backgroundId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', overflow: 'hidden', padding: 0, background: '#fff' }}>
+                  <div style={{ height: 60, background: item.gradient || item.bg }} />
+                  <div style={{ padding: '0.6rem', textAlign: 'left', fontWeight: 700, color: '#3c2430', fontSize: '0.85rem' }}>{item.name}</div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p style={sheetLabelStyle}>Paper</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.5rem' }}>
+              {PAPER_STYLES.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setDraft(prev => ({ ...prev, paperStyleId: item.id }))}
+                  style={{ border: item.id === draft.paperStyleId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', overflow: 'hidden', padding: 0, background: '#fff', cursor: 'pointer' }}
+                >
+                  <div style={{ height: 44, backgroundColor: '#fffdfb', backgroundImage: getPaperBackgroundImage(item.id, paperLineColor, paperSpacingPx), backgroundSize: getPaperBackgroundSize(item.id, paperSpacingPx) }} />
+                  <div style={{ padding: '0.4rem', fontSize: '0.7rem', fontWeight: 700, color: '#3c2430' }}>{item.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {draft.paperStyleId !== 'plain' ? (
+            <>
+              <div>
+                <p style={sheetLabelStyle}>Line color</p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {PAPER_LINE_COLORS.map(item => (
+                    <button key={item.id} type="button" onClick={() => setDraft(prev => ({ ...prev, paperLineColorId: item.id }))} aria-label={item.id} style={{ width: 30, height: 30, borderRadius: '50%', border: item.id === draft.paperLineColorId ? '2px solid #2f1e2a' : '1px solid #e5cdd8', background: item.value.replace(/[\d.]+\)$/, '0.9)') }} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p style={sheetLabelStyle}>Line spacing</p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {PAPER_SPACINGS.map(item => (
+                    <button key={item.id} type="button" onClick={() => setDraft(prev => ({ ...prev, paperSpacingId: item.id }))} style={{ flex: 1, border: item.id === draft.paperSpacingId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 999, background: '#fff', padding: '0.45rem 0', fontWeight: 700, fontSize: '0.78rem', color: '#3c2430', cursor: 'pointer' }}>{item.label}</button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-sm)', padding: '0.7rem 0.9rem', cursor: 'pointer' }}>
+            <span>
+              <span style={{ display: 'block', fontWeight: 700, color: '#3c2430', fontSize: '0.85rem' }}>Book frame</span>
+              <span style={{ display: 'block', fontSize: '0.72rem', color: '#8f7180' }}>Cover edge, spine shadow, page-edge detail</span>
+            </span>
+            <input type="checkbox" checked={draft.bookFrame} onChange={event => setDraft(prev => ({ ...prev, bookFrame: event.target.checked }))} style={{ width: 20, height: 20, accentColor: 'var(--app-accent)' }} />
+          </label>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet open={activeTray === 'sticker'} onClose={() => setActiveTray(null)} title="Stickers">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.65rem' }}>
+          {STICKERS.map(sticker => (
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={sticker.id} type="button" onClick={() => addSticker(sticker)} style={emojiButtonStyle}>
+              <StickerGlyph shapeId={sticker.shape} color={sticker.color} size={26} />
             </motion.button>
           ))}
         </div>
       </BottomSheet>
 
-      <BottomSheet open={activeTray === 'emoji'} onClose={() => setActiveTray(null)} title="Emojis & stickers">
-        <div style={{ display: 'grid', gap: '1rem' }}>
+      <BottomSheet open={showMoodPicker} onClose={() => setShowMoodPicker(false)} title="Mood">
+        <div style={{ display: 'grid', gap: '0.85rem' }}>
           <div>
-            <p style={sheetLabelStyle}>Emojis</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-                {['😊', '😢', '😡', '😴', '🥰', '😤', '🙏', '✨', '💪', '🔥'].map(emoji => (
-                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={emoji} type="button" onClick={() => { insertText(emoji); setActiveTray(null) }} style={emojiButtonStyle}>{emoji}</motion.button>
-                ))}
-              </div>
-          </div>
-          <div>
-            <p style={sheetLabelStyle}>Cute stickers</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '0.75rem' }}>
-              {STICKERS.map(sticker => (
-                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={sticker} type="button" onClick={() => { insertText(sticker); setActiveTray(null) }} style={emojiButtonStyle}>{sticker}</motion.button>
+            <p style={sheetLabelStyle}>Quick picks</p>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {MOODS.map(mood => (
+                <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} key={mood.label} type="button" onClick={() => { setDraft(prev => ({ ...prev, mood })); setShowMoodPicker(false) }} style={{ border: '1px solid var(--app-border)', borderRadius: 12, background: '#fff', padding: '0.5rem 0.65rem', display: 'grid', justifyItems: 'center', gap: 2, cursor: 'pointer' }}>
+                  <span style={{ fontSize: '1.3rem' }}>{mood.emoji}</span>
+                  <span style={{ fontSize: '0.62rem', color: '#8f7180' }}>{mood.label}</span>
+                </motion.button>
               ))}
             </div>
+          </div>
+          <div>
+            <p style={sheetLabelStyle}>All emoji</p>
+            <EmojiPicker
+              onEmojiClick={data => { setDraft(prev => ({ ...prev, mood: { emoji: data.emoji, label: '', score: null } })); setShowMoodPicker(false) }}
+              width="100%"
+              height={340}
+              previewConfig={{ showPreview: false }}
+              searchPlaceholder="Search all emoji..."
+            />
           </div>
         </div>
       </BottomSheet>
 
-      <BottomSheet open={activeTray === 'font'} onClose={() => setActiveTray(null)} title="Font">
+      <BottomSheet open={activeTray === 'font'} onClose={() => setActiveTray(null)} title="Font & color">
         <div style={{ display: 'grid', gap: '0.9rem' }}>
-          <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
-            {COLORS.map(color => (
-              <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={color} type="button" onClick={() => setDraft(prev => ({ ...prev, color }))} style={{ width: 30, height: 30, borderRadius: '50%', border: color === draft.color ? '2px solid #2f1e2a' : '1px solid #e5cdd8', background: color }} />
-            ))}
+          <div>
+            <p style={sheetLabelStyle}>Color</p>
+            <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+              {COLORS.map(color => (
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} key={color} type="button" onClick={() => setDraft(prev => ({ ...prev, color }))} style={{ width: 30, height: 30, borderRadius: '50%', border: color === draft.color ? '2px solid #2f1e2a' : '1px solid #e5cdd8', background: color }} />
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
-            {FONTS.map(font => (
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={font.id} type="button" onClick={() => setDraft(prev => ({ ...prev, fontId: font.id }))} style={{ border: font.id === draft.fontId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', padding: '0.9rem', fontFamily: font.family, fontSize: '1.05rem', color: '#2f1e2a' }}>{font.name}</motion.button>
-            ))}
-          </div>
+          {['sans', 'serif', 'handwriting'].map(tier => (
+            <div key={tier}>
+              <p style={sheetLabelStyle}>{tier === 'sans' ? 'Sans' : tier === 'serif' ? 'Serif' : 'Handwriting'}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem' }}>
+                {FONTS.filter(font => font.tier === tier).map(font => (
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} key={font.id} type="button" onClick={() => setDraft(prev => ({ ...prev, fontId: font.id }))} style={{ border: font.id === draft.fontId ? '2px solid var(--app-accent)' : '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', padding: '0.75rem', fontFamily: font.family, fontSize: '1.05rem', color: '#2f1e2a' }}>{font.name}</motion.button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p style={{ margin: 0, fontSize: '0.72rem', color: '#8f7180' }}>Applies to Headline, Subheadline and Body — each keeps its own size.</p>
         </div>
       </BottomSheet>
 
       <BottomSheet open={activeTray === 'list'} onClose={() => setActiveTray(null)} title="List style">
-          <div style={{ display: 'grid', gap: '0.55rem' }}>
-            <button type="button" onClick={() => insertList('• ')} style={menuRowStyle}><span>• Bullet points</span><span>• • •</span></button>
-            <button type="button" onClick={() => insertList('? ')} style={menuRowStyle}><span>? Check list</span><span>? ? ?</span></button>
-            <button type="button" onClick={() => insertList('? ')} style={menuRowStyle}><span>? Star list</span><span>? ? ?</span></button>
-          </div>
-        </BottomSheet>
+        <div style={{ display: 'grid', gap: '0.4rem' }}>
+          {LIST_STYLES.map(style => {
+            const Icon = style.icon
+            return (
+              <button key={style.id} type="button" onClick={() => insertList(style)} style={menuRowStyle}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><Icon size={16} />{style.label}</span>
+                <Icon size={14} color="#b08090" />
+              </button>
+            )
+          })}
+        </div>
+      </BottomSheet>
 
       <BottomSheet open={activeTray === 'tag'} onClose={() => setActiveTray(null)} title="Tags">
-        <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
-          {['gratitude', 'clarity', 'work', 'rest', 'mindset', 'healing'].map(tag => (
-            <button key={tag} type="button" onClick={() => { insertText(`${draft.content && !draft.content.endsWith(' ') ? ' ' : ''}#${tag}`); setActiveTray(null) }} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: '#fff6fa', color: 'var(--app-accent)', padding: '0.55rem 0.8rem', fontWeight: 700 }}>#{tag}</button>
-          ))}
+        <div style={{ display: 'grid', gap: '0.9rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {TAG_SUGGESTIONS.map(tag => {
+              const active = (draft.tags || []).includes(tag)
+              return (
+                <button key={tag} type="button" onClick={() => toggleTag(tag)} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: active ? 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))' : '#fff6fa', color: active ? '#fff' : 'var(--app-accent)', padding: '0.55rem 0.8rem', fontWeight: 700, cursor: 'pointer' }}>#{tag}</button>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              value={customTagDraft}
+              onChange={event => setCustomTagDraft(event.target.value)}
+              onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); commitCustomTag() } }}
+              placeholder="Add your own tag"
+              style={{ flex: 1, border: '1px solid var(--app-border)', borderRadius: 10, padding: '0.55rem 0.7rem', outline: 'none', fontFamily: "'General Sans', sans-serif" }}
+            />
+            <button type="button" onClick={commitCustomTag} style={{ border: 'none', borderRadius: 10, padding: '0.55rem 0.9rem', background: 'var(--app-accent)', color: '#fff', fontWeight: 800, cursor: 'pointer' }}>Add</button>
+          </div>
+          {(draft.tags || []).length ? (
+            <div>
+              <p style={sheetLabelStyle}>On this entry</p>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {draft.tags.map(tag => (
+                  <button key={tag} type="button" onClick={() => toggleTag(tag)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--app-border)', borderRadius: 999, background: '#fff', color: 'var(--app-text)', padding: '0.4rem 0.7rem', fontSize: '0.78rem', cursor: 'pointer' }}>#{tag} <X size={12} /></button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </BottomSheet>
     </div>
@@ -1458,6 +1966,7 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   const [screen, setScreen] = useState('list')
   const [search, setSearch] = useState('')
   const [sortOrder, setSortOrder] = useState('latest')
+  const [activeTagFilter, setActiveTagFilter] = useState(null)
   const [draft, setDraft] = useState(() => blankDraft())
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [showMoodPicker, setShowMoodPicker] = useState(false)
@@ -1510,7 +2019,16 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     }
   }, [weeklyPulseDate])
 
-  const filteredEntries = useMemo(() => sortEntries(entries, search, sortOrder), [entries, search, sortOrder])
+  // Structured, not text search — a tag is a real field on the entry (see
+  // blankDraft/saveEntry), so filtering by it is an exact array membership
+  // check, not a "#tagname" substring match against the prose.
+  const allTags = useMemo(() => (
+    Array.from(new Set(entries.flatMap(entry => (Array.isArray(entry.tags) ? entry.tags : [])))).sort()
+  ), [entries])
+  const filteredEntries = useMemo(() => {
+    const bySearch = sortEntries(entries, search, sortOrder)
+    return activeTagFilter ? bySearch.filter(entry => Array.isArray(entry.tags) && entry.tags.includes(activeTagFilter)) : bySearch
+  }, [entries, search, sortOrder, activeTagFilter])
   const currentWeeklyPulsePayload = useMemo(() => buildWeeklyPulsePayload(), [weeklyPulseDate, entries])
   const daysIn = useMemo(() => getPlatformDaysIn(), [entries, weeklyPulseDate])
   const weeklyPulseDue = useMemo(() => {
@@ -1590,8 +2108,11 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
   }
 
   function selectTemplate(template) {
-    setSelectedTemplate(template)
-    setTemplateAnswers(Object.fromEntries(template.fields.map(field => [field.label, ''])))
+    // Resolved once here so both this detail screen and the later save both see
+    // the same real pillar names, not the raw {{PILLARS}} token.
+    const resolved = { ...template, fields: resolveTemplateFields(template.fields) }
+    setSelectedTemplate(resolved)
+    setTemplateAnswers(Object.fromEntries(resolved.fields.map(field => [field.label, ''])))
     setScreen('template-detail')
   }
 
@@ -1747,16 +2268,25 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
           createdAt: new Date().toISOString(),
           date: draft.date,
           title: getEntryTitle(draft, analysis.generatedTitle),
+          subheadline: draft.subheadline || '',
           content: normalizedContent,
         prompt: draft.prompt,
         mood: draft.mood || MOODS[0],
+        // Structured, queryable — not buried in the text. Sage (or a future filter UI)
+        // reads this array directly instead of parsing "#tagname" out of prose.
+        tags: Array.isArray(draft.tags) ? draft.tags : [],
         clarityScore: Number(analysis.clarityScore || draft.mood?.score || 7),
         clarityLabel: analysis.clarityLabel || draft.mood?.label || 'Reflective',
         sageResponse: analysis.sageResponse || '',
         backgroundId: draft.backgroundId,
+        paperStyleId: draft.paperStyleId || 'plain',
+        paperLineColorId: draft.paperLineColorId || 'rose',
+        paperSpacingId: draft.paperSpacingId || 'regular',
+        bookFrame: Boolean(draft.bookFrame),
         fontId: draft.fontId,
         color: draft.color,
         images: draft.images,
+        stickers: Array.isArray(draft.stickers) ? draft.stickers : [],
         templateAccent: draft.templateAccent,
         templateFields: draft.templateFields,
         templateAnswers: draft.templateAnswers,
@@ -1792,16 +2322,23 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
           createdAt: new Date().toISOString(),
           date: draft.date,
           title: getEntryTitle(draft),
+          subheadline: draft.subheadline || '',
           content: normalizedContent,
         prompt: draft.prompt,
         mood: draft.mood || MOODS[0],
+        tags: Array.isArray(draft.tags) ? draft.tags : [],
         clarityScore: draft.mood?.score || 7,
         clarityLabel: draft.mood?.label || 'Reflective',
         sageResponse: 'You captured something real here. Come back to the clearest sentence and let it guide your next step.',
         backgroundId: draft.backgroundId,
+        paperStyleId: draft.paperStyleId || 'plain',
+        paperLineColorId: draft.paperLineColorId || 'rose',
+        paperSpacingId: draft.paperSpacingId || 'regular',
+        bookFrame: Boolean(draft.bookFrame),
         fontId: draft.fontId,
         color: draft.color,
         images: draft.images,
+        stickers: Array.isArray(draft.stickers) ? draft.stickers : [],
         templateAccent: draft.templateAccent,
         templateFields: draft.templateFields,
         templateAnswers: draft.templateAnswers,
@@ -1848,18 +2385,20 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
     setScreen('write')
   }
 
-  function removeImage(target) {
-    setDraft(prev => ({ ...prev, images: prev.images.filter(image => image.id !== target.id) }))
-  }
-
   function editEntry(entry) {
     setDraft({
       date: entry.date || getToday(),
       title: entry.title || '',
+      subheadline: entry.subheadline || '',
       content: entry.content || '',
       prompt: entry.prompt || PROMPTS[0],
       mood: entry.mood || MOODS[0],
+      tags: Array.isArray(entry.tags) ? entry.tags : [],
       backgroundId: entry.backgroundId || 'original',
+      paperStyleId: entry.paperStyleId || 'plain',
+      paperLineColorId: entry.paperLineColorId || 'rose',
+      paperSpacingId: entry.paperSpacingId || 'regular',
+      bookFrame: Boolean(entry.bookFrame),
       templateAccent: entry.templateAccent || '',
       templateFields: entry.templateFields || null,
       templateAnswers: entry.templateAnswers || {},
@@ -1867,8 +2406,9 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
       weeklyPulsePillars: entry.weeklyPulseMeta?.pillars || [],
       weeklyPulseWeekNumber: entry.weeklyPulseMeta?.weekNumber || 1,
       color: entry.color || '#2f1e2a',
-      fontId: entry.fontId || 'dm',
+      fontId: entry.fontId || 'general-sans',
       images: Array.isArray(entry.images) ? entry.images : [],
+      stickers: Array.isArray(entry.stickers) ? entry.stickers : [],
     })
     setEditingEntryId(entry.id)
     setEntryActionId(null)
@@ -1956,6 +2496,24 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
               <motion.button whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} type="button" onClick={() => setShowSortSheet(true)} style={{ width: 42, height: 42, border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', background: '#fff', color: 'var(--app-accent)', display: 'grid', placeItems: 'center' }}><ArrowUpDown size={16} /></motion.button>
           </div>
 
+          {allTags.length ? (
+            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: 2 }}>
+              {allTags.map(tag => {
+                const active = activeTagFilter === tag
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setActiveTagFilter(current => (current === tag ? null : tag))}
+                    style={{ flexShrink: 0, border: '1px solid var(--app-border)', borderRadius: 999, background: active ? 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))' : '#fff', color: active ? '#fff' : 'var(--app-accent)', padding: '0.4rem 0.75rem', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    #{tag}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+
           {daysIn < 7 ? (
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} style={{ borderRadius: 'var(--app-radius-md)', border: '1px solid #f2c4d0', background: '#fff', padding: '0.9rem', display: 'grid', gap: '0.55rem', boxShadow: 'var(--app-shadow-md)' }}>
               <p style={{ margin: 0, fontWeight: 800, color: '#2f1e2a' }}>Weekly Reflection unlocks after your first 7 days</p>
@@ -2008,7 +2566,11 @@ export default function Journal({ autoOpenWeeklyPulse = false, onWeeklyPulseOpen
               </motion.button>
             ))}
 
-            {!filteredEntries.length ? <div style={{ borderRadius: 'var(--app-radius-lg)', border: '1px solid var(--app-border)', background: '#fff', padding: '1.2rem', color: '#8f7180', textAlign: 'center' }}>No entries yet. Tap the plus button to start.</div> : null}
+            {!filteredEntries.length ? (
+              <div style={{ borderRadius: 'var(--app-radius-lg)', border: '1px solid var(--app-border)', background: '#fff', padding: '1.2rem', color: '#8f7180', textAlign: 'center' }}>
+                {activeTagFilter ? `No entries tagged #${activeTagFilter}.` : 'No entries yet. Tap the plus button to start.'}
+              </div>
+            ) : null}
           </div>
         </div>
 

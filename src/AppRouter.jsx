@@ -202,7 +202,15 @@ export default function AppRouter() {
     const cachedUserAtMount = getCachedUser()
     return !(cachedUserAtMount && !hasExplicitSignOutIntent())
   })
-  const [onboarded, setOnboarded] = useState(false)
+  // Same lazy-init reasoning as `loading` above: defaulting to false meant a refresh
+  // with an already-onboarded cached user still painted Onboarding for one frame
+  // before the effect below (which only runs after mount) flipped it to true — a
+  // visible flash back through onboarding on every reload. Reading the cache
+  // synchronously here means the very first render is already correct.
+  const [onboarded, setOnboarded] = useState(() => {
+    const cachedUserAtMount = getCachedUser()
+    return Boolean(cachedUserAtMount && !hasExplicitSignOutIntent() && getStoredOnboarded(cachedUserAtMount))
+  })
   const [welcomeDismissed, setWelcomeDismissed] = useState(false)
   const effectiveUser = user || (!hasExplicitSignOutIntent() ? getCachedUser() : null)
 

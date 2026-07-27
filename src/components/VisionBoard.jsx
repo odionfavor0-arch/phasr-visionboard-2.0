@@ -8,23 +8,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, ImageDown, Lock, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
-import { getUserAccess } from '../lib/access'
+import { FOCUS_AREA_CATEGORIES, getFocusAreaLabel } from '../lib/focusAreas'
 import { supabase } from '../lib/supabase'
 import { pushBoardData } from '../lib/supabaseSync'
 import phasrMark from '../assets/phasr-mark.png'
-
-const PILLAR_PRESETS = [
-  { emoji: 'HF', name: 'Health & Fitness', details: 'Body, food, sleep, gym, energy' },
-  { emoji: 'CB', name: 'Career & Business', details: 'Job, entrepreneurship, income streams' },
-  { emoji: 'WE', name: 'Wealth', details: 'Savings, investing, debt, financial freedom' },
-  { emoji: 'RE', name: 'Relationships', details: 'Love, family, friendships, community' },
-  { emoji: 'IL', name: 'Inner Life', details: 'Spirituality, religion, mindfulness, mental health' },
-  { emoji: 'PG', name: 'Personal Growth', details: 'Learning, creativity, self-development' },
-]
 
 const FOCUS_AREA_TERRITORY = {
   'Health and Fitness': {
@@ -286,10 +277,26 @@ function getScheduleFingerprint(ph) {
   })
 }
 
+// Boards saved before the category/name split only have `name` (which used
+// to double as the category) and `emoji` (the 2-letter icon code, which for
+// preset-applied pillars already matches a category id). Recover `category`
+// from whichever of those still points at one of the six real categories, so
+// Sage's territory/knowledge lookups keep working for boards saved pre-migration.
+function inferLegacyPillarCategory(pillar) {
+  if (!pillar) return null
+  const byEmoji = FOCUS_AREA_CATEGORIES.find(category => category.id === pillar.emoji)
+  if (byEmoji) return byEmoji.id
+  const normalizedName = normalizeFocusAreaName(pillar.name)
+  const byName = FOCUS_AREA_CATEGORIES.find(category => normalizeFocusAreaName(category.name) === normalizedName)
+  return byName?.id || null
+}
+
 function normalizePillarShape(pillar) {
+  const category = pillar?.category || inferLegacyPillarCategory(pillar)
   return {
-    ...freshPillar(pillar?.emoji || 'NP', pillar?.name || 'New Pillar'),
+    ...freshPillar(pillar?.emoji || category || 'NP', pillar?.name || 'New Pillar', category),
     ...pillar,
+    category,
     resources: Array.isArray(pillar?.resources) && pillar.resources.length ? pillar.resources : [''],
     activities: Array.isArray(pillar?.activities) && pillar.activities.length ? pillar.activities : [''],
     outputs: Array.isArray(pillar?.outputs) && pillar.outputs.length ? pillar.outputs : [''],
@@ -345,9 +352,158 @@ function PillarGlyph({ code, size = 16 }) {
   return <Icon size={size} strokeWidth={2} />
 }
 
-function freshPillar(emoji = 'NP', name = 'New Pillar') {
+// Desktop keeps the original inline panel (it never had the disruption problem).
+// Mobile renders the same content through a portal as a fixed bottom sheet, so
+// opening it can never push the pillar cards up or down the page.
+function FocusAreaSheet({ pillar, isMobile, onClose, onSelectCategory, onNameChange, onVisionStyleChange }) {
+  const shouldReduceMotion = useReducedMotion()
+  if (!pillar) return null
+
+  const visionOptions = [
+    { value: 'transformation', label: 'Transformation' },
+    { value: 'destination', label: 'Destination' },
+  ]
+
+  const body = (
+    <div
+      style={{
+        width: '100%',
+        maxWidth: isMobile ? '100%' : 980,
+        borderRadius: isMobile ? '20px 20px 0 0' : 'var(--app-radius-md)',
+        border: isMobile ? 'none' : '1px solid var(--app-border)',
+        background: '#fff',
+        boxShadow: isMobile ? '0 -12px 40px rgba(0,0,0,0.16)' : 'var(--app-shadow-md)',
+        padding: isMobile ? '0.7rem 1rem 1.5rem' : '0.8rem',
+        boxSizing: 'border-box',
+        maxHeight: isMobile ? '82vh' : 'none',
+        overflowY: isMobile ? 'auto' : 'visible',
+      }}
+    >
+      {isMobile && (
+        <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--app-border)', margin: '0 auto 0.85rem' }} />
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+          <span style={{ width: 32, height: 32, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', flexShrink: 0 }}>
+            <PillarGlyph code={pillar.emoji} size={15} />
+          </span>
+          <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Focus area</p>
+        </div>
+        <button type="button" onClick={onClose} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: '#fff', color: 'var(--app-muted)', padding: '0.45rem 0.8rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif", fontWeight: 700 }}>
+          Close
+        </button>
+      </div>
+
+      <div style={{ marginBottom: '0.75rem' }}>
+        <p style={{ margin: '0 0 0.32rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Name it your way</p>
+        <input
+          value={pillar.name}
+          onChange={e => onNameChange(e.target.value)}
+          placeholder="e.g. Operation Glow Up"
+          style={{ width: '100%', boxSizing: 'border-box', padding: '0.62rem 0.75rem', borderRadius: 10, border: '1.5px solid var(--app-border)', fontFamily: "'General Sans',sans-serif", fontSize: '0.9rem', fontWeight: 700, color: 'var(--app-text)', background: '#fff', outline: 'none' }}
+        />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.7rem', paddingBottom: '0.7rem', borderBottom: '1px solid var(--app-border)' }}>
+        <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Vision style</p>
+        <div style={{ display: 'inline-flex', border: '1px solid var(--app-border)', borderRadius: 999, padding: 3, background: 'var(--app-bg2)' }}>
+          {visionOptions.map(option => {
+            const isActive = (pillar.visionStyle || 'transformation') === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onVisionStyleChange(option.value)}
+                style={{
+                  border: 'none', borderRadius: 999, padding: '0.4rem 0.85rem', fontSize: '0.76rem', fontWeight: 700,
+                  fontFamily: "'General Sans',sans-serif", cursor: 'pointer',
+                  background: isActive ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'transparent',
+                  color: isActive ? '#fff' : 'var(--app-muted)', transition: 'all 0.18s',
+                }}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+        <span style={{ fontSize: '0.7rem', color: 'var(--app-muted)' }}>
+          {(pillar.visionStyle || 'transformation') === 'destination'
+            ? 'One photo, full width — where you’re going.'
+            : 'Two photos side by side — where you are and where you’re going.'}
+        </span>
+      </div>
+
+      <p style={{ margin: '0 0 0.45rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Category</p>
+      <p style={{ margin: '0 0 0.55rem', fontSize: '0.7rem', color: 'var(--app-muted)' }}>System-only — Sage uses this to plan, your name above is what you'll actually see.</p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+        {FOCUS_AREA_CATEGORIES.map((category, categoryIndex) => (
+          <motion.button
+            key={category.id}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30, delay: shouldReduceMotion ? 0 : categoryIndex * 0.04 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => onSelectCategory(category)}
+            style={{
+              display: 'inline-flex', alignItems: 'flex-start', gap: '0.45rem', padding: '0.7rem 0.8rem',
+              borderRadius: 'var(--app-radius-md)',
+              border: category.id === pillar.category ? '1px solid var(--app-accent)' : '1px solid var(--app-border)',
+              background: category.id === pillar.category ? 'var(--app-bg2)' : '#fff',
+              boxShadow: 'var(--app-shadow-sm)', cursor: 'pointer', fontSize: '0.76rem', color: 'var(--app-text)',
+              fontFamily: "'General Sans',sans-serif", textAlign: 'left', maxWidth: 260,
+            }}
+          >
+            <span style={{ width: 30, height: 30, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', flexShrink: 0 }}>
+              <PillarGlyph code={category.id} size={15} />
+            </span>
+            <span style={{ display: 'grid', gap: '0.15rem' }}>
+              <span style={{ fontWeight: 700 }}>{category.name}</span>
+              <span style={{ fontSize: '0.7rem', lineHeight: 1.45, color: 'var(--app-muted)' }}>{category.details}</span>
+            </span>
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (!isMobile) {
+    return (
+      <div id="vb-preset-panel" style={{ marginBottom: '0.95rem', display: 'flex', justifyContent: 'center' }}>
+        {body}
+      </div>
+    )
+  }
+
+  return createPortal(
+    <>
+      <motion.div
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: shouldReduceMotion ? 0.12 : 0.2 }}
+        style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(20,10,15,0.4)' }}
+      />
+      <motion.div
+        initial={shouldReduceMotion ? { opacity: 0 } : { y: '100%' }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { y: 0 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { y: '100%' }}
+        transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+        style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 901 }}
+      >
+        {body}
+      </motion.div>
+    </>,
+    document.body,
+  )
+}
+
+function freshPillar(emoji = 'NP', name = 'New Pillar', category = null) {
   return {
-    id: uid(), emoji, name,
+    id: uid(), emoji, name, category,
     visionStyle: 'transformation',
     beforeImage: null, afterImage: null,
     beforeState: '', beforeDesc: '',
@@ -365,15 +521,15 @@ function freshPillar(emoji = 'NP', name = 'New Pillar') {
 
 function freshPhase(n) {
   const quarterMeta = getQuarterDates(`Q${n}`)
-  const distributedWindow = buildDefaultPhaseWindow(n - 1, FREE_PHASE_LIMIT)
+  const distributedWindow = buildDefaultPhaseWindow(n - 1, PHASES_PER_YEAR)
   return {
     id: uid(), name: `Phase ${n}`, period: quarterMeta.period,
     startDate: distributedWindow.startDate, endDate: distributedWindow.endDate,
     timeframeLabel: formatMonthRange(distributedWindow.startDate, distributedWindow.endDate),
     affirmation: 'I am becoming who I was always meant to be.',
     pillars: [
-      freshPillar('HF', 'Health & Fitness'),
-      freshPillar('CB', 'Career & Business'),
+      freshPillar('HF', 'Health & Fitness', 'HF'),
+      freshPillar('CB', 'Career & Business', 'CB'),
     ],
     impact: 'Write your ultimate transformation for this phase.',
     reviewWorked: '', reviewDrained: '', reviewPaid: '', reviewStrategy: '',
@@ -457,13 +613,14 @@ function save(d, user) {
   }
 }
 
-const FREE_PILLAR_LIMIT = 1
 const MAX_PILLAR_LIMIT = 5
 // Shared subgrid row tracks pillar cards snap their sections to, so Resources/Weekly
 // Non-Negotiables/Activities/Outcome line up across pillars regardless of content length:
 // header, photo slots, generate-plan button, divider, resources, weekly, activities, outcome.
-const PILLAR_ROW_COUNT = 8
-const FREE_PHASE_LIMIT = 4
+const PILLAR_ROW_COUNT = 7
+// Not a tier limit — just the default assumption for splitting a year's worth
+// of dates across phases (quarters) when a new phase needs a default window.
+const PHASES_PER_YEAR = 4
 const TODO_STATE_KEY = 'phasr_daily_todo_state'
 // Hard ceiling on the source file picked from disk/camera roll, before it's
 // downscaled — not the stored size. A phone camera photo (commonly 3-8MB) is
@@ -1141,295 +1298,6 @@ function isPlanBlank(pillar) {
   return listEmpty && !cleanText(pillar.shortOutcome) && !cleanText(pillar.longOutcome)
 }
 
-function detectPlanType(pillar) {
-  const text = [
-    pillar.name,
-    pillar.beforeState,
-    pillar.afterState,
-    pillar.beforeDesc,
-    pillar.afterDesc,
-  ].map(cleanText).join(' ').toLowerCase()
-
-  if (/relocat|visa|passport|dubai|move abroad|working in|living in|job/.test(text)) return 'relocation'
-  if (/fit|weight|gym|health|body|meal|exercise/.test(text)) return 'fitness'
-  if (/save|debt|income|money|finance|wealth|budget|invest/.test(text)) return 'finance'
-  if (/relationship|marriage|partner|dating|love/.test(text)) return 'relationship'
-  if (/travel|trip|country|vacation/.test(text)) return 'travel'
-  if (/spiritual|faith|prayer|god|mindful|meditat/.test(text)) return 'mindset'
-  if (/creative|design|content|write|art|brand/.test(text)) return 'creative'
-  if (/career|promotion|work|business|client|role/.test(text)) return 'career'
-  return 'general'
-}
-
-function buildGeneratedPlan(pillar, isPro) {
-  const before = cleanText(pillar.beforeState)
-  const after = cleanText(pillar.afterState)
-  const description = getPlanDescription(pillar)
-  const cap = isPro ? 8 : 4
-  const type = detectPlanType(pillar)
-  const targetLabel = after || pillar.name || 'this goal'
-  const generationOffset = Number(pillar.planGenerationCount || 0)
-
-  const templates = {
-    relocation: {
-      resources: ['Passport', 'Target-market CV', 'Visa and permit information', 'Job platforms and recruiter list', 'Relocation budget', 'Proof of experience'],
-      activities: ['Update your CV for the target market', 'Apply for roles in the target location every weekday', 'Research visa and permit steps', 'Reach out to recruiters or contacts in the target city', 'Track every application in one sheet', 'Practice interview answers for the move'],
-      weeklyActions: ['Apply to 20 jobs per week', 'Reach out to 5 contacts or recruiters', 'Complete 1 visa or document step', 'Review your relocation budget once a week', 'Practice 1 interview session', 'Update your application tracker'],
-      outputs: ['Applications sent', 'Recruiter replies', 'Documents completed', 'Interviews booked', 'Contacts made', 'Budget progress tracked'],
-      shortOutcome: 'You complete your documents and start getting real responses.',
-      longOutcome: `You secure a role and move toward ${targetLabel}.`,
-    },
-    fitness: {
-      resources: ['Walking shoes', 'Simple strength plan', 'Protein-first meal structure', 'Workout tracker or notes app', 'Body progress tracker', 'Gym access or resistance bands'],
-      activities: ['Do a 5 to 10 minute warm-up before every workout, like brisk walking, light jogging, skipping, or cycling.', 'Complete 3 sets of 8 to 12 push-ups, using incline push-ups if needed so the reps stay clean.', 'Do 3 sets of 10 to 12 lower-body reps, like squats, glute bridges, reverse lunges, or step-ups.', 'Finish with 20 to 30 minutes of brisk walking, treadmill incline, cycling, or steady cardio.', 'Build each main meal around protein, vegetables, and enough water so training recovery is actually supported.', 'Log each workout, body weight, or measurements once the session is done so the plan stays tied to real progress.'],
-      weeklyActions: ['Measure your weight, waist, or progress photos once this week.', 'Complete your planned workout blocks for the week and move missed sessions before Sunday.', 'Prep your food for your busiest days so workouts are supported by what you eat.', 'Review your workouts and next week’s schedule before Sunday night.', 'Protect your sleep and recovery on work nights so training does not keep restarting.', 'Keep workout clothes, shoes, and water ready before the next session.'],
-      outputs: ['Workouts completed', 'Meals prepared', 'Steps logged', 'Weight or measurements tracked', 'Progress photos taken', 'Weekly adherence score'],
-      shortOutcome: 'You build consistency and start seeing visible physical progress.',
-      longOutcome: `You reach a healthier and stronger version of ${targetLabel}.`,
-    },
-    finance: {
-      resources: ['Budget tracker', 'Income plan', 'Debt or savings target', 'Banking tools', 'Expense review system', 'Weekly money check-in'],
-      activities: ['Track every key expense', 'Cut low-value spending', 'Increase income through one focused channel', 'Automate savings where possible', 'Review financial decisions weekly', 'Use one clear target number'],
-      weeklyActions: ['Review spending once a week', 'Transfer money into savings every week', 'Complete 1 income-building action', 'Log every major expense', 'Check progress against your target', 'Remove one unnecessary cost'],
-      outputs: ['Savings balance', 'Debt paid down', 'Expenses tracked', 'Income actions completed', 'Weekly budget reviews', 'Target gap reduced'],
-      shortOutcome: 'You get control of your cash flow and make visible financial progress.',
-      longOutcome: `You build a stable path toward ${targetLabel}.`,
-    },
-    relationship: {
-      resources: ['Clear standards', 'Communication plan', 'Time blocks', 'Reflection journal', 'Boundaries list', 'Support system'],
-      activities: ['Define what a healthy relationship looks like', 'Communicate directly and consistently', 'Create quality time on purpose', 'Review patterns after key conversations', 'Set or reinforce boundaries', 'Ask for support when needed'],
-      weeklyActions: ['Have 1 honest check-in each week', 'Protect 1 quality-time block', 'Reflect on 1 pattern you want to improve', 'Practice one clear communication habit', 'Follow one boundary consistently', 'Notice and log progress'],
-      outputs: ['Check-ins completed', 'Quality-time blocks protected', 'Conflict reduced', 'Patterns recorded', 'Boundaries kept', 'Trust-building actions completed'],
-      shortOutcome: 'You create more clarity and consistency in the relationship.',
-      longOutcome: `You build the kind of relationship that matches ${targetLabel}.`,
-    },
-    travel: {
-      resources: ['Destination research', 'Travel budget', 'Documents', 'Booking tracker', 'Timeline', 'Priority list'],
-      activities: ['Research the destination properly', 'Price flights and accommodation', 'Set a savings target', 'Complete required documents', 'Track bookings and deadlines', 'Build a clear travel timeline'],
-      weeklyActions: ['Save toward the trip every week', 'Complete 1 booking or document step', 'Review prices once a week', 'Track your budget weekly', 'Confirm one key detail', 'Update your travel checklist'],
-      outputs: ['Amount saved', 'Documents completed', 'Bookings confirmed', 'Budget tracked', 'Checklist progress', 'Trip dates locked'],
-      shortOutcome: 'You move from idea to an organised travel plan.',
-      longOutcome: `You make ${targetLabel} real and executable.`,
-    },
-    mindset: {
-      resources: ['Quiet time', 'Journal', 'Guided practice', 'Habit tracker', 'Reflection prompts', 'Supportive environment'],
-      activities: ['Create a daily reflection rhythm', 'Practice one calming or grounding habit', 'Reduce distractions that break focus', 'Write what you are learning', 'Review emotional patterns', 'Protect time for stillness'],
-      weeklyActions: ['Complete 5 reflection sessions per week', 'Journal 3 times per week', 'Review 1 repeating pattern', 'Protect 1 long reset block', 'Track your consistency', 'Remove 1 trigger that drains focus'],
-      outputs: ['Sessions completed', 'Journal entries saved', 'Patterns identified', 'Calmer responses logged', 'Consistency streak', 'Weekly reflection notes'],
-      shortOutcome: 'You feel more grounded and intentional week by week.',
-      longOutcome: `You become the version of yourself that can sustain ${targetLabel}.`,
-    },
-    creative: {
-      resources: ['Creative tools', 'Project space', 'Reference material', 'Publishing platform', 'Feedback loop', 'Content tracker'],
-      activities: ['Create on a fixed schedule', 'Ship work publicly or to a reviewer', 'Collect references with intention', 'Refine your process weekly', 'Review what performs best', 'Finish small pieces consistently'],
-      weeklyActions: ['Complete 3 creation sessions per week', 'Ship 1 piece of work weekly', 'Review feedback once a week', 'Track progress in one place', 'Refine 1 weak part of the process', 'Protect your creative block'],
-      outputs: ['Pieces completed', 'Hours created', 'Feedback received', 'Posts or projects shipped', 'Portfolio growth', 'Weekly progress log'],
-      shortOutcome: 'You create visible finished work instead of staying in ideas.',
-      longOutcome: `You build a strong body of work around ${targetLabel}.`,
-    },
-    career: {
-      resources: ['Updated CV or portfolio', 'Role criteria', 'Target-company list', 'Networking list', 'Interview examples', 'Progress tracker'],
-      activities: ['Clarify the role you want', 'Improve your CV or portfolio', 'Apply with consistency', 'Reach out to relevant people', 'Prepare interview stories', 'Track progress weekly'],
-      weeklyActions: ['Apply to 10 quality roles per week', 'Reach out to 3 people each week', 'Improve 1 part of your portfolio', 'Review feedback weekly', 'Prepare 1 interview story', 'Track your pipeline'],
-      outputs: ['Applications sent', 'Conversations started', 'Portfolio updates completed', 'Interviews booked', 'Pipeline tracked', 'Feedback collected'],
-      shortOutcome: 'You get clearer direction and stronger opportunities.',
-      longOutcome: `You move toward ${targetLabel} with a stronger career path.`,
-    },
-    general: {
-      resources: ['Clear goal definition', 'Time blocks', 'Tracking system', 'Support or accountability', 'Useful tools', 'Simple review rhythm'],
-      activities: ['Break the goal into small actions', 'Schedule the actions into your week', 'Track progress visibly', 'Remove friction around the goal', 'Review progress weekly', 'Adjust what is not working'],
-      weeklyActions: ['Complete 3 focused actions per week', 'Review progress once a week', 'Track proof of work in one place', 'Protect one non-negotiable block', 'Remove one blocker each week', 'Reset the plan every Sunday'],
-      outputs: ['Tasks completed', 'Weekly reviews done', 'Proof of work logged', 'Consistency streak', 'Blocked issues reduced', 'Visible progress recorded'],
-      shortOutcome: 'You stop guessing and start moving with structure.',
-      longOutcome: `You make real progress toward ${targetLabel}.`,
-    },
-  }
-
-  const template = templates[type] || templates.general
-
-  const detailedActivitiesByType = {
-    relocation: [
-      'Apply to quality roles in your target city every weekday and tailor your CV before sending.',
-      'Spend 30 minutes daily researching visa or sponsorship steps for your exact route.',
-      'Reach out to recruiters or contacts three times a week and ask for role or relocation guidance.',
-      'Track every application, reply, and required document in one simple sheet.',
-    ],
-    fitness: [
-      'Start each workout with a 5 to 10 minute warm-up like brisk walking, jogging in place, skipping, or light cycling.',
-      'Do push-ups for 3 sets of 8 to 12 reps, using incline or knee support if you need cleaner form.',
-      'Train lower body with 3 sets of 10 to 12 reps of squats, glute bridges, reverse lunges, or step-ups.',
-      'Finish with 20 to 30 minutes of walking, treadmill incline, cycling, or another steady cardio block.',
-      'Prep protein-first meals for your busiest days so the workout effort is supported by food, not guesswork.',
-      'Log the workout, steps, and one body metric so the plan responds to real numbers instead of mood.',
-    ],
-    finance: [
-      'Track spending daily so you know exactly where your money is leaking.',
-      'Review your budget twice a week and move money toward savings before optional spending.',
-      'Complete one income-building action three times a week, like pitching, applying, or following up.',
-      'Check your debt or savings target every week and reduce one weak spending habit at a time.',
-    ],
-    relationship: [
-      'Have one honest check-in every week instead of waiting for tension to build.',
-      'Protect one intentional quality-time block every week and show up fully for it.',
-      'Reflect after hard conversations so you can spot patterns and respond better next time.',
-      'Practice one clear boundary consistently so trust and stability improve over time.',
-    ],
-    travel: [
-      'Research one major travel requirement each week until the whole move or trip is clear.',
-      'Save toward the trip every week and track the amount visibly.',
-      'Complete one booking or document task each week so the plan keeps moving.',
-      'Review your route, timeline, and budget weekly so nothing piles up last minute.',
-    ],
-    mindset: [
-      'Journal or reflect for 10 minutes at least three times a week so your thinking gets clearer.',
-      'Protect one longer reset block weekly for prayer, meditation, or stillness.',
-      'Notice one repeated trigger each week and write how you want to respond differently.',
-      'Practice one grounding habit daily so calm becomes easier to access.',
-    ],
-    creative: [
-      'Block at least three creation sessions every week and finish something in each one.',
-      'Ship one piece of work weekly even if it is not perfect.',
-      'Review what worked after each session so your process improves faster.',
-      'Keep your ideas, drafts, and feedback in one place so progress stays visible.',
-    ],
-    career: [
-      'Apply to focused roles three to five times a week instead of applying randomly.',
-      'Improve one part of your CV, portfolio, or interview story every week.',
-      'Reach out to relevant people consistently and ask specific questions or make clear asks.',
-      'Track your applications and follow up on promising leads instead of waiting passively.',
-    ],
-    general: [
-      'Break the goal into small tasks and complete at least three focused actions each week.',
-      'Protect time for the goal three times a week so it stops getting pushed aside.',
-      'Track progress visibly and review what is working every Sunday.',
-      'Remove one blocker each week instead of tolerating the same friction repeatedly.',
-    ],
-  }
-
-  const scheduledWeeklyActionsByType = {
-    relocation: ['Apply to five targeted roles', 'Follow up with two recruiters or contacts', 'Complete one visa or document step', 'Review your relocation tracker and next blockers'],
-    fitness: ['Measure your body once this week and log the number', 'Complete your planned workout blocks before the week closes', 'Prep your meals for the busiest three days', 'Review your workouts and lock next week into the calendar'],
-    finance: ['Log every major expense from the weekend', 'Do one income-building action', 'Transfer money toward the goal account', 'Review spending against the target number'],
-    relationship: ['Plan one quality-time block', 'Have one direct check-in conversation', 'Note one pattern to stop repeating', 'Reset boundaries and expectations for the week'],
-    travel: ['Research one required document or rule', 'Save or move money into the travel fund', 'Complete one booking or admin task', 'Review deadlines, prices, and missing steps'],
-    mindset: ['Journal one page on the week ahead', 'Protect one no-phone reset block', 'Note one trigger and your replacement response', 'Review what made you calmer or more reactive'],
-    creative: ['Start one focused creation session', 'Ship or publish one small piece', 'Review feedback or performance data', 'Plan next week’s creation blocks'],
-    career: ['Send two strong applications', 'Reach out to one relevant person', 'Improve one portfolio, CV, or interview asset', 'Review your pipeline and next follow-ups'],
-    general: ['Do the hardest 30-minute step first', 'Remove one blocker from the environment', 'Finish one measurable task', 'Review proof of progress and reset the week'],
-  }
-
-  const measurableOutputsByType = {
-    relocation: ['Applications sent this week', 'Recruiter replies logged', 'Visa or document steps completed', 'Amount saved toward relocation', 'Interviews booked'],
-    fitness: ['Workouts completed this week', 'Meals prepped this week', 'Daily step streak', 'Weight or measurements logged', 'Sleep target met'],
-    finance: ['Expenses logged this week', 'Amount moved into the goal account', 'Income-building actions completed', 'Subscriptions or leaks removed', 'Weekly budget review completed'],
-    relationship: ['Check-in conversations completed', 'Quality-time blocks kept', 'Conflicts de-escalated faster', 'Boundaries followed this week', 'Reflection notes logged'],
-    travel: ['Amount saved toward the trip', 'Required documents completed', 'Bookings confirmed', 'Checklist items cleared', 'Deadlines reviewed on time'],
-    mindset: ['Journal entries completed', 'Reset blocks protected', 'Trigger notes logged', 'Reactive moments reduced', 'Weekly review completed'],
-    creative: ['Creation sessions finished', 'Pieces shipped', 'Feedback rounds completed', 'Hours spent making', 'Ideas moved to finished work'],
-    career: ['Applications sent', 'Follow-ups completed', 'Portfolio updates shipped', 'Networking messages sent', 'Interviews or calls booked'],
-    general: ['Focused sessions completed', 'Tasks finished this week', 'Weekly review completed', 'Blockers removed', 'Proof of progress logged'],
-  }
-
-  const outcomesByType = {
-    relocation: {
-      short: `In 4 to 6 weeks, you have a live tracker, an active visa path, and documented proof that the move from ${before || 'your current setup'} toward ${targetLabel} is already underway.`,
-      long: `By the end of this phase, ${targetLabel} feels real in your body, not just in your head. You are no longer hoping life changes somehow. You have built the proof, the movement, and the courage to step into it.`,
-    },
-    fitness: {
-      short: `In 4 to 6 weeks, your meals, training times, and recovery are no longer random. The gap between ${before || 'your current body'} and ${targetLabel} is being closed by a repeatable weekly routine.`,
-      long: `By the end of this phase, ${targetLabel} stops feeling far away. You feel stronger in your body, steadier in your choices, and proud of the way you keep showing up for yourself.`,
-    },
-    finance: {
-      short: `In 4 to 6 weeks, money has a job before it is spent. You can point to a target account, a cleaner expense pattern, and weekly actions that move you from ${before || 'financial noise'} toward ${targetLabel}.`,
-      long: `By the end of this phase, money feels less like fear and more like power. ${targetLabel} is no longer a fragile wish. It is something you are steadily building with discipline and self-trust.`,
-    },
-    relationship: {
-      short: `In 4 to 6 weeks, communication is more direct, time together is protected, and the shift from ${before || 'distance or confusion'} toward ${targetLabel} is visible in actual conversations and habits.`,
-      long: `By the end of this phase, ${targetLabel} feels safer, clearer, and more honest. You can feel the difference in the way love is handled, protected, and chosen with intention.`,
-    },
-    travel: {
-      short: `In 4 to 6 weeks, the travel plan has dates, costs, and required documents attached to it. You are no longer just thinking about ${targetLabel}; you are building the route there.`,
-      long: `By the end of this phase, ${targetLabel} feels close enough to touch. The details are no longer overwhelming because you turned the dream into a plan that can carry you there.`,
-    },
-    mindset: {
-      short: `In 4 to 6 weeks, your reactions are easier to predict because you have cues, reflection time, and a record of what throws you off. The shift away from ${before || 'mental noise'} toward ${targetLabel} shows up in how you respond each day.`,
-      long: `By the end of this phase, ${targetLabel} feels deeper than a mood. You feel more rooted, more present, and more able to hold your own peace without losing yourself in the noise.`,
-    },
-    creative: {
-      short: `In 4 to 6 weeks, you have shipped real work, not just ideas. The move from ${before || 'unfinished drafts'} toward ${targetLabel} is visible in finished pieces, not intention.`,
-      long: `By the end of this phase, ${targetLabel} feels alive because your ideas are no longer trapped inside you. You can see your voice, your work, and your courage taking up real space in the world.`,
-    },
-    career: {
-      short: `In 4 to 6 weeks, your role target is sharper, your materials are stronger, and the move from ${before || 'career drift'} toward ${targetLabel} is visible in applications, conversations, and follow-ups.`,
-      long: `By the end of this phase, ${targetLabel} feels earned. You are no longer standing still or waiting to be noticed. You are building the kind of presence and momentum that opens real doors.`,
-    },
-    general: {
-      short: `In 4 to 6 weeks, the goal is no longer floating in your head. It has recurring actions, visible progress, and fewer loose ends between ${before || 'where things are now'} and ${targetLabel}.`,
-      long: `By the end of this phase, ${targetLabel} feels possible in a new way. Not because you got lucky, but because you kept choosing it until the life you wanted started taking shape around you.`,
-    },
-  }
-
-  const alternateOutcomesByType = {
-    relocation: {
-      short: `In 4 to 6 weeks, your move is being handled like a project. The route from ${before || 'your current location'} to ${targetLabel} now has tracked applications, document progress, and fewer unknowns.`,
-      long: `By the end of this phase, ${targetLabel} no longer feels like something you only talk about. It feels like a future you are brave enough and prepared enough to claim.`,
-    },
-    fitness: {
-      short: `In 4 to 6 weeks, the plan is visible in your week. Training, meals, and recovery are showing up often enough that ${targetLabel} no longer depends on motivation.`,
-      long: `By the end of this phase, ${targetLabel} feels less like pressure and more like proof of what happens when you stop abandoning yourself and start backing your own growth.`,
-    },
-    finance: {
-      short: `In 4 to 6 weeks, your money decisions are easier to read. The move from ${before || 'financial pressure'} toward ${targetLabel} is now backed by a pattern of tracking, saving, and follow-through.`,
-      long: `By the end of this phase, ${targetLabel} carries a different feeling. You feel more secure, more in control, and more certain that your future is no longer being left to chance.`,
-    },
-    relationship: {
-      short: `In 4 to 6 weeks, the relationship has more structure. The movement from ${before || 'mixed signals'} toward ${targetLabel} shows up in clearer conversations, boundaries, and time that is actually protected.`,
-      long: `By the end of this phase, ${targetLabel} feels more emotionally real. There is more honesty, more steadiness, and more of the kind of connection that lets your heart exhale.`,
-    },
-    travel: {
-      short: `In 4 to 6 weeks, the plan has moved beyond dreaming. ${targetLabel} now has savings attached to it, tasks scheduled, and fewer missing details.`,
-      long: `By the end of this phase, ${targetLabel} feels exciting for the right reason. You are not scrambling. You are ready, clear, and already living like the move matters.`,
-    },
-    mindset: {
-      short: `In 4 to 6 weeks, your inner life feels more trackable. The move from ${before || 'reactivity'} toward ${targetLabel} is visible in the way you pause, reflect, and recover.`,
-      long: `By the end of this phase, ${targetLabel} feels like a version of peace you can actually keep. You trust yourself more, and that changes the tone of your whole life.`,
-    },
-    creative: {
-      short: `In 4 to 6 weeks, your ideas are turning into visible output. The gap between ${before || 'thinking about it'} and ${targetLabel} is closing because work is being finished and shipped.`,
-      long: `By the end of this phase, ${targetLabel} feels bigger than a dream. It feels like your work is finally meeting the world, and you can feel your confidence growing with every piece you finish.`,
-    },
-    career: {
-      short: `In 4 to 6 weeks, your career push has proof behind it. The shift from ${before || 'standing still'} toward ${targetLabel} is visible in a stronger pipeline, sharper materials, and better follow-up.`,
-      long: `By the end of this phase, ${targetLabel} feels like a direction with weight behind it. You can feel your confidence returning because your effort is finally matching the future you want.`,
-    },
-    general: {
-      short: `In 4 to 6 weeks, the goal is more concrete because it now lives inside your real schedule. The move from ${before || 'wanting change'} toward ${targetLabel} is visible in repeated actions and clearer proof.`,
-      long: `By the end of this phase, ${targetLabel} feels less distant and more yours. You have built enough proof to believe yourself again, and that changes how you move through every week.`,
-    },
-  }
-
-  const resources = compactList([
-    ...rotateList(template.resources, generationOffset),
-    (pillar.beforeImage || pillar.afterImage) && 'Use the photo as a weekly reality check so the plan stays tied to what is actually changing.',
-    description && `Goal context: ${description}`,
-  ], cap)
-
-  const activities = compactList(rotateList(detailedActivitiesByType[type] || detailedActivitiesByType.general, generationOffset), cap)
-  const weeklyActions = compactList(rotateList(scheduledWeeklyActionsByType[type] || scheduledWeeklyActionsByType.general, generationOffset), cap)
-  const outputs = compactList(rotateList(measurableOutputsByType[type] || measurableOutputsByType.general, generationOffset), Math.max(3, cap))
-  const outcomeVariants = [outcomesByType[type] || outcomesByType.general, alternateOutcomesByType[type] || alternateOutcomesByType.general]
-  const outcomes = outcomeVariants[generationOffset % outcomeVariants.length]
-
-  return {
-    resources,
-    activities,
-    weeklyActions,
-    outputs,
-    shortOutcome: outcomes.short,
-    longOutcome: outcomes.long,
-  }
-}
-
 /* â"€â"€ Shared input styles â"€â"€ */
 const inp = (extra = {}) => ({
   width: '100%', padding: '0.38rem 0.6rem',
@@ -1451,7 +1319,6 @@ const focus = e => { e.target.style.borderColor = 'var(--app-accent)' }
 const blur  = e => { e.target.style.borderColor = 'var(--app-border)' }
 
 export default function VisionBoard({ user, lockInSummary, editing: editingProp, onEditingChange, onOpenDailyStreak, autoOpenQuarterlyReviewPhaseId = null, onQuarterlyReviewOpened }) {
-  const isPro = getUserAccess(user).isPro
   const activeUserId = getActiveUserId(user)
   const weekStartKey = useMemo(() => getTodayKey(getWeekStartDate(new Date())), [])
 
@@ -1464,9 +1331,18 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
         const letter = JSON.parse(localStorage.getItem('phasr_future_letter_p1') || 'null')
         const boardType = localStorage.getItem('phasr_onboarding_board_type') || 'transformation'
         if (onboardingPillars?.length && board.phases[0]) {
-          board.phases[0].pillars = onboardingPillars.slice(0, 6).map((name, i) =>
-            normalizePillarShape({ id: `pillar-${i + 1}`, name, visionStyle: boardType })
-          )
+          board.phases[0].pillars = onboardingPillars.slice(0, 6).map((entry, i) => {
+            // Onboarding writes { category, name, emoji } objects now; guard the
+            // old plain-string shape too in case a stale draft is still in localStorage.
+            const item = typeof entry === 'string' ? { name: entry, category: null, emoji: null } : entry
+            return normalizePillarShape({
+              id: `pillar-${i + 1}`,
+              name: item.name,
+              category: item.category,
+              emoji: item.emoji || item.category || 'NP',
+              visionStyle: boardType,
+            })
+          })
         }
         if (letter && board.phases[0]) {
           board.phases[0].futureMessage = letter.message || ''
@@ -1534,17 +1410,6 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
     window.addEventListener('phasr-hydrated', refreshFromHydrate)
     return () => window.removeEventListener('phasr-hydrated', refreshFromHydrate)
   }, [user])
-
-  useEffect(() => {
-    // The vision-style/preset panel renders above the pillar list. On a tall
-    // single-column mobile board, opening it from a pillar further down the
-    // page put it off-screen with nothing visibly happening on tap.
-    if (!presetOpen || !isMobile) return undefined
-    const raf = requestAnimationFrame(() => {
-      document.getElementById('vb-preset-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [presetOpen, isMobile])
 
 
   useEffect(() => {
@@ -1740,8 +1605,10 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
   }
 
   const addPillar  = () => {
-    const limit = isPro ? MAX_PILLAR_LIMIT : FREE_PILLAR_LIMIT
-    if ((phase?.pillars?.length || 0) >= limit) return
+    // No free/pro split — monetization was cut, and the old isPro/access-tier
+    // system (lib/access.js, deleted) had no working paid plan behind it
+    // anyway. MAX_PILLAR_LIMIT stays as a sane UI cap for everyone, not a paywall.
+    if ((phase?.pillars?.length || 0) >= MAX_PILLAR_LIMIT) return
     upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph) ph.pillars.push(freshPillar()); return d })
   }
   const delPillar  = (plId) => upd(d => { const ph = d.phases.find(p => p.id === phaseId); if (ph && ph.pillars.length > 1) ph.pillars = ph.pillars.filter(p => p.id !== plId); return d })
@@ -1770,10 +1637,14 @@ export default function VisionBoard({ user, lockInSummary, editing: editingProp,
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
     try {
-      const focusAreaName = String(targetPillar.name || '').trim()
-      const territory = getFocusAreaTerritory(focusAreaName)
+      // The territory/knowledge lock has to key off the system category, not her
+      // free-text name — otherwise a pillar called "Escape the 9-5" would silently
+      // lose Sage's Career & Business guardrails. Her own name still gets threaded
+      // into the prompt below so the plan reads as personal, not generic.
+      const focusAreaLabel = getFocusAreaLabel(targetPillar.category) || String(targetPillar.name || '').trim()
+      const territory = getFocusAreaTerritory(focusAreaLabel)
       const covers = territory?.covers || ''
-      const knowledge = getFocusAreaKnowledge(focusAreaName)
+      const knowledge = getFocusAreaKnowledge(focusAreaLabel)
       const knowledgeBlock = knowledge
         ? [
             knowledge.resources?.length ? `Knowledge resources examples:\n- ${knowledge.resources.join('\n- ')}` : '',
@@ -1803,8 +1674,9 @@ The daily activities must be concrete and actionable. Not vague like ‘work on 
 The weekly non-negotiables must be bigger than the daily activities but still achievable. They represent momentum markers — things that show the week moved the goal forward.
 Return only valid JSON with these exact keys: resources as array of strings, activities as array of strings, weeklyNonNegotiables as array of strings, outcome as string. No explanation. No preamble. Just the JSON.`
 
-      const originalGenerationPrompt = `Focus area: ${focusAreaName}
+      const originalGenerationPrompt = `Focus area: ${focusAreaLabel}
 Territory for this focus area: ${covers}
+User’s own name for this pillar: ${targetPillar.name}
 User’s current state: ${targetPillar.beforeState} — ${targetPillar.beforeDesc}
 User’s goal state: ${targetPillar.afterState} — ${targetPillar.afterDesc}
 ${knowledgeBlock ? `Reference knowledge for this focus area:
@@ -1858,7 +1730,7 @@ Return JSON only:
         const genericHits = combined.filter(item => /\b(stay consistent|keep it simple|be consistent|try your best|take it one day at a time)\b/i.test(item)).length
         if (genericHits >= 2) return { ok: false, reason: 'too_generic' }
 
-        const normalizedFocus = normalizeFocusAreaName(focusAreaName)
+        const normalizedFocus = normalizeFocusAreaName(focusAreaLabel)
         if (normalizedFocus === 'personal growth') {
           const hasFitnessLeak = combined.some(item => /\b(gym|workout|cardio|protein|calorie|lift|lifting|run|running|strength training)\b/i.test(item))
           if (hasFitnessLeak) return { ok: false, reason: 'cross_focus_fitness' }
@@ -2046,7 +1918,6 @@ Return JSON only:
   }
 
   const addPhase   = () => {
-    if (!isPro && data.phases.length >= FREE_PHASE_LIMIT) return
     upd(d => { const p = freshPhase(d.phases.length + 1); d.phases.push(p); setPhaseId(p.id); return d })
   }
   const delPhase   = (pid) => {
@@ -2054,10 +1925,21 @@ Return JSON only:
     upd(d => { d.phases = d.phases.filter(p => p.id !== pid); setPhaseId(d.phases[0].id); return d })
   }
 
-  const applyPreset = (plId, preset) => {
-    updatePillar(plId, 'emoji', preset.emoji)
-    updatePillar(plId, 'name',  preset.name)
-    setPresetOpen(null)
+  // Category picks the system-only category + default icon. Her display name is
+  // edited separately in the same sheet, so this only overwrites `name` when it's
+  // still whatever the previous category suggested (i.e. she hasn't customized it
+  // yet) — a real custom name like "Escape the 9-5" survives switching categories.
+  const applyFocusAreaCategory = (plId, category) => {
+    upd(d => {
+      const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
+      if (!pl) return d
+      const previousLabel = getFocusAreaLabel(pl.category)
+      const nameIsDefault = !cleanText(pl.name) || pl.name === 'New Pillar' || pl.name === previousLabel
+      pl.category = category.id
+      pl.emoji = category.id
+      if (nameIsDefault) pl.name = category.name
+      return d
+    })
   }
 
   const toggleCheck = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }))
@@ -2634,6 +2516,7 @@ Return JSON only:
             there; only the numbers inside it (today's task/streak) ever change. */}
         <div
           style={{
+          position: 'relative',
           background: 'linear-gradient(135deg, var(--app-accent2), var(--app-accent))',
           borderRadius: 'var(--app-radius-md)', padding: isMobile ? '0.75rem 0.85rem' : '0.9rem 1.1rem',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -2707,18 +2590,22 @@ Return JSON only:
           </div>
         </div>
 
-        {/* Pillar-saved card — sits inline, directly under the banner and its CTA,
-            not floating over the page. It visually emerges from the button that
-            triggered it and folds back into it (as "Schedule your week") when done. */}
+        {/* Floats beside the button that triggered it, anchored to the banner —
+            it used to sit inline in the page flow, pushing everything below it
+            down every time it opened. A side popover doesn't disturb the layout. */}
         {showSavePopup && !editing && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.97 }}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.97 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             style={{
-              width: 'min(320px, calc(100vw - 2.4rem))',
-              margin: '0 auto 0.7rem',
+              position: 'absolute',
+              top: 'calc(100% + 10px)',
+              right: 0,
+              left: isMobile ? 0 : 'auto',
+              zIndex: 40,
+              width: isMobile ? 'auto' : 320,
               borderRadius: 18,
               background: 'rgba(255,255,255,0.68)',
               backdropFilter: 'blur(18px) saturate(160%)',
@@ -2804,11 +2691,7 @@ Return JSON only:
           <p style={{ color: 'var(--app-muted)', fontSize: isMobile ? '0.74rem' : '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: isMobile ? '0' : '0.3rem' }}>
             {(isMobile ? visiblePillars : phase?.pillars || []).map(p => p.name).join(' · ')}
           </p>
-          {/* Before any pillar has content, "Set up your pillar" on the banner above is the
-              only entry point — a second "Personalize" button here is redundant. Once editing
-              starts (from either entry point) or a pillar already has content, show it so
-              there's always a clear, findable way to confirm the save. */}
-          {(editing || bannerState !== 'setup') && (
+          {(
             <button onClick={handleEditingToggle} style={{
               marginTop: isMobile ? '0.55rem' : '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
               padding: '0.33rem 1rem', borderRadius: 99,
@@ -3025,11 +2908,11 @@ Return JSON only:
             </div>
           )})}
 
-          {editing && (isPro || data.phases.length < FREE_PHASE_LIMIT) ? (
+          {editing && (
             <button onClick={addPhase} style={{ padding: '0.48rem 1.1rem', borderRadius: 99, border: '1.5px dashed var(--app-border)', background: 'transparent', color: 'var(--app-accent2)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', fontFamily: "'General Sans',sans-serif", display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               + add it
             </button>
-          ) : null}
+          )}
         </div>
 
 
@@ -3053,100 +2936,20 @@ Return JSON only:
             </div>
           </div>
         )}
-        {editing && presetPillar && (
-          <div id="vb-preset-panel" style={{ marginBottom: '0.95rem', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: 980, borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', background: '#fff', boxShadow: 'var(--app-shadow-md)', padding: '0.8rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                  <span style={{ width: 32, height: 32, borderRadius: 10, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff' }}>
-                    <PillarGlyph code={presetPillar.emoji} size={15} />
-                  </span>
-                  <div>
-                    <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Focus area</p>
-                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--app-text)' }}>{presetPillar.name}</p>
-                  </div>
-                </div>
-                <button type="button" onClick={() => setPresetOpen(null)} style={{ border: '1px solid var(--app-border)', borderRadius: 999, background: '#fff', color: 'var(--app-muted)', padding: '0.45rem 0.8rem', cursor: 'pointer', fontFamily: "'General Sans',sans-serif", fontWeight: 700 }}>
-                  Close
-                </button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.7rem', paddingBottom: '0.7rem', borderBottom: '1px solid var(--app-border)' }}>
-                <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Vision style</p>
-                <div style={{ display: 'inline-flex', border: '1px solid var(--app-border)', borderRadius: 999, padding: 3, background: 'var(--app-bg2)' }}>
-                  {[
-                    { value: 'transformation', label: 'Transformation' },
-                    { value: 'destination', label: 'Destination' },
-                  ].map(option => {
-                    const isActive = (presetPillar.visionStyle || 'transformation') === option.value
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => updatePillar(presetPillar.id, 'visionStyle', option.value)}
-                        style={{
-                          border: 'none',
-                          borderRadius: 999,
-                          padding: '0.4rem 0.85rem',
-                          fontSize: '0.76rem',
-                          fontWeight: 700,
-                          fontFamily: "'General Sans',sans-serif",
-                          cursor: 'pointer',
-                          background: isActive ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'transparent',
-                          color: isActive ? '#fff' : 'var(--app-muted)',
-                          transition: 'all 0.18s',
-                        }}
-                      >
-                        {option.label}
-                      </button>
-                    )
-                  })}
-                </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--app-muted)' }}>
-                  {(presetPillar.visionStyle || 'transformation') === 'destination'
-                    ? 'One photo, full width — where you’re going.'
-                    : 'Two photos side by side — where you are and where you’re going.'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-                {PILLAR_PRESETS.map((p, presetIndex) => (
-                  <motion.button
-                    key={p.name}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30, delay: presetIndex * 0.04 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    onClick={() => applyPreset(presetPillar.id, p)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'flex-start',
-                      gap: '0.45rem',
-                      padding: '0.7rem 0.8rem',
-                      borderRadius: 'var(--app-radius-md)',
-                      border: p.name === presetPillar.name ? '1px solid var(--app-accent)' : '1px solid var(--app-border)',
-                      background: p.name === presetPillar.name ? 'var(--app-bg2)' : '#fff',
-                      boxShadow: 'var(--app-shadow-sm)',
-                      cursor: 'pointer',
-                      fontSize: '0.76rem',
-                      color: 'var(--app-text)',
-                      fontFamily: "'General Sans',sans-serif",
-                      textAlign: 'left',
-                      maxWidth: 260,
-                    }}
-                  >
-                    <span style={{ width: 30, height: 30, borderRadius: 9, display: 'grid', placeItems: 'center', background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff' }}>
-                      <PillarGlyph code={p.emoji} size={15} />
-                    </span>
-                    <span style={{ display: 'grid', gap: '0.15rem' }}>
-                      <span style={{ fontWeight: 700 }}>{p.name}</span>
-                      <span style={{ fontSize: '0.7rem', lineHeight: 1.45, color: 'var(--app-muted)' }}>{p.details}</span>
-                    </span>
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-          </div>
+        {editing && (
+          <AnimatePresence>
+            {presetPillar && (
+              <FocusAreaSheet
+                key={presetPillar.id}
+                pillar={presetPillar}
+                isMobile={isMobile}
+                onClose={() => setPresetOpen(null)}
+                onSelectCategory={category => applyFocusAreaCategory(presetPillar.id, category)}
+                onNameChange={value => updatePillar(presetPillar.id, 'name', value)}
+                onVisionStyleChange={value => updatePillar(presetPillar.id, 'visionStyle', value)}
+              />
+            )}
+          </AnimatePresence>
         )}
         {(() => {
           const pillarColumnsPerRow = visiblePillars.length === 1 ? 1 : (isMobile ? 1 : 2)
@@ -3185,12 +2988,11 @@ Return JSON only:
               onDel={() => delPillar(pl.id)}
               onPreset={() => setPresetOpen(presetOpen === pl.id ? null : pl.id)}
                 onGeneratePlan={(options) => forceGeneratePlan(pl.id, options)}
-              isPro={isPro}
               isGenerating={generatingPillarId === pl.id}
             />
           ))}
           {editing && (
-            (phase?.pillars?.length || 0) < (isPro ? MAX_PILLAR_LIMIT : FREE_PILLAR_LIMIT) ? (
+            (phase?.pillars?.length || 0) < MAX_PILLAR_LIMIT ? (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -3410,7 +3212,7 @@ Return JSON only:
 }
 
 /* â"€â"€ Pillar Card â"€â"€ */
-  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, rowGroup, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isPro, isGenerating }) {
+  function PillarCard({ pl, editing, checked, phaseId, userId, weekStartKey, index, rowGroup, onCollapse, onUpdate, onUpdateArr, onAddArr, onDelArr, onCheck, onUpload, onImageLinkUpdate, onDel, onPreset, onGeneratePlan, isGenerating }) {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
     const calendarWindowStart = useMemo(() => (
       // NON_NEGOTIABLE_DAY_OFFSETS assumes offset 0 = Monday — this must anchor
@@ -3434,8 +3236,11 @@ Return JSON only:
     // escape is a dead end. "Edit anyway" clears it for this pillar/session;
     // she isn't ever stuck.
     const [descriptionUnlocked, setDescriptionUnlocked] = useState(false)
-    const isLocked = hasRequiredDescription && !descriptionUnlocked
     const hasPlan = Array.isArray(pl.activities) && pl.activities.filter(Boolean).length > 0
+    // Gated on an actual generated plan, not on "has she typed any description text" —
+    // that used to lock the field the instant she typed her first character, before
+    // she'd even finished writing, let alone generated anything for the lock to protect.
+    const isLocked = hasPlan && !descriptionUnlocked
     // Always visible from the start — she shouldn't have to write anything before she
     // can even see the button exists. It's just disabled until there's a description.
     const buttonLabel = hasPlan ? 'Regenerate plan' : 'Generate plan'
@@ -3493,6 +3298,55 @@ Return JSON only:
 
   const cardRowStart = (rowGroup || 0) * PILLAR_ROW_COUNT + 1
 
+  // Shared between the locked (read-only) and unlocked (editable) branches of the
+  // last photo column below — Generate/Regenerate must stay reachable either way.
+  const generateButtonBlock = (() => {
+    const blocked = isGenerating || !hasRequiredDescription
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+        <motion.button
+          whileHover={{ scale: blocked ? 1 : 1.02 }}
+          whileTap={{ scale: blocked ? 1 : 0.98 }}
+          type="button"
+          disabled={blocked}
+          onClick={handleGenerateButton}
+          style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'General Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation' }}
+        >
+          {isGenerating ? 'Generating...' : buttonLabel}
+        </motion.button>
+        {!hasRequiredDescription && !isGenerating && (
+          <span style={{ fontSize: '0.66rem', color: 'var(--app-muted)' }}>
+            {isDestination ? 'Add a description above to unlock this' : 'Add before & after details above to unlock this'}
+          </span>
+        )}
+      </div>
+    )
+  })()
+
+  const talkToSageBlock = isLocked && (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event('phasr-open-sage-float'))}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', background: 'var(--app-bg2)', color: 'var(--app-accent2)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', padding: '0.4rem 0.7rem', borderRadius: 999, fontFamily: "'General Sans',sans-serif" }}
+      >
+        <Lock size={11} strokeWidth={2.2} />
+        Talk to Sage to change your goal
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (window.confirm('Editing this directly will change the plan Sage built around it, and Sage won\'t know until your next check-in. Edit anyway?')) {
+            setDescriptionUnlocked(true)
+          }
+        }}
+        style={{ border: 'none', background: 'transparent', color: 'var(--app-border)', fontSize: '0.64rem', fontWeight: 600, cursor: 'pointer', padding: '0 0.2rem', fontFamily: "'General Sans',sans-serif" }}
+      >
+        Edit anyway
+      </button>
+    </div>
+  )
+
   return (
     <div
       style={
@@ -3505,12 +3359,14 @@ Return JSON only:
           : {
               background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden',
               display: 'grid',
-              // Always stay in the shared subgrid, even collapsed — the {!pl.collapsed && ...}
-              // guard below already hides rows 4-8's content. Dropping out of subgrid here
-              // (as this used to do for collapsed cards) breaks the shared row-track sizing
-              // that keeps this card's sibling in the same row-group aligned.
+              // Stay in the shared subgrid for rows 1-2 (header + photo/write-up) so
+              // those always align with the sibling in this row-group. But a collapsed
+              // card has nothing in rows 3+ — spanning the full row count anyway used to
+              // stretch it to match an expanded sibling's height, leaving a dead gap
+              // below the write-up. Spanning only 2 rows when collapsed lets the card's
+              // own box end right after the write-up instead.
               gridTemplateRows: 'subgrid',
-              gridRow: `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
+              gridRow: pl.collapsed ? `${cardRowStart} / span 2` : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
             }
       }>
       {/* Header */}
@@ -3557,16 +3413,43 @@ Return JSON only:
       <div className="vb-before-after-grid" style={{ gridRow: 2, padding: '0 1.1rem', display: 'grid', gridTemplateColumns: isDestination ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem', alignItems: 'stretch' }}>
         {(isDestination
           ? [
-              { slot: 'afterImage', src: pl.afterImage, lbl: 'Destination', sk: 'afterState', dk: 'afterDesc', sv: pl.afterState, dv: pl.afterDesc, bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
+              { slot: 'afterImage', src: pl.afterImage, lbl: 'Destination', sk: 'afterState', dk: 'afterDesc', sv: pl.afterState, dv: pl.afterDesc, bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090', statePh: 'Who you want to become', descPh: "What getting there looks like, and why it matters — Sage builds your plan from this." },
             ]
           : [
-              { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#8a5060' },
-              { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090' },
+              { slot: 'beforeImage', src: pl.beforeImage, lbl: 'Before', sk: 'beforeState', dk: 'beforeDesc', sv: pl.beforeState, dv: pl.beforeDesc, bg: '#fff8f8', bc: '#f9cdd3', lc: '#8a5060', statePh: 'Where you are right now', descPh: "Describe where you're starting from." },
+              { slot: 'afterImage',  src: pl.afterImage,  lbl: 'After',  sk: 'afterState',  dk: 'afterDesc',  sv: pl.afterState,  dv: pl.afterDesc,  bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090', statePh: 'Who you want to become', descPh: "What getting there looks like — Sage builds your plan from this." },
             ]
-        ).map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc }) => (
+        ).map(({ slot, src, lbl, sk, dk, sv, dv, bg, bc, lc, statePh, descPh }) => {
+          const isLastSlot = slot === 'afterImage'
+          const pasteLinkControl = linkOpen[slot] ? (
+                  <input
+                    autoFocus
+                    value={linkDrafts[slot] || ''}
+                    onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))}
+                    onBlur={e => { onImageLinkUpdate(slot, e.target.value); if (!e.target.value) setLinkOpen(prev => ({ ...prev, [slot]: false })) }}
+                    placeholder="Paste image link"
+                    style={{ width: '100%', flex: 1, minWidth: 0, padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
+                    onFocus={focus}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setLinkOpen(prev => ({ ...prev, [slot]: true }))}
+                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'General Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
+                  >
+                    or paste a link
+                  </button>
+                )
+          return (
           <div key={slot} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', height: '100%' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: lc, margin: 0 }}>{lbl}</p>
-            <div onClick={() => handleImageTap(slot)} style={{ width: '100%', aspectRatio: isDestination ? '16/9' : '3/4', borderRadius: 'var(--app-radius-md)', background: src ? bg : 'var(--app-bg2)', border: src ? `1px solid ${bc}` : '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative', flexShrink: 0, boxShadow: src ? 'var(--app-shadow-sm)' : 'none' }}>
+            {/* Destination is a single 1fr column, so its full width IS the card's
+                full width — on a wide single-pillar desktop layout that made the
+                16:9 box balloon well past 700px tall, dwarfing everything below
+                it. Capping the box's own width (not the column) keeps the photo
+                a sane, still-generous size no matter how wide the card gets;
+                two-up Before/After columns are already narrow enough to not need this. */}
+            <div onClick={() => handleImageTap(slot)} style={{ width: '100%', maxWidth: isDestination ? 640 : 'none', margin: isDestination ? '0 auto' : 0, aspectRatio: isDestination ? '16/9' : '3/4', borderRadius: 'var(--app-radius-md)', background: src ? bg : 'var(--app-bg2)', border: src ? `1px solid ${bc}` : '2px dashed var(--app-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: editing ? 'pointer' : 'default', position: 'relative', flexShrink: 0, boxShadow: src ? 'var(--app-shadow-sm)' : 'none' }}>
               {src ? <img src={src} alt={lbl} referrerPolicy="no-referrer" crossOrigin="anonymous" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <p style={{ fontSize: '0.7rem', color: 'var(--app-border)', textAlign: 'center', padding: '0.4rem' }}>{editing ? 'tap to upload (optional)' : 'add photo'}</p>}
               {editing && src && (
                 <motion.button
@@ -3586,118 +3469,68 @@ Return JSON only:
             </div>
             {editing && !isLocked ? (
               <>
-                <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={`${lbl} state`} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
-                <input value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder="Description" style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
-                {linkOpen[slot] ? (
-                  <input
-                    autoFocus
-                    value={linkDrafts[slot] || ''}
-                    onChange={e => setLinkDrafts(prev => ({ ...prev, [slot]: e.target.value }))}
-                    onBlur={e => { onImageLinkUpdate(slot, e.target.value); if (!e.target.value) setLinkOpen(prev => ({ ...prev, [slot]: false })) }}
-                    placeholder="Paste image link"
-                    style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none' }}
-                    onFocus={focus}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setLinkOpen(prev => ({ ...prev, [slot]: true }))}
-                    style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: isMobile ? 36 : 'auto', border: 'none', background: 'transparent', color: 'var(--app-accent2)', fontSize: isMobile ? '0.78rem' : '0.7rem', fontWeight: 700, cursor: 'pointer', padding: isMobile ? '0.5rem 0.2rem' : '0.1rem 0', margin: isMobile ? '-0.5rem -0.2rem 0' : 0, fontFamily: "'General Sans',sans-serif", textDecoration: 'underline', textUnderlineOffset: 2 }}
-                  >
-                    or paste a link
-                  </button>
-                )}
+                <input value={sv} onChange={e => onUpdate(sk, e.target.value)} placeholder={statePh} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
+                <textarea value={dv} onChange={e => onUpdate(dk, e.target.value)} placeholder={descPh} rows={3} style={{ width: '100%', padding: isMobile ? '0.5rem 0.55rem' : '0.35rem 0.55rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: isMobile ? '16px' : '0.72rem', color: 'var(--app-muted)', background: '#fff', outline: 'none', resize: 'vertical', lineHeight: 1.4, boxSizing: 'border-box' }} onFocus={focus} onBlur={blur} />
+                {isLastSlot ? (
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {pasteLinkControl}
+                    {editing && generateButtonBlock}
+                  </div>
+                ) : pasteLinkControl}
               </>
             ) : (
               <>
                 <p style={{ fontSize: '0.78rem', color: 'var(--app-text)', lineHeight: 1.5, margin: 0 }}>{sv}</p>
-                <p title={dv || undefined} style={{ fontSize: '0.72rem', color: 'var(--app-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }}>{dv}</p>
+                {/* Collapsed, this write-up is the only thing left in the card besides
+                    the photo — give it a quieter, quote-like presence instead of the
+                    small utility-copy treatment it gets alongside a full plan. */}
+                <p title={dv || undefined} style={pl.collapsed
+                  ? { fontFamily: "'Fraunces',serif", fontStyle: 'italic', fontWeight: 500, fontSize: '0.92rem', color: 'var(--app-accent2)', lineHeight: 1.55, margin: 0, display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden' }
+                  : { fontSize: '0.72rem', color: 'var(--app-muted)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', margin: 0 }
+                }>{dv}</p>
+                {isLastSlot && editing && (
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: isLocked ? 'space-between' : 'flex-end', flexWrap: 'wrap', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.3rem' }}>
+                    {talkToSageBlock}
+                    {generateButtonBlock}
+                  </div>
+                )}
               </>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
-
-      {/* Generate/Regenerate plan — stays reachable even when the pillar is
-          collapsed; only the plan detail sections below fold away. */}
-      <div style={{ gridRow: 3, padding: '0 1.1rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
-            {editing && (() => {
-              const blocked = isGenerating || !hasRequiredDescription
-              return (
-                <>
-                  <motion.button
-                    whileHover={{ scale: blocked ? 1 : 1.02 }}
-                    whileTap={{ scale: blocked ? 1 : 0.98 }}
-                    type="button"
-                    disabled={blocked}
-                    onClick={handleGenerateButton}
-                    style={{ width: isMobile ? '100%' : 'auto', minHeight: isMobile ? 46 : 38, padding: isMobile ? '0.72rem 1rem' : '0.58rem 0.9rem', borderRadius: 999, border: '1px solid var(--app-border)', background: isGenerating ? 'var(--app-border)' : !hasRequiredDescription ? 'var(--app-bg2)' : 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: !hasRequiredDescription && !isGenerating ? 'var(--app-muted)' : '#fff', fontWeight: 800, cursor: blocked ? (isGenerating ? 'wait' : 'not-allowed') : 'pointer', fontFamily: "'General Sans', sans-serif", opacity: blocked ? 0.7 : 1, transition: 'opacity 0.2s', touchAction: 'manipulation' }}
-                  >
-                    {isGenerating ? 'Generating...' : buttonLabel}
-                  </motion.button>
-                  {!hasRequiredDescription && !isGenerating && (
-                    <span style={{ fontSize: '0.66rem', color: 'var(--app-muted)' }}>
-                      {isDestination ? 'Add a description above to unlock this' : 'Add before & after details above to unlock this'}
-                    </span>
-                  )}
-                </>
-              )
-            })()}
-            {editing && isLocked && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new Event('phasr-open-sage-float'))}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', background: 'var(--app-bg2)', color: 'var(--app-accent2)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', padding: '0.4rem 0.7rem', borderRadius: 999, fontFamily: "'General Sans',sans-serif" }}
-                >
-                  <Lock size={11} strokeWidth={2.2} />
-                  Talk to Sage to change your goal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Editing this directly will change the plan Sage built around it, and Sage won\'t know until your next check-in. Edit anyway?')) {
-                      setDescriptionUnlocked(true)
-                    }
-                  }}
-                  style={{ border: 'none', background: 'transparent', color: 'var(--app-border)', fontSize: '0.64rem', fontWeight: 600, cursor: 'pointer', padding: '0 0.2rem', fontFamily: "'General Sans',sans-serif" }}
-                >
-                  Edit anyway
-                </button>
-              </div>
-            )}
-          </div>
 
       {/* Collapsing a pillar hides only these plan-detail sections — resources,
           weekly non-negotiables, activities, outcome. The vision (photos +
           descriptions) and the generate-plan button above always stay visible. */}
       {!pl.collapsed && (
         <>
-          <div style={{ gridRow: 4, margin: '0 1.1rem', height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
+          <div style={{ gridRow: 3, margin: '0 1.1rem', height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
           {/* List sections */}
           {[
             { lbl: 'Resources',  key: 'resources',  c: 'var(--app-accent2)', m: '•' },
           ].map(({ lbl, key, c, m }) => (
-            <div key={key} style={{ gridRow: 5, padding: '0 1.1rem' }}>
+            <div key={key} style={{ gridRow: 4, padding: '0 1.1rem' }}>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c, marginBottom: '0.38rem' }}>{lbl}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 200, overflowY: 'auto' }}>
                 {pl[key].map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
-                    {editing
+                    {editing && !isLocked
                       ? <><input value={item} onChange={e => onUpdateArr(key, i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr(key, i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                       : <span style={{ fontSize: '0.8rem', color: '#5a3d47', lineHeight: 1.5, flex: 1 }}>{m} {item}</span>
                     }
                   </div>
                 ))}
-                {editing && <button onClick={() => onAddArr(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add item</button>}
+                {editing && !isLocked && <button onClick={() => onAddArr(key)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add item</button>}
               </div>
             </div>
           ))}
 
           {/* Weekly non-negotiables */}
-          <div style={{ gridRow: 6, margin: '0 1.1rem', background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
+          <div style={{ gridRow: 5, margin: '0 1.1rem', background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>Weekly Non-Negotiables</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 220, overflowY: 'auto' }}>
               {(Array.isArray(pl.weeklyActions) && pl.weeklyActions.length ? pl.weeklyActions : ['']).map((item, i) => {
@@ -3712,7 +3545,7 @@ Return JSON only:
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.48rem', padding: '0.26rem 0.33rem', borderRadius: 7, cursor: 'pointer' }} onClick={() => !editing && onCheck(ck)}>
                     <input type="checkbox" checked={!!checked[ck]} onChange={() => onCheck(ck)} onClick={e => e.stopPropagation()} style={{ width: 14, height: 14, marginTop: 3, accentColor: 'var(--app-accent)', flexShrink: 0, cursor: 'pointer' }} />
-                    {editing
+                    {editing && !isLocked
                       ? <><input value={item} onChange={e => onUpdateArr('weeklyActions', i, e.target.value)} style={{ flex: 1, minWidth: 0, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                          <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr('weeklyActions', i)} style={{ width: 24, height: 24, flexShrink: 0, borderRadius: '50%', background: '#fff0f4', border: '1px solid #f5c0cc', cursor: 'pointer', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, lineHeight: 1, padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                       : <>
@@ -3765,31 +3598,31 @@ Return JSON only:
                   </div>
                 )
               })}
-              {editing && <button onClick={() => onAddArr('weeklyActions')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add action</button>}
+              {editing && !isLocked && <button onClick={() => onAddArr('weeklyActions')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add action</button>}
             </div>
           </div>
 
-          <div style={{ gridRow: 7, padding: '0 1.1rem' }}>
+          <div style={{ gridRow: 6, padding: '0 1.1rem' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d4773a', marginBottom: '0.38rem' }}>Activities</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 200, overflowY: 'auto' }}>
               {pl.activities.map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', padding: '0.22rem 0.38rem', borderRadius: 7 }}>
-                  {editing
+                  {editing && !isLocked
                     ? <><input value={item} onChange={e => onUpdateArr('activities', i, e.target.value)} style={{ flex: 1, padding: '0.32rem 0.5rem', border: '1.5px solid var(--app-border)', borderRadius: 7, fontFamily: "'General Sans',sans-serif", fontSize: '0.78rem', color: 'var(--app-text)', background: '#fff', outline: 'none' }} onFocus={focus} onBlur={blur} />
                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} onClick={() => onDelArr('activities', i)} style={{ width: 24, height: 24, borderRadius: '50%', border: '1px solid #f5c0cc', background: '#fff0f4', color: 'var(--app-accent)', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', padding: 0, boxShadow: 'var(--app-shadow-sm)' }}>×</motion.button></>
                     : <span style={{ fontSize: '0.8rem', color: '#5a3d47', lineHeight: 1.5, flex: 1 }}>→ {item}</span>
                   }
                 </div>
               ))}
-              {editing && <button onClick={() => onAddArr('activities')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add item</button>}
+              {editing && !isLocked && <button onClick={() => onAddArr('activities')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.28rem', fontSize: '0.7rem', fontWeight: 600, color: 'var(--app-accent2)', background: 'var(--app-bg2)', border: '1.5px dashed var(--app-border)', borderRadius: 6, padding: '0.22rem 0.58rem', cursor: 'pointer', marginTop: '0.18rem', fontFamily: "'General Sans',sans-serif" }}>+ add item</button>}
             </div>
           </div>
 
           {/* Outcome */}
-          <div style={{ gridRow: 8, padding: '0 1.1rem 1.1rem' }}>
+          <div style={{ gridRow: 7, padding: '0 1.1rem 1.1rem' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.38rem' }}>Outcome</p>
             <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff1f6)', border: '1px solid #f0d6e2', borderRadius: 'var(--app-radius-sm)', padding: '0.5rem 0.7rem', boxShadow: 'var(--app-shadow-sm)' }}>
-              {editing
+              {editing && !isLocked
                 ? (
                   <textarea
                     rows={3}

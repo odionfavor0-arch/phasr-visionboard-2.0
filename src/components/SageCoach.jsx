@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Copy, Globe, Pencil, RotateCcw, Trash2, Volume2 } from 'lucide-react'
 import { getLockInSummary, getTodayTask, loadBoardData, loadLockInState } from '../lib/lockIn'
-import { getUserAccess } from '../lib/access'
 import { getSageAvatarUrl, getVoicePreference } from '../lib/userPreferences'
 import { loadCachedProfile } from './ProfilePage'
 
@@ -2144,7 +2143,6 @@ function VoiceRecorderButton({ recording, onClick, disabled = false }) {
 }
 
 export default function SageCoach({ onLockInChange, user }) {
-  const isPro = getUserAccess(user).isPro
   const boardData = useMemo(() => {
     return safeRead('phasr_vb', {})
   }, [])
@@ -2323,31 +2321,6 @@ export default function SageCoach({ onLockInChange, user }) {
     setForceResearchNext(false)
     setUsage({ date: getTodayKey(), wordsUsed: nextUsedWords })
 
-    if (useDeepResearch && !isPro) {
-      updateActiveThreadMessages(current => [
-        ...current,
-        {
-          role: 'assistant',
-          content: `Answer
-- Deep Research is available on Pro. I can still give you a fast general answer now.
-
-Breakdown
-- Your question needs higher accuracy or real-world detail.
-- That is when Sage switches into research mode.
-
-Sources
-- Pro deep research required for live source-backed answers.
-
-Action Steps
-- Upgrade for Deep Research.
-- Or ask the same question again and I will answer from general knowledge only.`,
-        },
-      ])
-      setLoading(false)
-      setResearching(false)
-      return
-    }
-
     try {
       const reply = await requestSageReply({
         system: useDeepResearch ? buildResearchSystemPrompt(user, boardData) : buildFullSystemPrompt(user, boardData),
@@ -2464,20 +2437,13 @@ Action Steps
   ]
   const orderedThreads = [...threads].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
 
-  const [showInternetHint, setShowInternetHint] = useState(false)
-
   function handleInternetClick() {
-    if (isPro) {
-      setForceResearchNext(true)
-      if (String(input || '').trim()) {
-        void sendFullMessage(input)
-      } else {
-        setResearching(true)
-      }
-      return
+    setForceResearchNext(true)
+    if (String(input || '').trim()) {
+      void sendFullMessage(input)
+    } else {
+      setResearching(true)
     }
-    setShowInternetHint(true)
-    window.setTimeout(() => setShowInternetHint(false), 2200)
   }
 
   return (
@@ -2699,11 +2665,6 @@ Action Steps
             position: 'relative',
           }}
         >
-          {showInternetHint && (
-            <div style={{ position: 'absolute', right: '1rem', top: '-2.45rem', background: '#1f1720', color: '#fff', borderRadius: 12, padding: '0.5rem 0.7rem', fontSize: '0.74rem', fontWeight: 700, boxShadow: '0 12px 24px rgba(0,0,0,0.18)' }}>
-              Pro unlocks live web research
-            </div>
-          )}
           <div
             style={{
               display: 'flex',
@@ -2780,11 +2741,6 @@ Action Steps
                   <span className="sage-dot" style={{ width: 5, height: 5 }} />
                   <span className="sage-dot" style={{ width: 5, height: 5, animationDelay: '0.2s' }} />
                   <span className="sage-dot" style={{ width: 5, height: 5, animationDelay: '0.4s' }} />
-                </span>
-              )}
-              {!isPro && (
-                <span style={{ position: 'absolute', right: -2, top: -2, minWidth: 16, height: 16, borderRadius: 999, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', color: '#fff', fontSize: '0.5rem', fontWeight: 800, display: 'grid', placeItems: 'center', padding: '0 0.18rem' }}>
-                  PRO
                 </span>
               )}
             </button>

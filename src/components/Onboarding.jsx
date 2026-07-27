@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react'
+import { BookOpen, Briefcase, HandHeart, HeartPulse, Sparkles, Wallet } from 'lucide-react'
 import phasrLogoPink from '../assets/phasr-logo-pink.png'
+import { FOCUS_AREA_CATEGORIES } from '../lib/focusAreas'
 
-const PILLAR_PRESETS = [
-  { id: 'health-fitness', emoji: '💪', name: 'Health & Fitness', details: 'Body, food, sleep, gym, energy' },
-  { id: 'career-business', emoji: '💼', name: 'Career & Business', details: 'Job, entrepreneurship, income' },
-  { id: 'wealth', emoji: '💰', name: 'Wealth', details: 'Savings, investing, financial freedom' },
-  { id: 'relationships', emoji: '🤝', name: 'Relationships', details: 'Love, family, friendships, community' },
-  { id: 'inner-life', emoji: '✨', name: 'Inner Life', details: 'Spirituality, mindfulness, mental health' },
-  { id: 'personal-growth', emoji: '🌱', name: 'Personal Growth', details: 'Learning, creativity, self-development' },
-]
+// Same icon set as VisionBoard.jsx's PILLAR_ICONS, keyed by the same category
+// ids, so a pillar's icon looks identical from the moment she creates it here
+// through the vision board and mobile nav.
+const CATEGORY_ICONS = { HF: HeartPulse, CB: Briefcase, WE: Wallet, RE: HandHeart, IL: Sparkles, PG: BookOpen }
+
+function CategoryGlyph({ id, size = 22 }) {
+  const Icon = CATEGORY_ICONS[id] || Briefcase
+  return <Icon size={size} strokeWidth={2} />
+}
 
 const BOARD_TYPE_OPTIONS = [
   { id: 'transformation', name: 'Transformation Board', details: "Two photos side by side — where you are and where you're going." },
@@ -64,10 +67,10 @@ function PreviewCard({ slide, theme, isPhone }) {
   if (slide.id === 'pillars') {
     return (
       <div style={{ ...commonCard, display: 'grid', gap: 10 }}>
-        {PILLAR_PRESETS.slice(0, 4).map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.22)' }}>
-            <span style={{ fontSize: '1.1rem' }}>{p.emoji}</span>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>{p.name}</span>
+        {FOCUS_AREA_CATEGORIES.slice(0, 4).map(category => (
+          <div key={category.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.22)' }}>
+            <span style={{ display: 'grid', placeItems: 'center' }}><CategoryGlyph id={category.id} size={18} /></span>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>{category.name}</span>
           </div>
         ))}
       </div>
@@ -94,6 +97,7 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   const [step, setStep] = useState(0)
   const [closing, setClosing] = useState(false)
   const [selectedPillars, setSelectedPillars] = useState([])
+  const [pillarNames, setPillarNames] = useState({})
   const [letterText, setLetterText] = useState('')
   const [letterSealed, setLetterSealed] = useState(false)
   const [aboutMeText, setAboutMeText] = useState('')
@@ -111,6 +115,10 @@ export default function Onboarding({ userName = 'there', onComplete }) {
     setSelectedPillars(current =>
       current.includes(id) ? current.filter(x => x !== id) : current.length < 3 ? [...current, id] : current
     )
+  }
+
+  function setPillarName(id, value) {
+    setPillarNames(current => ({ ...current, [id]: value }))
   }
 
   function sealLetter() {
@@ -139,9 +147,17 @@ export default function Onboarding({ userName = 'there', onComplete }) {
   }
 
   function savePillars() {
-    const names = selectedPillars.map(id => PILLAR_PRESETS.find(p => p.id === id)?.name).filter(Boolean)
+    // Each entry keeps the system-only category (Sage's territory/icon lookup)
+    // separate from her display name (free text, defaults to the category label
+    // if she didn't type her own) — see VisionBoard.jsx's pillar category split.
+    const entries = selectedPillars.map(id => {
+      const category = FOCUS_AREA_CATEGORIES.find(c => c.id === id)
+      if (!category) return null
+      const customName = String(pillarNames[id] || '').trim()
+      return { category: category.id, name: customName || category.name, emoji: category.id }
+    }).filter(Boolean)
     try {
-      localStorage.setItem('phasr_onboarding_pillars', JSON.stringify(names))
+      localStorage.setItem('phasr_onboarding_pillars', JSON.stringify(entries))
     } catch {}
   }
 
@@ -225,16 +241,16 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                   {slide.kicker}
                 </div>
                 <h1 style={{ margin: '0 0 12px', fontFamily: "'Fraunces',serif", fontSize: isPhone ? '2.4rem' : 'clamp(2.6rem,6vw,4.2rem)', lineHeight: 1, fontWeight: 300, letterSpacing: '-0.04em' }}>{slide.headline}</h1>
-                <p style={{ margin: '0 0 24px', fontSize: '0.96rem', lineHeight: 1.65, color: theme.muted }}>Pick up to 3. You can change these later.</p>
+                <p style={{ margin: '0 0 24px', fontSize: '0.96rem', lineHeight: 1.65, color: theme.muted }}>Pick up to 3 — categories, not labels. You'll name each one your own way next.</p>
               </div>
               <div className="ob-fade-up ob-delay-2" style={{ display: 'grid', gridTemplateColumns: isPhone ? '1fr 1fr' : 'repeat(3,1fr)', gap: 10, width: '100%', maxWidth: 580 }}>
-                {PILLAR_PRESETS.map(p => {
-                  const active = selectedPillars.includes(p.id)
+                {FOCUS_AREA_CATEGORIES.map(category => {
+                  const active = selectedPillars.includes(category.id)
                   return (
                     <button
-                      key={p.id}
+                      key={category.id}
                       type="button"
-                      onClick={() => togglePillar(p.id)}
+                      onClick={() => togglePillar(category.id)}
                       style={{
                         padding: '14px 12px', borderRadius: 16, border: active ? 'none' : `1px solid ${theme.border}`,
                         background: active ? 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))' : theme.panel,
@@ -243,13 +259,36 @@ export default function Onboarding({ userName = 'there', onComplete }) {
                         transition: 'all 0.18s', boxShadow: active ? '0 10px 24px rgba(232,64,122,0.28)' : 'none',
                       }}
                     >
-                      <span style={{ fontSize: '1.6rem' }}>{p.emoji}</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 800, lineHeight: 1.2 }}>{p.name}</span>
-                      <span style={{ fontSize: '0.7rem', opacity: 0.75, lineHeight: 1.3 }}>{p.details}</span>
+                      <span style={{ display: 'grid', placeItems: 'center' }}><CategoryGlyph id={category.id} size={26} /></span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 800, lineHeight: 1.2 }}>{category.name}</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.75, lineHeight: 1.3 }}>{category.details}</span>
                     </button>
                   )
                 })}
               </div>
+              {selectedPillars.length > 0 && (
+                <div className="ob-fade-up ob-delay-2" style={{ width: '100%', maxWidth: 580, marginTop: 18, display: 'grid', gap: 8 }}>
+                  <p style={{ margin: '0 0 2px', fontSize: '0.76rem', fontWeight: 700, color: theme.muted, textAlign: 'center' }}>
+                    Name them in your own words — Sage still knows what each one is really about.
+                  </p>
+                  {selectedPillars.map(id => {
+                    const category = FOCUS_AREA_CATEGORIES.find(c => c.id === id)
+                    if (!category) return null
+                    return (
+                      <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 14, border: `1px solid ${theme.border}`, background: theme.panel }}>
+                        <span style={{ display: 'grid', placeItems: 'center', flexShrink: 0, color: theme.text }}><CategoryGlyph id={category.id} size={18} /></span>
+                        <input
+                          value={pillarNames[id] ?? ''}
+                          onChange={e => setPillarName(id, e.target.value)}
+                          placeholder={category.name}
+                          style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontFamily: "'General Sans',sans-serif", fontSize: '0.9rem', fontWeight: 700, color: theme.text }}
+                        />
+                        <span style={{ fontSize: '0.66rem', color: theme.muted, whiteSpace: 'nowrap' }}>{category.name}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
               <div style={{ position: isPhone ? 'fixed' : 'static', bottom: isPhone ? 10 : 'auto', left: isPhone ? 12 : 'auto', right: isPhone ? 12 : 'auto', marginTop: isPhone ? 0 : 24, display: 'flex', justifyContent: 'space-between', gap: 12, width: isPhone ? 'calc(100% - 24px)' : '100%', maxWidth: 580, zIndex: 4 }}>
                 <button type="button" onClick={back} style={{ ...ghostButton, color: theme.text, borderColor: theme.border }}>Back</button>
                 <button type="button" onClick={next} disabled={!canProceed} style={{ ...primaryButton, opacity: canProceed ? 1 : 0.45 }}>Continue</button>

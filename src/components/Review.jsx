@@ -100,12 +100,16 @@ function useVoiceDictation(onResult) {
 }
 
 // eslint-disable-next-line no-unused-vars -- Icon is used via JSX element usage below
+// No card chrome — a bordered/shadowed box here reads as a small floating
+// rectangle stranded in the middle of an otherwise full-width page. This is
+// empty *content*, not a separate component; it should feel like part of the
+// page, not a box sitting on top of it.
 function EmptyState({ icon: Icon = Compass, title, body }) {
   return (
-    <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', background: '#fff', border: '1px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', boxShadow: 'var(--app-shadow-sm)' }}>
-      <Icon size={26} color="var(--app-accent)" style={{ marginBottom: '0.7rem' }} />
-      <p style={{ fontSize: '0.9rem', color: 'var(--app-text)', marginBottom: '0.3rem', fontWeight: 700 }}>{title}</p>
-      {body && <p style={{ fontSize: '0.82rem', color: 'var(--app-muted)', lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>{body}</p>}
+    <div style={{ width: '100%', textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+      <Icon size={28} color="var(--app-accent)" style={{ marginBottom: '0.9rem' }} />
+      <p style={{ fontSize: '1rem', color: 'var(--app-text)', marginBottom: '0.4rem', fontWeight: 700 }}>{title}</p>
+      {body && <p style={{ fontSize: '0.85rem', color: 'var(--app-muted)', lineHeight: 1.6, maxWidth: 440, margin: '0 auto' }}>{body}</p>}
     </div>
   )
 }
@@ -919,7 +923,9 @@ export default function Review({ user, onOpenBoard, onOpenJournal }) {
 
   return (
     <div style={{ minHeight: 'calc(100vh - 56px)', background: 'var(--app-bg)', padding: '1.5rem 1rem 4rem', fontFamily: "'General Sans',sans-serif" }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      {/* Uncapped, matching Journal's desktop width — this 720px cap was squeezing
+          the entire Review page (not just a reading block) into a narrow column. */}
+      <div style={{ maxWidth: '100%', margin: '0 auto' }}>
         {/* One section picker, not a page title stacked on top of a 4-button row where
             one of the buttons is *also* labeled "Review" — confusing, and it ate space
             better spent on the section itself, especially on mobile. Selecting a section
