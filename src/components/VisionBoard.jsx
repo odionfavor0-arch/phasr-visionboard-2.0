@@ -2764,7 +2764,12 @@ Return JSON only:
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.7rem' : '2.1rem' }}>
           {editing
             ? <input value={data.boardTitle} onChange={e => upd(d => { d.boardTitle = e.target.value; return d })} style={inp({ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.4rem,4vw,2.2rem)', fontWeight: 700, color: 'var(--app-accent)', background: 'transparent', border: 'none', borderBottom: '2px solid var(--app-border)', textAlign: 'center', width: '100%', maxWidth: 560, marginBottom: 0 })} onFocus={focus} onBlur={blur} />
-            : (!isMobile && <h1 className="font-display" style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>)
+            : (
+              <>
+                <h1 className="font-display" style={{ margin: 0, fontFamily: "'Fraunces',serif", fontSize: isMobile ? 'clamp(1.5rem,7vw,1.9rem)' : 'clamp(1.8rem,5vw,3rem)', fontWeight: 700, lineHeight: 1.15, background: 'linear-gradient(135deg,var(--app-accent),var(--app-accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{data.boardTitle}</h1>
+                <div aria-hidden="true" style={{ width: isMobile ? 110 : 160, height: 3, borderRadius: 99, margin: isMobile ? '0.5rem auto 0.55rem' : '0.65rem auto 0.6rem', background: 'linear-gradient(90deg, transparent, var(--app-accent), transparent)', opacity: 0.55 }} />
+              </>
+            )
           }
           <p style={{ color: 'var(--app-muted)', fontSize: isMobile ? '0.74rem' : '0.78rem', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: isMobile ? '0' : '0.3rem' }}>
             {(isMobile ? visiblePillars : phase?.pillars || []).map(p => p.name).join(' · ')}
