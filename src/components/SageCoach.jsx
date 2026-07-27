@@ -1240,7 +1240,7 @@ function getPanelPosition(position, panelWidth = QUICK_WIDTH, panelHeight = QUIC
   return { right, bottom }
 }
 
-function QuickSagePanel({ task, open, onClose, position, boardData, voicePreference, avatarUrl }) {
+function QuickSagePanel({ task, open, onClose, position, boardData, voicePreference, avatarUrl, initialDraft = '', onDraftConsumed }) {
   const [messages, setMessages] = useState(() => safeRead(QUICK_SESSION_KEY, []))
   const [weeklySessionEntryId, setWeeklySessionEntryId] = useState(null)
   const [weeklySessionMessages, setWeeklySessionMessages] = useState([])
@@ -1258,6 +1258,15 @@ function QuickSagePanel({ task, open, onClose, position, boardData, voicePrefere
     if (sessionMode) return
     safeWrite(QUICK_SESSION_KEY, messages.slice(-30))
   }, [messages, sessionMode])
+
+  // Puts a caller-supplied draft (e.g. "Talk to Sage to change your goal") straight
+  // into the composer, unsent — she reads it, presses send when ready. Consumed
+  // once so it doesn't keep overwriting anything she types afterward.
+  useEffect(() => {
+    if (!open || !initialDraft) return
+    setInput(initialDraft)
+    onDraftConsumed?.()
+  }, [open, initialDraft, onDraftConsumed])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1798,6 +1807,7 @@ export function QuickSageBubble() {
   const boardData = useMemo(() => loadBoardData(), [])
   const todayTask = useMemo(() => getTodayTask(boardData), [boardData])
   const [open, setOpen] = useState(false)
+  const [pendingDraft, setPendingDraft] = useState('')
   const [voicePreference, setVoicePreferenceState] = useState(() => getVoicePreference())
   const [avatarUrl, setAvatarUrl] = useState(() => getSageAvatarUrl())
   const [position, setPosition] = useState(() =>
@@ -1844,7 +1854,14 @@ export function QuickSageBubble() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     window.__phasrSageBubbleMounted = true
-    const openHandler = () => setOpen(true)
+    // A caller (e.g. "Talk to Sage to change your goal" on a locked pillar) can pass
+    // a draft message via detail.draft — it's placed in the composer unsent, so she
+    // only has to press send, and Sage picks up the context from her own words.
+    const openHandler = (event) => {
+      setOpen(true)
+      const draft = event?.detail?.draft
+      if (draft) setPendingDraft(String(draft))
+    }
     const closeHandler = () => setOpen(false)
     window.addEventListener('phasr-open-sage-float', openHandler)
     window.addEventListener('phasr-close-sage-float', closeHandler)
@@ -2030,6 +2047,8 @@ export function QuickSageBubble() {
         boardData={boardData}
         voicePreference={voicePreference}
         avatarUrl={avatarUrl}
+        initialDraft={pendingDraft}
+        onDraftConsumed={() => setPendingDraft('')}
       />
 
       <style>{`

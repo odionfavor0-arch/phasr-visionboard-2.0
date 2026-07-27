@@ -690,10 +690,6 @@ function save(d, user) {
 }
 
 const MAX_PILLAR_LIMIT = 5
-// Shared subgrid row tracks pillar cards snap their sections to, so Resources/Weekly
-// Non-Negotiables/Activities/Outcome line up across pillars regardless of content length:
-// header, photo slots, generate-plan button, divider, resources, weekly, activities, outcome.
-const PILLAR_ROW_COUNT = 7
 // Not a tier limit — just the default assumption for splitting a year's worth
 // of dates across phases (quarters) when a new phase needs a default window.
 const PHASES_PER_YEAR = 4
@@ -3041,7 +3037,7 @@ Return JSON only:
           return (
         <div
           id="pillar-section"
-          className="phase-container pillar-subgrid"
+          className="phase-container"
           style={
             isMobile
               // Single column on mobile — the shared row-subgrid below exists only to
@@ -3050,7 +3046,7 @@ Return JSON only:
               // still consumed `gap`-multiplied empty space between cards. A plain
               // stack has no such dead tracks — each card is exactly as tall as its content.
               ? { display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '0.9rem' }
-              : { display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))', gridTemplateRows: `repeat(${pillarRowGroupCount * PILLAR_ROW_COUNT}, auto)`, gap: '1rem', marginBottom: '0.9rem', alignItems: 'stretch' }
+              : { display: 'grid', gridTemplateColumns: visiblePillars.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))', gridTemplateRows: `repeat(${pillarRowGroupCount}, auto)`, gap: '1rem', marginBottom: '0.9rem', alignItems: 'start' }
           }
         >
           {visiblePillars.map((pl, pillarIndex) => (
@@ -3380,8 +3376,6 @@ Return JSON only:
     onGeneratePlan()
   }
 
-  const cardRowStart = (rowGroup || 0) * PILLAR_ROW_COUNT + 1
-
   // Shared between the locked (read-only) and unlocked (editable) branches of the
   // last photo column below — Generate/Regenerate must stay reachable either way.
   const generateButtonBlock = (() => {
@@ -3411,7 +3405,9 @@ Return JSON only:
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
       <button
         type="button"
-        onClick={() => window.dispatchEvent(new Event('phasr-open-sage-float'))}
+        onClick={() => window.dispatchEvent(new CustomEvent('phasr-open-sage-float', {
+          detail: { draft: `I want to edit my "${pl.name}" pillar — can we talk about it?` },
+        }))}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', background: 'var(--app-bg2)', color: 'var(--app-accent2)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', padding: '0.4rem 0.7rem', borderRadius: 999, fontFamily: "'General Sans',sans-serif" }}
       >
         <Lock size={11} strokeWidth={2.2} />
@@ -3435,26 +3431,19 @@ Return JSON only:
     <div
       style={
         isMobile
-          // Plain stack, not a grid item — the numbered gridRow values below are
-          // desktop-only (they align sections across the 2-column subgrid); on a
-          // single mobile column, source order already is the right visual order,
-          // and skipping the grid avoids the collapsed-card dead-row gap entirely.
+          // Plain stack, not a grid item — on a single mobile column, source
+          // order already is the right visual order.
           ? { background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }
-          : {
-              background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden',
-              display: 'grid',
-              // Stay in the shared subgrid for rows 1-2 (header + photo/write-up) so
-              // those always align with the sibling in this row-group. But a collapsed
-              // card has nothing in rows 3+ — spanning the full row count anyway used to
-              // stretch it to match an expanded sibling's height, leaving a dead gap
-              // below the write-up. Spanning only 2 rows when collapsed lets the card's
-              // own box end right after the write-up instead.
-              gridTemplateRows: 'subgrid',
-              gridRow: pl.collapsed ? `${cardRowStart} / span 2` : `${cardRowStart} / span ${PILLAR_ROW_COUNT}`,
-            }
+          // Each card is its own independent block, not a subgrid row-mate —
+          // sharing row tracks with the sibling card used to stretch a shorter
+          // card's photo/write-up section to match a taller sibling's, leaving
+          // a dead gap between "Regenerate plan" and "Resources". A plain
+          // column stack (same as mobile) sizes every card to its own content;
+          // the outer grid still places it in the right column/row-group.
+          : { background: '#fff', borderRadius: 'var(--app-radius-md)', border: '1px solid var(--app-border)', boxShadow: 'var(--app-shadow-md)', overflow: 'hidden', display: 'flex', flexDirection: 'column', gridRow: (rowGroup || 0) + 1 }
       }>
       {/* Header */}
-      <div style={{ gridRow: 1, background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+      <div style={{ background: 'linear-gradient(135deg,var(--app-bg2),#fff)', borderBottom: '1px solid var(--app-border)', padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <div onClick={e => { e.stopPropagation(); editing && !isLocked && onPreset() }} style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: editing && !isLocked ? 'pointer' : 'default' }}><PillarGlyph code={pl.emoji} size={16} /></div>
         {editing && !isLocked
           ? <input value={pl.name} onChange={e => onUpdate('name', e.target.value)} onClick={e => e.stopPropagation()} style={{ flex: 1, padding: '0.3rem 0.5rem', border: 'none', borderBottom: '1.5px solid var(--app-border)', fontFamily: "'Fraunces',serif", fontSize: '0.95rem', fontWeight: 600, color: 'var(--app-text)', outline: 'none', background: 'transparent' }} />
@@ -3494,7 +3483,7 @@ Return JSON only:
 
       {/* Vision style photo slots — always visible. The vision board is the point;
           collapsing a pillar only tucks away the plan details below, never this. */}
-      <div className="vb-before-after-grid" style={{ gridRow: 2, padding: '0 1.1rem', display: 'grid', gridTemplateColumns: isDestination ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem', alignItems: 'stretch' }}>
+      <div className="vb-before-after-grid" style={{ padding: '0 1.1rem', display: 'grid', gridTemplateColumns: isDestination ? '1fr' : 'minmax(0,1fr) minmax(0,1fr)', gap: isMobile ? '0.75rem' : '0.6rem', alignItems: 'stretch' }}>
         {(isDestination
           ? [
               { slot: 'afterImage', src: pl.afterImage, lbl: 'Destination', sk: 'afterState', dk: 'afterDesc', sv: pl.afterState, dv: pl.afterDesc, bg: '#fff0f4', bc: '#f5c0cc', lc: '#f06090', statePh: 'Who you want to become', descPh: "What getting there looks like, and why it matters — Sage builds your plan from this." },
@@ -3590,13 +3579,13 @@ Return JSON only:
           descriptions) and the generate-plan button above always stay visible. */}
       {!pl.collapsed && (
         <>
-          <div style={{ gridRow: 3, margin: '0 1.1rem', height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
+          <div style={{ margin: '0 1.1rem', height: 1, background: 'linear-gradient(to right,transparent,var(--app-border),transparent)' }} />
 
           {/* List sections */}
           {[
             { lbl: 'Resources',  key: 'resources',  c: 'var(--app-accent2)', m: '•' },
           ].map(({ lbl, key, c, m }) => (
-            <div key={key} style={{ gridRow: 4, padding: '0 1.1rem' }}>
+            <div key={key} style={{ padding: '0 1.1rem' }}>
               <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: c, marginBottom: '0.38rem' }}>{lbl}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 200, overflowY: 'auto' }}>
                 {pl[key].map((item, i) => (
@@ -3614,7 +3603,7 @@ Return JSON only:
           ))}
 
           {/* Weekly non-negotiables */}
-          <div style={{ gridRow: 5, margin: '0 1.1rem', background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
+          <div style={{ margin: '0 1.1rem', background: 'linear-gradient(135deg,var(--app-bg2),#fff5f0)', border: '1.5px solid var(--app-border)', borderRadius: 'var(--app-radius-md)', padding: '0.75rem', boxShadow: 'var(--app-shadow-sm)' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--app-accent)', marginBottom: '0.5rem' }}>Weekly Non-Negotiables</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 220, overflowY: 'auto' }}>
               {(Array.isArray(pl.weeklyActions) && pl.weeklyActions.length ? pl.weeklyActions : ['']).map((item, i) => {
@@ -3686,7 +3675,7 @@ Return JSON only:
             </div>
           </div>
 
-          <div style={{ gridRow: 6, padding: '0 1.1rem' }}>
+          <div style={{ padding: '0 1.1rem' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#d4773a', marginBottom: '0.38rem' }}>Activities</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.22rem', maxHeight: 200, overflowY: 'auto' }}>
               {pl.activities.map((item, i) => (
@@ -3703,7 +3692,7 @@ Return JSON only:
           </div>
 
           {/* Outcome */}
-          <div style={{ gridRow: 7, padding: '0 1.1rem 1.1rem' }}>
+          <div style={{ padding: '0 1.1rem 1.1rem' }}>
             <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a58b0', marginBottom: '0.38rem' }}>Outcome</p>
             <div style={{ background: 'linear-gradient(135deg,#fff8fb,#fff1f6)', border: '1px solid #f0d6e2', borderRadius: 'var(--app-radius-sm)', padding: '0.5rem 0.7rem', boxShadow: 'var(--app-shadow-sm)' }}>
               {editing && !isLocked
