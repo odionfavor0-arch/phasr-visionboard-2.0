@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, Briefcase, Dumbbell, HandHeart, HeartPulse, Home, Palette, Plane, Sparkles, Sprout, Wallet } from 'lucide-react'
+import { BookOpen, Briefcase, Camera, Compass, Coffee, Dumbbell, Flame, Gift, HandHeart, HeartPulse, Home, Leaf, Mountain, Music, Palette, Plane, Plus, Rocket, Sparkles, Sprout, Star, Sun, Target, Wallet } from 'lucide-react'
 
 // HF/CB/WE/RE/IL/PG are the six real focus-area category codes (see
 // lib/focusAreas.js) and must match VisionBoard.jsx's own PILLAR_ICONS so a
@@ -21,6 +21,19 @@ const PILLAR_ICONS = {
   HL: Home,
   PL: Home,
   NP: Briefcase,
+  CU: Plus,
+  ST: Star,
+  FL: Flame,
+  RK: Rocket,
+  MU: Music,
+  CM: Camera,
+  MT: Mountain,
+  SU: Sun,
+  CF: Coffee,
+  GF: Gift,
+  CP: Compass,
+  LF: Leaf,
+  TG: Target,
 }
 
 function PillarIcon({ code, size = 15 }) {

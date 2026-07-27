@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 // eslint-disable-next-line no-unused-vars -- used via JSX member expressions (motion.div, motion.button)
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { BookOpen, Briefcase, Dumbbell, Hand, HandHeart, HeartPulse, Home, ImageDown, Lock, Sparkles, Trash2, Wallet } from 'lucide-react'
+import { BookOpen, Briefcase, Camera, Compass, Coffee, Dumbbell, Flame, Gift, Hand, HandHeart, HeartPulse, Home, ImageDown, Leaf, Lock, Mountain, Music, Plus, Rocket, Sparkles, Star, Sun, Target, Trash2, Wallet } from 'lucide-react'
 import { getDailyTaskPlan, getPhaseWeeks } from '../lib/lockIn'
 import { fetchPillarPlanWithGroq } from '../lib/sageIntelligence'
 import { FOCUS_AREA_CATEGORIES, getFocusAreaLabel } from '../lib/focusAreas'
@@ -345,7 +345,25 @@ const PILLAR_ICONS = {
   PG: BookOpen,
   PL: Home,
   NP: Briefcase,
+  CU: Plus,
+  ST: Star,
+  FL: Flame,
+  RK: Rocket,
+  MU: Music,
+  CM: Camera,
+  MT: Mountain,
+  SU: Sun,
+  CF: Coffee,
+  GF: Gift,
+  CP: Compass,
+  LF: Leaf,
+  TG: Target,
 }
+
+// Distinct icon choices for a custom ("Add your own") pillar — separate from
+// the six category glyphs, so a pillar she invents gets its own identity
+// instead of every custom pillar sharing the same generic plus-sign icon.
+const CUSTOM_ICON_OPTIONS = ['ST', 'FL', 'RK', 'MU', 'CM', 'MT', 'SU', 'CF', 'GF', 'CP', 'LF', 'TG']
 
 function PillarGlyph({ code, size = 16 }) {
   const Icon = PILLAR_ICONS[code] || Briefcase
@@ -355,9 +373,18 @@ function PillarGlyph({ code, size = 16 }) {
 // Desktop keeps the original inline panel (it never had the disruption problem).
 // Mobile renders the same content through a portal as a fixed bottom sheet, so
 // opening it can never push the pillar cards up or down the page.
-function FocusAreaSheet({ pillar, isMobile, onClose, onSelectCategory, onNameChange, onVisionStyleChange }) {
+function FocusAreaSheet({ pillar, isMobile, onClose, onSelectCategory, onNameChange, onVisionStyleChange, onIconChange }) {
   const shouldReduceMotion = useReducedMotion()
+  const nameInputRef = useRef(null)
   if (!pillar) return null
+
+  // "Add your own" jumps her straight to naming it — no need to read a
+  // sub-header first, she already knows why she's here.
+  function selectCustomCategory() {
+    onSelectCategory(null)
+    nameInputRef.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'center' })
+    nameInputRef.current?.focus()
+  }
 
   const visionOptions = [
     { value: 'transformation', label: 'Transformation' },
@@ -398,12 +425,39 @@ function FocusAreaSheet({ pillar, isMobile, onClose, onSelectCategory, onNameCha
       <div style={{ marginBottom: '0.75rem' }}>
         <p style={{ margin: '0 0 0.32rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Name it your way</p>
         <input
+          ref={nameInputRef}
           value={pillar.name}
           onChange={e => onNameChange(e.target.value)}
           placeholder="e.g. Operation Glow Up"
           style={{ width: '100%', boxSizing: 'border-box', padding: '0.62rem 0.75rem', borderRadius: 10, border: '1.5px solid var(--app-border)', fontFamily: "'General Sans',sans-serif", fontSize: '0.9rem', fontWeight: 700, color: 'var(--app-text)', background: '#fff', outline: 'none' }}
         />
       </div>
+
+      {pillar.category == null && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <p style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Pick its icon</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {CUSTOM_ICON_OPTIONS.map(code => {
+              const isActive = pillar.emoji === code
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => onIconChange(code)}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, display: 'grid', placeItems: 'center', cursor: 'pointer',
+                    border: isActive ? '1px solid var(--app-accent)' : '1px solid var(--app-border)',
+                    background: isActive ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : '#fff',
+                    color: isActive ? '#fff' : 'var(--app-text)', flexShrink: 0,
+                  }}
+                >
+                  <PillarGlyph code={code} size={16} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.7rem', paddingBottom: '0.7rem', borderBottom: '1px solid var(--app-border)' }}>
         <p style={{ margin: 0, fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--app-accent)' }}>Vision style</p>
@@ -465,6 +519,28 @@ function FocusAreaSheet({ pillar, isMobile, onClose, onSelectCategory, onNameCha
             </span>
           </motion.button>
         ))}
+        <motion.button
+          initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30, delay: shouldReduceMotion ? 0 : FOCUS_AREA_CATEGORIES.length * 0.04 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          type="button"
+          onClick={selectCustomCategory}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.7rem 0.8rem',
+            borderRadius: 'var(--app-radius-md)',
+            border: pillar.category == null ? '1px solid var(--app-accent)' : '1.5px dashed var(--app-border)',
+            background: pillar.category == null ? 'var(--app-bg2)' : '#fff',
+            boxShadow: 'var(--app-shadow-sm)', cursor: 'pointer', fontSize: '0.76rem', color: 'var(--app-text)',
+            fontFamily: "'General Sans',sans-serif", textAlign: 'left', maxWidth: 260,
+          }}
+        >
+          <span style={{ width: 30, height: 30, borderRadius: 9, display: 'grid', placeItems: 'center', background: pillar.category == null ? 'linear-gradient(135deg,var(--app-accent2),var(--app-accent))' : 'var(--app-bg2)', color: pillar.category == null ? '#fff' : 'var(--app-accent2)', flexShrink: 0 }}>
+            {pillar.category == null ? <PillarGlyph code={pillar.emoji} size={15} /> : <Plus size={16} strokeWidth={2.4} />}
+          </span>
+          <span style={{ fontWeight: 700 }}>Add your own</span>
+        </motion.button>
       </div>
     </div>
   )
@@ -1929,15 +2005,17 @@ Return JSON only:
   // edited separately in the same sheet, so this only overwrites `name` when it's
   // still whatever the previous category suggested (i.e. she hasn't customized it
   // yet) — a real custom name like "Escape the 9-5" survives switching categories.
+  // `category` is null for "Add your own" — a focus area outside the six, where
+  // Sage has no curated territory/knowledge and plans from her description alone.
   const applyFocusAreaCategory = (plId, category) => {
     upd(d => {
       const pl = d.phases.find(p => p.id === phaseId)?.pillars.find(p => p.id === plId)
       if (!pl) return d
       const previousLabel = getFocusAreaLabel(pl.category)
       const nameIsDefault = !cleanText(pl.name) || pl.name === 'New Pillar' || pl.name === previousLabel
-      pl.category = category.id
-      pl.emoji = category.id
-      if (nameIsDefault) pl.name = category.name
+      pl.category = category?.id ?? null
+      pl.emoji = category?.id ?? 'CU'
+      if (nameIsDefault) pl.name = category?.name ?? ''
       return d
     })
   }
@@ -2947,6 +3025,7 @@ Return JSON only:
                 onSelectCategory={category => applyFocusAreaCategory(presetPillar.id, category)}
                 onNameChange={value => updatePillar(presetPillar.id, 'name', value)}
                 onVisionStyleChange={value => updatePillar(presetPillar.id, 'visionStyle', value)}
+                onIconChange={value => updatePillar(presetPillar.id, 'emoji', value)}
               />
             )}
           </AnimatePresence>
