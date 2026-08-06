@@ -17,7 +17,9 @@
     "reel:mp4": "remotion render src/remotion/index.js PhasrMockup out/phasr-mockup.mp4",
     "reel:gif": "remotion render src/remotion/index.js PhasrMockup out/phasr-mockup.gif --codec=gif --every-nth-frame=2",
     "glass:mp4": "remotion render src/remotion/index.js PhasrGlass out/phasr-glass.mp4",
-    "glass:gif": "remotion render src/remotion/index.js PhasrGlass out/phasr-glass.gif --codec=gif --every-nth-frame=2"
+    "glass:gif": "remotion render src/remotion/index.js PhasrGlass out/phasr-glass.gif --codec=gif --every-nth-frame=2",
+    "social:studio": "remotion studio src/remotion/index.js",
+    "social:mp4": "remotion render src/remotion/index.js PhasrSocialReel out/phasr-social-reel.mp4"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
