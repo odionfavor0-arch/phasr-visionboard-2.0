@@ -25,6 +25,7 @@
     "@google/generative-ai": "^0.24.1",
     "@remotion/cli": "^4.0.484",
     "@remotion/player": "^4.0.484",
+    "@remotion/transitions": "^4.0.484",
     "@supabase/supabase-js": "^2.99.3",
     "emoji-picker-react": "^4.19.1",
     "framer-motion": "^12.42.0",
