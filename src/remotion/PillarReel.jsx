@@ -23,7 +23,7 @@ const COLORS = {
 }
 
 const GOOGLE_FONTS_IMPORT =
-  "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');"
+  "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700;800;900&display=swap');"
 
 function fadeRise(frame, fps, delay = 0, riseFrom = 16) {
   const local = frame - delay
@@ -50,9 +50,12 @@ function Kicker({ children, frame, delay = 0 }) {
   )
 }
 
-// Sequential lower-third caption: shows each line for a time proportional to
-// its length, fading between them, so a long sentence doesn't have to be
-// crammed onto screen all at once but the diagram behind it never pauses.
+// Sequential bold caption — the actual "TikTok caption" look: heavy white
+// Inter with a dark stroke so it reads over any background, one consistent
+// treatment used for every spoken line across every scene (not a different
+// typography system per beat). Each line holds for a time proportional to
+// its length, so a long sentence doesn't get crammed on screen at once, but
+// the diagram/visual behind it never pauses for it.
 function TimedCaption({ lines, sceneDuration, style }) {
   const frame = useCurrentFrame()
   const totalChars = lines.reduce((a, l) => a + l.length, 0)
@@ -69,20 +72,25 @@ function TimedCaption({ lines, sceneDuration, style }) {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   })
+  const pop = spring({ frame: local, fps: 30, from: 0.92, to: 1, durationInFrames: 10 })
   return (
     <div
       style={{
         position: 'absolute',
-        left: 64,
-        right: 64,
-        bottom: 160,
+        left: 56,
+        right: 56,
+        bottom: 150,
         fontFamily: 'Inter, sans-serif',
-        fontWeight: 600,
-        fontSize: 40,
-        lineHeight: 1.35,
-        color: COLORS.text,
+        fontWeight: 800,
+        fontSize: 46,
+        lineHeight: 1.28,
+        color: COLORS.white,
+        WebkitTextStroke: `2px ${COLORS.text}`,
+        textShadow: '0 6px 18px rgba(61,16,32,0.35)',
         textAlign: 'center',
+        letterSpacing: 0.2,
         opacity,
+        transform: `scale(${pop})`,
         ...style,
       }}
     >
@@ -161,10 +169,10 @@ function BranchDiagram({ frame, resolve, sceneDuration }) {
   )
 }
 
-// Scene 1 — the messy collection of vague goals; the hook lands here.
+// Scene 1 — the messy collection of vague goals; the hook lands here. Same
+// bold caption system as every other scene, over a drifting goal-chip field.
 function MessyCollageScene({ durationInFrames }) {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
   const chips = [
     { text: 'save money', x: 90, y: 260, rotate: -8, phase: 0 },
     { text: 'eat better', x: 700, y: 210, rotate: 6, phase: 1 },
@@ -172,59 +180,25 @@ function MessyCollageScene({ durationInFrames }) {
     { text: 'read more', x: 760, y: 1220, rotate: -6, phase: 3 },
     { text: 'network more', x: 660, y: 640, rotate: 4, phase: 4 },
     { text: 'get organized', x: 90, y: 700, rotate: -4, phase: 5 },
+    { text: '"get healthier"', x: 340, y: 420, rotate: 3, phase: 6 },
+    { text: '"build the business"', x: 260, y: 940, rotate: -3, phase: 7 },
   ]
   return (
-    <AbsoluteFill style={{ justifyContent: 'center', padding: '0 90px' }}>
+    <AbsoluteFill style={{ justifyContent: 'flex-start', padding: '0 56px' }}>
       {chips.map((c, i) => (
         <GoalChip key={i} {...c} frame={frame} />
       ))}
-      <Kicker frame={frame} delay={0}>The problem</Kicker>
-      <div
-        style={{
-          fontFamily: 'Fraunces, serif',
-          fontWeight: 600,
-          fontSize: 66,
-          lineHeight: 1.2,
-          color: COLORS.text,
-          marginTop: 18,
-          ...fadeRise(frame, fps, BEAT),
-        }}
-      >
-        Maybe you're not inconsistent.
+      <div style={{ position: 'absolute', top: 140, left: 56, right: 56 }}>
+        <Kicker frame={frame} delay={0}>The problem</Kicker>
       </div>
-      <div
-        style={{
-          fontFamily: 'Fraunces, serif',
-          fontStyle: 'italic',
-          fontWeight: 500,
-          fontSize: 44,
-          lineHeight: 1.3,
-          color: COLORS.rose,
-          marginTop: 16,
-          ...fadeRise(frame, fps, BEAT * 3.2),
-        }}
-      >
-        Maybe you're trying to work toward a goal you haven't clearly defined.
-      </div>
-      <div style={{ marginTop: 40, display: 'flex', gap: 14, flexWrap: 'wrap', ...fadeRise(frame, fps, BEAT * 6) }}>
-        {['"Get healthier."', '"Be more consistent."', '"Build the business."'].map((t, i) => (
-          <div
-            key={t}
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 600,
-              fontSize: 24,
-              color: COLORS.text,
-              background: COLORS.quartz,
-              padding: '10px 20px',
-              borderRadius: 20,
-              opacity: fadeRise(frame, fps, BEAT * (7 + i)).opacity,
-            }}
-          >
-            {t}
-          </div>
-        ))}
-      </div>
+      <TimedCaption
+        sceneDuration={durationInFrames}
+        lines={[
+          "Maybe you're not inconsistent.",
+          "Maybe you're trying to work toward a goal you haven't clearly defined.",
+          '"Get healthier." "Be more consistent." "Build the business."',
+        ]}
+      />
     </AbsoluteFill>
   )
 }
@@ -324,32 +298,17 @@ function FlowDiagramScene({ durationInFrames }) {
 }
 
 // Scene 5 — the click: one path resolves fully and glows. No PHASR pitch —
-// pillar videos 1-8 stay product-free by design.
+// pillar videos 1-8 stay product-free by design. Same bold caption system.
 function FinalClickScene({ ctaKeyword, durationInFrames }) {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
   return (
     <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 460 }}>
       <BranchDiagram frame={frame} resolve={1} sceneDuration={durationInFrames} />
-      <div style={{ position: 'absolute', top: 220, left: 80, right: 80, textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fraunces, serif', fontWeight: 600, fontSize: 56, lineHeight: 1.25, color: COLORS.text, ...fadeRise(frame, fps, 0) }}>
-          Sometimes you don't need more discipline.
-        </div>
-        <div
-          style={{
-            fontFamily: 'Fraunces, serif',
-            fontStyle: 'italic',
-            fontWeight: 500,
-            fontSize: 42,
-            lineHeight: 1.3,
-            color: COLORS.rose,
-            marginTop: 20,
-            ...fadeRise(frame, fps, BEAT * 3),
-          }}
-        >
-          You need a goal your brain knows how to move toward.
-        </div>
-      </div>
+      <TimedCaption
+        sceneDuration={durationInFrames}
+        lines={["Sometimes you don't need more discipline.", 'You need a goal your brain knows how to move toward.']}
+        style={{ bottom: 620 }}
+      />
       <div
         style={{
           position: 'absolute',
@@ -370,6 +329,8 @@ function FinalClickScene({ ctaKeyword, durationInFrames }) {
 
 export default function PillarReel({
   audioFile = 'audio/pillar-01-clarity.mp3',
+  musicFile = 'audio/ambient-bed-pillar.wav',
+  musicVolume = 0.13,
   ctaKeyword = 'Clarity before consistency.',
   beatFrames = { s1: BEAT * 18, s2: BEAT * 26, s3: BEAT * 17, s4: BEAT * 17, s5: BEAT * 16 },
   transitionFrames = BEAT,
@@ -378,6 +339,7 @@ export default function PillarReel({
     <AbsoluteFill style={{ background: COLORS.cream }}>
       <style>{GOOGLE_FONTS_IMPORT}</style>
       {audioFile && <Audio src={staticFile(audioFile)} />}
+      {musicFile && <Audio src={staticFile(musicFile)} volume={musicVolume} />}
       <TransitionSeries>
         <TransitionSeries.Sequence durationInFrames={beatFrames.s1}>
           <MessyCollageScene durationInFrames={beatFrames.s1} />
