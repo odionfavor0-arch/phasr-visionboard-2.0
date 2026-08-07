@@ -1,13 +1,14 @@
 import { AbsoluteFill, Audio, useCurrentFrame, interpolate, spring, useVideoConfig, staticFile } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
-import { Check, X, Calendar, Target, Lightbulb, PenLine } from 'lucide-react'
 import { FONT_FACES } from './fonts.js'
 
-// PHASR pillar video 1 — "high dopamine" rebuild: black background, neon
-// pink/yellow/electric-blue, editorial-collage + sticky-note + handwritten
-// annotation language, fast cuts. A deliberate departure from the soft
-// cream/pink PHASR brand used elsewhere, per Favour's explicit storyboard.
+// PHASR pillar video 1 — "physical paper" After-Effects-style rebuild.
+// Voiceover is LOCKED (Favour's exact text, unaltered) — visuals must argue
+// the idea through motion: cards flying in/out, stamps, handwriting reveals,
+// diagrams that build themselves, no static slides, no full-sentence
+// subtitles. Kept the dark/neon palette from the version she saw last since
+// this brief doesn't specify colors — flagged as an assumption, easy to flip.
 export const PR_WIDTH = 1080
 export const PR_HEIGHT = 1920
 export const PR_FPS = 30
@@ -16,13 +17,14 @@ const BEAT = 15 // 0.5s at 30fps
 
 const COLORS = {
   black: '#0a0a0c',
-  cream: '#fff8fa',
+  paper: '#f4ede0',
+  paperDark: '#e8dfcd',
   pink: '#ff2f8f',
-  hotpink: '#ff2f8f',
   yellow: '#ffd23f',
   blue: '#3fd0ff',
   white: '#ffffff',
   dim: '#8a8a92',
+  ink: '#241a1c',
 }
 
 function fadeRise(frame, fps, delay = 0, riseFrom = 16) {
@@ -32,24 +34,23 @@ function fadeRise(frame, fps, delay = 0, riseFrom = 16) {
   return { opacity, transform: `translateY(${y}px)` }
 }
 
-function shake(frame, delay, amount = 4) {
+// A physical paper/card flying in from an off-screen edge, settling with a
+// tiny overshoot — the core "physical" motion primitive used everywhere.
+function FlyCard({ children, frame, delay = 0, from = { x: -400, y: 0, rotate: -25 }, to = { x: 0, y: 0, rotate: 0 }, style }) {
   const local = frame - delay
-  if (local < 0 || local > 10) return 0
-  return Math.sin(local * 3) * amount * (1 - local / 10)
-}
-
-function NeonText({ children, color = COLORS.pink, size = 48, frame, delay = 0, weight = 800, family = 'Inter, sans-serif' }) {
-  const { opacity, transform } = fadeRise(frame, 30, delay, 14)
+  const p = spring({ frame: local, fps: 30, config: { damping: 14, mass: 0.6 }, durationInFrames: 20 })
+  const opacity = interpolate(local, [0, 6], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const x = interpolate(p, [0, 1], [from.x, to.x])
+  const y = interpolate(p, [0, 1], [from.y, to.y])
+  const rot = interpolate(p, [0, 1], [from.rotate, to.rotate])
   return (
     <div
       style={{
-        fontFamily: family,
-        fontWeight: weight,
-        fontSize: size,
-        color: COLORS.white,
-        textShadow: `0 0 6px ${color}, 0 0 18px ${color}, 0 0 40px ${color}`,
+        position: 'absolute',
         opacity,
-        transform,
+        transform: `translate(${x}px, ${y}px) rotate(${rot}deg)`,
+        boxShadow: '0 14px 30px rgba(0,0,0,0.5)',
+        ...style,
       }}
     >
       {children}
@@ -57,450 +58,335 @@ function NeonText({ children, color = COLORS.pink, size = 48, frame, delay = 0, 
   )
 }
 
-function StickyNote({ text, color, x, y, rotate = 0, frame, delay = 0, struck = false, strikeDelay }) {
-  const { opacity, transform } = fadeRise(frame, 30, delay, 24)
-  const strikeProgress = strikeDelay != null ? interpolate(frame, [strikeDelay, strikeDelay + 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 0
+// A stamp slamming down — fast overshoot-in, not a fade.
+function Stamp({ text, frame, delay = 0, color = '#e11d48', rotate = -8, size = 26, x = 0, y = 0 }) {
+  const local = frame - delay
+  const scale = spring({ frame: local, fps: 30, config: { damping: 8, mass: 0.4 }, durationInFrames: 10, from: 2.6, to: 1 })
+  const opacity = interpolate(local, [0, 2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
     <div
       style={{
         position: 'absolute',
         left: x,
         top: y,
-        width: 190,
-        padding: '20px 16px',
-        background: color,
-        borderRadius: 6,
-        boxShadow: '0 10px 24px rgba(0,0,0,0.4)',
-        transform: `rotate(${rotate}deg) ${transform}`,
         opacity,
+        transform: `scale(${local < 0 ? 0 : scale}) rotate(${rotate}deg)`,
+        border: `4px solid ${color}`,
+        borderRadius: 8,
+        padding: '6px 14px',
+        color,
+        fontFamily: 'Inter, sans-serif',
+        fontWeight: 900,
+        fontSize: size,
+        letterSpacing: 1,
       }}
     >
-      <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, color: COLORS.black, textAlign: 'center', lineHeight: 1.2 }}>{text}</div>
-      {struck && (
-        <div
-          style={{
-            position: 'absolute',
-            left: '10%',
-            top: '50%',
-            width: `${80 * strikeProgress}%`,
-            height: 4,
-            background: '#e11d48',
-            transform: 'translateY(-50%) rotate(-8deg)',
-          }}
-        />
-      )}
+      {text}
     </div>
   )
 }
 
-function Scribble({ frame, delay = 0, x = 0, y = 0, w = 140, h = 90, color = COLORS.white, opacity = 0.5 }) {
-  const draw = interpolate(frame, [delay, delay + 20], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+// Handwriting-style progressive reveal, Caveat font.
+function TypeOn({ text, frame, delay = 0, speed = 1.4, size = 34, color = COLORS.ink, style }) {
+  const local = Math.max(0, frame - delay)
+  const count = Math.floor(local * speed)
+  const shown = text.slice(0, count)
+  const caretOn = Math.floor(frame / 10) % 2 === 0 && count < text.length
   return (
-    <svg width={w} height={h} style={{ position: 'absolute', left: x, top: y, opacity: opacity * draw }}>
-      <path
-        d={`M5,${h * 0.5} C ${w * 0.2},${h * 0.1} ${w * 0.3},${h * 0.9} ${w * 0.5},${h * 0.4} S ${w * 0.8},${h * 0.1} ${w - 5},${h * 0.6}`}
-        fill="none"
-        stroke={color}
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
+    <div style={{ fontFamily: 'Caveat, cursive', fontWeight: 700, fontSize: size, color, opacity: count > 0 ? 1 : 0, ...style }}>
+      {shown}
+      {caretOn && <span>|</span>}
+    </div>
   )
 }
 
-function Star({ x, y, size = 20, color = COLORS.yellow, frame, delay = 0 }) {
-  const { opacity } = fadeRise(frame, 30, delay, 0)
-  const spin = (frame - delay) * 1.5
+function NeonText({ children, color = COLORS.pink, size = 44, frame, delay = 0, weight = 800 }) {
+  const { opacity, transform } = fadeRise(frame, 30, delay, 12)
   return (
-    <div style={{ position: 'absolute', left: x, top: y, fontSize: size, color, opacity, transform: `rotate(${spin}deg)` }}>&#10022;</div>
-  )
-}
-
-function Kicker({ children, color = COLORS.dim, frame, delay = 0 }) {
-  return (
-    <div
-      style={{
-        fontFamily: 'Inter, sans-serif',
-        fontSize: 20,
-        fontWeight: 700,
-        letterSpacing: 3,
-        textTransform: 'uppercase',
-        color,
-        opacity: 0.9 * fadeRise(frame, 30, delay).opacity,
-      }}
-    >
+    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: weight, fontSize: size, color: COLORS.white, textShadow: `0 0 6px ${color}, 0 0 18px ${color}, 0 0 36px ${color}`, opacity, transform }}>
       {children}
     </div>
   )
 }
 
-// ---------- Scene 1 — HOOK ----------
-function HookScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
+function PaperCard({ text, color = COLORS.paper, size = 20 }) {
   return (
-    <AbsoluteFill style={{ justifyContent: 'center', padding: '0 70px' }}>
-      <Scribble frame={frame} delay={0} x={60} y={200} w={220} h={140} />
-      <Star x={850} y={180} frame={frame} delay={BEAT * 2} />
-      <Star x={120} y={900} size={16} frame={frame} delay={BEAT * 3} />
-      <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 48, color: COLORS.white, transform: `translateX(${shake(frame, BEAT * 3)}px)` }}>
-        Maybe you're not
-      </div>
-      <div style={{ marginTop: 6 }}>
-        <NeonText frame={frame} delay={BEAT * 2} color={COLORS.pink} size={64}>
-          INCONSISTENT.
-        </NeonText>
-      </div>
-    </AbsoluteFill>
+    <div style={{ background: color, borderRadius: 8, padding: '18px 22px', minWidth: 160, textAlign: 'center' }}>
+      <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: size, color: COLORS.ink }}>{text}</div>
+    </div>
   )
 }
 
-// ---------- Scene 2 — THE GOAL ----------
-function GoalScene({ durationInFrames }) {
+// ---------- Scene 1 — HOOK: "MY GOALS" paper slides in, notes fly around it ----------
+function HookScene() {
   const frame = useCurrentFrame()
+  const pushIn = interpolate(frame, [0, 90], [1, 1.06], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   const notes = [
-    { text: 'GET HEALTHIER.', color: COLORS.pink, x: 70, y: 700, rotate: -6, delay: BEAT * 1 },
-    { text: 'BE MORE CONSISTENT.', color: COLORS.blue, x: 330, y: 780, rotate: 3, delay: BEAT * 3 },
-    { text: 'BUILD THE BUSINESS.', color: COLORS.yellow, x: 620, y: 700, rotate: 6, delay: BEAT * 5 },
+    { x: -260, y: -200, from: { x: -500, y: -300, rotate: -40 }, delay: 6 },
+    { x: 220, y: -180, from: { x: 500, y: -260, rotate: 30 }, delay: 10 },
+    { x: -250, y: 220, from: { x: -480, y: 320, rotate: 25 }, delay: 14 },
+    { x: 230, y: 240, from: { x: 480, y: 300, rotate: -30 }, delay: 18 },
   ]
   return (
-    <AbsoluteFill>
-      <div style={{ position: 'absolute', top: 220, left: 64, right: 64 }}>
-        <NeonText frame={frame} delay={0} color={COLORS.blue} size={40}>
-          Those goals...
-        </NeonText>
-      </div>
-      {notes.map((n, i) => (
-        <div key={i}>
-          <StickyNote {...n} frame={frame} />
-          <div style={{ position: 'absolute', left: n.x + 70, top: n.y + 100, opacity: fadeRise(frame, 30, n.delay + BEAT * 2).opacity, fontFamily: 'Caveat, cursive', fontSize: 30, color: COLORS.white }}>
-            ...what?
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', transform: `scale(${pushIn})` }}>
+      <div style={{ position: 'relative', width: 10, height: 10 }}>
+        <FlyCard frame={frame} delay={0} from={{ x: 0, y: -260, rotate: -8 }} to={{ x: -140, y: -140, rotate: -4 }} style={{ background: COLORS.paper, borderRadius: 10, padding: '30px 34px', width: 260 }}>
+          <TypeOn text="MY GOALS" frame={frame} delay={4} speed={1.6} size={30} />
+          <div style={{ marginTop: 10 }}>
+            <TypeOn text="Maybe it isn't inconsistency." frame={frame} delay={26} speed={1.1} size={20} color={COLORS.pink} />
           </div>
-        </div>
-      ))}
+        </FlyCard>
+        {notes.map((n, i) => (
+          <FlyCard key={i} frame={frame} delay={n.delay} from={n.from} to={{ x: n.x, y: n.y, rotate: (i % 2 ? 1 : -1) * 6 }}>
+            <div style={{ width: 90, height: 90, background: [COLORS.pink, COLORS.blue, COLORS.yellow, COLORS.paperDark][i], borderRadius: 6 }} />
+          </FlyCard>
+        ))}
+      </div>
     </AbsoluteFill>
   )
 }
 
-// ---------- Scene 3 — THE PROBLEM ----------
-function ProblemScene({ durationInFrames }) {
+// ---------- Scene 2 — notes drift apart, then the question lands ----------
+function DriftScene() {
   const frame = useCurrentFrame()
   const notes = [
-    { text: 'GET HEALTHIER.', color: COLORS.pink, x: 70, y: 500, rotate: -6, delay: 0, struck: true, strikeDelay: BEAT * 3 },
-    { text: 'BE MORE CONSISTENT.', color: COLORS.blue, x: 330, y: 460, rotate: 3, delay: BEAT * 0.5, struck: true, strikeDelay: BEAT * 4 },
-    { text: 'BUILD THE BUSINESS.', color: COLORS.yellow, x: 620, y: 500, rotate: 6, delay: BEAT, struck: true, strikeDelay: BEAT * 5 },
+    { text: 'get healthier', x: -280, y: -260, delay: 0, hi: 0 },
+    { text: 'save money', x: 260, y: -240, delay: 12, hi: 12 },
+    { text: 'build the business', x: -260, y: 60, delay: 24, hi: 24 },
+    { text: 'read more', x: 260, y: 80, delay: 36, hi: 36 },
+  ]
+  const questionDelay = 70
+  return (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ position: 'relative', width: 10, height: 10 }}>
+        {notes.map((n, i) => {
+          const drift = interpolate(frame, [0, 60], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+          const glow = frame >= n.hi && frame < n.hi + 14
+          return (
+            <div key={i} style={{ position: 'absolute', left: n.x * drift, top: n.y * drift, opacity: fadeRise(frame, 30, 0, 0).opacity }}>
+              <div style={{ background: COLORS.paper, borderRadius: 8, padding: '14px 18px', boxShadow: glow ? `0 0 24px ${COLORS.blue}` : '0 8px 20px rgba(0,0,0,0.4)', transform: glow ? 'scale(1.1)' : 'scale(1)' }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, color: COLORS.ink }}>{n.text}</div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ position: 'absolute', top: 780, left: 60, right: 60, textAlign: 'center' }}>
+        <TypeOn text="BUT WHAT EXACTLY AM I DOING?" frame={frame} delay={questionDelay} speed={1.3} size={34} color={COLORS.white} style={{ textShadow: `0 0 20px ${COLORS.pink}` }} />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ---------- Scene 3 — three cards enter, expand, get stamped TOO VAGUE ----------
+function VagueCardsScene() {
+  const frame = useCurrentFrame()
+  const cards = [
+    { text: 'GET HEALTHIER', color: COLORS.pink, y: -280, delay: 0, stampDelay: 30 },
+    { text: 'BE MORE CONSISTENT', color: COLORS.blue, y: -20, delay: 20, stampDelay: 50 },
+    { text: 'BUILD THE BUSINESS', color: COLORS.yellow, y: 240, delay: 40, stampDelay: 70 },
   ]
   return (
-    <AbsoluteFill>
-      {notes.map((n, i) => (
-        <StickyNote key={i} {...n} frame={frame} />
-      ))}
-      <div style={{ position: 'absolute', top: 900, left: 64, right: 64, textAlign: 'center' }}>
-        <NeonText frame={frame} delay={BEAT * 7} color={COLORS.yellow} size={38}>
-          But what's the action?
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ position: 'relative', width: 10, height: 10 }}>
+        {cards.map((c, i) => {
+          const local = frame - c.delay
+          const expand = spring({ frame: local, fps: 30, config: { damping: 10 }, durationInFrames: 14, from: 0.9, to: 1.08 })
+          return (
+            <FlyCard key={i} frame={frame} delay={c.delay} from={{ x: i % 2 ? 500 : -500, y: c.y, rotate: i % 2 ? 20 : -20 }} to={{ x: -120, y: c.y, rotate: 0 }}>
+              <div style={{ transform: `scale(${local > 0 && local < 20 ? expand : 1})` }}>
+                <PaperCard text={c.text} color={c.color} />
+              </div>
+              <Stamp text="TOO VAGUE" frame={frame} delay={c.stampDelay} x={40} y={-14} />
+            </FlyCard>
+          )
+        })}
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ---------- Scene 4 — cards pile, hand reaches, slide away, blank TODAY ----------
+function EmptyTodayScene() {
+  const frame = useCurrentFrame()
+  const pileProgress = interpolate(frame, [0, 20], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const zoomOut = interpolate(frame, [20, 40], [1, 0.85], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const slideAway = interpolate(frame, [55, 75], [0, -700], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const reachPulse = interpolate(frame, [40, 50, 55], [0, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  return (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ transform: `scale(${zoomOut}) translateX(${slideAway}px)`, position: 'relative', width: 10, height: 10 }}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ position: 'absolute', left: -100 + i * 4 * pileProgress, top: -20 + i * 6 * pileProgress, transform: `rotate(${(i - 1) * 4 * pileProgress}deg)` }}>
+            <PaperCard text={['GET HEALTHIER', 'BE CONSISTENT', 'BUILD BUSINESS'][i]} color={[COLORS.pink, COLORS.blue, COLORS.yellow][i]} size={16} />
+          </div>
+        ))}
+        <div style={{ position: 'absolute', left: 30, top: -60, width: 24, height: 24, borderRadius: 12, border: `3px solid ${COLORS.white}`, opacity: reachPulse }} />
+      </div>
+      <div style={{ position: 'absolute', background: COLORS.paper, borderRadius: 10, padding: '40px 50px', opacity: fadeRise(frame, 30, 70, 10).opacity, textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 22, color: COLORS.dim, letterSpacing: 2 }}>TODAY</div>
+        <div style={{ height: 70 }} />
+        <TypeOn text="WHAT DO I DO TODAY?" frame={frame} delay={90} speed={1.2} size={26} />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ---------- Scene 5 — head silhouette, tangled lines, question marks, freeze ----------
+function BrainTangleScene() {
+  const frame = useCurrentFrame()
+  const draw = interpolate(frame, [10, 70], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const marks = [
+    { x: -90, y: -50, delay: 30 },
+    { x: 100, y: -90, delay: 40 },
+    { x: -60, y: 100, delay: 50 },
+    { x: 90, y: 90, delay: 60 },
+  ]
+  return (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ position: 'relative', width: 420, height: 480 }}>
+        <div style={{ position: 'absolute', left: 40, top: 20, width: 300, height: 300, borderRadius: '50%', border: `3px solid ${COLORS.dim}`, opacity: 0.6 }} />
+        <svg width="420" height="480" style={{ position: 'absolute', left: 0, top: 0 }}>
+          <polyline
+            points="140,110 190,150 130,180 220,190 150,230 210,260 160,290"
+            fill="none"
+            stroke={COLORS.pink}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="600"
+            strokeDashoffset={600 * (1 - draw)}
+          />
+        </svg>
+        {marks.map((m, i) => (
+          <div key={i} style={{ position: 'absolute', left: 190 + m.x, top: 150 + m.y, fontFamily: 'Fraunces, serif', fontSize: 36, fontWeight: 700, color: COLORS.yellow, opacity: fadeRise(frame, 30, m.delay, 6).opacity }}>
+            ?
+          </div>
+        ))}
+      </div>
+      <div style={{ position: 'absolute', bottom: 400, textAlign: 'center' }}>
+        <NeonText frame={frame} delay={80} color={COLORS.blue} size={30}>
+          Nothing to grab onto.
         </NeonText>
       </div>
     </AbsoluteFill>
   )
 }
 
-// ---------- Scene 4 — THE FREEZE ----------
-function FreezeScene({ durationInFrames }) {
+// ---------- Scene 6 — target/move diagram, breaks apart, reforms clean ----------
+function TargetDiagramScene() {
   const frame = useCurrentFrame()
-  const notes = [
-    { text: 'IDEAS', color: COLORS.pink, x: 70, y: 260, rotate: -8, delay: BEAT },
-    { text: 'SO MUCH TO DO', color: COLORS.blue, x: 640, y: 300, rotate: 6, delay: BEAT * 2 },
-    { text: 'WHERE DO I START?', color: COLORS.yellow, x: 620, y: 1100, rotate: -4, delay: BEAT * 3 },
-  ]
-  const blink = Math.floor(frame / 15) % 2 === 0
+  const breakApart = interpolate(frame, [30, 45], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const reform = interpolate(frame, [45, 65], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
-      {notes.map((n, i) => (
-        <StickyNote key={i} {...n} frame={frame} />
-      ))}
-      <div
-        style={{
-          background: '#151517',
-          border: `2px solid ${COLORS.dim}`,
-          borderRadius: 16,
-          width: 640,
-          height: 420,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          ...fadeRise(frame, 30, 0, 10),
-        }}
-      >
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 30, color: COLORS.white, textAlign: 'center' }}>
-          WHERE DO I{'\n'}EVEN START?
-          {blink && <span style={{ color: COLORS.pink }}>|</span>}
-        </div>
+      <div style={{ opacity: 1 - breakApart, display: 'flex', alignItems: 'center', gap: 20 }}>
+        <NeonText frame={frame} delay={0} color={COLORS.pink} size={24}>NO CLEAR TARGET</NeonText>
+        <div style={{ color: COLORS.dim, fontSize: 26, transform: `translateX(${breakApart * 60}px)` }}>&rarr;</div>
+        <NeonText frame={frame} delay={10} color={COLORS.pink} size={24}>NO CLEAR NEXT MOVE</NeonText>
+      </div>
+      <div style={{ position: 'absolute', opacity: reform, transform: `scale(${0.9 + reform * 0.1})`, textAlign: 'center' }}>
+        <NeonText frame={frame} delay={45} color={COLORS.blue} size={32}>CLEAR TARGET</NeonText>
+        <div style={{ color: COLORS.dim, fontSize: 26, margin: '10px 0' }}>&darr;</div>
+        <NeonText frame={frame} delay={55} color={COLORS.blue} size={32}>NEXT MOVE</NeonText>
       </div>
     </AbsoluteFill>
   )
 }
 
-// ---------- Scene 5 — THE CYCLE ----------
-function CycleScene({ durationInFrames }) {
+// ---------- Scene 7 — the cycle, accelerating, abrupt stop, crossed out ----------
+function CycleScene() {
   const frame = useCurrentFrame()
-  const steps = [
-    { label: 'SCROLL', delay: BEAT * 1 },
-    { label: 'DISTRACT', delay: BEAT * 3 },
-    { label: 'FEEL GUILTY', delay: BEAT * 5 },
-    { label: 'GIVE UP', delay: BEAT * 7 },
+  const steps = ['DRIFT', 'GUILT', "WHY CAN'T I BE CONSISTENT?", 'DISCIPLINE PROBLEM', 'TRY AGAIN']
+  const cyclePos = [
+    { top: -240, left: '50%', tx: '-50%' },
+    { top: -100, right: -180 },
+    { bottom: 40, left: '50%', tx: '-50%' },
+    { top: -100, left: -180 },
+    { top: -240, left: '50%', tx: '-50%' },
   ]
+  const stopFrame = 90
+  const showCross = frame > stopFrame + 10
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ position: 'relative', width: 640, height: 640 }}>
-        <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', background: '#151517', border: `2px solid ${COLORS.pink}`, borderRadius: 20, padding: '30px 26px', textAlign: 'center', ...fadeRise(frame, 30, BEAT * 9, 8) }}>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 26, color: COLORS.pink }}>DISCIPLINE{'\n'}PROBLEM?</div>
-        </div>
-        {[
-          { pos: { top: 0, left: '50%', transform: 'translateX(-50%)' } },
-          { pos: { top: '50%', right: 0, transform: 'translateY(-50%)' } },
-          { pos: { bottom: 0, left: '50%', transform: 'translateX(-50%)' } },
-          { pos: { top: '50%', left: 0, transform: 'translateY(-50%)' } },
-        ].map((p, i) => {
-          const s = steps[i]
-          const { opacity } = fadeRise(frame, 30, s.delay, 10)
-          return (
-            <div key={i} style={{ position: 'absolute', ...p.pos, opacity }}>
-              <NeonText frame={frame} delay={s.delay} color={i % 2 ? COLORS.blue : COLORS.yellow} size={26}>
-                {s.label}
+      <div style={{ position: 'relative', width: 10, height: 10 }}>
+        {frame < stopFrame + 15 &&
+          steps.slice(0, 4).map((s, i) => {
+            const delay = i * 18
+            const p = cyclePos[i]
+            return (
+              <div key={i} style={{ position: 'absolute', top: p.top, left: p.left, right: p.right, bottom: p.bottom, transform: `translateX(${p.tx || 0})`, opacity: fadeRise(frame, 30, delay, 8).opacity }}>
+                <NeonText frame={frame} delay={delay} color={i % 2 ? COLORS.yellow : COLORS.pink} size={20}>
+                  {s}
+                </NeonText>
+              </div>
+            )
+          })}
+        {showCross && (
+          <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)' }}>
+            <div style={{ position: 'relative' }}>
+              <NeonText frame={frame} delay={stopFrame + 10} color={COLORS.white} size={34}>
+                DISCIPLINE?
               </NeonText>
+              <Stamp text="X" frame={frame} delay={stopFrame + 20} rotate={0} size={40} x={70} y={-24} />
             </div>
-          )
-        })}
-      </div>
-    </AbsoluteFill>
-  )
-}
-
-// ---------- Scene 6 — THE TURN ----------
-function TurnScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
-  const pulse = 1 + Math.sin(frame / 8) * 0.03
-  return (
-    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ position: 'absolute', top: 500, textAlign: 'center', ...fadeRise(frame, 30, 0, 10) }}>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 34, color: COLORS.white }}>But here's the part</div>
-        <NeonText frame={frame} delay={BEAT * 2} color={COLORS.blue} size={36}>
-          nobody tells you.
-        </NeonText>
-      </div>
-      <div style={{ marginTop: 260, transform: `scale(${pulse})` }}>
-        <div
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            fontWeight: 900,
-            fontSize: 100,
-            color: COLORS.white,
-            textShadow: `0 0 10px ${COLORS.pink}, 0 0 30px ${COLORS.pink}, 0 0 70px ${COLORS.pink}`,
-            opacity: fadeRise(frame, 30, BEAT * 6, 0).opacity,
-          }}
-        >
-          STOP.
-        </div>
-      </div>
-    </AbsoluteFill>
-  )
-}
-
-// ---------- Scene 7 — THE OH MOMENT ----------
-function OhMomentScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
-  const underline = interpolate(frame, [BEAT * 6, BEAT * 9], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-  return (
-    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', padding: '0 70px' }}>
-      <Lightbulb size={64} color={COLORS.yellow} style={{ opacity: fadeRise(frame, 30, 0, 0).opacity, filter: `drop-shadow(0 0 14px ${COLORS.yellow})`, marginBottom: 30 }} />
-      <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 40, lineHeight: 1.3, color: COLORS.white, textAlign: 'center', ...fadeRise(frame, 30, BEAT * 2, 10) }}>
-        You can't consistently act on something you haven't
-      </div>
-      <div style={{ marginTop: 10, position: 'relative' }}>
-        <NeonText frame={frame} delay={BEAT * 6} color={COLORS.pink} size={54}>
-          CLEARLY DEFINED.
-        </NeonText>
-        <div style={{ position: 'absolute', bottom: -6, left: 0, width: `${100 * underline}%`, height: 4, background: COLORS.pink, borderRadius: 2 }} />
-      </div>
-    </AbsoluteFill>
-  )
-}
-
-// ---------- Scene 8 — THE QUESTION ----------
-function QuestionScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
-  const bounce = 1 + Math.abs(Math.sin(frame / 10)) * 0.06
-  return (
-    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div
-        style={{
-          background: '#fdf6e3',
-          borderRadius: 8,
-          padding: '50px 44px',
-          width: 720,
-          transform: 'rotate(-2deg)',
-          boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-          ...fadeRise(frame, 30, 0, 16),
-        }}
-      >
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 40, color: COLORS.black, textAlign: 'center', lineHeight: 1.3 }}>
-          WHY CAN'T I STAY CONSISTENT?
-        </div>
-      </div>
-      <div style={{ marginTop: 30, fontSize: 60, color: COLORS.pink, transform: `scale(${bounce})`, textShadow: `0 0 20px ${COLORS.pink}` }}>?</div>
-    </AbsoluteFill>
-  )
-}
-
-// ---------- Scene 9 — THE REAL QUESTION ----------
-function RealQuestionScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
-  const lines = ['What exactly am I trying to make happen?', 'And what does that look like today?']
-  return (
-    <AbsoluteFill style={{ justifyContent: 'center', padding: '0 70px' }}>
-      <div style={{ background: '#f4ede0', borderRadius: 14, padding: '48px 40px', boxShadow: '0 16px 40px rgba(0,0,0,0.5)', ...fadeRise(frame, 30, 0, 14) }}>
-        <PenLine size={22} color={COLORS.pink} style={{ position: 'absolute', top: -16, right: -10, transform: 'rotate(-30deg)' }} />
-        {lines.map((l, i) => {
-          const delay = BEAT * (2 + i * 4)
-          const { opacity } = fadeRise(frame, 30, delay, 10)
-          return (
-            <div key={l} style={{ display: 'flex', gap: 14, marginBottom: 20, opacity }}>
-              <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, color: COLORS.pink, fontSize: 22 }}>{i + 1}</div>
-              <div style={{ fontFamily: 'Caveat, cursive', fontWeight: 700, fontSize: 34, color: COLORS.black, lineHeight: 1.3 }}>{l}</div>
-            </div>
-          )
-        })}
-      </div>
-    </AbsoluteFill>
-  )
-}
-
-// ---------- Scene 10 — THE RELEASE ----------
-function ReleaseScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
-  const crumpleScale = interpolate(frame, [0, BEAT * 3], [1, 0.75], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-  return (
-    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
-        <div style={{ position: 'relative', transform: `scale(${crumpleScale}) rotate(-6deg)`, ...fadeRise(frame, 30, 0, 10) }}>
-          <div style={{ width: 220, padding: '30px 20px', background: '#d4d4d8', borderRadius: 10, textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, color: COLORS.black }}>MORE{'\n'}DISCIPLINE</div>
           </div>
-          <X size={44} color="#e11d48" strokeWidth={4} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', opacity: fadeRise(frame, 30, BEAT * 4, 0).opacity }} />
-        </div>
-        <div style={{ fontSize: 30, color: COLORS.dim, opacity: fadeRise(frame, 30, BEAT * 5).opacity }}>&rarr;</div>
-        <div style={{ transform: 'rotate(4deg)', ...fadeRise(frame, 30, BEAT * 6, 14) }}>
-          <div style={{ width: 220, padding: '30px 20px', background: COLORS.yellow, borderRadius: 10, textAlign: 'center', boxShadow: `0 0 30px ${COLORS.yellow}55` }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, color: COLORS.black }}>MORE{'\n'}CLARITY</div>
-          </div>
-          <Check size={36} color="#16a34a" strokeWidth={4} style={{ position: 'absolute', top: -14, right: -14, opacity: fadeRise(frame, 30, BEAT * 8).opacity }} />
-        </div>
-      </div>
-      <div style={{ position: 'absolute', top: 400 }}>
-        <NeonText frame={frame} delay={BEAT * 2} color={COLORS.blue} size={38}>
-          You don't need more discipline.
-        </NeonText>
+        )}
       </div>
     </AbsoluteFill>
   )
 }
 
-// ---------- Scene 11 — THE FINAL CLICK (the big dopamine moment) ----------
-function FinalClickScene({ durationInFrames }) {
+// ---------- Scene 8 — blank breath, then "THE PROBLEM WASN'T YOU." ----------
+function BreathScene() {
   const frame = useCurrentFrame()
-  const days = [0, 1, 2, 3, 4, 5, 6]
-  const litDays = [1, 3, 4, 6]
-  const progress = interpolate(frame, [BEAT * 12, BEAT * 16], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  return (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <TypeOn text="THE PROBLEM WASN'T YOU." frame={frame} delay={20} speed={1.1} size={38} color={COLORS.white} style={{ textShadow: `0 0 24px ${COLORS.pink}` }} />
+    </AbsoluteFill>
+  )
+}
+
+// ---------- Scene 9 — resolution: question -> goal -> 3 cards lock in -> PHASR ----------
+function ResolutionScene() {
+  const frame = useCurrentFrame()
+  const lock = interpolate(frame, [40, 60], [30, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', padding: '0 60px' }}>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ position: 'relative', ...fadeRise(frame, 30, 0, 10) }}>
-          <div style={{ padding: '18px 22px', background: '#d4d4d8', borderRadius: 10 }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, color: COLORS.black }}>GET HEALTHIER.</div>
-          </div>
-          <X size={34} color="#e11d48" strokeWidth={4} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', opacity: fadeRise(frame, 30, BEAT * 2).opacity }} />
-        </div>
+      <div style={{ background: COLORS.paper, borderRadius: 10, padding: '30px 34px', marginBottom: 40, opacity: fadeRise(frame, 30, 0).opacity }}>
+        <TypeOn text="WHAT AM I ACTUALLY TRYING TO MAKE HAPPEN?" frame={frame} delay={4} speed={1.3} size={22} />
       </div>
-      <div style={{ fontSize: 26, color: COLORS.dim, marginBottom: 20, opacity: fadeRise(frame, 30, BEAT * 4).opacity }}>&darr;</div>
-      <div style={{ background: COLORS.yellow, borderRadius: 14, padding: '22px 26px', boxShadow: `0 0 30px ${COLORS.yellow}66`, ...fadeRise(frame, 30, BEAT * 5, 16) }}>
-        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 24, color: COLORS.black, textAlign: 'center', lineHeight: 1.3 }}>
-          WALK 20 MINS AFTER DINNER, 4X THIS WEEK.
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 10, marginTop: 34, opacity: fadeRise(frame, 30, BEAT * 8).opacity }}>
-        {days.map((d) => (
-          <div
-            key={d}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              background: litDays.includes(d) ? COLORS.pink : '#2a2a2e',
-              boxShadow: litDays.includes(d) ? `0 0 12px ${COLORS.pink}` : 'none',
-            }}
-          />
-        ))}
-      </div>
-      <div style={{ width: 400, height: 10, background: '#2a2a2e', borderRadius: 5, marginTop: 26, overflow: 'hidden', opacity: fadeRise(frame, 30, BEAT * 11).opacity }}>
-        <div style={{ width: `${progress * 100}%`, height: '100%', background: COLORS.pink, boxShadow: `0 0 10px ${COLORS.pink}` }} />
-      </div>
-      <div style={{ position: 'absolute', top: 300, textAlign: 'center' }}>
-        <NeonText frame={frame} delay={BEAT * 17} color={COLORS.pink} size={34}>
-          Your brain knows how to move toward it.
-        </NeonText>
-      </div>
-    </AbsoluteFill>
-  )
-}
-
-// ---------- Scene 12 — BRAND TAG ----------
-function BrandTagScene({ durationInFrames }) {
-  const frame = useCurrentFrame()
-  const glow = 0.6 + Math.sin(frame / 10) * 0.15
-  return (
-    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div
-        style={{
-          fontFamily: 'Inter, sans-serif',
-          fontWeight: 900,
-          fontSize: 70,
-          letterSpacing: 4,
-          color: COLORS.white,
-          textShadow: `0 0 ${14 * glow}px ${COLORS.yellow}, 0 0 ${40 * glow}px ${COLORS.pink}`,
-          ...fadeRise(frame, 30, 0, 14),
-        }}
-      >
-        PHASR
-      </div>
-      <div style={{ marginTop: 30, textAlign: 'center' }}>
-        {['Goals you can see.', 'Steps you can take.', 'Progress you can feel.'].map((l, i) => (
-          <div key={l} style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 24, color: COLORS.dim, marginBottom: 6, opacity: fadeRise(frame, 30, BEAT * (2 + i * 2)).opacity }}>
-            {l}
+      <div style={{ display: 'flex', gap: 14, transform: `translateY(${lock}px)`, opacity: fadeRise(frame, 30, 36).opacity }}>
+        {['TARGET', 'TODAY', 'NEXT ACTION'].map((t, i) => (
+          <div key={t} style={{ background: [COLORS.pink, COLORS.blue, COLORS.yellow][i], borderRadius: 8, padding: '14px 16px' }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 16, color: COLORS.ink }}>{t}</div>
           </div>
         ))}
+      </div>
+      <div style={{ marginTop: 50, textAlign: 'center', opacity: fadeRise(frame, 30, 60, 14).opacity }}>
+        <NeonText frame={frame} delay={60} color={COLORS.pink} size={30}>CLARITY BEFORE CONSISTENCY</NeonText>
+        <div style={{ marginTop: 18, fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 44, letterSpacing: 4, color: COLORS.white, textShadow: `0 0 30px ${COLORS.yellow}` }}>PHASR</div>
       </div>
     </AbsoluteFill>
   )
 }
 
 const SCENES = [
-  { Comp: HookScene, dur: BEAT * 8 },
-  { Comp: GoalScene, dur: BEAT * 10 },
-  { Comp: ProblemScene, dur: BEAT * 12 },
-  { Comp: FreezeScene, dur: BEAT * 12 },
-  { Comp: CycleScene, dur: BEAT * 16 },
-  { Comp: TurnScene, dur: BEAT * 10 },
-  { Comp: OhMomentScene, dur: BEAT * 10 },
-  { Comp: QuestionScene, dur: BEAT * 8 },
-  { Comp: RealQuestionScene, dur: BEAT * 14 },
-  { Comp: ReleaseScene, dur: BEAT * 10 },
-  { Comp: FinalClickScene, dur: BEAT * 12 },
-  { Comp: BrandTagScene, dur: BEAT * 8 },
+  { Comp: HookScene, dur: 90 },
+  { Comp: DriftScene, dur: 120 },
+  { Comp: VagueCardsScene, dur: 120 },
+  { Comp: EmptyTodayScene, dur: 120 },
+  { Comp: BrainTangleScene, dur: 120 },
+  { Comp: TargetDiagramScene, dur: 90 },
+  { Comp: CycleScene, dur: 120 },
+  { Comp: BreathScene, dur: 60 },
+  { Comp: ResolutionScene, dur: 90 },
 ]
 
 export default function PillarReel({
   audioFile = 'audio/pillar-01-clarity.mp3',
   musicFile = 'audio/ambient-bed-pillar.wav',
-  musicVolume = 0.13,
+  musicVolume = 0.12,
   beatFrames = SCENES.map((s) => s.dur),
   transitionFrames = 8,
 }) {
@@ -513,7 +399,7 @@ export default function PillarReel({
         {SCENES.map(({ Comp }, i) => (
           <>
             <TransitionSeries.Sequence key={i} durationInFrames={beatFrames[i]}>
-              <Comp durationInFrames={beatFrames[i]} />
+              <Comp />
             </TransitionSeries.Sequence>
             {i < SCENES.length - 1 && (
               <TransitionSeries.Transition key={i + '-t'} presentation={fade()} timing={linearTiming({ durationInFrames: transitionFrames })} />

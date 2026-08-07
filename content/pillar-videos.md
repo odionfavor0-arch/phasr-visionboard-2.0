@@ -69,7 +69,10 @@ phrasing only, never quoted as a stat on-screen.
 4. Flow diagram — Vague goal → unclear action → inconsistent progress, contrasted with Clear goal → clear action → consistent progress. Covers the reframe question.
 5. Final visual — one path lights up and resolves into a single clear step. The "click" moment: "you need a goal your brain knows how to move toward."
 **People/character note:** no reliable photoreal person-generator connected this session (Kling disconnected) — using a recurring abstract silhouette/icon as the throughline "her" across all 12 videos instead of literal photography, pending Favour's sign-off.
-**Status:** script finalized; building now
+**LOCKED voiceover (do not rewrite/shorten/paraphrase, per Favour's explicit instruction):**
+> "Maybe you're not inconsistent. Maybe you're trying to work toward a goal you haven't clearly defined. 'Get healthier.' 'Be more consistent.' 'Build the business.' Those sound like goals, but none of them tell you what to actually do today. So you sit down to work on it, and your brain has nothing to grab onto. No clear target means no clear next move. So you drift, feel guilty, and call it a discipline problem. It was never that. You don't need more pressure. You need to know exactly what you're working toward."
+**Visual style (4th revision):** physical paper/cards with shadow+rotation fly-ins, stamps, handwriting-reveal text, diagrams that build themselves, camera push/zoom — no static slides, no full-sentence subtitles. Kept the dark/neon palette from the prior revision (not specified in this brief; flagged as an assumption to Favour). 9 timed scenes per her exact visual timeline (0:00-0:30+).
+**Status:** visuals built to spec; voiceover audio NOT yet regenerated to match the locked script — ElevenLabs disabled in this chat session as of this revision. Do not post until the real locked-script voiceover is rendered in and verified.
 
 ## 2. "Why do we keep starting over?"
 **Pillar:** Consistency & starting over
