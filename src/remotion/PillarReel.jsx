@@ -361,7 +361,7 @@ function CycleScene() {
     { bottom: 30, left: '50%', tx: '-50%' },
     { top: -90, left: -170 },
   ]
-  const stopFrame = 88
+  const stopFrame = 120
   const showStop = frame >= stopFrame && frame < stopFrame + 16
   const showCross = frame >= stopFrame + 16
   return (
@@ -408,27 +408,28 @@ function CycleScene() {
 // ============ 0:27-0:30+ — blank pause, "It was never that.", CLARITY, resolution ============
 function ResolutionScene() {
   const frame = useCurrentFrame()
-  const lock = interpolate(frame, [55, 75], [30, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  const switchFrame = 80
+  const lock = interpolate(frame, [110, 125], [30, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', padding: '0 60px' }}>
-      {/* "everything disappears except this sentence" beat */}
-      {frame < 55 && (
+      {/* "everything disappears except this sentence" beat — held for real breathing room */}
+      {frame < switchFrame && (
         <PopText frame={frame} delay={6} size={38} color={COLORS.ink} weight={700}>
           It was never that.
         </PopText>
       )}
-      {frame >= 55 && (
+      {frame >= switchFrame && (
         <>
-          <TypeOn text="CLARITY" frame={frame} delay={0} speed={0.8} size={64} color={COLORS.rose} style={{ marginBottom: 30 }} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, transform: `translateY(${lock}px)`, opacity: fadeRise(frame, 30, 30).opacity }}>
+          <TypeOn text="CLARITY" frame={frame} delay={switchFrame} speed={0.8} size={64} color={COLORS.rose} style={{ marginBottom: 30 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, transform: `translateY(${lock}px)`, opacity: fadeRise(frame, 30, 110).opacity }}>
             {['CLEAR TARGET', 'TODAY', 'NEXT ACTION'].map((t, i) => (
               <div key={t} style={{ background: [COLORS.pink, COLORS.quartz, COLORS.rose][i], borderRadius: 8, padding: '10px 22px' }}>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 16, color: [COLORS.white, COLORS.ink, COLORS.white][i] || COLORS.ink }}>{t}</div>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 40, textAlign: 'center', opacity: fadeRise(frame, 30, 55, 14).opacity }}>
-            <Sfx name="pop.wav" frame={55} />
+          <div style={{ marginTop: 40, textAlign: 'center', opacity: fadeRise(frame, 30, 145, 14).opacity }}>
+            <Sfx name="pop.wav" frame={145} />
             <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 44, letterSpacing: 4, color: COLORS.ink }}>PHASR</div>
             <div style={{ marginTop: 10, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, color: COLORS.rose, letterSpacing: 1 }}>CLARITY BEFORE CONSISTENCY</div>
           </div>
@@ -438,15 +439,20 @@ function ResolutionScene() {
   )
 }
 
+// Durations are sized generously against the LOCKED voiceover's actual word
+// count per beat (not the storyboard's suggested seconds) so no scene races
+// ahead of or gets cut off before the narrator finishes that line. These are
+// an estimate pending the real ElevenLabs render — once that's available,
+// true these up to its exact measured duration per scene.
 const SCENES = [
-  { Comp: HookScene, dur: 120 },
-  { Comp: TargetDrawScene, dur: 120 },
-  { Comp: VagueCardsScene, dur: 120 },
-  { Comp: EmptyTodayScene, dur: 120 },
-  { Comp: BrainCrowdedScene, dur: 120 },
-  { Comp: SplitTargetScene, dur: 90 },
-  { Comp: CycleScene, dur: 120 },
-  { Comp: ResolutionScene, dur: 100 },
+  { Comp: HookScene, dur: 165 },
+  { Comp: TargetDrawScene, dur: 170 },
+  { Comp: VagueCardsScene, dur: 175 },
+  { Comp: EmptyTodayScene, dur: 165 },
+  { Comp: BrainCrowdedScene, dur: 170 },
+  { Comp: SplitTargetScene, dur: 130 },
+  { Comp: CycleScene, dur: 175 },
+  { Comp: ResolutionScene, dur: 190 },
 ]
 
 const TRANSITION_FRAMES = 8
