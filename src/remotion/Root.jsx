@@ -12,6 +12,7 @@ import PhasrGlassHero, {
   G_HEIGHT,
 } from './PhasrGlassHero.jsx'
 import SocialReel, { SR_WIDTH, SR_HEIGHT, SR_FPS, socialReelDuration } from './SocialReel.jsx'
+import PillarReel, { PR_WIDTH, PR_HEIGHT, PR_FPS, pillarReelDuration } from './PillarReel.jsx'
 
 // Registered compositions for the Remotion CLI (preview + MP4/GIF render).
 export function RemotionRoot() {
@@ -42,6 +43,17 @@ export function RemotionRoot() {
         height={SR_HEIGHT}
         calculateMetadata={async ({ props }) => ({
           durationInFrames: socialReelDuration(props.beatFrames),
+        })}
+      />
+      <Composition
+        id="PhasrPillarReel"
+        component={PillarReel}
+        durationInFrames={pillarReelDuration()}
+        fps={PR_FPS}
+        width={PR_WIDTH}
+        height={PR_HEIGHT}
+        calculateMetadata={async ({ props }) => ({
+          durationInFrames: pillarReelDuration(props.beatFrames),
         })}
       />
     </>

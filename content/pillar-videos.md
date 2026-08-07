@@ -40,17 +40,36 @@ this file is a planning record, not the dedupe source of truth).
 
 ## 1. "You don't lack discipline. You lack clarity."
 **Pillar:** Confidence & self-belief
-**Hook:** "Maybe you're not inconsistent. Maybe you're trying to work toward a goal you haven't clearly defined."
-**Talking point:** vague goals create vague action.
-**Ending:** "You don't need more pressure. You need to know exactly what you're working toward."
 **On-screen keyword:** "Clarity before consistency."
-**Scene plan:**
-1. Person staring at a messy collection of goals, notes, reminders.
-2. Multiple paths appearing at once — decision overload.
-3. Visual narrowing from many paths to one clear destination.
-4. Diagram: Vague goal → unclear action → inconsistent progress.
-5. Final visual: one clear next step appearing.
-**Status:** scripted (not yet built)
+**Research grounding:** goal-setting specificity research (Locke & Latham
+lineage, echoed across Atlassian/PositivePsychology/Psychology Today
+coverage) — specific goals convert to action because they're measurable and
+plannable; vague goals have nowhere for the brain to grab onto. Used for
+phrasing only, never quoted as a stat on-screen.
+**Full script (final, approved):**
+> "Maybe you're not inconsistent. Maybe you're trying to work toward a goal you haven't clearly defined.
+>
+> 'Get healthier.' 'Be more consistent.' 'Build the business.'
+>
+> Those sound like goals, but none of them tell you what to actually do today.
+>
+> So you sit down to work on it and your brain has nothing to grab onto. No clear target means no clear next move. You drift, feel guilty, and call it a discipline problem.
+>
+> But here's the part nobody tells you: you can't consistently act on something you haven't clearly defined.
+>
+> So before you ask yourself, 'Why can't I stay consistent?'
+>
+> Ask: 'What exactly am I trying to make happen, and what does that look like today?'
+>
+> Because sometimes you don't need more discipline. You need a goal your brain knows how to move toward."
+**Scene plan (5 beats, each a different visual):**
+1. Messy collage — scattered goal-chips/notes/reminders, no order. Covers hook + the three vague-goal examples.
+2. Decision-overload diagram — branching paths splitting in many directions. Covers "brain has nothing to grab onto... no clear next move."
+3. Narrowing — the branching paths shown failing to converge (still scattered) as the drift/guilt line plays, landing on "you can't consistently act on something you haven't clearly defined."
+4. Flow diagram — Vague goal → unclear action → inconsistent progress, contrasted with Clear goal → clear action → consistent progress. Covers the reframe question.
+5. Final visual — one path lights up and resolves into a single clear step. The "click" moment: "you need a goal your brain knows how to move toward."
+**People/character note:** no reliable photoreal person-generator connected this session (Kling disconnected) — using a recurring abstract silhouette/icon as the throughline "her" across all 12 videos instead of literal photography, pending Favour's sign-off.
+**Status:** script finalized; building now
 
 ## 2. "Why do we keep starting over?"
 **Pillar:** Consistency & starting over
