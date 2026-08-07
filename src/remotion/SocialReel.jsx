@@ -3,6 +3,7 @@ import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
 import { slide } from '@remotion/transitions/slide'
 import { Moon, CheckCircle2, ArrowRight } from 'lucide-react'
+import { FONT_FACES } from './fonts.js'
 
 // PHASR social-content motion graphic — kinetic typography + line icons,
 // built to spec instead of AI-guessed so the brand colors/fonts are exact.
@@ -22,9 +23,6 @@ const COLORS = {
   quartz: '#e8c9d1',
   white: '#ffffff',
 }
-
-const GOOGLE_FONTS_IMPORT =
-  "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');"
 
 const ICONS = { moon: Moon, check: CheckCircle2, arrow: ArrowRight }
 
@@ -304,7 +302,7 @@ export default function SocialReel({
   const frame = useCurrentFrame()
   return (
     <AbsoluteFill style={{ background: COLORS.cream }}>
-      <style>{GOOGLE_FONTS_IMPORT}</style>
+      <style>{FONT_FACES}</style>
       {audioFile && <Audio src={staticFile(audioFile)} />}
       {musicFile && <Audio src={staticFile(musicFile)} volume={musicVolume} />}
       <DriftField frame={frame} />

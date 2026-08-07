@@ -1,6 +1,7 @@
 import { AbsoluteFill, Audio, useCurrentFrame, interpolate, spring, useVideoConfig, staticFile } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
+import { FONT_FACES } from './fonts.js'
 
 // PHASR pre-launch pillar content — problem-diagnosis videos that run before
 // PHASR is ever pitched. Every beat gets a genuinely different visual that
@@ -21,9 +22,6 @@ const COLORS = {
   white: '#ffffff',
   muted: '#c9a8b3',
 }
-
-const GOOGLE_FONTS_IMPORT =
-  "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700;800;900&display=swap');"
 
 function fadeRise(frame, fps, delay = 0, riseFrom = 16) {
   const local = frame - delay
@@ -337,7 +335,7 @@ export default function PillarReel({
 }) {
   return (
     <AbsoluteFill style={{ background: COLORS.cream }}>
-      <style>{GOOGLE_FONTS_IMPORT}</style>
+      <style>{FONT_FACES}</style>
       {audioFile && <Audio src={staticFile(audioFile)} />}
       {musicFile && <Audio src={staticFile(musicFile)} volume={musicVolume} />}
       <TransitionSeries>
