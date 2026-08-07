@@ -1,4 +1,4 @@
-import { AbsoluteFill, Audio, Sequence, useCurrentFrame, interpolate, spring, useVideoConfig, staticFile } from 'remotion'
+import { AbsoluteFill, Audio, Sequence, Loop, useCurrentFrame, interpolate, spring, useVideoConfig, staticFile } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
 import { FONT_FACES } from './fonts.js'
@@ -70,14 +70,23 @@ function Stamp({ text, frame, delay = 0, color = COLORS.rose, rotate = -8, size 
   )
 }
 
-// Handwriting-style progressive reveal (typewriter), Caveat font.
-function TypeOn({ text, frame, delay = 0, speed = 1.4, size = 34, color = COLORS.ink, style }) {
+// Handwriting-style progressive reveal (typewriter), Caveat font, with a
+// looped typing tick sound running for exactly the reveal's duration.
+function TypeOn({ text, frame, delay = 0, speed = 1.4, size = 34, color = COLORS.ink, style, sound = true }) {
   const local = Math.max(0, frame - delay)
   const count = Math.floor(local * speed)
   const shown = text.slice(0, count)
   const caretOn = Math.floor(frame / 10) % 2 === 0 && count < text.length
+  const revealFrames = Math.ceil(text.length / speed) + 2
   return (
     <div style={{ fontFamily: 'Caveat, cursive', fontWeight: 700, fontSize: size, color, opacity: count > 0 ? 1 : 0, ...style }}>
+      {sound && delay >= 0 && (
+        <Sequence from={Math.round(delay)} durationInFrames={revealFrames}>
+          <Loop durationInFrames={4}>
+            <Audio src={staticFile('audio/sfx/type-tick.wav')} volume={0.5} />
+          </Loop>
+        </Sequence>
+      )}
       {shown}
       {caretOn && <span>|</span>}
     </div>

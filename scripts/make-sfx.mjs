@@ -74,3 +74,16 @@ function writeWav(name, samples) {
   }
   writeWav('click.wav', s)
 }
+
+// type-tick: very short soft click for a typewriter/typing loop
+{
+  const dur = 0.07
+  const n = Math.floor(sampleRate * dur)
+  const s = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const t = i / sampleRate
+    const env = Math.exp(-t * 120)
+    s[i] = Math.sin(2 * Math.PI * 2400 * t) * env * 0.3
+  }
+  writeWav('type-tick.wav', s)
+}
