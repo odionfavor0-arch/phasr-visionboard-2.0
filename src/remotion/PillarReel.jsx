@@ -479,7 +479,10 @@ function computeSceneStarts(durations, transitionFrames) {
 }
 
 export default function PillarReel({
-  audioFile = 'audio/pillar-01-clarity.mp3',
+  // Placeholder voiceover removed — it was the wrong (old, mismatched)
+  // script. Silent until the real locked-script voiceover is generated
+  // (needs ElevenLabs enabled in-chat).
+  audioFile = null,
   musicFile = 'audio/ambient-bed-pillar.wav',
   musicVolume = 0.12,
   beatFrames = SCENES.map((s) => s.dur),
