@@ -233,7 +233,7 @@ export default function SocialReel({
   highlightWord = 'every night.',
   painLabel = 'THE PATTERN',
   painText = 'Not lack of discipline. No system that holds when life gets loud.',
-  methodText = 'The audit. The plan. The follow-through.',
+  methodText = 'Somewhere to come back to. Not a plan to finish.',
   iconSequence = ['moon', 'check', 'arrow'],
   ctaText = 'Drop a comment if you do this too.',
   audioFile = null,
