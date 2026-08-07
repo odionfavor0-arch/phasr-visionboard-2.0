@@ -101,6 +101,18 @@ phrasing only, never quoted as a stat on-screen.
 > You need to turn the vision into something clear enough to act on."
 
 **Visual style (4th revision, still current):** physical paper/cards with shadow+rotation fly-ins, stamps, handwriting-reveal text, diagrams that build themselves, camera push/zoom, distinct SFX per action (no single sound reused across unrelated beats), music duck at the emotional turn. On-brand cream/pink palette. 10 timed scenes.
+**SCHEDULED:** TikTok post `6a76381c8363eb69499a4eb7` (2026-08-09 09:00 Lagos) and
+LinkedIn post `6a76383d8363eb69499a4fc9` (2026-08-09 08:00 Lagos). Platform-specific
+keywords and captions; neither caption repeats the video's script.
+
+**ROOT CAUSE FOUND — LinkedIn `firstComment` silently returns null:** it is not a
+Buffer MCP bug and not a malformed request. The `editPost` mutation returns the real
+reason verbatim: *"LinkedIn first comment requires a paid plan. Please upgrade to use
+this feature."* `create_post` accepts the field and discards it without erroring, which
+is why every previous attempt looked like it worked and then verified as `null`. Options
+are (a) upgrade the Buffer plan, or (b) post the first comment manually on LinkedIn after
+each post goes live. Do not keep retrying it through the API on the free plan.
+
 **Status:** the built visuals (vague-goal cards reading "GET HEALTHIER / BE MORE CONSISTENT / BUILD THE BUSINESS", the drift/guilt/discipline-problem cycle) were written against the SUPERSEDED script and no longer literally match the current locked voiceover's wording (now "Your health. Your money. Your career. Your business. Your relationships." + no explicit "discipline problem" cycle language). Visuals need re-alignment once the real audio exists — do not just drop the new audio under the old visuals, that recreates the exact voiceover/visual mismatch already flagged once. ElevenLabs still disabled in this chat session as of this revision — audio not yet generated. Do not post until audio is generated AND visuals are re-timed/re-matched to it.
 
 ## 2. "Why do we keep starting over?"
