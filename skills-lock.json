@@ -30,6 +30,12 @@
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
       "computedHash": "20c0ed05adb01fde3db5bb1aeefd61d33db2471bdadfd9c9ce19d30dd54a12fd"
+    },
+    "video-analysis": {
+      "source": "postplusai/postplus-skills",
+      "sourceType": "github",
+      "skillPath": "skills/40-creative/video-analysis/SKILL.md",
+      "computedHash": "0060acd77f1f28a34d598252bb7d01c081f8d837525e7e8b7821f07a87ee7ba6"
     }
   }
 }
