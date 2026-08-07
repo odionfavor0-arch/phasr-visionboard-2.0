@@ -87,3 +87,43 @@ function writeWav(name, samples) {
   }
   writeWav('type-tick.wav', s)
 }
+
+// whoosh: soft airy sweep for camera pushes / transitions
+{
+  const dur = 0.35
+  const n = Math.floor(sampleRate * dur)
+  const s = new Float32Array(n)
+  for (let i = 0; i < n; i++) {
+    const t = i / sampleRate
+    const env = Math.sin(Math.PI * (t / dur)) // rise then fall
+    const noise = (Math.random() * 2 - 1)
+    // band-limited-ish noise: light smoothing via a short moving average feel
+    s[i] = noise * env * 0.22
+  }
+  // simple smoothing pass to soften the noise into an airy whoosh
+  for (let i = 1; i < n - 1; i++) {
+    s[i] = (s[i - 1] + s[i] * 2 + s[i + 1]) / 4
+  }
+  writeWav('whoosh.wav', s)
+}
+
+// chime: warmer two-note landing sound for the brand reveal
+{
+  const dur = 0.5
+  const n = Math.floor(sampleRate * dur)
+  const s = new Float32Array(n)
+  const notes = [
+    { freq: 660, gain: 0.4 },
+    { freq: 990, gain: 0.25 },
+  ]
+  for (let i = 0; i < n; i++) {
+    const t = i / sampleRate
+    const attack = Math.min(1, t / 0.01)
+    const decay = Math.exp(-t * 5)
+    const env = attack * decay
+    let v = 0
+    for (const nt of notes) v += Math.sin(2 * Math.PI * nt.freq * t) * nt.gain
+    s[i] = v * env * 0.5
+  }
+  writeWav('chime.wav', s)
+}

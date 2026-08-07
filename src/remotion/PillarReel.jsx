@@ -132,7 +132,7 @@ function HookScene() {
   ]
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', transform: `scale(${pushIn})` }}>
-      <Sfx name="pop.wav" frame={0} />
+      <Sfx name="whoosh.wav" frame={0} />
       <div style={{ position: 'relative', width: 10, height: 10 }}>
         <FlyCard frame={frame} delay={0} from={{ x: 0, y: -260, rotate: -8 }} to={{ x: -140, y: -140, rotate: -4 }} style={{ background: COLORS.paper, borderRadius: 10, padding: '30px 34px', width: 260 }}>
           <TypeOn text="MY GOALS" frame={frame} delay={4} speed={1.6} size={30} />
@@ -146,9 +146,11 @@ function HookScene() {
           </div>
         ))}
       </div>
-      {/* emphasis text — separate layer from the paper's own label */}
-      <div style={{ position: 'absolute', bottom: 420, textAlign: 'center' }}>
-        <TypeOn text="Maybe it isn't inconsistency." frame={frame} delay={40} speed={1.1} size={26} color={COLORS.rose} />
+      {/* emphasis text — separate layer from the paper's own label; only the
+          key word is pink, matching the reference exactly */}
+      <div style={{ position: 'absolute', bottom: 420, textAlign: 'center', display: 'flex', gap: 8 }}>
+        <TypeOn text="Maybe it isn't" frame={frame} delay={40} speed={1.1} size={26} color={COLORS.ink} sound={true} />
+        <TypeOn text="inconsistency." frame={frame} delay={54} speed={1.1} size={26} color={COLORS.rose} sound={false} />
       </div>
     </AbsoluteFill>
   )
@@ -165,6 +167,7 @@ function TargetDrawScene() {
   ]
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <Sfx name="whoosh.wav" frame={0} />
       <div style={{ position: 'relative', width: 360, height: 360 }}>
         <svg width="360" height="360" style={{ position: 'absolute' }}>
           <circle cx="180" cy="180" r="90" fill="none" stroke={COLORS.ink} strokeWidth="4" strokeDasharray="566" strokeDashoffset={566 * (1 - ringDraw)} />
@@ -221,6 +224,7 @@ function VagueCardsScene() {
   const frame = useCurrentFrame()
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <Sfx name="whoosh.wav" frame={0} />
       <div style={{ position: 'relative', width: 10, height: 10 }}>
         {/* Card 1 — typewriter reveal */}
         <div style={{ position: 'absolute', left: -320, top: -260 }}>
@@ -267,7 +271,8 @@ function EmptyTodayScene() {
         ))}
         <div style={{ position: 'absolute', left: 30, top: -60, width: 24, height: 24, borderRadius: 12, border: `3px solid ${COLORS.ink}`, opacity: reachPulse }} />
       </div>
-      <Sfx name="pop.wav" frame={70} />
+      <Sfx name="whoosh.wav" frame={0} />
+      <Sfx name="chime.wav" frame={70} />
       <div style={{ position: 'absolute', background: COLORS.paper, borderRadius: 10, padding: '40px 50px', opacity: fadeRise(frame, 30, 70, 10).opacity, textAlign: 'center', boxShadow: '0 10px 30px rgba(61,16,32,0.12)' }}>
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 22, color: COLORS.muted, letterSpacing: 2 }}>TODAY</div>
         <div style={{ height: 70 }} />
@@ -291,6 +296,7 @@ function BrainCrowdedScene() {
   const r = 190
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <Sfx name="whoosh.wav" frame={0} />
       <div style={{ position: 'relative', width: 420, height: 420 }}>
         <div style={{ position: 'absolute', left: '50%', top: '50%', width: 16, height: 16, borderRadius: 8, background: COLORS.rose, transform: 'translate(-50%,-50%)' }} />
         {words.map((w, i) => {
@@ -337,6 +343,7 @@ function SplitTargetScene() {
   const transform1 = interpolate(frame, [40, 55], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <Sfx name="whoosh.wav" frame={0} />
       <div style={{ opacity: 1 - transform1, display: 'flex', gap: 50 }}>
         <div style={{ textAlign: 'center' }}>
           <PopText frame={frame} delay={0} size={20} color={COLORS.ink}>NO CLEAR TARGET</PopText>
@@ -355,6 +362,10 @@ function SplitTargetScene() {
         <div style={{ color: COLORS.muted, fontSize: 26, margin: '10px 0' }}>&darr;</div>
         <Sfx name="click.wav" frame={52} />
         <PopText frame={frame} delay={52} size={32} color={COLORS.rose}>NEXT ACTION</PopText>
+      </div>
+      <div style={{ position: 'absolute', bottom: 380, textAlign: 'center', display: 'flex', gap: 8 }}>
+        <PopText frame={frame} delay={64} size={30} color={COLORS.ink}>CLARITY CREATES</PopText>
+        <PopText frame={frame} delay={70} size={30} color={COLORS.rose}>DIRECTION.</PopText>
       </div>
     </AbsoluteFill>
   )
@@ -375,6 +386,7 @@ function CycleScene() {
   const showCross = frame >= stopFrame + 16
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <Sfx name="whoosh.wav" frame={0} />
       <div style={{ position: 'relative', width: 10, height: 10 }}>
         {frame < stopFrame &&
           steps.map((s, i) => {
@@ -390,7 +402,7 @@ function CycleScene() {
           })}
         {showStop && (
           <>
-            <Sfx name="pop.wav" frame={stopFrame} />
+            <Sfx name="stamp.wav" frame={stopFrame} />
             <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)' }}>
               <PopText frame={frame} delay={stopFrame} size={54} color={COLORS.rose} weight={900}>
                 STOP.
@@ -414,36 +426,71 @@ function CycleScene() {
   )
 }
 
-// ============ 0:27-0:30+ — blank pause, "It was never that.", CLARITY, resolution ============
-function ResolutionScene() {
+// ============ 0:27-0:29 — THE TRUTH: everything disappears, held on one line ============
+function TheTruthScene() {
   const frame = useCurrentFrame()
-  const switchFrame = 80
-  const lock = interpolate(frame, [110, 125], [30, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
   return (
     <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', padding: '0 60px' }}>
-      {/* "everything disappears except this sentence" beat — held for real breathing room */}
-      {frame < switchFrame && (
-        <PopText frame={frame} delay={6} size={38} color={COLORS.ink} weight={700}>
-          It was never that.
-        </PopText>
+      <Sfx name="whoosh.wav" frame={0} />
+      <div style={{ background: COLORS.quartz, borderRadius: 6, padding: '26px 32px', transform: 'rotate(-1deg)' }}>
+        <TypeOn text="THE PROBLEM WASN'T YOU." frame={frame} delay={10} speed={1} size={36} color={COLORS.rose} />
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ============ 0:29-0:33 — THE SHIFT: question transforms into structure ============
+function TheShiftScene() {
+  const frame = useCurrentFrame()
+  const transformAt = 55
+  const lock = interpolate(frame, [transformAt, transformAt + 15], [30, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
+  return (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center', padding: '0 60px' }}>
+      <Sfx name="whoosh.wav" frame={0} />
+      {frame < transformAt + 10 && (
+        <div style={{ background: COLORS.paper, borderRadius: 10, padding: '30px 34px', boxShadow: '0 10px 30px rgba(61,16,32,0.10)', opacity: interpolate(frame, [transformAt, transformAt + 10], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) }}>
+          <TypeOn text="WHAT AM I ACTUALLY TRYING TO MAKE HAPPEN?" frame={frame} delay={4} speed={1.3} size={22} />
+        </div>
       )}
-      {frame >= switchFrame && (
-        <>
-          <TypeOn text="CLARITY" frame={frame} delay={switchFrame} speed={0.8} size={64} color={COLORS.rose} style={{ marginBottom: 30 }} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, transform: `translateY(${lock}px)`, opacity: fadeRise(frame, 30, 110).opacity }}>
-            {['CLEAR TARGET', 'TODAY', 'NEXT ACTION'].map((t, i) => (
-              <div key={t} style={{ background: [COLORS.pink, COLORS.quartz, COLORS.rose][i], borderRadius: 8, padding: '10px 22px' }}>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 16, color: [COLORS.white, COLORS.ink, COLORS.white][i] || COLORS.ink }}>{t}</div>
+      {frame >= transformAt && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, transform: `translateY(${lock}px)`, opacity: fadeRise(frame, 30, transformAt).opacity }}>
+          {['CLEAR TARGET', 'TODAY', 'NEXT ACTION'].map((t, i) => {
+            const d = transformAt + i * 8
+            return (
+              <div key={t}>
+                <Sfx name="click.wav" frame={d} />
+                <div style={{ background: [COLORS.pink, COLORS.quartz, COLORS.rose][i], borderRadius: 8, padding: '10px 22px' }}>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 16, color: [COLORS.white, COLORS.ink, COLORS.white][i] || COLORS.ink }}>{t}</div>
+                </div>
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 40, textAlign: 'center', opacity: fadeRise(frame, 30, 145, 14).opacity }}>
-            <Sfx name="pop.wav" frame={145} />
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 44, letterSpacing: 4, color: COLORS.ink }}>PHASR</div>
-            <div style={{ marginTop: 10, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, color: COLORS.rose, letterSpacing: 1 }}>CLARITY BEFORE CONSISTENCY</div>
-          </div>
-        </>
+            )
+          })}
+        </div>
       )}
+      <div style={{ position: 'absolute', top: 300, textAlign: 'center' }}>
+        <PopText frame={frame} delay={transformAt + 30} size={30} color={COLORS.rose}>CLARITY BEFORE CONSISTENCY.</PopText>
+      </div>
+    </AbsoluteFill>
+  )
+}
+
+// ============ 0:33-0:35+ — BRAND CLOSE: logo fades in, tagline slides up, soft glow ============
+function BrandCloseScene() {
+  const frame = useCurrentFrame()
+  const glow = 0.5 + Math.sin(frame / 14) * 0.15
+  return (
+    <AbsoluteFill style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <Sfx name="whoosh.wav" frame={0} />
+      <Sfx name="chime.wav" frame={10} />
+      <div style={{ textAlign: 'center', ...fadeRise(frame, 30, 6, 10) }}>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <div style={{ position: 'absolute', inset: -20, borderRadius: 40, background: COLORS.pink, opacity: glow * 0.25, filter: 'blur(24px)' }} />
+          <div style={{ position: 'relative', fontFamily: 'Inter, sans-serif', fontWeight: 900, fontSize: 50, letterSpacing: 4, color: COLORS.ink }}>PHASR</div>
+        </div>
+        <div style={{ marginTop: 14, fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 18, color: COLORS.rose, letterSpacing: 1, ...fadeRise(frame, 30, 22, 12) }}>
+          TURN VISION INTO REAL PROGRESS
+        </div>
+      </div>
     </AbsoluteFill>
   )
 }
@@ -461,7 +508,9 @@ const SCENES = [
   { Comp: BrainCrowdedScene, dur: 170 },
   { Comp: SplitTargetScene, dur: 130 },
   { Comp: CycleScene, dur: 175 },
-  { Comp: ResolutionScene, dur: 190 },
+  { Comp: TheTruthScene, dur: 90 },
+  { Comp: TheShiftScene, dur: 150 },
+  { Comp: BrandCloseScene, dur: 100 },
 ]
 
 const TRANSITION_FRAMES = 8
@@ -488,9 +537,9 @@ export default function PillarReel({
   beatFrames = SCENES.map((s) => s.dur),
   transitionFrames = TRANSITION_FRAMES,
 }) {
-  // duck the music under "It was never that." (start of the last scene) for
-  // the emotional release, then bring it back for the CLARITY resolution.
-  const duckAt = computeSceneStarts(beatFrames, transitionFrames)[beatFrames.length - 1]
+  // duck the music under "THE PROBLEM WASN'T YOU." (The Truth scene, index 7)
+  // for the emotional release, then bring it back for the CLARITY resolution.
+  const duckAt = computeSceneStarts(beatFrames, transitionFrames)[7]
   const musicVolumeFn = (frame) => {
     if (frame < duckAt) return musicVolume
     if (frame < duckAt + 16) return interpolate(frame, [duckAt, duckAt + 16], [musicVolume, 0.02])
