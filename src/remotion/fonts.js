@@ -72,4 +72,10 @@ export const FONT_FACES = `
   font-weight: 500;
   src: url('${staticFile('fonts/Fraunces-Italic-500.woff2')}') format('woff2');
 }
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 700;
+  src: url('${staticFile('fonts/Caveat-700.woff2')}') format('woff2');
+}
 `
