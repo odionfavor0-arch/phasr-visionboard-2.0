@@ -149,8 +149,8 @@ function HookScene() {
       {/* emphasis text — separate layer from the paper's own label; only the
           key word is pink, matching the reference exactly */}
       <div style={{ position: 'absolute', bottom: 420, textAlign: 'center', display: 'flex', gap: 8 }}>
-        <TypeOn text="Maybe it isn't" frame={frame} delay={40} speed={1.1} size={26} color={COLORS.ink} sound={true} />
-        <TypeOn text="inconsistency." frame={frame} delay={54} speed={1.1} size={26} color={COLORS.rose} sound={false} />
+        <TypeOn text="It isn't that you don't" frame={frame} delay={40} speed={1.1} size={26} color={COLORS.ink} sound={true} />
+        <TypeOn text="want it enough." frame={frame} delay={62} speed={1.1} size={26} color={COLORS.rose} sound={false} />
       </div>
     </AbsoluteFill>
   )
@@ -213,7 +213,7 @@ function TargetDrawScene() {
         })}
       </div>
       <div style={{ position: 'absolute', bottom: 460, textAlign: 'center' }}>
-        <TypeOn text="WHERE AM I GOING?" frame={frame} delay={70} speed={1.2} size={30} color={COLORS.ink} />
+        <TypeOn text="Okay, what do I do now?" frame={frame} delay={70} speed={1.2} size={30} color={COLORS.ink} />
       </div>
     </AbsoluteFill>
   )
@@ -276,7 +276,7 @@ function EmptyTodayScene() {
       <div style={{ position: 'absolute', background: COLORS.paper, borderRadius: 10, padding: '40px 50px', opacity: fadeRise(frame, 30, 70, 10).opacity, textAlign: 'center', boxShadow: '0 10px 30px rgba(61,16,32,0.12)' }}>
         <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 22, color: COLORS.muted, letterSpacing: 2 }}>TODAY</div>
         <div style={{ height: 70 }} />
-        <TypeOn text="WHAT DO I DO TODAY?" frame={frame} delay={90} speed={1.2} size={26} />
+        <TypeOn text="Finish very little." frame={frame} delay={90} speed={1.1} size={26} color={COLORS.rose} />
       </div>
     </AbsoluteFill>
   )
@@ -285,13 +285,14 @@ function EmptyTodayScene() {
 // ============ 0:16-0:20 — brain with crowded word-nodes and tangled lines ============
 function BrainCrowdedScene() {
   const frame = useCurrentFrame()
+  // Matches the locked voiceover exactly: "Your health. Your money. Your
+  // career. Your business. Your relationships."
   const words = [
-    { label: 'GOAL', angle: -90, delay: 8 },
-    { label: 'MONEY', angle: -30, delay: 16 },
-    { label: 'HEALTH', angle: 30, delay: 24 },
-    { label: 'BUSINESS', angle: 90, delay: 32 },
-    { label: 'FITNESS', angle: 150, delay: 40 },
-    { label: 'CAREER', angle: -150, delay: 48 },
+    { label: 'HEALTH', angle: -90, delay: 10 },
+    { label: 'MONEY', angle: -18, delay: 30 },
+    { label: 'CAREER', angle: 54, delay: 50 },
+    { label: 'BUSINESS', angle: 126, delay: 70 },
+    { label: 'RELATIONSHIPS', angle: 198, delay: 90 },
   ]
   const r = 190
   return (
@@ -329,8 +330,8 @@ function BrainCrowdedScene() {
         })}
       </div>
       <div style={{ position: 'absolute', bottom: 420, textAlign: 'center' }}>
-        <PopText frame={frame} delay={90} size={30} color={COLORS.rose}>
-          TOO MANY POSSIBILITIES.
+        <PopText frame={frame} delay={120} size={30} color={COLORS.rose}>
+          EVERYTHING AT ONCE.
         </PopText>
       </div>
     </AbsoluteFill>
@@ -346,7 +347,7 @@ function SplitTargetScene() {
       <Sfx name="whoosh.wav" frame={0} />
       <div style={{ opacity: 1 - transform1, display: 'flex', gap: 50 }}>
         <div style={{ textAlign: 'center' }}>
-          <PopText frame={frame} delay={0} size={20} color={COLORS.ink}>NO CLEAR TARGET</PopText>
+          <PopText frame={frame} delay={0} size={20} color={COLORS.ink}>NO CLEAR DESTINATION</PopText>
           <div style={{ color: COLORS.muted, fontSize: 22, margin: '8px 0' }}>&darr;</div>
           <div style={{ fontSize: 26, color: COLORS.rose, opacity: fadeRise(frame, 30, 14).opacity }}>?</div>
         </div>
@@ -358,7 +359,7 @@ function SplitTargetScene() {
       </div>
       <div style={{ position: 'absolute', opacity: transform1, transform: `scale(${0.9 + transform1 * 0.1})`, textAlign: 'center' }}>
         <Sfx name="click.wav" frame={40} />
-        <PopText frame={frame} delay={40} size={32} color={COLORS.rose}>CLEAR TARGET</PopText>
+        <PopText frame={frame} delay={40} size={32} color={COLORS.rose}>CLEAR DESTINATION</PopText>
         <div style={{ color: COLORS.muted, fontSize: 26, margin: '10px 0' }}>&darr;</div>
         <Sfx name="click.wav" frame={52} />
         <PopText frame={frame} delay={52} size={32} color={COLORS.rose}>NEXT ACTION</PopText>
@@ -500,17 +501,29 @@ function BrandCloseScene() {
 // ahead of or gets cut off before the narrator finishes that line. These are
 // an estimate pending the real ElevenLabs render — once that's available,
 // true these up to its exact measured duration per scene.
+// Ordered and timed against the LOCKED voiceover (public/audio/
+// pillar-01-clarity-vo.mp3, ~56.8s), one scene per spoken beat:
+//  1 Hook        "You know what's frustrating about having big goals?..."
+//  2 TargetDraw  "You have the ideas... okay, what do I do now? There's no answer."
+//  3 BrainCrowded "Everything feels important at once. Your health. Your money..."
+//  4 EmptyToday  "So you move between everything, finish very little,"
+//  5 Cycle       "...and start blaming yourself for not being disciplined enough."
+//  6 TheTruth    "But look at what's actually happening."
+//  7 SplitTarget "No clear destination, no clear next move... consistency gets harder."
+//  8 TheShift    "You don't need another reminder to try harder."
+//  9 BrandClose  "You need to turn the vision into something clear enough to act on."
+// VagueCardsScene is intentionally dropped: its GET HEALTHIER / TOO VAGUE
+// card text is wording this script no longer uses.
 const SCENES = [
-  { Comp: HookScene, dur: 165 },
-  { Comp: TargetDrawScene, dur: 170 },
-  { Comp: VagueCardsScene, dur: 175 },
-  { Comp: EmptyTodayScene, dur: 165 },
-  { Comp: BrainCrowdedScene, dur: 170 },
-  { Comp: SplitTargetScene, dur: 130 },
-  { Comp: CycleScene, dur: 175 },
-  { Comp: TheTruthScene, dur: 90 },
-  { Comp: TheShiftScene, dur: 150 },
-  { Comp: BrandCloseScene, dur: 100 },
+  { Comp: HookScene, dur: 200 },
+  { Comp: TargetDrawScene, dur: 210 },
+  { Comp: BrainCrowdedScene, dur: 230 },
+  { Comp: EmptyTodayScene, dur: 210 },
+  { Comp: CycleScene, dur: 200 },
+  { Comp: TheTruthScene, dur: 170 },
+  { Comp: SplitTargetScene, dur: 220 },
+  { Comp: TheShiftScene, dur: 190 },
+  { Comp: BrandCloseScene, dur: 150 },
 ]
 
 const TRANSITION_FRAMES = 8
@@ -528,19 +541,17 @@ function computeSceneStarts(durations, transitionFrames) {
 }
 
 export default function PillarReel({
-  // STOPGAP: restored at Favour's request while ElevenLabs stays
-  // unreachable. This is the OLD (superseded) script's audio, not the
-  // current locked British-voice script — it will not match the on-screen
-  // text/pacing. Replace with the real render the moment ElevenLabs works.
-  audioFile = 'audio/pillar-01-clarity.mp3',
+  // The real locked script, British female voice (ElevenLabs "Alice").
+  // Scene order/durations above are timed to this file.
+  audioFile = 'audio/pillar-01-clarity-vo.mp3',
   musicFile = 'audio/ambient-bed-pillar.wav',
   musicVolume = 0.12,
   beatFrames = SCENES.map((s) => s.dur),
   transitionFrames = TRANSITION_FRAMES,
 }) {
-  // duck the music under "THE PROBLEM WASN'T YOU." (The Truth scene, index 7)
+  // duck the music under "THE PROBLEM WASN'T YOU." (The Truth scene, index 5)
   // for the emotional release, then bring it back for the CLARITY resolution.
-  const duckAt = computeSceneStarts(beatFrames, transitionFrames)[7]
+  const duckAt = computeSceneStarts(beatFrames, transitionFrames)[5]
   const musicVolumeFn = (frame) => {
     if (frame < duckAt) return musicVolume
     if (frame < duckAt + 16) return interpolate(frame, [duckAt, duckAt + 16], [musicVolume, 0.02])
